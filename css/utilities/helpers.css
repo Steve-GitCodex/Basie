@@ -100,7 +100,7 @@
 
 .reward-float-card {
   position: fixed;
-  z-index: 9999;
+  z-index: var(--z-float);
   pointer-events: none;          /* never blocks clicks beneath */
   background: var(--clr-surface-2, #1e1e2e);
   border: 1px solid var(--clr-gold, #f4c430);

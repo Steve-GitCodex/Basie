@@ -14,172 +14,614 @@ export class BuildingsUI {
   /** @param {{ rm, bm, notifications, heroes }} systems */
   constructor(systems) {
     this._s = systems;
-    this._activeCat  = null;
-    this._activeType = null;
+    this._activeCat       = null;
+    this._activeType      = null;
+    this._ttHideTimeout   = null;
+    this._ttBid           = null;
+    this._ttIdx           = 0;
   }
 
   render() {
-    this._renderBuildQueue();
+    this._renderBaseGrid();
+    this._renderSidebar();
     this._renderBuildingCards();
   }
 
   init() {
-    eventBus.on('ui:viewChanged',        v => { if (v === 'base') this.render(); });
-    eventBus.on('building:completed',        () => this.render());
-    eventBus.on('building:started',          () => this.render());
-    eventBus.on('building:queueUpdated',     () => this.render());
-    eventBus.on('building:automationEnabled',() => this.render());
-    eventBus.on('tech:researched',           () => this.render());
-    eventBus.on('heroes:updated',            () => this.render());
-    // Re-render on resource tick (throttled to 2 s) so affordability badges
-    // update live — critical while tutorial blockers prevent manual tab clicks.
+    this._unsubs = [];
+
+    // Hide tooltip on click outside the grid
+    document.addEventListener('click', e => {
+      if (!e.target.closest('#base-grid') && !e.target.closest('#tile-tooltip')) {
+        this._hideTileTooltip(true);
+      }
+    });
+
+    // Keep tooltip visible when mouse re-enters it
+    const tt = document.getElementById('tile-tooltip');
+    if (tt) {
+      tt.addEventListener('mouseenter', () => clearTimeout(this._ttHideTimeout));
+      tt.addEventListener('mouseleave', () => { this._ttHideTimeout = setTimeout(() => this._hideTileTooltip(), 120); });
+    }
+
+    // Build queue sidebar toggle
+    document.getElementById('bq-toggle')?.addEventListener('click', () => {
+      document.getElementById('bq-sidebar')?.classList.toggle('is-collapsed');
+    });
+
+    this._unsubs.push(eventBus.on('ui:viewChanged',             v => { if (v === 'base') this.render(); }));
+    this._unsubs.push(eventBus.on('building:completed',         () => { this.render(); this._refreshTooltip(); }));
+    this._unsubs.push(eventBus.on('building:started',           () => {
+      this.render();
+      this._refreshTooltip();
+      document.getElementById('bq-sidebar')?.classList.remove('is-collapsed');
+    }));
+    this._unsubs.push(eventBus.on('building:queueUpdated',      () => { this.render(); this._refreshTooltip(); }));
+    this._unsubs.push(eventBus.on('building:automationEnabled', () => this.render()));
+    this._unsubs.push(eventBus.on('tech:researched',            () => this.render()));
+    this._unsubs.push(eventBus.on('tech:queueUpdated',          () => {
+      this._renderSidebar();
+      document.getElementById('bq-sidebar')?.classList.remove('is-collapsed');
+    }));
+    this._unsubs.push(eventBus.on('unit:queueUpdated',          () => {
+      this._renderSidebar();
+      document.getElementById('bq-sidebar')?.classList.remove('is-collapsed');
+    }));
+    this._unsubs.push(eventBus.on('heroes:updated',             () => this.render()));
     this._tickThrottle = 0;
-    eventBus.on('resources:tick', () => {
+    this._unsubs.push(eventBus.on('resources:tick', () => {
       const now = Date.now();
       if (now - this._tickThrottle >= 2000) {
         this._tickThrottle = now;
         this.render();
-        // Let UIManager re-pin the spotlight ring after innerHTML replacement
+        this._refreshTooltip();
         eventBus.emit('buildings:rendered');
       }
-    });
-    // Tutorial: switch category + type tabs to the requested building then re-render
-    eventBus.on('buildings:focusBuilding', id => {
-      const bType = this._s.bm.getBuildingTypesWithInstances().find(t => t.id === id);
-      if (bType) {
-        this._activeCat  = bType.category;
-        this._activeType = bType.id;
-        this.render();
+    }));
+    // Tutorial: show tooltip for the requested building
+    this._unsubs.push(eventBus.on('buildings:focusBuilding', id => {
+      const tile = document.querySelector(`#base-grid .base-tile[data-building-id="${id}"]`);
+      if (tile) this._showTileTooltip(id, 0, tile.getBoundingClientRect());
+    }));
+  }
+
+  destroy() {
+    this._unsubs?.forEach(fn => fn());
+    this._unsubs = [];
+  }
+
+  // ─────────────────────────────────────────────
+  // Base Grid (visual city map)
+  // ─────────────────────────────────────────────
+
+  static SPRITE_MAP = {
+    townhall:          'scifiStructure_01.png',
+    heroquarters:      'scifiStructure_02.png',
+    barracks:          'scifiStructure_03.png',
+    construction_hall: 'scifiStructure_04.png',
+    lumbermill:        'scifiStructure_05.png',
+    storehouse:        'scifiStructure_06.png',
+    cafeteria:         'scifiStructure_07.png',
+    well:              'scifiStructure_08.png',
+    mine:              'scifiStructure_09.png',
+    quarry:            'scifiStructure_10.png',
+    bank:              'scifiStructure_11.png',
+    farm:              'scifiStructure_12.png',
+    workshop:          'scifiStructure_13.png',
+    archeryrange:      'scifiStructure_14.png',
+    house:             'scifiStructure_15.png',
+    cavalrystable:     'scifiStructure_15.png',
+    infantryhall:      'scifiStructure_16.png',
+    siegeworkshop:     'scifiStructure_03.png',
+    magictower:        'scifiStructure_13.png',
+  };
+
+  _renderBaseGrid() {
+    const grid = document.getElementById('base-grid');
+    if (!grid) return;
+
+    const COLS = 10;
+    const ROWS = 7;
+    const bm   = this._s.bm;
+
+    // Build reverse lookup: "col,row" -> { buildingId, instanceIndex }
+    const posMap = new Map();
+    for (const [bid, cfg] of Object.entries(BUILDINGS_CONFIG)) {
+      if (!cfg.gridPositions) continue;
+      cfg.gridPositions.forEach((pos, idx) => {
+        posMap.set(`${pos.col},${pos.row}`, { buildingId: bid, instanceIndex: idx });
+      });
+    }
+
+    const queue = bm.getBuildQueue();
+    const html  = [];
+
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        const entry = posMap.get(`${col},${row}`);
+        if (!entry) {
+          html.push(`<div class="base-tile base-tile--empty"></div>`);
+          continue;
+        }
+
+        const { buildingId, instanceIndex } = entry;
+        const cfg   = BUILDINGS_CONFIG[buildingId];
+        const level = bm.getInstanceLevelOf(`${buildingId}_${instanceIndex}`);
+        const isBuilding = queue.some(q => q.buildingId === buildingId && q.instanceIndex === instanceIndex);
+
+        // Hide slot if the instance slot is locked and not yet built
+        if (level === 0 && bm.canBuild(buildingId, instanceIndex).ok === false &&
+            cfg.instanceSlots[instanceIndex]?.condition) {
+          html.push(`<div class="base-tile base-tile--empty"></div>`);
+          continue;
+        }
+
+        const progressHtml = isBuilding
+          ? `<div class="base-tile__progress"><div class="base-tile__progress-fill" style="width:50%"></div></div>`
+          : '';
+        const levelHtml = level > 0 ? `<span class="base-tile__level">Lv${level}</span>` : '';
+        const sprite = BuildingsUI.SPRITE_MAP[buildingId];
+        const spriteStyle = sprite
+          ? `style="background-image:url('assets/sprites/buildings/${sprite}')"`
+          : '';
+        const isBuilt = level > 0;
+        const classes = [
+          'base-tile',
+          isBuilding ? 'base-tile--building' : '',
+          !isBuilt   ? 'base-tile--unbuilt'  : '',
+        ].filter(Boolean).join(' ');
+
+        html.push(`
+          <div class="${classes}" data-building-id="${buildingId}" data-instance-index="${instanceIndex}"
+               title="${cfg.name}${level > 0 ? ` (Lv.${level})` : ' — Tap to build'}" ${spriteStyle}>
+            ${levelHtml}
+            <span class="base-tile__name">${cfg.name}</span>
+            ${progressHtml}
+          </div>`);
       }
+    }
+
+    grid.innerHTML = html.join('');
+
+    // Hover → show tooltip; click → toggle tooltip (touch-friendly fallback)
+    grid.querySelectorAll('.base-tile[data-building-id]').forEach(tile => {
+      const bid = tile.dataset.buildingId;
+      const idx = parseInt(tile.dataset.instanceIndex, 10);
+
+      tile.addEventListener('mouseenter', () => {
+        clearTimeout(this._ttHideTimeout);
+        this._showTileTooltip(bid, idx, tile.getBoundingClientRect());
+      });
+      tile.addEventListener('mouseleave', () => {
+        this._ttHideTimeout = setTimeout(() => this._hideTileTooltip(), 120);
+      });
+      tile.addEventListener('click', e => {
+        e.stopPropagation();
+        const tt = document.getElementById('tile-tooltip');
+        if (tt?.classList.contains('is-visible') && this._ttBid === bid && this._ttIdx === idx) {
+          this._hideTileTooltip(true);
+        } else {
+          this._showTileTooltip(bid, idx, tile.getBoundingClientRect());
+        }
+      });
     });
   }
 
   // ─────────────────────────────────────────────
-  // Build Queue Strip
+  // Tile hover tooltip
   // ─────────────────────────────────────────────
 
-  _renderBuildQueue() {
+  _showTileTooltip(buildingId, instanceIndex, tileRect) {
+    const tt = document.getElementById('tile-tooltip');
+    if (!tt) return;
+
+    const allTypes = this._s.bm.getBuildingTypesWithInstances();
+    const bType    = allTypes.find(t => t.id === buildingId);
+    const b        = bType?.instances[instanceIndex];
+    const snap     = this._s.rm.getSnapshot();
+    if (!b) return;
+
+    const sprite    = BuildingsUI.SPRITE_MAP[buildingId];
+    const spriteUrl = sprite ? `assets/sprites/buildings/${sprite}` : '';
+    const isBuilt   = b.level > 0;
+    const nextLv    = b.effectiveLevel + 1;
+
+    const costHtml = Object.entries(b.cost).map(([res, amt]) => {
+      const has = (snap[res]?.amount ?? 0) >= amt;
+      return `<span class="cost-chip ${has ? 'affordable' : 'unaffordable'}">${RES_META[res]?.icon ?? '?'} ${fmt(amt)}</span>`;
+    }).join('');
+
+    const now = Date.now();
+    const progressHtml = b.isActivelyBuilding && b.constructionEndsAt ? (() => {
+      const pct  = Math.max(0, Math.min(100, ((now - (b.startedAt ?? 0)) / (b.constructionEndsAt - (b.startedAt ?? 0))) * 100));
+      const secs = Math.max(0, Math.ceil((b.constructionEndsAt - now) / 1000));
+      return `<div class="tt-progress progress-container" data-timer-start="${b.startedAt}" data-timer-end="${b.constructionEndsAt}">
+        <div class="progress-label"><span>🏗️ Building…</span><span class="progress-time-label">${secs}s</span></div>
+        <div class="progress-bar"><div class="progress-fill progress-fill-primary" style="width:${pct}%"></div></div>
+      </div>`;
+    })() : '';
+
+    let btnText, btnCls, btnDisabled;
+    if (!b.requirementsMet)  { btnText = `🔒 ${b.requirementsReason ?? 'Locked'}`;  btnCls = 'btn-ghost'; btnDisabled = true;  }
+    else if (b.isMaxLevel)   { btnText = '⭐ Max Level';                              btnCls = 'btn-ghost'; btnDisabled = true;  }
+    else if (!b.canAfford)   { btnText = isBuilt ? `→ Lv.${nextLv}` : 'Build';       btnCls = 'btn-ghost'; btnDisabled = true;  }
+    else                     { btnText = isBuilt ? `→ Lv.${nextLv}` : 'Build';       btnCls = 'btn-primary';                    btnDisabled = false; }
+
+    const timeHint = !b.isMaxLevel && !b.isActivelyBuilding && b.nextLevelBuildTime
+      ? `<span class="tt-time-hint">⏱ ${fmt(b.nextLevelBuildTime)}s</span>` : '';
+
+    tt.innerHTML = `
+      <div class="tt-header">
+        <div class="tt-sprite" style="background-image:url('${spriteUrl}')"></div>
+        <div class="tt-title-block">
+          <div class="tt-name">${b.name}</div>
+          <div class="tt-level">${isBuilt ? `Lv. ${b.level} / ${b.maxLevel}` : 'Not built'}</div>
+        </div>
+      </div>
+      ${b.effectLabel ? `<div class="tt-effect">${b.effectLabel}</div>` : ''}
+      ${progressHtml}
+      <div class="tt-costs">${costHtml}</div>
+      <div class="tt-actions">
+        <button class="btn btn-sm ${btnCls} tt-upgrade-btn" ${btnDisabled ? 'disabled' : ''}>${btnText}</button>
+        ${timeHint}
+      </div>
+      <div class="tt-arrow"></div>`;
+
+    // Position the tooltip
+    const TT_W = 270;
+    const TT_GAP = 10;
+    let left = tileRect.left + tileRect.width / 2 - TT_W / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - TT_W - 8));
+
+    const spaceAbove = tileRect.top;
+    const above = spaceAbove > 180;
+    const arrowLeft = Math.min(
+      Math.max(tileRect.left + tileRect.width / 2 - left, 16),
+      TT_W - 16
+    );
+
+    tt.style.width   = `${TT_W}px`;
+    tt.style.left    = `${left}px`;
+    tt.style.setProperty('--tt-arrow-left', `${arrowLeft}px`);
+    tt.classList.toggle('tt-above', above);
+    tt.classList.toggle('tt-below', !above);
+
+    if (above) {
+      tt.style.top    = 'auto';
+      tt.style.bottom = `${window.innerHeight - tileRect.top + TT_GAP}px`;
+    } else {
+      tt.style.bottom = 'auto';
+      tt.style.top    = `${tileRect.bottom + TT_GAP}px`;
+    }
+
+    this._ttBid = buildingId;
+    this._ttIdx = instanceIndex;
+    tt.style.display = 'block';
+    requestAnimationFrame(() => tt.classList.add('is-visible'));
+
+    tt.querySelector('.tt-upgrade-btn')?.addEventListener('click', e => {
+      e.stopPropagation();
+      eventBus.emit('ui:click');
+      const r = this._s.bm.build(buildingId, instanceIndex);
+      if (!r.success) {
+        eventBus.emit('ui:error');
+        this._s.notifications?.show('warning', 'Cannot Build', r.reason);
+      }
+      this.render();
+      const tile = document.querySelector(`#base-grid .base-tile[data-building-id="${buildingId}"][data-instance-index="${instanceIndex}"]`);
+      this._showTileTooltip(buildingId, instanceIndex, tile?.getBoundingClientRect() ?? tileRect);
+    });
+  }
+
+  _hideTileTooltip(immediate = false) {
+    const tt = document.getElementById('tile-tooltip');
+    if (!tt) return;
+    tt.classList.remove('is-visible');
+    this._ttBid = null;
+    const delay = immediate ? 0 : 150;
+    setTimeout(() => { if (!tt.classList.contains('is-visible')) tt.style.display = 'none'; }, delay);
+  }
+
+  _refreshTooltip() {
+    if (!this._ttBid) return;
+    const tile = document.querySelector(`#base-grid .base-tile[data-building-id="${this._ttBid}"][data-instance-index="${this._ttIdx}"]`);
+    if (tile && document.getElementById('tile-tooltip')?.classList.contains('is-visible')) {
+      this._showTileTooltip(this._ttBid, this._ttIdx, tile.getBoundingClientRect());
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // Activity Sidebar — Build + Research + Training
+  // ─────────────────────────────────────────────
+
+  _renderSidebar() {
     const panel = document.getElementById('build-queue-panel');
     if (!panel) return;
 
+    panel.innerHTML = '';
+    panel.appendChild(this._buildBuildSection());
+    panel.appendChild(this._buildResearchSection());
+    panel.appendChild(this._buildTrainingSection());
+
+    // Badge = total active items across all queues
+    const buildActive    = (this._s.bm?.getBuildQueue() ?? []).length;
+    const researchActive = (this._s.tm?.getQueue()      ?? []).length;
+    const trainActive    = (this._s.um?.getAllQueues()   ?? []).length;
+    const total = buildActive + researchActive + trainActive;
+    const countEl = document.getElementById('bq-toggle-count');
+    if (countEl) countEl.textContent = total > 0 ? String(total) : '0';
+  }
+
+  _buildBuildSection() {
     const bm       = this._s.bm;
     const queue    = bm.getBuildQueue();
     const maxSlots = bm.getMaxBuildSlots();
     const slotInfo = bm.getBuildSlotInfo();
     const now      = Date.now();
 
-    panel.innerHTML = '';
+    const section = document.createElement('div');
+    section.className = 'aq-section';
 
-    const strip = document.createElement('div');
-    strip.className = 'bq-strip';
+    const header = document.createElement('div');
+    header.className = 'aq-section-header aq-section-header--build';
+    header.innerHTML = `<span class="aq-section-icon">🏗️</span><span class="aq-section-title">BUILD</span><span class="aq-section-count">${queue.length}/${maxSlots}</span>`;
+    section.appendChild(header);
 
-    // Left: label + capacity
-    const label = document.createElement('div');
-    label.className = 'bq-label';
-    label.innerHTML = `
-      <span class="bq-title">🏗️ Build Queue</span>
-      <span class="bq-cap">${queue.length}/${maxSlots}</span>`;
-    strip.appendChild(label);
-
-    // Center: slot items
     const items = document.createElement('div');
-    items.className = 'bq-items';
+    items.className = 'aq-items';
 
-    for (let i = 0; i < 4; i++) {
-      const slotDef   = slotInfo.find(s => s.slots === i + 1) ?? { slots: i + 1, unlocked: false, requires: null, premium: false };
-      const queueItem = queue[i] ?? null;
+    // Active + queued items
+    for (const queueItem of queue) {
+      const cfg = queueItem.cfg ?? {};
+      const el  = document.createElement('div');
 
-      if (!slotDef.unlocked) {
-        // Locked slot — compact lock pill
-        const reqs = slotDef.requires
-          ? Object.entries(slotDef.requires).map(([bId, lv]) => `${BUILDINGS_CONFIG[bId]?.name ?? bId} Lv.${lv}`).join(', ')
-          : '';
-        const prem = slotDef.premium ? ' + Premium' : '';
-        const lockEl = document.createElement('div');
-        lockEl.className = 'bq-slot bq-slot-locked';
-        lockEl.title     = `Requires ${reqs}${prem}`;
-        lockEl.innerHTML = `<span class="bq-slot-lock">🔒</span><span class="bq-slot-lock-label">Slot ${i + 1}</span>`;
-        items.appendChild(lockEl);
-
-      } else if (queueItem?.isActive) {
-        // Active build — icon, name, progress bar
-        const cfg       = queueItem.cfg ?? {};
+      if (queueItem.isActive) {
         const startedAt = queueItem.startedAt ?? 0;
         const endsAt    = queueItem.endsAt    ?? 0;
         const pct       = endsAt ? Math.max(0, Math.min(100, ((now - startedAt) / (endsAt - startedAt)) * 100)) : 0;
         const secsLeft  = endsAt ? Math.max(0, Math.ceil((endsAt - now) / 1000)) : 0;
-
-        const el = document.createElement('div');
-        el.className = 'bq-slot bq-slot-active';
+        el.className = 'aq-slot aq-slot--active';
         el.innerHTML = `
-          <div class="bq-slot-row">
-            <span class="bq-slot-icon">${cfg.icon ?? '🏗️'}</span>
-            <div class="bq-slot-info">
-              <div class="bq-slot-name">${cfg.name ?? queueItem.buildingId}</div>
-              <div class="bq-slot-sub">→ Lv.${queueItem.pendingLevel}</div>
+          <div class="aq-slot-row">
+            <span class="aq-slot-icon">${cfg.icon ?? '🏗️'}</span>
+            <div class="aq-slot-info">
+              <div class="aq-slot-name">${cfg.name ?? queueItem.buildingId}</div>
+              <div class="aq-slot-sub">→ Lv.${queueItem.pendingLevel}</div>
             </div>
-            <button class="bq-cancel" data-queueindex="0" title="Cancel &amp; refund">✕</button>
+            <div class="aq-slot-actions">
+              <button class="aq-speed-btn" title="Speed Up">⏩</button>
+              <button class="aq-cancel-btn" title="Cancel &amp; refund">✕</button>
+            </div>
           </div>
-          <div class="bq-speedup-row">
-            <div class="progress-container bq-progress" data-timer-start="${startedAt}" data-timer-end="${endsAt}">
-              <div class="progress-label bq-progress-label">
-                <span>Building…</span>
-                <span class="progress-time-label">${secsLeft}s</span>
-              </div>
-              <div class="progress-bar bq-bar">
-                <div class="progress-fill progress-fill-primary" style="width:${pct}%"></div>
-              </div>
+          <div class="progress-container aq-progress" data-timer-start="${startedAt}" data-timer-end="${endsAt}">
+            <div class="progress-label aq-progress-label">
+              <span class="progress-time-label">${secsLeft}s</span>
             </div>
-            <button class="btn btn-xs btn-warning bq-speed-btn" title="Speed Up">⏩</button>
+            <div class="progress-bar"><div class="progress-fill progress-fill-primary" style="width:${pct}%"></div></div>
           </div>`;
-        el.querySelector('.bq-cancel')?.addEventListener('click', e => {
+        el.querySelector('.aq-cancel-btn')?.addEventListener('click', e => {
           e.stopPropagation();
           eventBus.emit('ui:click');
           const r = bm.cancelBuild(0);
           if (!r.success) this._s.notifications?.show('warning', 'Cannot Cancel', r.reason);
         });
-        el.querySelector('.bq-speed-btn')?.addEventListener('click', e => {
+        el.querySelector('.aq-speed-btn')?.addEventListener('click', e => {
           e.stopPropagation();
           eventBus.emit('ui:click');
           this._openSpeedupPicker(el, 'building', secsLeft);
         });
-        items.appendChild(el);
-
-      } else if (queueItem) {
-        // Queued (not active) — compact pill
-        const cfg = queueItem.cfg ?? {};
-        const el  = document.createElement('div');
-        el.className = 'bq-slot bq-slot-queued';
+      } else {
+        el.className = 'aq-slot aq-slot--queued';
         el.innerHTML = `
-          <div class="bq-slot-row">
-            <span class="bq-slot-icon">${cfg.icon ?? '🏗️'}</span>
-            <div class="bq-slot-info">
-              <div class="bq-slot-name">${cfg.name ?? queueItem.buildingId}</div>
-              <div class="bq-slot-sub">→ Lv.${queueItem.pendingLevel}</div>
+          <div class="aq-slot-row">
+            <span class="aq-slot-icon">${cfg.icon ?? '🏗️'}</span>
+            <div class="aq-slot-info">
+              <div class="aq-slot-name">${cfg.name ?? queueItem.buildingId}</div>
+              <div class="aq-slot-sub">→ Lv.${queueItem.pendingLevel} · #${queueItem.queuePosition + 1}</div>
             </div>
-            <button class="bq-cancel" data-queueindex="${queueItem.queuePosition}" title="Cancel &amp; refund">✕</button>
-          </div>
-          <div class="bq-queued-tag">#${i + 1} in queue</div>`;
-        el.querySelector('.bq-cancel')?.addEventListener('click', e => {
+            <button class="aq-cancel-btn" title="Cancel &amp; refund">✕</button>
+          </div>`;
+        const pos = queueItem.queuePosition;
+        el.querySelector('.aq-cancel-btn')?.addEventListener('click', e => {
           e.stopPropagation();
           eventBus.emit('ui:click');
-          const idx = parseInt(e.currentTarget.dataset.queueindex, 10);
-          const r   = bm.cancelBuild(idx);
+          const r = bm.cancelBuild(pos);
           if (!r.success) this._s.notifications?.show('warning', 'Cannot Cancel', r.reason);
         });
-        items.appendChild(el);
+      }
+      items.appendChild(el);
+    }
 
-      } else {
-        // Empty, unlocked slot
+    // Show empty state only if all unlocked slots are empty
+    if (queue.length === 0) {
+      const emptyEl = document.createElement('div');
+      emptyEl.className = 'aq-empty';
+      emptyEl.textContent = 'No builds queued';
+      items.appendChild(emptyEl);
+    }
+
+    // Summarize locked slots compactly
+    const lockedCount = slotInfo.filter(s => !s.unlocked).length;
+    if (lockedCount > 0) {
+      const lockEl = document.createElement('div');
+      lockEl.className = 'aq-locked-summary';
+      lockEl.innerHTML = `🔒 ${lockedCount} slot${lockedCount > 1 ? 's' : ''} locked`;
+      items.appendChild(lockEl);
+    }
+
+    section.appendChild(items);
+    return section;
+  }
+
+  _buildResearchSection() {
+    const tm    = this._s.tm;
+    const queue = tm ? tm.getQueue() : [];
+    const now   = Date.now();
+
+    const section = document.createElement('div');
+    section.className = 'aq-section';
+
+    const header = document.createElement('div');
+    header.className = 'aq-section-header aq-section-header--research';
+    header.innerHTML = `<span class="aq-section-icon">🔬</span><span class="aq-section-title">RESEARCH</span><span class="aq-section-count">${queue.length}</span>`;
+    section.appendChild(header);
+
+    const items = document.createElement('div');
+    items.className = 'aq-items';
+
+    if (!tm || queue.length === 0) {
+      const emptyEl = document.createElement('div');
+      emptyEl.className = 'aq-empty';
+      emptyEl.textContent = 'No research active';
+      items.appendChild(emptyEl);
+    } else {
+      for (const item of queue) {
         const el = document.createElement('div');
-        el.className = 'bq-slot bq-slot-empty';
-        el.innerHTML = `<span class="bq-slot-empty-icon">＋</span><span class="bq-slot-empty-label">Empty</span>`;
+        if (item.isActive && item.researchEndsAt) {
+          const pct      = Math.max(0, Math.min(100, ((now - (item.startedAt ?? 0)) / (item.researchEndsAt - (item.startedAt ?? 0))) * 100));
+          const secsLeft = Math.max(0, Math.ceil((item.researchEndsAt - now) / 1000));
+          el.className = 'aq-slot aq-slot--active';
+          el.innerHTML = `
+            <div class="aq-slot-row">
+              <span class="aq-slot-icon">${item.icon ?? '🔬'}</span>
+              <div class="aq-slot-info">
+                <div class="aq-slot-name">${item.name}</div>
+                <div class="aq-slot-sub">→ Lv.${item.targetLevel}</div>
+              </div>
+              <div class="aq-slot-actions">
+                <button class="aq-speed-btn" title="Speed Up">⏩</button>
+                <button class="aq-cancel-btn" title="Cancel &amp; refund">✕</button>
+              </div>
+            </div>
+            <div class="progress-container aq-progress" data-timer-start="${item.startedAt}" data-timer-end="${item.researchEndsAt}">
+              <div class="progress-label aq-progress-label">
+                <span class="progress-time-label">${secsLeft}s</span>
+              </div>
+              <div class="progress-bar"><div class="progress-fill progress-fill-success" style="width:${pct}%"></div></div>
+            </div>`;
+          const techId = item.techId;
+          el.querySelector('.aq-cancel-btn')?.addEventListener('click', e => {
+            e.stopPropagation();
+            eventBus.emit('ui:click');
+            const r = tm.cancelResearch(techId);
+            if (!r.success) this._s.notifications?.show('warning', 'Cannot Cancel', r.reason);
+          });
+          el.querySelector('.aq-speed-btn')?.addEventListener('click', e => {
+            e.stopPropagation();
+            eventBus.emit('ui:click');
+            this._openSpeedupPicker(el, 'research', secsLeft);
+          });
+        } else {
+          el.className = 'aq-slot aq-slot--queued';
+          el.innerHTML = `
+            <div class="aq-slot-row">
+              <span class="aq-slot-icon">${item.icon ?? '🔬'}</span>
+              <div class="aq-slot-info">
+                <div class="aq-slot-name">${item.name}</div>
+                <div class="aq-slot-sub">→ Lv.${item.targetLevel} · #${item.queuePosition + 1}</div>
+              </div>
+              <button class="aq-cancel-btn" title="Cancel &amp; refund">✕</button>
+            </div>`;
+          const techId = item.techId;
+          el.querySelector('.aq-cancel-btn')?.addEventListener('click', e => {
+            e.stopPropagation();
+            eventBus.emit('ui:click');
+            const r = tm.cancelResearch(techId);
+            if (!r.success) this._s.notifications?.show('warning', 'Cannot Cancel', r.reason);
+          });
+        }
         items.appendChild(el);
       }
     }
 
-    strip.appendChild(items);
-    panel.appendChild(strip);
+    section.appendChild(items);
+    return section;
+  }
+
+  _buildTrainingSection() {
+    const um    = this._s.um;
+    const items = um ? um.getAllQueues() : [];
+    const now   = Date.now();
+
+    const section = document.createElement('div');
+    section.className = 'aq-section';
+
+    const header = document.createElement('div');
+    header.className = 'aq-section-header aq-section-header--training';
+    header.innerHTML = `<span class="aq-section-icon">⚔️</span><span class="aq-section-title">TRAINING</span><span class="aq-section-count">${items.length}</span>`;
+    section.appendChild(header);
+
+    const itemsEl = document.createElement('div');
+    itemsEl.className = 'aq-items';
+
+    if (!um || items.length === 0) {
+      const emptyEl = document.createElement('div');
+      emptyEl.className = 'aq-empty';
+      emptyEl.textContent = 'No units training';
+      itemsEl.appendChild(emptyEl);
+    } else {
+      for (const item of items) {
+        const el = document.createElement('div');
+        const isActive = item.queueIndex === 0 && item.endsAt > 0;
+        if (isActive) {
+          const pct      = Math.max(0, Math.min(100, ((now - (item.startedAt ?? 0)) / (item.endsAt - (item.startedAt ?? 0))) * 100));
+          const secsLeft = Math.max(0, Math.ceil((item.endsAt - now) / 1000));
+          el.className = 'aq-slot aq-slot--active';
+          el.innerHTML = `
+            <div class="aq-slot-row">
+              <span class="aq-slot-icon">${item.icon ?? '⚔️'}</span>
+              <div class="aq-slot-info">
+                <div class="aq-slot-name">${item.name ?? item.unitId} ×${item.count}</div>
+                <div class="aq-slot-sub">T${item.tier}</div>
+              </div>
+              <div class="aq-slot-actions">
+                <button class="aq-speed-btn" title="Speed Up">⏩</button>
+                <button class="aq-cancel-btn" title="Cancel &amp; refund">✕</button>
+              </div>
+            </div>
+            <div class="progress-container aq-progress" data-timer-start="${item.startedAt}" data-timer-end="${item.endsAt}">
+              <div class="progress-label aq-progress-label">
+                <span class="progress-time-label">${secsLeft}s</span>
+              </div>
+              <div class="progress-bar"><div class="progress-fill progress-fill-danger" style="width:${pct}%"></div></div>
+            </div>`;
+          const { buildingId, queueIndex } = item;
+          el.querySelector('.aq-cancel-btn')?.addEventListener('click', e => {
+            e.stopPropagation();
+            eventBus.emit('ui:click');
+            const r = um.cancelTrain(buildingId, queueIndex);
+            if (!r.success) this._s.notifications?.show('warning', 'Cannot Cancel', r.reason);
+          });
+          el.querySelector('.aq-speed-btn')?.addEventListener('click', e => {
+            e.stopPropagation();
+            eventBus.emit('ui:click');
+            this._openSpeedupPicker(el, 'training', secsLeft);
+          });
+        } else {
+          el.className = 'aq-slot aq-slot--queued';
+          el.innerHTML = `
+            <div class="aq-slot-row">
+              <span class="aq-slot-icon">${item.icon ?? '⚔️'}</span>
+              <div class="aq-slot-info">
+                <div class="aq-slot-name">${item.name ?? item.unitId} ×${item.count}</div>
+                <div class="aq-slot-sub">T${item.tier} · #${item.queueIndex + 1}</div>
+              </div>
+              <button class="aq-cancel-btn" title="Cancel &amp; refund">✕</button>
+            </div>`;
+          const { buildingId, queueIndex } = item;
+          el.querySelector('.aq-cancel-btn')?.addEventListener('click', e => {
+            e.stopPropagation();
+            eventBus.emit('ui:click');
+            const r = um.cancelTrain(buildingId, queueIndex);
+            if (!r.success) this._s.notifications?.show('warning', 'Cannot Cancel', r.reason);
+          });
+        }
+        itemsEl.appendChild(el);
+      }
+    }
+
+    section.appendChild(itemsEl);
+    return section;
   }
 
   // ─────────────────────────────────────────────

@@ -81,6 +81,27 @@ const eventManager = new EventManager(resourceManager, mailManager, inventoryMan
 // Wire InventoryManager into MailManager so mail attachment claims go to inventory
 mailManager.setInventoryManager(inventoryManager);
 
+// Validate all required cross-manager dependencies are wired before starting the
+// engine. Throws immediately rather than letting the game loop surface silent null errors.
+(function _validateWiring() {
+  const wires = [
+    [buildingManager,  '_hm',            'buildingManager → heroManager'],
+    [buildingManager,  '_um',            'buildingManager → unitManager'],
+    [resourceManager,  '_buildingManager','resourceManager → buildingManager'],
+    [resourceManager,  '_heroManager',   'resourceManager → heroManager'],
+    [inventoryManager, '_hm',            'inventoryManager → heroManager'],
+    [inventoryManager, '_rm',            'inventoryManager → resourceManager'],
+    [inventoryManager, '_bm',            'inventoryManager → buildingManager'],
+    [inventoryManager, '_um',            'inventoryManager → unitManager'],
+    [inventoryManager, '_tm',            'inventoryManager → techManager'],
+    [unitManager,      '_tm',            'unitManager → techManager'],
+    [mailManager,      '_inv',           'mailManager → inventoryManager'],
+  ];
+  for (const [mgr, field, label] of wires) {
+    if (!mgr[field]) throw new Error(`[Bootstrap] Dependency not wired: ${label}`);
+  }
+})();
+
 // ── Event logging hooks — key game events sent to LogManager ───────────────
 eventBus.on('building:completed', d => logManager.log('building', `${d?.id ?? '?'} construction complete`, 'info'));
 eventBus.on('unit:trained',       d => logManager.log('unit',     `${d?.count ?? '?'}x trained`, 'info'));
@@ -484,9 +505,10 @@ function launchGame(authScreen, gameShell, externalState = null) {
     }
   }
 
-  // Welcome mail on first play
-  if (!savedState) {
-    setTimeout(() => {
+  // Welcome mail on first play — delayed until after tutorial completes
+  // (tutorial overlay blocks Mail tab access, so we send it after tutorial:complete)
+  const sendWelcomeMail = () => {
+    if (!savedState) {
       mailManager.send({
         type: 'system',
         subject: '⚔️ Welcome to Basie, Commander!',
@@ -498,7 +520,14 @@ function launchGame(authScreen, gameShell, externalState = null) {
       inventoryManager.addItem('scroll_common', 2);
       inventoryManager.addItem('scroll_rare', 1);
       inventoryManager.addItem('xp_bundle_small', 2);
-    }, 1000);
+    }
+  };
+  
+  // If tutorial will run, send welcome mail after it completes. Otherwise send immediately.
+  if (!savedState && !userManager.profile.hasCompletedTutorial) {
+    eventBus.once('tutorial:complete', () => setTimeout(sendWelcomeMail, 500));
+  } else if (!savedState) {
+    setTimeout(sendWelcomeMail, 1000);
   }
 
   saveManager.startAutosave(getGameState);

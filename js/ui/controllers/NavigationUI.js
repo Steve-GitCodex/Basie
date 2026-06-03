@@ -22,6 +22,8 @@ export class NavigationUI {
     this._activeSubTab = Object.fromEntries(Object.keys(TAB_GROUPS).map(k => [k, null]));
     // Badge store: tabKey → string[] of messages
     this._badgeStore = new Map();
+    // Throttle for resources:tick → DOM writes capped at 2Hz
+    this._resTickThrottle = 0;
   }
 
   init() {
@@ -176,15 +178,18 @@ export class NavigationUI {
 
   // ---- EVENT SUBSCRIPTIONS ----
   _subscribeToEvents() {
-    eventBus.on('resources:tick',         snap => this._renderResources(snap));
+    eventBus.on('resources:tick', snap => {
+      const now = Date.now();
+      if (now - this._resTickThrottle < 500) return;
+      this._resTickThrottle = now;
+      this._renderResources(snap);
+    });
     eventBus.on('resources:ratesChanged', snap => this._renderResources(snap));
     eventBus.on('user:profileUpdated',    p    => this._renderProfile(p));
     eventBus.on('user:levelUp',           ()   => this._renderProfile(this._s.user.getProfile()));
     eventBus.on('user:xpGained',          d    => this._renderProfile(d.profile));
     eventBus.on('mail:received',          d    => this._updateMailBadge(d.unreadCount));
-    eventBus.on('mail:read',              d    => this._updateMailBadge(d.unreadCount));
-    eventBus.on('mail:deleted',           d    => this._updateMailBadge(d.unreadCount));
-    eventBus.on('mail:updated',           d    => this._updateMailBadge(d.unreadCount));
+    eventBus.on('mail:updated',           d    => this._updateMailBadge(d.unreadCount)); // covers mail:read and mail:deleted
     eventBus.on('game:saved',             ()   => this._flashSaveIndicator());
     eventBus.on('tick:ui',               ()   => { this._refreshStatusBar(); this._refreshBuffBadgeTick(); });
     eventBus.on('building:completed', d => {
@@ -292,8 +297,9 @@ export class NavigationUI {
     tooltip.className = 'tab-unlock-tooltip';
     tooltip.textContent = `🔒 ${message}`;
     const rect = btn.getBoundingClientRect();
-    tooltip.style.top  = `${rect.top + window.scrollY + rect.height / 2}px`;
-    tooltip.style.left = `${rect.right + window.scrollX + 8}px`;
+    tooltip.style.bottom = `${window.innerHeight - rect.top + 8}px`;
+    tooltip.style.left   = `${Math.min(rect.left + rect.width / 2, window.innerWidth - 140)}px`;
+    tooltip.style.transform = 'translateX(-50%)';
     document.body.appendChild(tooltip);
     setTimeout(() => tooltip.classList.add('tab-unlock-tooltip--fade'), 2000);
     setTimeout(() => tooltip.remove(), 2500);

@@ -1,59 +1,59 @@
 :root {
   /* =========================================
-   * COLOR PALETTE — Dark Fantasy
+   * COLOR PALETTE — Sci-Fi Dark
    * ========================================= */
 
   /* Backgrounds */
-  --clr-bg-base:       hsl(225, 20%, 7%);
-  --clr-bg-surface:    hsl(225, 18%, 10%);
-  --clr-bg-elevated:   hsl(225, 16%, 14%);
-  --clr-bg-panel:      hsl(225, 14%, 17%);
-  --clr-bg-hover:      hsl(225, 14%, 20%);
-  --clr-bg-active:     hsl(225, 16%, 22%);
+  --clr-bg-base:       hsl(220, 30%, 5%);
+  --clr-bg-surface:    hsl(220, 25%, 8%);
+  --clr-bg-elevated:   hsl(220, 22%, 11%);
+  --clr-bg-panel:      hsl(220, 20%, 14%);
+  --clr-bg-hover:      hsl(220, 20%, 17%);
+  --clr-bg-active:     hsl(200, 30%, 16%);
 
   /* Borders */
-  --clr-border:        hsl(225, 12%, 22%);
-  --clr-border-light:  hsl(225, 12%, 28%);
-  --clr-border-glow:   hsl(270, 60%, 55%);
+  --clr-border:        hsl(220, 18%, 18%);
+  --clr-border-light:  hsl(220, 16%, 26%);
+  --clr-border-glow:   hsl(200, 100%, 50%);
 
-  /* Brand / Accent */
-  --clr-primary:       hsl(270, 70%, 62%);
-  --clr-primary-light: hsl(270, 75%, 72%);
-  --clr-primary-dark:  hsl(270, 65%, 48%);
-  --clr-primary-muted: hsl(270, 40%, 30%);
+  /* Brand / Accent — electric blue */
+  --clr-primary:       hsl(200, 100%, 50%);
+  --clr-primary-light: hsl(200, 100%, 68%);
+  --clr-primary-dark:  hsl(200, 100%, 36%);
+  --clr-primary-muted: hsl(200, 60%, 18%);
 
-  /* Secondary warm accent */
-  --clr-gold:          hsl(43, 90%, 55%);
-  --clr-gold-light:    hsl(43, 95%, 68%);
-  --clr-gold-muted:    hsl(43, 60%, 28%);
+  /* Secondary — neon green */
+  --clr-gold:          hsl(150, 100%, 50%);
+  --clr-gold-light:    hsl(150, 100%, 65%);
+  --clr-gold-muted:    hsl(150, 60%, 15%);
 
-  /* Resource colors */
+  /* Resource colors — remapped to sci-fi energy types */
   --clr-res-wood:      hsl(28, 70%, 52%);
   --clr-res-stone:     hsl(210, 15%, 65%);
   --clr-res-food:      hsl(140, 60%, 48%);
   --clr-res-iron:      hsl(0, 0%, 62%);
   --clr-res-water:     hsl(205, 75%, 55%);
   --clr-res-money:     hsl(43, 90%, 55%);
-  --clr-res-diamond:   hsl(190, 85%, 65%);
+  --clr-res-diamond:   hsl(200, 100%, 68%);
   --clr-res-cafeteria: hsl(35, 85%, 58%);
-  --clr-res-mana:      hsl(270, 70%, 62%); /* kept for compatibility */
+  --clr-res-mana:      hsl(200, 100%, 50%);
 
   /* Semantic colors */
-  --clr-success:       hsl(140, 60%, 48%);
+  --clr-success:       hsl(150, 100%, 45%);
   --clr-warning:       hsl(38, 90%, 55%);
-  --clr-danger:        hsl(0, 70%, 55%);
-  --clr-info:          hsl(200, 80%, 58%);
+  --clr-danger:        hsl(0, 85%, 58%);
+  --clr-info:          hsl(200, 100%, 60%);
 
   /* Text */
-  --clr-text-primary:  hsl(225, 20%, 92%);
-  --clr-text-secondary:hsl(225, 12%, 60%);
-  --clr-text-muted:    hsl(225, 10%, 42%);
-  --clr-text-inverse:  hsl(225, 20%, 8%);
+  --clr-text-primary:  hsl(210, 30%, 94%);
+  --clr-text-secondary:hsl(210, 15%, 62%);
+  --clr-text-muted:    hsl(210, 12%, 40%);
+  --clr-text-inverse:  hsl(220, 30%, 5%);
 
   /* =========================================
    * TYPOGRAPHY
    * ========================================= */
-  --font-display:    'Outfit', sans-serif;
+  --font-display:    'Orbitron', 'Outfit', sans-serif;
   --font-mono:       'JetBrains Mono', monospace;
   --font-body:       'Outfit', sans-serif;
 
@@ -82,39 +82,40 @@
   /* =========================================
    * LAYOUT
    * ========================================= */
-  --header-height:   64px;
-  --sidebar-width:   220px;
+  --header-height:     48px;
+  --bottom-nav-height: 64px;
+  --sidebar-width:     220px;   /* kept for legacy refs during transition */
   --sidebar-collapsed: 60px;
-  --radius-sm:       4px;
-  --radius-md:       8px;
-  --radius-lg:       12px;
-  --radius-xl:       16px;
-  --radius-full:     9999px;
+  --radius-sm:         4px;
+  --radius-md:         8px;
+  --radius-lg:         12px;
+  --radius-xl:         16px;
+  --radius-full:       9999px;
 
   /* =========================================
    * SHADOWS & GLOWS
    * ========================================= */
-  --shadow-sm:       0 1px 3px hsla(0,0%,0%,0.4);
-  --shadow-md:       0 4px 12px hsla(0,0%,0%,0.5);
-  --shadow-lg:       0 8px 24px hsla(0,0%,0%,0.6);
-  --shadow-primary:  0 0 16px hsla(270,70%,62%,0.35);
-  --shadow-gold:     0 0 16px hsla(43,90%,55%,0.3);
-  --glow-primary:    0 0 24px hsla(270,70%,62%,0.5);
-  --glow-gold:       0 0 24px hsla(43,90%,55%,0.5);
+  --shadow-sm:       0 1px 3px hsla(0,0%,0%,0.5);
+  --shadow-md:       0 4px 12px hsla(0,0%,0%,0.6);
+  --shadow-lg:       0 8px 24px hsla(0,0%,0%,0.7);
+  --shadow-primary:  0 0 16px hsla(200,100%,50%,0.4);
+  --shadow-gold:     0 0 16px hsla(150,100%,50%,0.35);
+  --glow-primary:    0 0 24px hsla(200,100%,50%,0.6);
+  --glow-gold:       0 0 24px hsla(150,100%,50%,0.55);
 
   /* =========================================
    * HERO TIER COLORS
    * ========================================= */
   --clr-tier-common:          hsl(220, 10%, 60%);
-  --clr-tier-common-muted:    hsl(220, 10%, 24%);
-  --clr-tier-common-glow:     hsla(220, 10%, 60%, 0.25);
+  --clr-tier-common-muted:    hsl(220, 10%, 18%);
+  --clr-tier-common-glow:     hsla(220, 10%, 60%, 0.2);
 
-  --clr-tier-rare:            hsl(215, 80%, 65%);
-  --clr-tier-rare-muted:      hsl(215, 50%, 22%);
-  --clr-tier-rare-glow:       hsla(215, 80%, 65%, 0.3);
+  --clr-tier-rare:            hsl(200, 100%, 60%);
+  --clr-tier-rare-muted:      hsl(200, 60%, 16%);
+  --clr-tier-rare-glow:       hsla(200, 100%, 60%, 0.3);
 
   --clr-tier-legendary:       hsl(43, 90%, 55%);
-  --clr-tier-legendary-muted: hsl(43, 60%, 22%);
+  --clr-tier-legendary-muted: hsl(43, 60%, 18%);
   --clr-tier-legendary-glow:  hsla(43, 90%, 55%, 0.35);
 
   /* =========================================
@@ -133,4 +134,6 @@
   --z-modal:      200;
   --z-toast:      300;
   --z-tooltip:    400;
+  --z-scene:      500;
+  --z-float:      600;
 }

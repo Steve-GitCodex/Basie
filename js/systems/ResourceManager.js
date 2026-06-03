@@ -5,24 +5,34 @@
  */
 import { eventBus } from '../core/EventBus.js';
 import { DIFFICULTY_MODIFIERS } from '../entities/GAME_DATA.js';
-
-// Starting amounts cover the full tutorial chain:
-// Lumbermill → Mine → Quarry → Barracks → HQ Lv2 → Infantry Hall
-// Caps reflect TH level-1 values from the storageCap arrays in buildings.js.
-const DEFAULT_RESOURCES = {
-  wood:    { amount: 500, perSec: 0, cap: 3000     },
-  stone:   { amount: 300, perSec: 0, cap: 2500     },
-  iron:    { amount: 50,  perSec: 0, cap: 400      },
-  food:    { amount: 50,  perSec: 0, cap: 400      },
-  water:   { amount: 50,  perSec: 0, cap: 600      },
-  diamond: { amount: 20,  perSec: 0, cap: Infinity },
-  money:   { amount: 0,   perSec: 0, cap: 5000     },
-};
+import { TUTORIAL_STEPS } from './TutorialManager.js';
+import { BUILDINGS_CONFIG } from '../entities/data/buildings.js';
 
 export class ResourceManager {
   constructor() {
     this.name = 'ResourceManager';
-    this._resources = JSON.parse(JSON.stringify(DEFAULT_RESOURCES));
+    
+    // Calculate starting resources dynamically based on tutorial requirements.
+    // This ensures the tutorial chain is always completable, even if tutorial steps
+    // or building costs change. Automatically recalculates on each new game.
+    const tutorialCosts = this._calculateTutorialRequirements();
+    
+    // Calculate starting caps dynamically from HQ Lv1 storageCap (BUILDINGS_CONFIG).
+    // This ensures caps always reflect the building definitions and never get out of sync.
+    const startingCaps = this._calculateStartingCaps();
+    
+    // Base defaults with safety fallbacks — never go below these minimums
+    const defaultResources = {
+      wood:    { amount: Math.ceil(Math.max(tutorialCosts.wood, 500)),    perSec: 0, cap: startingCaps.wood    },
+      stone:   { amount: Math.ceil(Math.max(tutorialCosts.stone, 300)),   perSec: 0, cap: startingCaps.stone   },
+      iron:    { amount: Math.ceil(Math.max(tutorialCosts.iron, 50)),     perSec: 0, cap: startingCaps.iron    },
+      food:    { amount: Math.ceil(Math.max(tutorialCosts.food, 50)),     perSec: 0, cap: startingCaps.food    },
+      water:   { amount: Math.ceil(Math.max(tutorialCosts.water, 50)),    perSec: 0, cap: startingCaps.water   },
+      diamond: { amount: 20,                                              perSec: 0, cap: Infinity             },
+      money:   { amount: Math.ceil(Math.max(tutorialCosts.money, 500)),   perSec: 0, cap: startingCaps.money   },
+    };
+    
+    this._resources = JSON.parse(JSON.stringify(defaultResources));
     this._uiDirty = true;
     this._techBonuses = {};
     this._heroManager = null;
@@ -360,12 +370,96 @@ export class ResourceManager {
     for (const [key, res] of Object.entries(resourceData)) {
       if (this._resources[key]) {
         this._resources[key].amount = res.amount ?? 0;
-        this._resources[key].cap    = res.cap    ?? DEFAULT_RESOURCES[key]?.cap ?? 0;
+        this._resources[key].cap    = res.cap    ?? this._resources[key].cap ?? 0;
       }
     }
     if (data.population) {
       this._population.current = data.population.current ?? 0;
       this._population.cap     = data.population.cap     ?? 0;
     }
+  }
+
+  /**
+   * Calculate total resource requirements for completing the tutorial chain.
+   * Reads TUTORIAL_STEPS and BUILDINGS_CONFIG to dynamically determine what's needed.
+   * This ensures that if tutorial or building costs change, starting resources auto-adjust.
+   * Includes a 1.1x safety buffer to account for timing variations.
+   * @private
+   * @returns {object} e.g., { wood: 750, stone: 450, iron: 20, ... }
+   */
+  _calculateTutorialRequirements() {
+    const costs = { wood: 0, stone: 0, iron: 0, food: 0, water: 0, diamond: 0, money: 0 };
+
+    // Iterate through each tutorial step
+    for (const step of TUTORIAL_STEPS) {
+      // Only process steps that build/upgrade a specific building
+      if (!step.filterBuildingId) continue;
+
+      const building = BUILDINGS_CONFIG[step.filterBuildingId];
+      if (!building || !building.baseCost) continue;
+
+      // Determine target level: special case for HQ upgrade to level 2
+      let targetLevel = 1;
+      if (step.filterBuildingId === 'townhall' && step.id === 'townhall') {
+        targetLevel = 2;
+      }
+
+      // Calculate cost at target level using cost multiplier
+      const multiplier = building.costMultiplier ?? 1.0;
+      const levelMultiplier = Math.pow(multiplier, targetLevel - 1);
+
+      // Add this building's cost to the running total
+      for (const [resource, baseCost] of Object.entries(building.baseCost)) {
+        const actualCost = baseCost * levelMultiplier;
+        costs[resource] += actualCost;
+      }
+    }
+
+    // Apply 1.1x safety buffer for production delays and rounding
+    const SAFETY_BUFFER = 1.1;
+    for (const resource of Object.keys(costs)) {
+      costs[resource] = costs[resource] * SAFETY_BUFFER;
+    }
+
+    return costs;
+  }
+
+  /**
+   * Calculate starting resource storage caps from Townhall (HQ) Lv1 storageCap.
+   * This ensures starting caps always match building definitions and never get out of sync.
+   * Replaces hard-coded cap values with data-driven approach.
+   * @private
+   * @returns {object} e.g., { wood: 3000, stone: 2500, iron: 800, ... }
+   */
+  _calculateStartingCaps() {
+    const hqConfig = BUILDINGS_CONFIG.townhall;
+    if (!hqConfig?.storageCap) {
+      // Fallback to safe defaults if townhall config missing (shouldn't happen)
+      return {
+        wood: 3000, stone: 2500, iron: 800, food: 800,
+        water: 1000, diamond: Infinity, money: 5000
+      };
+    }
+
+    // Read Lv1 cap from each resource array (index 1, since index 0 is unused)
+    const caps = {};
+    for (const [res, perLevelArray] of Object.entries(hqConfig.storageCap)) {
+      if (Array.isArray(perLevelArray)) {
+        caps[res] = perLevelArray[1] ?? 0;  // Level 1 cap
+      } else {
+        caps[res] = 0;  // Fallback
+      }
+    }
+
+    // Ensure all required resources have a cap
+    return {
+      wood:    caps.wood    ?? 3000,
+      stone:   caps.stone   ?? 2500,
+      iron:    caps.iron    ?? 800,
+      food:    caps.food    ?? 800,
+      water:   caps.water   ?? 1000,
+      diamond: Infinity,  // Always infinite
+      money:   caps.money  ?? 5000,
+    };
   }
 }

@@ -65,6 +65,8 @@ export class UIManager {
     this._buildings = new BuildingsUI({
       rm:            systems.rm,
       bm:            systems.bm,
+      tm:            systems.tech,
+      um:            systems.um,
       inventory:     systems.inventory,
       notifications: systems.notifications,
       heroes:        systems.heroes,

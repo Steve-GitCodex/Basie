@@ -55,16 +55,19 @@ export class AchievementManager {
   }
 
   _progress(trigger, amount = 1) {
+    let changed = false;
     for (const [id, cfg] of Object.entries(ACHIEVEMENTS_CONFIG)) {
       if (cfg.trigger !== trigger) continue;
       const state = this._state.get(id);
       if (state.unlocked) continue;
-      state.progress = Math.min((state.progress ?? 0) + amount, cfg.count);
+      const before = state.progress ?? 0;
+      state.progress = Math.min(before + amount, cfg.count);
+      if (state.progress !== before) changed = true;
       if (state.progress >= cfg.count) {
         this._unlock(id, cfg);
       }
     }
-    eventBus.emit('achievements:updated', this.getAll());
+    if (changed) eventBus.emit('achievements:updated', this.getAll());
   }
 
   /**

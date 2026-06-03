@@ -273,7 +273,7 @@ export const SHOP_CONFIG = [
       { itemId: 'res_bundle_iron_t4',    moneyCost: 200 },
       { itemId: 'res_bundle_food_t3',    moneyCost: 125 },
       { itemId: 'res_bundle_water_t4',   moneyCost: 200 },
-      { itemId: 'res_bundle_diamond_t1', diamondCost: 2 },
+      { itemId: 'res_bundle_money_t1', diamondCost: 2 },
     ],
   },
   {

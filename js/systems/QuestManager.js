@@ -41,6 +41,7 @@ export class QuestManager {
    * @param {number} [amount=1]
    */
   _progress(type, amount = 1) {
+    let changed = false;
     for (const [id, cfg] of Object.entries(QUESTS_CONFIG)) {
       const state = this._state.get(id);
       if (!state || state.completed) continue;
@@ -53,11 +54,13 @@ export class QuestManager {
 
       for (const obj of cfg.objectives) {
         if (obj.type === type) {
+          const before = state.progress ?? 0;
           if (type === 'reach_level') {
-            state.progress = Math.max(state.progress ?? 0, amount);
+            state.progress = Math.max(before, amount);
           } else {
-            state.progress = Math.min((state.progress ?? 0) + amount, obj.count);
+            state.progress = Math.min(before + amount, obj.count);
           }
+          if (state.progress !== before) changed = true;
           // reach_level uses obj.target; all other types use obj.count.
           const threshold = type === 'reach_level' ? obj.target : obj.count;
           if (state.progress >= threshold) {
@@ -66,7 +69,7 @@ export class QuestManager {
         }
       }
     }
-    eventBus.emit('quests:updated', this.getQuestsWithState());
+    if (changed) eventBus.emit('quests:updated', this.getQuestsWithState());
   }
 
   _complete(id, cfg) {

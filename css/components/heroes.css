@@ -196,7 +196,7 @@
 
 .xp-float {
   position: fixed;
-  z-index: 9999;
+  z-index: var(--z-float);
   font-size: 0.8rem;
   font-weight: 700;
   color: var(--clr-gold, #f59e0b);

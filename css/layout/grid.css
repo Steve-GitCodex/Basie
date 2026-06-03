@@ -10,11 +10,11 @@
 }
 
 /* =============================================
- * GAME LAYOUT — Sidebar + Main
+ * GAME LAYOUT — Full-width (sidebar replaced by bottom tab bar)
  * ============================================= */
 .game-layout {
   display: grid;
-  grid-template-columns: var(--sidebar-width) 1fr;
+  grid-template-columns: 1fr;
   grid-template-rows: 1fr;
   flex: 1;
   overflow: hidden;
@@ -23,7 +23,8 @@
 .game-main {
   flex: 1;
   overflow-y: auto;
-  padding: var(--space-6);
+  padding: 0;
+  padding-bottom: var(--bottom-nav-height);
   scrollbar-width: thin;
   scrollbar-color: var(--clr-border) transparent;
 }
@@ -46,6 +47,7 @@
 }
 
 .buildings-grid,
+.base-buildings-grid,
 .units-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -127,7 +129,7 @@
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(ellipse 80% 60% at 50% -10%, hsla(270,60%,30%,0.4), transparent),
+    radial-gradient(ellipse 80% 60% at 50% -10%, hsla(200,100%,20%,0.5), transparent),
     var(--clr-bg-base);
   z-index: var(--z-modal);
 }

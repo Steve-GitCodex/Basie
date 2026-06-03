@@ -7,7 +7,7 @@
   <meta name="description" content="A premium browser-based base building and management game featuring resource collection, unit training, heroes, and monster combat." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Outfit:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/base/reset.css" />
   <link rel="stylesheet" href="css/base/variables.css" />
   <link rel="stylesheet" href="css/base/typography.css" />
@@ -194,32 +194,26 @@
     <!-- MAIN LAYOUT -->
     <div class="game-layout">
 
-      <!-- LEFT SIDEBAR: NAV -->
-      <nav class="game-sidebar" id="game-sidebar" aria-label="Game Navigation">
-        <ul class="nav-list">
-          <li><button class="nav-btn active" data-view="base"     id="nav-base"     aria-label="Base">🏰 <span>Base</span></button></li>
-          <li><button class="nav-btn"         data-view="military" id="nav-military" aria-label="Military">⚔️ <span>Military</span></button></li>
-          <li><button class="nav-btn"         data-view="heroes"   id="nav-heroes"   aria-label="Heroes">🦸 <span>Heroes</span></button></li>
-          <li><button class="nav-btn"         data-view="combat"   id="nav-combat"   aria-label="Combat">🔥 <span>Combat</span></button></li>
-          <li><button class="nav-btn"         data-view="research" id="nav-research" aria-label="Research">🔬 <span>Research</span></button></li>
-          <li><button class="nav-btn"         data-view="quests"   id="nav-quests"   aria-label="Quests">📜 <span>Quests</span></button></li>
-          <li><button class="nav-btn"         data-view="economy"  id="nav-economy"  aria-label="Economy">🏪 <span>Economy</span></button></li>
-          <li><button class="nav-btn"         data-view="events"   id="nav-events"   aria-label="Events">🎉 <span>Events</span><span class="badge hidden" id="events-badge">!</span></button></li>
-        </ul>
-      </nav>
-
       <!-- MAIN VIEW PANEL -->
       <main class="game-main" id="game-main">
 
         <!-- BASE VIEW -->
         <section class="view active" id="view-base">
-          <div class="view-header">
-            <h2>🏰 Base Command</h2>
-            <p class="view-subtitle">Manage and upgrade your structures</p>
-          </div>
-          <div id="build-queue-panel"></div>
-          <div class="buildings-grid" id="buildings-grid"></div>
+          <!-- Visual base grid (the city map) -->
+          <div id="base-grid" class="base-grid"></div>
+          <!-- Hidden render target kept for JS compat -->
+          <div id="buildings-grid" style="display:none" aria-hidden="true"></div>
         </section>
+        <!-- Hover tooltip for building tiles (singleton, body-level) -->
+        <div id="tile-tooltip" class="tile-tooltip" role="tooltip"></div>
+        <!-- Build Queue Sidebar (fixed right, collapsible) -->
+        <aside class="bq-sidebar is-collapsed" id="bq-sidebar">
+          <button class="bq-sidebar__toggle" id="bq-toggle" title="Activity Queues">
+            <span class="bq-sidebar__toggle-icon">⚡</span>
+            <span class="bq-sidebar__toggle-count" id="bq-toggle-count">0</span>
+          </button>
+          <div class="bq-sidebar__content" id="build-queue-panel"></div>
+        </aside>
 
         <!-- MILITARY GROUP VIEW (sub-tabs: Barracks | Training) -->
         <section class="view hidden" id="view-military">
@@ -416,27 +410,43 @@
       </main>
     </div>
 
-    <!-- STATUS BAR -->
-    <div class="game-statusbar" id="game-statusbar">
-      <div class="statusbar-item">
-        <span class="statusbar-dot"></span>
-        <span>Army: <strong id="sb-army">0</strong> units</span>
-      </div>
-      <div class="statusbar-item">
-        <span>🏗️ Building: <strong id="sb-building">None</strong></span>
-      </div>
-      <div class="statusbar-item">
-        <span>🔬 Research: <strong id="sb-research">None</strong></span>
-      </div>
-      <div class="statusbar-item">
-        <span>👥 Population: <strong id="sb-population">0/0</strong></span>
-      </div>
-      <div class="statusbar-item">
-        <span>⏱️ Session: <strong id="sb-time">0m</strong></span>
-      </div>
-      <div class="statusbar-item" style="margin-left:auto">
-        <span id="sb-save" style="color:var(--clr-success)">✅ Saved</span>
-      </div>
+    <!-- BOTTOM TAB BAR (replaces sidebar) -->
+    <nav class="bottom-tab-bar" id="game-sidebar" aria-label="Game Navigation">
+      <button class="nav-btn active" data-view="base"     id="nav-base"     aria-label="Base">
+        <span class="nav-icon">🏰</span><span class="nav-label">Base</span>
+      </button>
+      <button class="nav-btn"        data-view="military" id="nav-military" aria-label="Military">
+        <span class="nav-icon">⚔️</span><span class="nav-label">Military</span>
+      </button>
+      <button class="nav-btn"        data-view="heroes"   id="nav-heroes"   aria-label="Heroes">
+        <span class="nav-icon">🦸</span><span class="nav-label">Heroes</span>
+      </button>
+      <button class="nav-btn"        data-view="combat"   id="nav-combat"   aria-label="Combat">
+        <span class="nav-icon">🔥</span><span class="nav-label">Combat</span>
+      </button>
+      <button class="nav-btn"        data-view="research" id="nav-research" aria-label="Research">
+        <span class="nav-icon">🔬</span><span class="nav-label">Research</span>
+      </button>
+      <button class="nav-btn"        data-view="quests"   id="nav-quests"   aria-label="Quests">
+        <span class="nav-icon">📜</span><span class="nav-label">Quests</span>
+      </button>
+      <button class="nav-btn"        data-view="economy"  id="nav-economy"  aria-label="Economy">
+        <span class="nav-icon">🏪</span><span class="nav-label">Economy</span>
+      </button>
+      <button class="nav-btn"        data-view="events"   id="nav-events"   aria-label="Events">
+        <span class="nav-icon">🎉</span><span class="nav-label">Events</span>
+        <span class="badge hidden" id="events-badge">!</span>
+      </button>
+    </nav>
+
+    <!-- STATUS BAR (kept for JS compatibility, visually hidden) -->
+    <div class="game-statusbar hidden" id="game-statusbar" aria-hidden="true">
+      <div class="statusbar-item"><span>Army: <strong id="sb-army">0</strong></span></div>
+      <div class="statusbar-item"><span>Building: <strong id="sb-building">None</strong></span></div>
+      <div class="statusbar-item"><span>Research: <strong id="sb-research">None</strong></span></div>
+      <div class="statusbar-item"><span>Pop: <strong id="sb-population">0/0</strong></span></div>
+      <div class="statusbar-item"><span>Time: <strong id="sb-time">0m</strong></span></div>
+      <div class="statusbar-item"><span id="sb-save">Saved</span></div>
     </div>
 
   </div>

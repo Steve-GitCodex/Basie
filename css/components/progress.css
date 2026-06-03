@@ -50,6 +50,7 @@
 .progress-fill-xp       { background: linear-gradient(90deg, hsl(200,70%,40%), var(--clr-info)); }
 .progress-fill-hp       { background: linear-gradient(90deg, hsl(0,60%,35%), var(--clr-danger)); }
 .progress-fill-success  { background: linear-gradient(90deg, hsl(140,60%,30%), var(--clr-success)); }
+.progress-fill-danger   { background: linear-gradient(90deg, hsl(0,70%,35%), hsl(25,90%,55%)); }
 
 /* XP bar (header player) */
 .xp-bar {
