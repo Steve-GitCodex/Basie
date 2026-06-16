@@ -6,7 +6,7 @@
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: var(--z-overlay);
+  z-index: var(--z-nav);
   height: var(--bottom-nav-height);
   display: flex;
   align-items: stretch;
@@ -53,9 +53,64 @@
 }
 
 .nav-icon {
-  font-size: 1.25rem;
-  line-height: 1;
   display: block;
+  width: 22px;
+  height: 22px;
+  background-color: currentColor;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+}
+
+/* Base — building with stepped roof and windows */
+.nav-icon--base {
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='11' width='18' height='10' rx='1'/%3E%3Cpath d='M6 11V7l3-3h6l3 3v4'/%3E%3Cline x1='9' y1='21' x2='9' y2='15'/%3E%3Cline x1='15' y1='21' x2='15' y2='15'/%3E%3Crect x='9' y='15' width='6' height='6'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='11' width='18' height='10' rx='1'/%3E%3Cpath d='M6 11V7l3-3h6l3 3v4'/%3E%3Cline x1='9' y1='21' x2='9' y2='15'/%3E%3Cline x1='15' y1='21' x2='15' y2='15'/%3E%3Crect x='9' y='15' width='6' height='6'/%3E%3C/svg%3E");
+}
+
+/* Military — shield with vertical centre line */
+.nav-icon--military {
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3L4 7v5c0 5 4 8.5 8 10 4-1.5 8-5 8-10V7z'/%3E%3Cline x1='12' y1='7' x2='12' y2='17'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3L4 7v5c0 5 4 8.5 8 10 4-1.5 8-5 8-10V7z'/%3E%3Cline x1='12' y1='7' x2='12' y2='17'/%3E%3C/svg%3E");
+}
+
+/* Heroes — person silhouette with star */
+.nav-icon--heroes {
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='7' r='3'/%3E%3Cpath d='M5 21v-2a7 7 0 0 1 14 0v2'/%3E%3Cpolygon points='12,1 13.2,4.5 17,4.5 14,6.8 15.2,10.5 12,8.2 8.8,10.5 10,6.8 7,4.5 10.8,4.5' transform='translate(0,-0.5) scale(0.55) translate(12.7,0)'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='7' r='3'/%3E%3Cpath d='M5 21v-2a7 7 0 0 1 14 0v2'/%3E%3Cpolygon points='12,1 13.2,4.5 17,4.5 14,6.8 15.2,10.5 12,8.2 8.8,10.5 10,6.8 7,4.5 10.8,4.5' transform='translate(0,-0.5) scale(0.55) translate(12.7,0)'/%3E%3C/svg%3E");
+}
+
+/* Combat — crossed swords */
+.nav-icon--combat {
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='4' y1='4' x2='20' y2='20'/%3E%3Cline x1='20' y1='4' x2='4' y2='20'/%3E%3Cline x1='4' y1='4' x2='8' y2='4'/%3E%3Cline x1='4' y1='4' x2='4' y2='8'/%3E%3Cline x1='20' y1='20' x2='16' y2='20'/%3E%3Cline x1='20' y1='20' x2='20' y2='16'/%3E%3Cline x1='20' y1='4' x2='16' y2='4'/%3E%3Cline x1='20' y1='4' x2='20' y2='8'/%3E%3Cline x1='4' y1='20' x2='8' y2='20'/%3E%3Cline x1='4' y1='20' x2='4' y2='16'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='4' y1='4' x2='20' y2='20'/%3E%3Cline x1='20' y1='4' x2='4' y2='20'/%3E%3Cline x1='4' y1='4' x2='8' y2='4'/%3E%3Cline x1='4' y1='4' x2='4' y2='8'/%3E%3Cline x1='20' y1='20' x2='16' y2='20'/%3E%3Cline x1='20' y1='20' x2='20' y2='16'/%3E%3Cline x1='20' y1='4' x2='16' y2='4'/%3E%3Cline x1='20' y1='4' x2='20' y2='8'/%3E%3Cline x1='4' y1='20' x2='8' y2='20'/%3E%3Cline x1='4' y1='20' x2='4' y2='16'/%3E%3C/svg%3E");
+}
+
+/* Research — conical flask */
+.nav-icon--research {
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 3h6v8l3 8H6l3-8V3z'/%3E%3Cline x1='9' y1='3' x2='15' y2='3'/%3E%3Cline x1='6' y1='16' x2='18' y2='16'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 3h6v8l3 8H6l3-8V3z'/%3E%3Cline x1='9' y1='3' x2='15' y2='3'/%3E%3Cline x1='6' y1='16' x2='18' y2='16'/%3E%3C/svg%3E");
+}
+
+/* Quests — checklist with ticks */
+.nav-icon--quests {
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2'/%3E%3Cpolyline points='7,9 9,11 13,7'/%3E%3Cline x1='15' y1='9' x2='18' y2='9'/%3E%3Cpolyline points='7,15 9,17 13,13'/%3E%3Cline x1='15' y1='15' x2='18' y2='15'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2'/%3E%3Cpolyline points='7,9 9,11 13,7'/%3E%3Cline x1='15' y1='9' x2='18' y2='9'/%3E%3Cpolyline points='7,15 9,17 13,13'/%3E%3Cline x1='15' y1='15' x2='18' y2='15'/%3E%3C/svg%3E");
+}
+
+/* Economy — two stacked coins */
+.nav-icon--economy {
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cellipse cx='12' cy='8' rx='8' ry='3'/%3E%3Cpath d='M4 8v4c0 1.66 3.58 3 8 3s8-1.34 8-3V8'/%3E%3Cpath d='M4 12v4c0 1.66 3.58 3 8 3s8-1.34 8-3v-4'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cellipse cx='12' cy='8' rx='8' ry='3'/%3E%3Cpath d='M4 8v4c0 1.66 3.58 3 8 3s8-1.34 8-3V8'/%3E%3Cpath d='M4 12v4c0 1.66 3.58 3 8 3s8-1.34 8-3v-4'/%3E%3C/svg%3E");
+}
+
+/* Events — lightning bolt */
+.nav-icon--events {
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='13,2 3,14 12,14 11,22 21,10 12,10 13,2'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='13,2 3,14 12,14 11,22 21,10 12,10 13,2'/%3E%3C/svg%3E");
 }
 
 .nav-label {
@@ -256,170 +311,99 @@
 }
 
 /* =============================================
- * BASE GRID (visual city map)
+ * BASE GRID (isometric city map — canvas)
  * ============================================= */
-.base-grid {
+.base-grid--iso {
   position: relative;
-  display: grid;
-  grid-template-columns: repeat(10, 1fr);
-  /* rows sized so all 7 fit inside the viewport without scrolling */
-  grid-template-rows: repeat(7, clamp(68px, calc((100svh - 130px) / 7), 100px));
-  gap: 2px;
-  padding: var(--space-2);
-  /* Kenney sci-fi orange-brown Mars terrain */
-  background-color: hsl(18, 52%, 44%);
-  background-image:
-    repeating-linear-gradient(0deg,   hsla(0,0%,0%,0.07) 0px, transparent 1px, transparent 68px, hsla(0,0%,0%,0.04) 68px, transparent 69px),
-    repeating-linear-gradient(90deg,  hsla(0,0%,0%,0.07) 0px, transparent 1px, transparent 68px, hsla(0,0%,0%,0.04) 68px, transparent 69px);
-}
-
-/* Individual building tiles — transparent so orange terrain shows through */
-.base-tile {
-  background-color: transparent;
-  background-size: 70%;
-  background-repeat: no-repeat;
-  background-position: center 30%;
-  border: 1px solid hsla(0, 0%, 0%, 0.35);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  padding: 0 3px 4px;
-  gap: 0;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
-  position: relative;
+  height: calc(100svh - var(--header-height) - var(--bottom-nav-height));
   overflow: hidden;
+  /* required for pointer-event pinch/pan on the canvas */
+  touch-action: none;
+  background-color: hsl(215, 28%, 7%);
 }
 
-/* Dark gradient at bottom for text readability */
-.base-tile::before {
-  content: '';
+#city-canvas {
   position: absolute;
-  bottom: 0; left: 0; right: 0;
-  height: 45%;
-  background: linear-gradient(transparent, hsla(0,0%,0%,0.78));
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+
+/* Inert tutorial-spotlight proxies — positioned by CityRenderer */
+#city-proxy-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
   pointer-events: none;
-  z-index: 0;
+}
+#city-proxy-layer .base-tile {
+  position: absolute;
+  pointer-events: none;
 }
 
-/* Built tiles: electric blue border glow */
-.base-tile:not(.base-tile--empty):not(.base-tile--unbuilt) {
-  border-color: hsla(200, 90%, 60%, 0.5);
-  box-shadow: inset 0 0 0 1px hsla(200,80%,60%,0.15), 0 2px 6px hsla(0,0%,0%,0.4);
-}
-
-.base-tile:not(.base-tile--empty):not(.base-tile--unbuilt):hover {
-  border-color: var(--clr-primary);
-  box-shadow: 0 0 16px hsla(200,100%,50%,0.55), 0 4px 14px hsla(0,0%,0%,0.5);
-  transform: translateY(-3px) scale(1.05);
-  z-index: 3;
-}
-
-/* Unbuilt but available: sprite at low opacity + "+" hint */
-.base-tile--unbuilt {
-  background-size: 60%;
-  border-style: dashed;
-  border-color: hsla(0, 0%, 0%, 0.25);
+/* Re-center on HQ */
+.city-home-btn {
+  position: absolute;
+  left: var(--space-3);
+  bottom: var(--space-3);
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  border: 1px solid hsla(200, 80%, 60%, 0.4);
+  background: hsla(220, 30%, 8%, 0.85);
+  color: hsl(200, 100%, 65%);
+  font-size: 1.3rem;
+  line-height: 1;
   cursor: pointer;
+  z-index: 2;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.city-home-btn:hover {
+  border-color: var(--clr-primary);
+  box-shadow: 0 0 10px hsla(200, 100%, 50%, 0.4);
 }
 
-.base-tile--unbuilt::after {
-  content: '+';
+/* Build-here sheet option rows (inside #building-detail-panel) */
+.bs-option {
+  border-bottom: 1px solid var(--clr-border);
+  padding: var(--space-3) 0;
+}
+.bs-option:last-child { border-bottom: none; }
+.bs-option-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.bs-option-icon { font-size: 1.6rem; flex-shrink: 0; }
+.bs-option-info { flex: 1; min-width: 0; }
+.bs-option-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--text-sm);
+  color: var(--clr-text-primary);
+}
+.bs-option-effect {
+  font-size: var(--text-xs);
+  color: var(--clr-text-secondary);
+  margin: 2px 0 4px;
+}
+
+.city-loading {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding-bottom: 12px;
-  font-size: 1.6rem;
-  font-weight: 200;
-  color: hsla(200, 100%, 75%, 0.7);
-  pointer-events: none;
-  z-index: 1;
-}
-
-/* dim the sprite for unbuilt */
-.base-tile--unbuilt {
-  filter: brightness(0.68) saturate(0.45);
-}
-
-.base-tile--unbuilt:hover {
-  filter: brightness(0.85) saturate(0.65);
-  border-color: hsla(200, 80%, 60%, 0.45);
-}
-
-/* Empty terrain cell — just the terrain, no box */
-.base-tile--empty {
-  background-color: transparent;
-  background-image: none !important;
-  border: none;
-  cursor: default;
-  pointer-events: none;
-}
-
-.base-tile--empty::before { display: none; }
-
-.base-tile__name {
-  font-size: 0.5rem;
   font-family: var(--font-display);
-  font-weight: 700;
+  font-size: var(--text-sm);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: hsla(200, 80%, 80%, 0.85);
-  text-align: center;
-  line-height: 1.1;
-  position: relative;
-  z-index: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-  text-shadow: 0 1px 3px hsla(0,0%,0%,0.9);
+  color: var(--clr-text-secondary);
+  background: hsl(215, 28%, 7%);
+  z-index: var(--z-overlay);
 }
-
-.base-tile__level {
-  position: absolute;
-  top: 3px;
-  right: 3px;
-  font-size: 0.5rem;
-  font-family: var(--font-display);
-  font-weight: 800;
-  color: var(--clr-primary);
-  background: hsla(220, 30%, 4%, 0.9);
-  border: 1px solid hsla(200, 100%, 50%, 0.4);
-  border-radius: 3px;
-  padding: 1px 3px;
-  line-height: 1.3;
-  z-index: 2;
-}
-
-.base-tile__progress {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: hsla(0,0%,0%,0.4);
-}
-
-.base-tile__progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--clr-primary), var(--clr-gold));
-  transition: width 0.5s ease;
-}
-
-/* Under construction pulse */
-.base-tile--building {
-  border-color: var(--clr-gold) !important;
-  animation: tile-building-pulse 2s ease-in-out infinite;
-}
-
-@keyframes tile-building-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 hsla(150,100%,50%,0); }
-  50%       { box-shadow: 0 0 0 5px hsla(150,100%,50%,0.25); }
-}
+.city-loading.hidden { display: none; }
 
 /* =============================================
  * BUILD QUEUE SIDEBAR (right edge, collapsible)
@@ -767,6 +751,9 @@
   color: var(--clr-text-secondary);
   margin-bottom: var(--space-2);
   line-height: 1.4;
+  font-family: var(--font-body);
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .tt-costs {
@@ -791,6 +778,9 @@
   flex: 1;
   padding: var(--space-2) var(--space-3);
   font-size: var(--text-xs);
+  white-space: normal;
+  word-break: break-word;
+  text-align: left;
 }
 
 .tt-time-hint {
@@ -837,10 +827,10 @@
   background: var(--clr-bg-surface);
   border-top: 1px solid var(--clr-primary-muted);
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-  max-height: 48vh;
+  max-height: calc(100dvh - var(--header-height) - var(--bottom-nav-height));
   overflow-y: auto;
   /* hidden by default — slides up when .is-open is added */
-  transform: translateY(105%);
+  transform: translateY(calc(100% + var(--bottom-nav-height)));
   pointer-events: none;
   transition: transform var(--transition-slow);
   box-shadow: 0 -8px 32px hsla(200,100%,50%,0.15);
@@ -895,6 +885,111 @@
 
 .base-tile-panel__body {
   padding: var(--space-4) var(--space-6) var(--space-8);
+}
+
+/* ─── Building detail panel (btp-*) ─────────────────────────────────────── */
+.btp-header-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1;
+  min-width: 0;
+}
+
+.btp-sprite {
+  width: 60px;
+  height: 60px;
+  flex-shrink: 0;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-color: hsla(18, 52%, 40%, 0.5);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--clr-border);
+}
+
+.btp-title-block { min-width: 0; }
+
+.btp-level {
+  font-size: var(--text-xs);
+  color: var(--clr-primary);
+  font-family: var(--font-display);
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.btp-effect {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--clr-text-secondary);
+  line-height: 1.5;
+  overflow-wrap: break-word;
+  margin-bottom: var(--space-4);
+}
+
+.btp-section-label {
+  font-size: var(--text-xs);
+  color: var(--clr-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: var(--space-2);
+  font-family: var(--font-display);
+}
+
+.btp-costs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+}
+
+.btp-lock-reason {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--clr-warning);
+  overflow-wrap: break-word;
+  word-break: break-word;
+  margin-bottom: var(--space-3);
+}
+
+.btp-time-hint {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--clr-text-muted);
+  margin-bottom: var(--space-3);
+}
+
+.btp-progress { margin-bottom: var(--space-3); }
+
+.btp-action-btn {
+  width: 100%;
+  padding: var(--space-3);
+  font-size: var(--text-sm);
+  margin-top: var(--space-2);
+}
+
+/* Cafeteria stock display */
+.btp-cafeteria-stock { margin-bottom: var(--space-3); }
+
+.btp-stock-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-sm);
+  font-family: var(--font-body);
+  color: var(--clr-text-secondary);
+  margin-bottom: var(--space-1);
+}
+
+.btp-stock-val {
+  font-family: var(--font-mono);
+  color: var(--clr-text-primary);
+}
+
+.btp-auto-badge {
+  font-size: var(--text-xs);
+  color: var(--clr-success);
+  font-family: var(--font-body);
+  padding: var(--space-1) 0;
 }
 
 /* =============================================

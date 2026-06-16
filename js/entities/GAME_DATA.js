@@ -35,6 +35,10 @@ export {
 export { STORY_CHAPTERS } from './data/story.js';
 export { EVENTS_CONFIG } from './data/events.js';
 export { TAB_UNLOCK_CONDITIONS, TAB_GROUPS, BUILDING_TAB_MAP } from './data/navigation.js';
+export {
+  CITY_BLUEPRINT, CATEGORY_ZONE,
+  isRoad, zoneAt, plotAt, plotById, plotsInZone
+} from './data/cityBlueprint.js';
 
 /**
  * DEBUG_CONFIG — controls optional debug features.

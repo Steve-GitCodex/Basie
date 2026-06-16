@@ -23,7 +23,6 @@ export const BUILDINGS_CONFIG = {
     category: 'core', requires: null,
     maxInstances: 1,
     instanceSlots: [{ index: 0, condition: null }],
-    gridPositions: [{ col: 4, row: 3 }],
     heroCapacity: 3,  // Can hold up to 3 heroes who provide various bonuses and abilities to the base
   },
   farm: {
@@ -43,7 +42,6 @@ export const BUILDINGS_CONFIG = {
       { index: 2, condition: { townhall: 5, farm: 2 } },
       { index: 3, condition: { townhall: 7, farm: 2 } },
     ],
-    gridPositions: [{ col: 0, row: 0 }, { col: 1, row: 0 }, { col: 2, row: 0 }, { col: 3, row: 0 }],
   },
   mine: {
     id: 'mine', name: 'Iron Mine', icon: '⛏️',
@@ -61,7 +59,6 @@ export const BUILDINGS_CONFIG = {
       { index: 1, condition: { townhall: 4, mine: 2 } },
       { index: 2, condition: { townhall: 6, mine: 2 } },
     ],
-    gridPositions: [{ col: 3, row: 1 }, { col: 4, row: 1 }, { col: 5, row: 1 }],
   },
   lumbermill: {
     id: 'lumbermill', name: 'Lumber Mill', icon: '🪵',
@@ -79,7 +76,6 @@ export const BUILDINGS_CONFIG = {
       { index: 1, condition: { townhall: 3, lumbermill: 2 } },
       { index: 2, condition: { townhall: 5, lumbermill: 2 } },
     ],
-    gridPositions: [{ col: 5, row: 0 }, { col: 6, row: 0 }, { col: 7, row: 0 }],
   },
   quarry: {
     id: 'quarry', name: 'Stone Quarry', icon: '🪨',
@@ -97,7 +93,6 @@ export const BUILDINGS_CONFIG = {
       { index: 1, condition: { townhall: 4, quarry: 2 } },
       { index: 2, condition: { townhall: 6, quarry: 2 } },
     ],
-    gridPositions: [{ col: 0, row: 1 }, { col: 1, row: 1 }, { col: 2, row: 1 }],
   },
   storehouse: {
     id: 'storehouse', name: 'Storehouse', icon: '🏚️',
@@ -121,7 +116,6 @@ export const BUILDINGS_CONFIG = {
       { index: 0, condition: null },
       { index: 1, condition: { townhall: 5 } },
     ],
-    gridPositions: [{ col: 8, row: 0 }, { col: 9, row: 0 }],
     heroCapacity: 0,  // Can't hold heroes itself, but boosts storage efficiency
   },
   well: {
@@ -139,7 +133,6 @@ export const BUILDINGS_CONFIG = {
       { index: 1, condition: { townhall: 3 } },
       { index: 2, condition: { townhall: 6 } },
     ],
-    gridPositions: [{ col: 6, row: 1 }, { col: 7, row: 1 }, { col: 8, row: 1 }],
     heroCapacity: 1,  // Can hold 1 hero
   },
   house: {
@@ -167,7 +160,6 @@ export const BUILDINGS_CONFIG = {
       { index: 4, condition: { townhall: 7 } },
       { index: 5, condition: { townhall: 9 } },
     ],
-    gridPositions: [{ col: 0, row: 3 }, { col: 1, row: 3 }, { col: 0, row: 4 }, { col: 1, row: 4 }, { col: 0, row: 5 }, { col: 1, row: 5 }],
     heroCapacity: 0,  // Can't hold heroes itself
   },
   cafeteria: {
@@ -185,7 +177,6 @@ export const BUILDINGS_CONFIG = {
     instanceSlots: [
       { index: 0, condition: null },
     ],
-    gridPositions: [{ col: 3, row: 3 }],
     heroCapacity: 0,  // Can't hold heroes itself, but boosts food/water consumption efficiency
   },
   bank: {
@@ -209,7 +200,6 @@ export const BUILDINGS_CONFIG = {
       { index: 0, condition: null },
       { index: 1, condition: { townhall: 6 } },
     ],
-    gridPositions: [{ col: 2, row: 3 }, { col: 2, row: 4 }],
     heroCapacity: 1,  // Can hold 1 hero who boosts money production
   },
   barracks: {
@@ -238,7 +228,6 @@ export const BUILDINGS_CONFIG = {
       { index: 2, condition: { townhall: 6 } },
       { index: 3, condition: { townhall: 8 } },
     ],
-    gridPositions: [{ col: 7, row: 3 }, { col: 8, row: 3 }, { col: 9, row: 3 }, { col: 7, row: 4 }],
     // Hero/unit pair rows inside each squad — gated by that barracks's upgrade level
     squadSlots: [
       { index: 0, condition: null },
@@ -271,7 +260,6 @@ export const BUILDINGS_CONFIG = {
     ],
     maxInstances: 1,
     instanceSlots: [{ index: 0, condition: null }],
-    gridPositions: [{ col: 9, row: 4 }],
     heroCapacity: 1,  // Can hold 1 hero
   },
   heroquarters: {
@@ -285,7 +273,6 @@ export const BUILDINGS_CONFIG = {
     category: 'military', requires: { barracks: 3, townhall: 4 },
     maxInstances: 1,
     instanceSlots: [{ index: 0, condition: null }],
-    gridPositions: [{ col: 9, row: 5 }],
     heroCapacity: 0,  // can't hold heroes itself, but unlocks hero recruitment and provides hero slots for other buildings
   },
   workshop: {
@@ -299,7 +286,6 @@ export const BUILDINGS_CONFIG = {
     category: 'core', requires: { townhall: 5 },
     maxInstances: 1,
     instanceSlots: [{ index: 0, condition: null }],
-    gridPositions: [{ col: 6, row: 3 }],
     heroCapacity: 1,  // Can hold 1 hero who boosts research speed
   },
   construction_hall: {
@@ -313,7 +299,6 @@ export const BUILDINGS_CONFIG = {
     category: 'core', requires: { townhall: 2 },
     maxInstances: 1,
     instanceSlots: [{ index: 0, condition: null }],
-    gridPositions: [{ col: 5, row: 3 }],
     heroCapacity: 0,  // Can't hold heroes, but unlocks more build queues for faster construction
   },
   infantryhall: {
@@ -339,7 +324,6 @@ export const BUILDINGS_CONFIG = {
     ],
     maxInstances: 1,
     instanceSlots: [{ index: 0, condition: null }],
-    gridPositions: [{ col: 8, row: 4 }],
     heroCapacity: 1,
   },
   cavalrystable: {
@@ -365,7 +349,6 @@ export const BUILDINGS_CONFIG = {
     ],
     maxInstances: 1,
     instanceSlots: [{ index: 0, condition: null }],
-    gridPositions: [{ col: 7, row: 5 }],
     heroCapacity: 1,
   },
   siegeworkshop: {
@@ -391,7 +374,6 @@ export const BUILDINGS_CONFIG = {
     ],
     maxInstances: 1,
     instanceSlots: [{ index: 0, condition: null }],
-    gridPositions: [{ col: 8, row: 5 }],
     heroCapacity: 1,
   },
   magictower: {
@@ -405,7 +387,6 @@ export const BUILDINGS_CONFIG = {
     category: 'special', requires: { workshop: 5, townhall: 8 },
     maxInstances: 1,
     instanceSlots: [{ index: 0, condition: null }],
-    gridPositions: [{ col: 9, row: 6 }],
     heroCapacity: 2,
   },
 };

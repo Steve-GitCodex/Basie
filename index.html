@@ -199,8 +199,14 @@
 
         <!-- BASE VIEW -->
         <section class="view active" id="view-base">
-          <!-- Visual base grid (the city map) -->
-          <div id="base-grid" class="base-grid"></div>
+          <!-- Isometric city map (canvas) -->
+          <div id="base-grid" class="base-grid base-grid--iso">
+            <canvas id="city-canvas"></canvas>
+            <!-- Inert positioned proxies so tutorial spotlight selectors keep working -->
+            <div id="city-proxy-layer" aria-hidden="true"></div>
+            <button id="city-home-btn" class="city-home-btn" title="Center on HQ">⌖</button>
+            <div id="city-loading" class="city-loading hidden">Loading city…</div>
+          </div>
           <!-- Hidden render target kept for JS compat -->
           <div id="buildings-grid" style="display:none" aria-hidden="true"></div>
         </section>
@@ -408,33 +414,48 @@
           <div id="events-list"></div>
         </section>
       </main>
+
+      <!-- BUILDING DETAIL PANEL (slide-up from bottom on tile click) -->
+      <div id="building-detail-panel" class="base-tile-panel" aria-modal="true" role="dialog" aria-label="Building detail">
+        <div class="base-tile-panel__header">
+          <div class="btp-header-content">
+            <div class="btp-sprite" id="btp-sprite"></div>
+            <div class="btp-title-block">
+              <div class="base-tile-panel__title" id="btp-name">—</div>
+              <div class="btp-level" id="btp-level"></div>
+            </div>
+          </div>
+          <button class="base-tile-panel__close" id="btp-close" aria-label="Close">×</button>
+        </div>
+        <div class="base-tile-panel__body" id="btp-body"></div>
+      </div>
     </div>
 
     <!-- BOTTOM TAB BAR (replaces sidebar) -->
     <nav class="bottom-tab-bar" id="game-sidebar" aria-label="Game Navigation">
       <button class="nav-btn active" data-view="base"     id="nav-base"     aria-label="Base">
-        <span class="nav-icon">🏰</span><span class="nav-label">Base</span>
+        <span class="nav-icon nav-icon--base"></span><span class="nav-label">Base</span>
       </button>
       <button class="nav-btn"        data-view="military" id="nav-military" aria-label="Military">
-        <span class="nav-icon">⚔️</span><span class="nav-label">Military</span>
+        <span class="nav-icon nav-icon--military"></span><span class="nav-label">Military</span>
       </button>
       <button class="nav-btn"        data-view="heroes"   id="nav-heroes"   aria-label="Heroes">
-        <span class="nav-icon">🦸</span><span class="nav-label">Heroes</span>
+        <span class="nav-icon nav-icon--heroes"></span><span class="nav-label">Heroes</span>
       </button>
       <button class="nav-btn"        data-view="combat"   id="nav-combat"   aria-label="Combat">
-        <span class="nav-icon">🔥</span><span class="nav-label">Combat</span>
+        <span class="nav-icon nav-icon--combat"></span><span class="nav-label">Combat</span>
       </button>
       <button class="nav-btn"        data-view="research" id="nav-research" aria-label="Research">
-        <span class="nav-icon">🔬</span><span class="nav-label">Research</span>
+        <span class="nav-icon nav-icon--research"></span><span class="nav-label">Research</span>
       </button>
       <button class="nav-btn"        data-view="quests"   id="nav-quests"   aria-label="Quests">
-        <span class="nav-icon">📜</span><span class="nav-label">Quests</span>
+        <span class="nav-icon nav-icon--quests"></span><span class="nav-label">Quests</span>
       </button>
       <button class="nav-btn"        data-view="economy"  id="nav-economy"  aria-label="Economy">
-        <span class="nav-icon">🏪</span><span class="nav-label">Economy</span>
+        <span class="nav-icon nav-icon--economy"></span><span class="nav-label">Economy</span>
       </button>
       <button class="nav-btn"        data-view="events"   id="nav-events"   aria-label="Events">
-        <span class="nav-icon">🎉</span><span class="nav-label">Events</span>
+        <span class="nav-icon nav-icon--events"></span><span class="nav-label">Events</span>
         <span class="badge hidden" id="events-badge">!</span>
       </button>
     </nav>
