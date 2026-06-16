@@ -275,6 +275,27 @@ export const BUILDINGS_CONFIG = {
     instanceSlots: [{ index: 0, condition: null }],
     heroCapacity: 0,  // can't hold heroes itself, but unlocks hero recruitment and provides hero slots for other buildings
   },
+  rallypoint: {
+    id: 'rallypoint', name: 'Rally Point', icon: '🚩',
+    description: 'Marshal armies for expeditions across the world map. Higher levels field more simultaneous marches and quicken travel.',
+    maxLevel: 6,
+    baseCost: { wood: 350, stone: 250, iron: 60 },
+    costMultiplier: 2.0, buildTime: 60,
+    effects: { marchSlots: true },
+    effectLabel: '🚩 Unlocks the World Map · simultaneous marches (Lv.1: 2 · Lv.3: 3 · Lv.5: 4) · +5% march speed per level',
+    levelStats: [
+      { marchSlots: 2, speedBonus: 0.00 }, // Lv.1
+      { marchSlots: 2, speedBonus: 0.05 }, // Lv.2
+      { marchSlots: 3, speedBonus: 0.10 }, // Lv.3 — 3rd march
+      { marchSlots: 3, speedBonus: 0.15 }, // Lv.4
+      { marchSlots: 4, speedBonus: 0.20 }, // Lv.5 — 4th march
+      { marchSlots: 4, speedBonus: 0.25 }, // Lv.6
+    ],
+    category: 'military', requires: { townhall: 3 },
+    maxInstances: 1,
+    instanceSlots: [{ index: 0, condition: null }],
+    heroCapacity: 1,  // a stationed hero further boosts march speed (Phase 2 stretch)
+  },
   workshop: {
     id: 'workshop', name: 'Workshop', icon: '⚙️',
     description: 'Research technology and craft powerful equipment. Higher levels unlock more research queue slots.',

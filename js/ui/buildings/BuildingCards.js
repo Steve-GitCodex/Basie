@@ -236,6 +236,7 @@ export class BuildingCards {
       const food  = Math.floor(b.stock?.food  ?? 0);
       const water = Math.floor(b.stock?.water ?? 0);
       const depletionStr = (() => {
+        if (food <= 0 || water <= 0) return '⚠️ Empty — needs restock';
         if (!b.drainRatePerSec) return '♾️ No consumption';
         if (!isFinite(b.depletionSec)) return '♾️ Stocked';
         const s = Math.max(0, Math.floor(b.depletionSec));

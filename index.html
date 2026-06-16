@@ -22,6 +22,7 @@
   <link rel="stylesheet" href="css/components/tabs.css" />
   <link rel="stylesheet" href="css/components/progress.css" />
   <link rel="stylesheet" href="css/components/worldmap.css" />
+  <link rel="stylesheet" href="css/components/world-view.css" />
   <link rel="stylesheet" href="css/components/battle.css" />
   <link rel="stylesheet" href="css/components/barracks.css" />
   <link rel="stylesheet" href="css/components/tooltip.css" />
@@ -33,6 +34,7 @@
   <link rel="stylesheet" href="css/components/tutorial.css" />
   <link rel="stylesheet" href="css/components/events.css" />
   <link rel="stylesheet" href="css/components/research.css" />
+  <link rel="stylesheet" href="css/components/hud.css" />
 </head>
 <body>
 
@@ -73,14 +75,10 @@
 
     <!-- HEADER -->
     <header class="game-header" id="game-header">
-      <div class="header-brand">
-        <span class="header-logo">⚔️</span>
-        <span class="header-title">BASIE</span>
-      </div>
       <!-- RESOURCE BAR -->
       <div class="resource-bar" id="resource-bar">
         <div class="resource-chip" id="res-wood" title="Wood">
-          <span class="res-icon">🪵</span>
+          <span class="res-icon res-icon--wood"></span>
           <div class="res-data">
             <span class="res-name">Wood</span>
             <span class="res-value" id="v-wood">0</span>
@@ -91,7 +89,7 @@
           </div>
         </div>
         <div class="resource-chip" id="res-stone" title="Stone">
-          <span class="res-icon">🪨</span>
+          <span class="res-icon res-icon--stone"></span>
           <div class="res-data">
             <span class="res-name">Stone</span>
             <span class="res-value" id="v-stone">0</span>
@@ -102,7 +100,7 @@
           </div>
         </div>
         <div class="resource-chip" id="res-food" title="Food">
-          <span class="res-icon">🌾</span>
+          <span class="res-icon res-icon--food"></span>
           <div class="res-data">
             <span class="res-name">Food</span>
             <span class="res-value" id="v-food">0</span>
@@ -113,7 +111,7 @@
           </div>
         </div>
         <div class="resource-chip" id="res-iron" title="Iron">
-          <span class="res-icon">⚙️</span>
+          <span class="res-icon res-icon--iron"></span>
           <div class="res-data">
             <span class="res-name">Iron</span>
             <span class="res-value" id="v-iron">0</span>
@@ -124,7 +122,7 @@
           </div>
         </div>
         <div class="resource-chip" id="res-water" title="Water">
-          <span class="res-icon">💧</span>
+          <span class="res-icon res-icon--water"></span>
           <div class="res-data">
             <span class="res-name">Water</span>
             <span class="res-value" id="v-water">0</span>
@@ -134,29 +132,8 @@
             <span class="res-rate" id="r-water">+0/s</span>
           </div>
         </div>
-        <div class="resource-chip" id="res-money" title="Money">
-          <span class="res-icon">🪙</span>
-          <div class="res-data">
-            <span class="res-name">Money</span>
-            <span class="res-value" id="v-money">0</span>
-          </div>
-          <div class="res-rate-col">
-            <span class="res-cap" id="c-money">/ 50k</span>
-            <span class="res-rate" id="r-money">+0/s</span>
-          </div>
-        </div>
-        <div class="resource-chip" id="res-diamond" title="Diamond">
-          <span class="res-icon">💎</span>
-          <div class="res-data">
-            <span class="res-name">Diamond</span>
-            <span class="res-value" id="v-diamond">0</span>
-          </div>
-          <div class="res-rate-col">
-            <span class="res-rate" id="r-diamond"></span>
-          </div>
-        </div>
         <div class="resource-chip" id="res-cafeteria" title="Cafeteria Stock" style="display:none">
-          <span class="res-icon">🍽️</span>
+          <span class="res-icon res-icon--cafeteria"></span>
           <div class="res-data">
             <span class="res-name">Cafeteria</span>
             <span class="res-value" id="v-cafeteria">0</span>
@@ -174,12 +151,18 @@
           <span class="buff-badge-sep">·</span>
           <span id="buff-badge-timer"></span>
         </button>
-        <button class="header-icon-btn" id="btn-inventory" title="Inventory" aria-label="Inventory">🎒 <span class="badge badge--dot hidden" id="inventory-badge"></span></button>
-        <button class="header-icon-btn" id="btn-mail" title="Inbox" aria-label="Inbox">
-          📬 <span class="badge hidden" id="mail-badge">0</span>
-        </button>
-        <button class="header-icon-btn" id="btn-settings" title="Settings" aria-label="Settings">⚙️</button>
-        <div class="player-chip" id="player-chip">
+        <div class="resource-chip resource-chip--premium" id="res-money" title="Money">
+          <span class="res-icon res-icon--money"></span>
+          <span class="res-value" id="v-money">0</span>
+          <span class="res-rate" id="r-money"></span>
+          <span class="res-cap hidden" id="c-money"></span>
+        </div>
+        <div class="resource-chip resource-chip--premium" id="res-diamond" title="Diamond">
+          <span class="res-icon res-icon--diamond"></span>
+          <span class="res-value" id="v-diamond">0</span>
+          <span class="res-rate hidden" id="r-diamond"></span>
+        </div>
+        <div class="player-chip" id="player-chip" title="Profile & Settings">
           <span class="player-avatar" id="player-avatar">👑</span>
           <div class="player-data">
             <span class="player-name" id="player-name">Commander</span>
@@ -190,6 +173,12 @@
         </div>
       </div>
     </header>
+
+    <!-- FLOATING UTILITY RAIL (right edge, above the Activity-Queue toggle) -->
+    <div id="hud-rail" class="hud-rail">
+      <button class="hud-rail__btn" id="btn-inventory" title="Inventory" aria-label="Inventory">🎒<span class="badge badge--dot hidden" id="inventory-badge"></span></button>
+      <button class="hud-rail__btn" id="btn-mail" title="Inbox" aria-label="Inbox">📬<span class="badge hidden" id="mail-badge">0</span></button>
+    </div>
 
     <!-- MAIN LAYOUT -->
     <div class="game-layout">
@@ -209,6 +198,45 @@
           </div>
           <!-- Hidden render target kept for JS compat -->
           <div id="buildings-grid" style="display:none" aria-hidden="true"></div>
+        </section>
+
+        <!-- WORLD VIEW — top-down march map -->
+        <section class="view hidden" id="view-world">
+          <div id="world-grid" class="world-grid">
+            <canvas id="world-canvas"></canvas>
+            <button id="world-home-btn" class="city-home-btn" title="Center on your city">⌖</button>
+
+            <!-- Active marches (top-right) -->
+            <div id="world-march-panel" class="world-marches hidden">
+              <div class="world-marches__head">Marches</div>
+              <div id="wm-list" class="world-marches__list"></div>
+            </div>
+
+            <!-- POI detail panel (slide-up) -->
+            <div id="world-poi-panel" class="world-panel hidden">
+              <div class="world-panel__head">
+                <span id="wp-icon"></span>
+                <div>
+                  <h3 id="wp-name"></h3>
+                  <span id="wp-sub" class="world-panel__sub"></span>
+                </div>
+                <button id="wp-close" class="world-panel__close" aria-label="Close">✕</button>
+              </div>
+              <div id="wp-body" class="world-panel__body"></div>
+              <div id="wp-actions" class="world-panel__actions"></div>
+            </div>
+
+            <!-- March dispatch sheet -->
+            <div id="march-sheet" class="world-sheet hidden">
+              <div class="world-sheet__head">
+                <h3 id="ms-title">Send Army</h3>
+                <button id="ms-close" class="world-panel__close" aria-label="Close" style="margin-left:auto">✕</button>
+              </div>
+              <div id="ms-squads" class="world-sheet__squads"></div>
+              <div id="ms-eta" class="world-sheet__eta"></div>
+              <button id="ms-dispatch" class="world-sheet__go" disabled>March</button>
+            </div>
+          </div>
         </section>
         <!-- Hover tooltip for building tiles (singleton, body-level) -->
         <div id="tile-tooltip" class="tile-tooltip" role="tooltip"></div>
@@ -444,6 +472,9 @@
       </button>
       <button class="nav-btn"        data-view="combat"   id="nav-combat"   aria-label="Combat">
         <span class="nav-icon nav-icon--combat"></span><span class="nav-label">Combat</span>
+      </button>
+      <button class="nav-btn"        data-view="world"    id="nav-world"    aria-label="World">
+        <span class="nav-icon nav-icon--world"></span><span class="nav-label">World</span>
       </button>
       <button class="nav-btn"        data-view="research" id="nav-research" aria-label="Research">
         <span class="nav-icon nav-icon--research"></span><span class="nav-label">Research</span>

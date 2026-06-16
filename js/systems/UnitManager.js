@@ -22,6 +22,8 @@ export class UnitManager {
     /** @type {Map<string, {id: string, name: string, units: Map<string, number>, slotUnitLinks: Map<number, string>}>} squadId -> squad */
     this._squads = new Map();
     this._squadCounter = 1;
+    /** @type {Set<string>} squadIds currently away on a world-map march (runtime-only; MarchManager re-asserts on load) */
+    this._deployedSquads = new Set();
     /** @type {Map<string, Array<{count, endsAt, name, icon, tier, tierKey, type?, fromTierKey?, cost}>>} buildingId -> linear queue (max 3, item[0] is active) */
     this._queues = new Map();
     // VIP perk: stacking train time reduction
@@ -427,8 +429,18 @@ export class UnitManager {
         if (!cfg || !tierCfg) continue;
         units.push({ unitId, tier, tierKey, count, name: tierCfg.name, icon: cfg.icon, category: cfg.category, stats: tierCfg.stats, buildingId: cfg.buildingId });
       }
-      return { ...s, units, slotUnitLinks: s.slotUnitLinks ?? new Map(), slotUnits: s.slotUnits ?? new Map() };
+      return { ...s, units, deployed: this._deployedSquads.has(s.id), slotUnitLinks: s.slotUnitLinks ?? new Map(), slotUnits: s.slotUnits ?? new Map() };
     });
+  }
+
+  /** Mark/unmark a squad as away on a world-map march (runtime-only). */
+  setSquadDeployed(squadId, deployed) {
+    if (deployed) this._deployedSquads.add(squadId);
+    else this._deployedSquads.delete(squadId);
+  }
+
+  isSquadDeployed(squadId) {
+    return this._deployedSquads.has(squadId);
   }
 
   getSquad(squadId) {
@@ -443,7 +455,7 @@ export class UnitManager {
       if (!cfg || !tierCfg) continue;
       units.push({ unitId, tier, tierKey, count, name: tierCfg.name, icon: cfg.icon, category: cfg.category, stats: tierCfg.stats, buildingId: cfg.buildingId });
     }
-    return { ...squad, units, slotUnitLinks: squad.slotUnitLinks ?? new Map(), slotUnits: squad.slotUnits ?? new Map() };
+    return { ...squad, units, deployed: this._deployedSquads.has(squad.id), slotUnitLinks: squad.slotUnitLinks ?? new Map(), slotUnits: squad.slotUnits ?? new Map() };
   }
 
   /**

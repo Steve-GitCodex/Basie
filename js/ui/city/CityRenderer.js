@@ -50,6 +50,13 @@ const WALKER_SPEED = 0.45; // tiles per second
 const WALKER_COUNT = 3;
 const HOME_ZOOM = 1.0;
 
+// Viewport culling margins (world px). Generous on top so tall building
+// sprites that rise above their tile still draw while their base is below
+// the viewport. Cheap guard that keeps the per-frame draw cost proportional
+// to what's on screen, not to the full (ring-padded) terrain.
+const CULL_GROUND = { halfW: 70, top: 60, bottom: 70 };
+const CULL_OBJECT = { halfW: 96, top: 260, bottom: 90 };
+
 /** Empty-plot pad tint per zone. */
 const ZONE_TINT = {
   production: "rgba(190, 150, 60, 0.10)",
@@ -404,8 +411,34 @@ export class CityRenderer {
       clientX - rect.left,
       clientY - rect.top,
     );
+    // 1 — sprite-aware: a tall building's body rises above its ground diamond,
+    // so test drawn sprite bounds front-to-back (this._slots is depth-ascending;
+    // the last/front-most drawn wins, matching what visually occludes).
+    for (let i = this._slots.length - 1; i >= 0; i--) {
+      const slot = this._slots[i];
+      if (!slot.empty && this._pointInSlotSprite(w.x, w.y, slot)) return slot;
+    }
+    // 2 — ground-diamond fallback: empty plots + taps on bare ground.
     const t = hitTestTile(w.x, w.y);
     return t ? (this._slotAt.get(`${t.col},${t.row}`) ?? null) : null;
+  }
+
+  /**
+   * World point inside a slot's *drawn building sprite* rect? Mirrors the
+   * seating math in _drawSlot/drawBuilding (footprint fit to plot width, base
+   * diamond seated on the tile's bottom corner). Only meaningful once a sprite
+   * is actually drawn — assigned-but-unbuilt outlines fall through to the diamond.
+   */
+  _pointInSlotSprite(wx, wy, slot) {
+    if (slot.level <= 0 && !slot.isBuilding) return false;
+    const img = this._assets.building(slot.buildingId);
+    if (!img) return false;
+    const c = tileToWorld(slot.col, slot.row);
+    const s = (TILE_W / img.width) * BUILDING_FIT;
+    const halfW = (img.width * s) / 2;
+    const bottom = c.y + TILE_H / 2;
+    const top = bottom - img.height * s;
+    return wx >= c.x - halfW && wx <= c.x + halfW && wy >= top && wy <= bottom;
   }
 
   _updateHover(e) {
@@ -433,8 +466,27 @@ export class CityRenderer {
     this._canvas.width = Math.round(w * this._dpr);
     this._canvas.height = Math.round(h * this._dpr);
     this._camera.setViewport(w, h);
+    this._cssW = w; // CSS-px viewport, cached for cull-rect math (no layout thrash)
+    this._cssH = h;
     this._dirty = true;
     this._proxyDirty = true;
+  }
+
+  /** Axis-aligned world-space rect currently visible (screen→world is unrotated). */
+  _viewWorldRect() {
+    const tl = this._camera.screenToWorld(0, 0);
+    const br = this._camera.screenToWorld(this._cssW || 0, this._cssH || 0);
+    return { minX: tl.x, maxX: br.x, minY: tl.y, maxY: br.y };
+  }
+
+  /** Is a tile-centered object (with margins m) within the visible rect r? */
+  _inView(c, m, r) {
+    return (
+      c.x + m.halfW >= r.minX &&
+      c.x - m.halfW <= r.maxX &&
+      c.y + m.bottom >= r.minY &&
+      c.y - m.top <= r.maxY
+    );
   }
 
   _frame(ts) {
@@ -471,9 +523,12 @@ export class CityRenderer {
     ctx.setTransform(z, 0, 0, z, cam.x * this._dpr, cam.y * this._dpr);
     ctx.imageSmoothingEnabled = true;
 
+    const view = this._viewWorldRect();
+
     // 1 — ground (districts, roads, decorative ring)
     for (const cell of this._groundCells) {
       const c = tileToWorld(cell.col, cell.row);
+      if (!this._inView(c, CULL_GROUND, view)) continue;
       const img = this._assets.ground(cell.key);
       if (img) {
         ctx.drawImage(
@@ -510,6 +565,8 @@ export class CityRenderer {
         this._drawDrone(now);
         droneDrawn = true;
       }
+      const o = item.slot ?? item.prop;
+      if (!this._inView(tileToWorld(o.col, o.row), CULL_OBJECT, view)) continue;
       if (item.slot) this._drawSlot(item.slot, now);
       else this._drawProp(item.prop);
     }
@@ -519,8 +576,10 @@ export class CityRenderer {
 
     // 4 — overlays: progress bars + level badges (always on top of sprites)
     for (const slot of this._slots) {
+      if (!slot.isBuilding && slot.level <= 0) continue;
+      if (!this._inView(tileToWorld(slot.col, slot.row), CULL_OBJECT, view)) continue;
       if (slot.isBuilding) this._drawProgress(slot, now);
-      else if (slot.level > 0) this._drawLevelBadge(slot);
+      else this._drawLevelBadge(slot);
     }
 
     // 5 — day/night ambient tint + window lights
@@ -876,9 +935,11 @@ export class CityRenderer {
     // window lights on built buildings (additive, twinkling)
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
+    const view = this._viewWorldRect();
     for (const slot of this._slots) {
       if (slot.level <= 0) continue;
       const c = tileToWorld(slot.col, slot.row);
+      if (!this._inView(c, CULL_OBJECT, view)) continue;
       const seed = slot.col * 7 + slot.row * 13;
       for (let i = 0; i < 3; i++) {
         const tw = 0.5 + 0.5 * Math.sin(now / 700 + seed + i * 2.4);

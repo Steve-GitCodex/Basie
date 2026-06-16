@@ -29,7 +29,10 @@ function rect(c0, r0, c1, r1) {
 export const CITY_BLUEPRINT = {
   cols: 22,
   rows: 16,
-  ring: 5, // decorative terrain ring width (tiles beyond the grid)
+  ring: 9, // decorative terrain ring width (tiles beyond the grid). Wider than
+           // the city so the camera's cover-zoom floor sits below HOME_ZOOM on
+           // every aspect ratio (restores zoom-out + vertical pan room). Cost is
+           // absorbed by viewport culling in CityRenderer._draw.
 
   /**
    * Road polylines (inclusive endpoints, axis-aligned segments).

@@ -33,6 +33,7 @@ export const ISO_BUILDING_MAP = {
   infantryhall:      `${B}/buildingTiles_036.png`,
   siegeworkshop:     `${B}/buildingTiles_040.png`,
   magictower:        `${B}/buildingTiles_099.png`,
+  rallypoint:        `${B}/buildingTiles_101.png`, // watchtower/flag — army muster point
 };
 
 /** Ground + decoration tiles, keyed by semantic name. */

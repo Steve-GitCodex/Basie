@@ -206,8 +206,10 @@ export class NavigationUI {
     eventBus.on('ui:navigateTo',          v    => this._switchView(v));
     eventBus.on('population:updated',     ()   => this._refreshStatusBar());
     eventBus.on('buffs:updated',          buffs => this._updateBuffBadge(buffs));
-    eventBus.on('building:cafeteria:shortfall', () => {
-      this._s.notifications?.show('warning', '🍽️ Food Running Low', 'Cafeteria supplies are critically low — population is shrinking!');
+    eventBus.on('building:cafeteria:shortfall', ({ severity, message } = {}) => {
+      const title = severity === 'info' ? '🍽️ Restock Reminder' : '🍽️ Food Running Low';
+      this._s.notifications?.show(severity ?? 'warning', title,
+        message ?? 'Cafeteria supplies are low — restock food & water.');
     });
     eventBus.on('challenges:updated',  challenges => this._updateChallengesBadge(challenges));
     eventBus.on('events:updated',       state      => this._updateEventsBadge(state));
@@ -477,6 +479,13 @@ export class NavigationUI {
       if (valEl)  valEl.textContent  = fmt(res.amount);
       if (rateEl) rateEl.textContent = res.perSec > 0 ? `+${res.perSec.toFixed(1)}/s` : '';
       if (capEl && res.cap !== Infinity) capEl.textContent = `/ ${fmt(res.cap)}`;
+      // Capacity fill-bar (HUD v2): drive the chip's ::after width via --fill.
+      const chip = document.getElementById(`res-${key}`);
+      if (chip && res.cap && res.cap !== Infinity) {
+        const pct = Math.max(0, Math.min(1, res.amount / res.cap));
+        chip.style.setProperty('--fill', pct.toFixed(3));
+        chip.title = `${RES_META[key]?.name ?? key}: ${fmt(res.amount)} / ${fmt(res.cap)}`;
+      }
     }
     // Cafeteria aggregate stock chip
     this._renderCafeteriaChip();

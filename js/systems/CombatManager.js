@@ -55,6 +55,7 @@ export class CombatManager {
     const squadData = this._um.getSquad(squadId);
     const army = squadData ? squadData.units : [];
     if (army.length === 0) return { success: false, reason: 'You have no units to send.' };
+    if (this._um.isSquadDeployed?.(squadId)) return { success: false, reason: 'That squad is away on a march.' };
 
     // Consume the pending encounter modifier (if any) — not used in survival
     const modifier = isSurvival ? null : (this._pendingModifiers.get(monsterId) ?? null);
@@ -131,6 +132,41 @@ export class CombatManager {
 
     eventBus.emit('combat:logUpdated', this._battleLog);
     return { success: true, result, rewards, reducedReward: isReduced, modifier };
+  }
+
+  /**
+   * Resolve a world-map march battle: a squad attacks a POI's garrison. Unlike
+   * attack(), loot is RETURNED to the caller (MarchManager carries it home and
+   * credits it on the army's return) rather than delivered via mail — so it must
+   * NOT emit combat:victory (that would double-grant through MailManager).
+   * @returns {{ victory:boolean, losses:object, loot:object }}
+   */
+  resolveMarchBattle(squadId, monsterId) {
+    const monster   = MONSTERS_CONFIG[monsterId];
+    const squadData = this._um.getSquad(squadId);
+    const army      = squadData ? squadData.units : [];
+    if (!monster || army.length === 0) return { victory: false, losses: {}, loot: {} };
+
+    const result = this._simulateBattle(army, monster, null, squadId);
+
+    if (result.losses && Object.keys(result.losses).length) {
+      this._um.removeUnitsFromSquad(squadId, result.losses);
+    }
+
+    let loot = {};
+    if (result.victory) {
+      for (const [k, v] of Object.entries(monster.rewards)) {
+        if (k === 'xp') { this._user.addXP(v); continue; } // xp credited now; not carried as cargo
+        loot[k] = v;
+      }
+      this._hm?.awardBattleXP(Math.floor((monster.rewards.xp ?? 100) * 0.5), squadId);
+    }
+
+    eventBus.emit('combat:marchResolved', {
+      monsterId, victory: result.victory, loot, losses: result.losses,
+      wavesSurvived: result.wavesSurvived,
+    });
+    return { victory: result.victory, losses: result.losses ?? {}, loot };
   }
 
   /**

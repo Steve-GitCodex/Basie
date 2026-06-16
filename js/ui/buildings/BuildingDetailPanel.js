@@ -89,16 +89,25 @@ export class BuildingDetailPanel {
       const stock    = (this._bm.getCafeteriaStock?.() ?? []).find(s => s.instanceId === `cafeteria_${instanceIndex}`);
       const autoOn   = this._bm.getAutomations().cafeteriaRestock ?? false;
       if (stock) {
-        const foodPct  = stock.foodCap  > 0 ? Math.round((stock.food  / stock.foodCap)  * 100) : 0;
-        const waterPct = stock.waterCap > 0 ? Math.round((stock.water / stock.waterCap) * 100) : 0;
+        const foodCur  = stock.stock.food;
+        const waterCur = stock.stock.water;
+        const foodCap  = stock.stockCap.food;
+        const waterCap = stock.stockCap.water;
+        const foodPct  = foodCap  > 0 ? Math.round((foodCur  / foodCap)  * 100) : 0;
+        const waterPct = waterCap > 0 ? Math.round((waterCur / waterCap) * 100) : 0;
         cafeteriaHtml = `
           <div class="btp-section-label">Cafeteria Stock</div>
           <div class="btp-cafeteria-stock">
-            <div class="btp-stock-row"><span>🌾 Food</span><span class="btp-stock-val">${fmt(stock.food)} / ${fmt(stock.foodCap)}</span></div>
-            <div class="btp-stock-row"><span>💧 Water</span><span class="btp-stock-val">${fmt(stock.water)} / ${fmt(stock.waterCap)}</span></div>
+            <div class="btp-stock-row"><span>🌾 Food</span><span class="btp-stock-val">${fmt(foodCur)} / ${fmt(foodCap)}</span></div>
             <div class="progress-container" style="margin-bottom:var(--space-1)">
               <div class="progress-bar"><div class="progress-fill progress-fill-primary" style="width:${foodPct}%"></div></div>
             </div>
+            <div class="btp-stock-row"><span>💧 Water</span><span class="btp-stock-val">${fmt(waterCur)} / ${fmt(waterCap)}</span></div>
+            <div class="progress-container" style="margin-bottom:var(--space-1)">
+              <div class="progress-bar"><div class="progress-fill progress-fill-primary" style="width:${waterPct}%"></div></div>
+            </div>
+            ${(foodCur <= 0 || waterCur <= 0)
+              ? '<div class="btp-lock-reason">⚠️ Empty — restock so your population can grow.</div>' : ''}
           </div>
           ${autoOn
             ? '<div class="btp-auto-badge">⚙️ Auto-restock active</div>'

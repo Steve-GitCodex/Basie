@@ -16,7 +16,10 @@ import { BUILDINGS_CONFIG } from '../../entities/GAME_DATA.js';
 
 const RESTOCK_INTERVAL   = 30;   // seconds between auto-restock passes
 const POOL_RESERVE       = 50;   // keep this much food/water in the global pool on auto-restock
-const SHORTFALL_COOLDOWN = 120;  // seconds between shortfall notifications
+const REMINDER_INTERVAL  = 90;   // min seconds between cafeteria reminders (polite, non-spammy)
+const POP_GROWTH_BASE    = 0.08; // residents/sec into empty housing; tapers to 0 as housing fills
+const PER_CAPITA_BASE    = 0.02; // food & water /sec per resident in a Lv.1 house
+const PER_CAPITA_PER_LVL = 0.008;// extra per-resident draw for each house level above 1 (→ ~0.1 by Lv.10)
 
 export class CafeteriaService {
   /** @param {{ rm, getInstances:(buildingId:string)=>Array }} deps */
@@ -52,10 +55,18 @@ export class CafeteriaService {
   _applyRestock(inst, foodAmount, waterAmount) {
     if (!inst.stock) inst.stock = { food: 0, water: 0 };
     const cap = this._stockCap(inst.level);
-    const addFood  = Math.max(0, Math.min(foodAmount,  cap.food  - inst.stock.food));
-    const addWater = Math.max(0, Math.min(waterAmount, cap.water - inst.stock.water));
+    const roomFood  = Math.max(0, Math.min(foodAmount,  cap.food  - inst.stock.food));
+    const roomWater = Math.max(0, Math.min(waterAmount, cap.water - inst.stock.water));
+    // Partial restock: only ever pull what the global pool actually holds, so a poor
+    // early player can top up with whatever they have instead of failing outright.
+    const snap = this._rm.getSnapshot();
+    const addFood  = Math.min(roomFood,  Math.floor(snap.food?.amount  ?? 0));
+    const addWater = Math.min(roomWater, Math.floor(snap.water?.amount ?? 0));
     if (addFood === 0 && addWater === 0) {
-      return { success: false, reason: 'Cafeteria stock is already full.' };
+      const reason = (roomFood === 0 && roomWater === 0)
+        ? 'Cafeteria stock is already full.'
+        : 'No food or water in storage to restock with.';
+      return { success: false, reason };
     }
     const cost = {};
     if (addFood  > 0) cost.food  = addFood;
@@ -114,8 +125,10 @@ export class CafeteriaService {
     let depletionSec    = Infinity;
     if ((inst.level ?? 0) > 0) {
       drainRatePerSec = this._totalDrainPerSec();
-      if (drainRatePerSec > 0 && inst.stock) {
-        const minStock = Math.min(inst.stock.food ?? 0, inst.stock.water ?? 0);
+      if (drainRatePerSec > 0) {
+        // Treat a never-stocked cafeteria as empty (stock may be undefined) so an
+        // unstocked cafeteria with consumers reads "0s to empty", not "stocked forever".
+        const minStock = Math.min(inst.stock?.food ?? 0, inst.stock?.water ?? 0);
         depletionSec   = minStock / drainRatePerSec;
       }
     }
@@ -160,32 +173,42 @@ export class CafeteriaService {
     }
   }
 
+  /** Per-second food & water draw of a single resident in a house of the given level. */
+  _perCapita(level) {
+    return PER_CAPITA_BASE + PER_CAPITA_PER_LVL * Math.max(0, (level ?? 1) - 1);
+  }
+
   /** Total per-second food/water draw from all populated houses. */
   _totalDrainPerSec() {
     const pop = this._rm.getPopulation();
     return (this._getInstances('house')).reduce((s, h) => {
       if ((h.level ?? 0) <= 0) return s;
-      return s + Math.min(pop.current, h.level * 10) * 0.1;
+      return s + Math.min(pop.current, h.level * 10) * this._perCapita(h.level);
     }, 0);
+  }
+
+  /** Emit a throttled, non-spammy cafeteria reminder (≤ 1 per REMINDER_INTERVAL). */
+  _remind(severity, message) {
+    if (this._shortfallCooldown > 0) return;
+    this._shortfallCooldown = REMINDER_INTERVAL;
+    eventBus.emit('building:cafeteria:shortfall', { severity, message });
   }
 
   _drainAndPopulation(dt) {
     this._shortfall = false;
-    const houseInstances = this._getInstances('house');
-    const cafInstances   = this._getInstances('cafeteria');
+    const houseInstances = this._getInstances('house').filter(h => (h.level ?? 0) > 0);
+    const cafInstances   = this._getInstances('cafeteria').filter(c => (c.level ?? 0) > 0);
     const population     = this._rm.getPopulation();
+    const hasConsumers   = houseInstances.length > 0 && population.cap > 0;
 
+    // Drain food/water from cafeteria stock to feed each populated house.
     for (const houseInst of houseInstances) {
-      if ((houseInst.level ?? 0) <= 0) continue;
-      const people      = Math.min(population.current, houseInst.level * 10);
-      const foodDrain   = people * 0.1 * dt;
-      const waterDrain  = people * 0.1 * dt;
-      let remainFood    = foodDrain;
-      let remainWater   = waterDrain;
-      // Drain from cafeteria instances (round-robin)
+      const people     = Math.min(population.current, houseInst.level * 10);
+      const perCapita  = this._perCapita(houseInst.level);
+      let remainFood   = people * perCapita * dt;
+      let remainWater  = people * perCapita * dt;
       for (const caf of cafInstances) {
         if (remainFood <= 0 && remainWater <= 0) break;
-        if ((caf.level ?? 0) <= 0) continue;
         if (!caf.stock) caf.stock = { food: 0, water: 0 };
         const takenFood  = Math.min(remainFood,  caf.stock.food);
         const takenWater = Math.min(remainWater, caf.stock.water);
@@ -197,19 +220,20 @@ export class CafeteriaService {
       if (remainFood > 0 || remainWater > 0) this._shortfall = true;
     }
 
-    if (!this._shortfall) {
-      if (population.current < population.cap) {
-        this._rm.growPopulation(0.05 * dt);
-      }
-      // Cafeteria is healthy — reset cooldown so the next genuine shortfall fires immediately
-      this._shortfallCooldown = 0;
-    } else {
+    // Growth is gated on a cafeteria that actually holds both food and water.
+    const cafeteriaStocked = cafInstances.some(c => (c.stock?.food ?? 0) > 0 && (c.stock?.water ?? 0) > 0);
+
+    if (this._shortfall) {
+      // Active starvation — population shrinks and we nudge (gently, throttled).
       this._rm.shrinkPopulation(0.02 * dt);
-      // Emit shortfall event at most once per cooldown period
-      if (this._shortfallCooldown <= 0) {
-        this._shortfallCooldown = SHORTFALL_COOLDOWN;
-        eventBus.emit('building:cafeteria:shortfall', { message: 'Cafeteria is out of food or water — population is shrinking!' });
-      }
+      this._remind('warning', 'Your cafeteria has run dry — population is shrinking. Restock food & water to recover.');
+    } else if (hasConsumers && !cafeteriaStocked) {
+      // Housing exists but the cafeteria is empty: growth is paused until it's stocked.
+      this._remind('info', 'Your cafeteria is empty — restock food & water so your population can grow.');
+    } else if (hasConsumers && cafeteriaStocked && population.current < population.cap) {
+      // Healthy: dynamic growth that tapers as housing fills (logistic).
+      const headroom = 1 - (population.current / population.cap);
+      this._rm.growPopulation(POP_GROWTH_BASE * headroom * dt);
     }
   }
 }

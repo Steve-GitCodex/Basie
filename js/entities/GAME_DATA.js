@@ -39,6 +39,7 @@ export {
   CITY_BLUEPRINT, CATEGORY_ZONE,
   isRoad, zoneAt, plotAt, plotById, plotsInZone
 } from './data/cityBlueprint.js';
+export { WORLD_MAP } from './data/worldMap.js';
 
 /**
  * DEBUG_CONFIG — controls optional debug features.

@@ -21,6 +21,12 @@ export const TAB_UNLOCK_CONDITIONS = {
   base:     { type: 'always' },
   combat:   { type: 'always' },
 
+  world:    {
+    type: 'building',
+    buildingId: 'rallypoint',
+    label: 'Build a Rally Point (requires HQ Lv 3)',
+  },
+
   heroes:   {
     type: 'building',
     buildingId: 'heroquarters',
@@ -119,4 +125,5 @@ export const BUILDING_TAB_MAP = {
   heroquarters:  'heroes',
   workshop:      'research',
   magictower:    'research',
+  rallypoint:    'world',
 };
