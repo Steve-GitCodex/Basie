@@ -582,8 +582,36 @@ export class CityRenderer {
       else this._drawLevelBadge(slot);
     }
 
+    // 4b — hovered building's name on a pill, on top (the inline label below a
+    // building can be overdrawn by the sprite of a building in front of it).
+    const hv = this._hovered;
+    if (hv && !hv.empty && hv.name && (hv.isBuilding || hv.level > 0)) {
+      const c = tileToWorld(hv.col, hv.row);
+      this._drawNamePill(hv.name.toUpperCase(), c.x, c.y + TILE_H / 2 + 12);
+    }
+
     // 5 — day/night ambient tint + window lights
     this._drawAmbient(now);
+  }
+
+  /** A dark rounded pill with the building name — used for the hovered tile. */
+  _drawNamePill(text, cx, y) {
+    const ctx = this._ctx;
+    ctx.save();
+    ctx.font = '700 9px Outfit, sans-serif';
+    const w = ctx.measureText(text).width + 12;
+    ctx.fillStyle = "rgba(8, 14, 24, 0.92)";
+    ctx.strokeStyle = "rgba(0, 170, 255, 0.55)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(cx - w / 2, y - 8, w, 16, 4);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "hsl(200, 100%, 80%)";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, cx, y);
+    ctx.restore();
   }
 
   _drawSlot(slot, now) {

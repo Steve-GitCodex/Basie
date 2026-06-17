@@ -141,13 +141,14 @@ export class CombatManager {
    * NOT emit combat:victory (that would double-grant through MailManager).
    * @returns {{ victory:boolean, losses:object, loot:object }}
    */
-  resolveMarchBattle(squadId, monsterId) {
+  resolveMarchBattle(squadId, monsterId, milMult = 1) {
     const monster   = MONSTERS_CONFIG[monsterId];
     const squadData = this._um.getSquad(squadId);
     const army      = squadData ? squadData.units : [];
     if (!monster || army.length === 0) return { victory: false, losses: {}, loot: {} };
 
-    const result = this._simulateBattle(army, monster, null, squadId);
+    const modifier = milMult > 1 ? { playerAttackMult: milMult } : null;
+    const result = this._simulateBattle(army, monster, modifier, squadId);
 
     if (result.losses && Object.keys(result.losses).length) {
       this._um.removeUnitsFromSquad(squadId, result.losses);

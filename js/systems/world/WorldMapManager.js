@@ -53,6 +53,23 @@ export class WorldMapManager {
     return !!st && !st.respawnAt;
   }
 
+  /**
+   * Region unlock gate: is this region's `requires` satisfied by current ownership?
+   * Supports `{ region: id }` (one) or `{ regions: [ids] }` (all required).
+   * @returns {{ locked: boolean, missing: string[] }} missing = required region ids
+   *   not yet player-owned.
+   */
+  regionLock(regionId) {
+    const r = this._regionById.get(regionId);
+    if (!r || !r.requires) return { locked: false, missing: [] };
+    const req = r.requires;
+    const need = Array.isArray(req.regions) ? req.regions : (req.region ? [req.region] : []);
+    const missing = need.filter(id => this._regionOwner[id] !== 'player');
+    return { locked: missing.length > 0, missing };
+  }
+
+  isRegionUnlocked(regionId) { return !this.regionLock(regionId).locked; }
+
   /** Active buffs from player-owned regions (for Resource/Combat/March managers). */
   activeBuffs() { return activeBuffs(this._regionOwner, WORLD_MAP); }
 
@@ -63,7 +80,7 @@ export class WorldMapManager {
     if (!st) return 0;
     const { granted, left } = take(st.remaining, want);
     st.remaining = left;
-    if (granted > 0) eventBus.emit('world:poiChanged', { poiId, reason: 'gathered' });
+    eventBus.emit('world:poiChanged', { poiId, reason: 'gathered' });
     return granted;
   }
 

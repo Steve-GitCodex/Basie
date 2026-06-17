@@ -25,8 +25,11 @@ export function seedState(WORLD_MAP) {
 
   const regionOwner = {};
   for (const r of WORLD_MAP.regions) {
-    // The home region is the player's from the start; faction regions must be taken.
-    regionOwner[r.id] = r.factionId === 'neutral' ? 'player' : r.factionId;
+    // `startOwner` is the source of truth (only the home tile is the player's; the
+    // command ruin starts unowned/neutral). Falls back to the old neutral→player
+    // rule for any region that predates the field. Owner stays a free string so a
+    // future AIManager can flip tiles (see memory/basie-ai-faction-direction).
+    regionOwner[r.id] = r.startOwner ?? (r.factionId === 'neutral' ? 'player' : r.factionId);
   }
 
   return { poiState, regionOwner };

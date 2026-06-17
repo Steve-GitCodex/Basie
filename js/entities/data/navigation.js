@@ -127,3 +127,25 @@ export const BUILDING_TAB_MAP = {
   magictower:    'research',
   rallypoint:    'world',
 };
+
+/**
+ * BUILDING_VIEW_ACTION — maps a built building to the "open its system" action
+ * shown in the tile click-tooltip (`TileTooltip`). The bottom bar no longer
+ * carries Military/Heroes/Research buttons; those views are reached by clicking
+ * the building that owns them.
+ *
+ * Each entry: { label, view } routes via `ui:navigateTo(view)`, OR { label, train }
+ * for trainer buildings, which emit `ui:openTraining` with the buildingId so the
+ * Military view opens pre-selected to that trainer.
+ */
+export const BUILDING_VIEW_ACTION = {
+  barracks:      { label: '⚔️ Manage Squads', view: 'barracks' },
+  heroquarters:  { label: '🦸 Heroes',        view: 'heroes'   },
+  workshop:      { label: '🔬 Research',       view: 'research' },
+  magictower:    { label: '🔬 Research',       view: 'research' },
+  rallypoint:    { label: '🌍 World Map',      view: 'world'    },
+  infantryhall:  { label: '🗡️ Train',          train: true },
+  archeryrange:  { label: '🏹 Train',          train: true },
+  cavalrystable: { label: '🐴 Train',          train: true },
+  siegeworkshop: { label: '🛠️ Train',          train: true },
+};

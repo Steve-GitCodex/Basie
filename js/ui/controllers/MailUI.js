@@ -46,6 +46,10 @@ export class MailUI {
   // ─── Public ───────────────────────────────────────────────────────────────
 
   openModal() {
+    // Toggle: tapping the mail button again closes it instead of stacking a
+    // second modal (openModal() queues when one is already open).
+    if (this._isOpen()) { closeModal(this._closeCallback); return; }
+
     this._category = 'all';
     this._readFilt = 'all';
     this._search   = '';

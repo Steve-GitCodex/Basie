@@ -112,6 +112,18 @@ export class ResourceManager {
     }
   }
 
+  /** Mathematical offline catchup — accumulates production for the full elapsed period in O(resources). */
+  applyOffline(elapsedSec) {
+    for (const [, res] of Object.entries(this._resources)) {
+      if (res.perSec === 0) continue;
+      const gained = res.perSec * elapsedSec;
+      res.amount = res.cap === Infinity
+        ? res.amount + gained
+        : Math.min(res.amount + gained, res.cap);
+    }
+    this._uiDirty = true;
+  }
+
   // =============================================
   // PRODUCTION RATE MANAGEMENT
   // =============================================

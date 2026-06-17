@@ -3,13 +3,15 @@
  * Top-down pan/zoom camera for the world map. Same shape as CityCamera but with
  * a plain scale+translate projection and a rectangular bounds clamp.
  *
- * screen = world · zoom + offset (offset in CSS px). The cover-zoom floor keeps
- * the map filling the viewport (no void); the clamp keeps the viewport inside
- * the map bounds.
+ * screen = world · zoom + offset (offset in CSS px). The map is a set of tile
+ * regions separated by sea gutters, so (unlike the city) the floor is a CONTAIN
+ * fit — you can zoom out to see the whole map — and the clamp allows panning a
+ * sea margin beyond the map edges in every direction (free pan).
  */
 import { WORLD_MAP } from '../../entities/GAME_DATA.js';
 
 const MAX_ZOOM = 1.6;
+const PAN_MARGIN = 700; // world px of sea you can pan past the map edge
 
 export class WorldCamera {
   constructor(onChange) {
@@ -21,11 +23,12 @@ export class WorldCamera {
     this._onChange = onChange ?? (() => {});
   }
 
-  /** Cover floor: smallest zoom at which the map still fills the viewport. */
+  /** Contain floor: smallest zoom at which the whole map fits the viewport (with
+   *  a little headroom so sea shows around it). */
   minZoom() {
     const { w, h } = WORLD_MAP.bounds;
-    if (!this._viewW || !this._viewH) return 0.3;
-    return Math.max(this._viewW / w, this._viewH / h);
+    if (!this._viewW || !this._viewH) return 0.2;
+    return Math.min(this._viewW / w, this._viewH / h) * 0.9;
   }
 
   maxZoom() { return Math.max(MAX_ZOOM, this.minZoom()); }
@@ -81,9 +84,15 @@ export class WorldCamera {
   _clamp() {
     if (!this._viewW || !this._viewH) return;
     const { w, h } = WORLD_MAP.bounds;
-    const minX = this._viewW - w * this.zoom; // ≤ 0 below cover floor
-    const minY = this._viewH - h * this.zoom;
-    this.x = minX >= 0 ? minX / 2 : Math.min(0, Math.max(minX, this.x));
-    this.y = minY >= 0 ? minY / 2 : Math.min(0, Math.max(minY, this.y));
+    const M = PAN_MARGIN;
+    // Keep the visible world rect within [-M, dim+M] on each axis: free pan up to a
+    // sea margin past the map edge. When the map+margins are smaller than the
+    // viewport (fully zoomed out), centre instead.
+    const xMax = M * this.zoom;
+    const xMin = this._viewW - (w + M) * this.zoom;
+    const yMax = M * this.zoom;
+    const yMin = this._viewH - (h + M) * this.zoom;
+    this.x = xMin > xMax ? (xMin + xMax) / 2 : Math.min(xMax, Math.max(xMin, this.x));
+    this.y = yMin > yMax ? (yMin + yMax) / 2 : Math.min(yMax, Math.max(yMin, this.y));
   }
 }

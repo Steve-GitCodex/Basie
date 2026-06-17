@@ -8,6 +8,7 @@
  * while the view is display:none).
  */
 import { eventBus } from '../../core/EventBus.js';
+import { WORLD_MAP } from '../../entities/GAME_DATA.js';
 import { marchTypeForPOI } from '../../systems/march/marchRules.js';
 import { WorldRenderer } from '../world/WorldRenderer.js';
 import { PoiDetailPanel } from '../world/PoiDetailPanel.js';
@@ -50,6 +51,7 @@ export class WorldMapUI {
     this._poiPanel.init();
     this._sheet.init();
     this._marchPanel.init();
+    this._renderLegend();
 
     this._host.querySelector('#world-home-btn')?.addEventListener('click', () => this._renderer.home());
 
@@ -59,14 +61,30 @@ export class WorldMapUI {
     // Reactive re-renders
     const refresh = () => { this._renderer?.syncState(); this._renderMarchPanel(); };
     eventBus.on('march:dispatched', refresh);
-    eventBus.on('march:arrived', (m) => { this._announceArrival(m); refresh(); });
+    eventBus.on('march:arrived', (m) => { this._announceArrival(m); refresh(); this._refreshOpenPanel(); });
     eventBus.on('march:returning', refresh);
     eventBus.on('march:completed', (m) => { this._announceComplete(m); refresh(); this._refreshOpenPanel(); });
     eventBus.on('world:poiChanged', () => { this._renderer?.syncState(); this._refreshOpenPanel(); });
     eventBus.on('world:regionCaptured', (d) => {
       this._notify?.show?.('success', '🚩 Region captured', this._wm.getRegion(d.regionId)?.name ?? '');
       this._renderer?.syncState();
+      this._renderLegend();
     });
+  }
+
+  /** Territory legend: "My Territory" + each enemy faction (✓ when fully cleared). */
+  _renderLegend() {
+    const list = this._host?.querySelector('#world-legend-list');
+    if (!list) return;
+    const swatch = (c) => `<span class="world-legend__swatch" style="color:${c};background:${c}"></span>`;
+    const rows = [`<div class="world-legend__row world-legend__row--owned">${swatch('#3ad17a')}My Territory</div>`];
+    for (const f of Object.values(WORLD_MAP.factions)) {
+      if (f.id === 'neutral') continue;
+      const regions = WORLD_MAP.regions.filter(r => r.factionId === f.id);
+      const cleared = regions.length > 0 && regions.every(r => this._wm.isPlayerOwned(r.id));
+      rows.push(`<div class="world-legend__row">${swatch(f.color)}${f.name}${cleared ? ' ✓' : ''}</div>`);
+    }
+    list.innerHTML = rows.join('');
   }
 
   // ── View lifecycle ──────────────────────────────────────────────────────────
@@ -124,6 +142,12 @@ export class WorldMapUI {
 
   // ── View-models / helpers ────────────────────────────────────────────────────
   _poiVm(poi) {
+    const lock = this._wm.regionLock(poi.regionId);
+    let lockReason = null;
+    if (lock.locked) {
+      const names = lock.missing.map(id => this._wm.getRegion(id)?.name ?? id);
+      lockReason = `Locked — capture ${names.join(', ')} first`;
+    }
     return {
       poi,
       region: this._wm.getRegion(poi.regionId),
@@ -131,6 +155,8 @@ export class WorldMapUI {
       state: this._wm.getPOIState(poi.id),
       marchType: marchTypeForPOI(poi),
       slotsFree: this._mm.slotsFree(),
+      locked: lock.locked,
+      lockReason,
     };
   }
 

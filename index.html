@@ -146,7 +146,7 @@
       </div>
       <!-- HEADER ACTIONS -->
       <div class="header-actions">
-        <button class="header-icon-btn buff-hud-badge hidden" id="buff-hud-badge" title="Active Buffs — click to manage" onclick="document.getElementById('nav-heroes')?.click()">
+        <button class="header-icon-btn buff-hud-badge hidden" id="buff-hud-badge" title="Active Buffs — click to manage">
           ⚗️ <span id="buff-badge-count">0</span>
           <span class="buff-badge-sep">·</span>
           <span id="buff-badge-timer"></span>
@@ -174,12 +174,6 @@
       </div>
     </header>
 
-    <!-- FLOATING UTILITY RAIL (right edge, above the Activity-Queue toggle) -->
-    <div id="hud-rail" class="hud-rail">
-      <button class="hud-rail__btn" id="btn-inventory" title="Inventory" aria-label="Inventory">🎒<span class="badge badge--dot hidden" id="inventory-badge"></span></button>
-      <button class="hud-rail__btn" id="btn-mail" title="Inbox" aria-label="Inbox">📬<span class="badge hidden" id="mail-badge">0</span></button>
-    </div>
-
     <!-- MAIN LAYOUT -->
     <div class="game-layout">
 
@@ -206,10 +200,16 @@
             <canvas id="world-canvas"></canvas>
             <button id="world-home-btn" class="city-home-btn" title="Center on your city">⌖</button>
 
-            <!-- Active marches (top-right) -->
+            <!-- Active marches (top-left) -->
             <div id="world-march-panel" class="world-marches hidden">
               <div class="world-marches__head">Marches</div>
               <div id="wm-list" class="world-marches__list"></div>
+            </div>
+
+            <!-- Territory legend (top-right) -->
+            <div id="world-legend" class="world-legend">
+              <div class="world-legend__head">Territory</div>
+              <div id="world-legend-list" class="world-legend__list"></div>
             </div>
 
             <!-- POI detail panel (slide-up) -->
@@ -443,53 +443,86 @@
         </section>
       </main>
 
-      <!-- BUILDING DETAIL PANEL (slide-up from bottom on tile click) -->
-      <div id="building-detail-panel" class="base-tile-panel" aria-modal="true" role="dialog" aria-label="Building detail">
-        <div class="base-tile-panel__header">
-          <div class="btp-header-content">
-            <div class="btp-sprite" id="btp-sprite"></div>
-            <div class="btp-title-block">
-              <div class="base-tile-panel__title" id="btp-name">—</div>
-              <div class="btp-level" id="btp-level"></div>
-            </div>
+      <!-- BUILDABLES INVENTORY (catalog overlay — More grid "Build" or empty-plot tap) -->
+      <div id="buildables-panel" class="buildables-panel hidden" role="dialog" aria-modal="true" aria-label="Buildables">
+        <div class="bp-sheet">
+          <div class="bp-head">
+            <h2 class="bp-title" id="bp-title">Buildables</h2>
+            <button class="bp-close" id="bp-close" aria-label="Close">×</button>
           </div>
-          <button class="base-tile-panel__close" id="btp-close" aria-label="Close">×</button>
+          <div class="bp-controls">
+            <input type="search" id="bp-search" class="bp-search" placeholder="Search buildings…" aria-label="Search buildings" />
+            <div class="bp-group-tabs" id="bp-group" role="tablist">
+              <button class="bp-group-tab active" data-group="zone">Zone</button>
+              <button class="bp-group-tab" data-group="function">Function</button>
+              <button class="bp-group-tab" data-group="status">Status</button>
+            </div>
+            <select id="bp-sort" class="bp-sort" aria-label="Sort">
+              <option value="recommended">Recommended</option>
+              <option value="cost-asc">Cost ↑</option>
+              <option value="cost-desc">Cost ↓</option>
+              <option value="alpha">A–Z</option>
+            </select>
+          </div>
+          <div class="bp-body" id="bp-body"></div>
         </div>
-        <div class="base-tile-panel__body" id="btp-body"></div>
+      </div>
+
+      <!-- BUILDING INFO PAGE (full overlay opened from a tile's "Details" button) -->
+      <div id="building-info-overlay" class="binfo-overlay hidden" role="dialog" aria-modal="true" aria-label="Building details">
+        <div class="binfo-sheet">
+          <button class="binfo-close" id="binfo-close" aria-label="Close">×</button>
+          <div class="binfo-body" id="binfo-body"></div>
+        </div>
       </div>
     </div>
 
-    <!-- BOTTOM TAB BAR (replaces sidebar) -->
-    <nav class="bottom-tab-bar" id="game-sidebar" aria-label="Game Navigation">
-      <button class="nav-btn active" data-view="base"     id="nav-base"     aria-label="Base">
-        <span class="nav-icon nav-icon--base"></span><span class="nav-label">Base</span>
+    <!-- FLOATING CONTROL CLUSTER — Inventory · Base⇄World flip · Mail (bottom center) -->
+    <div class="floating-dock" id="floating-dock" aria-label="Game Navigation">
+      <button class="dock-btn" id="btn-inventory" title="Inventory" aria-label="Inventory">
+        <span class="dock-emoji">🎒</span>
+        <span class="badge badge--dot hidden" id="inventory-badge"></span>
       </button>
-      <button class="nav-btn"        data-view="military" id="nav-military" aria-label="Military">
-        <span class="nav-icon nav-icon--military"></span><span class="nav-label">Military</span>
+      <button class="dock-flip" id="nav-flip" aria-label="Switch between Base and World">
+        <span class="nav-icon nav-icon--world" id="flip-icon"></span>
+        <span class="dock-flip__label" id="flip-label">World</span>
       </button>
-      <button class="nav-btn"        data-view="heroes"   id="nav-heroes"   aria-label="Heroes">
-        <span class="nav-icon nav-icon--heroes"></span><span class="nav-label">Heroes</span>
+      <button class="dock-btn" id="btn-mail" title="Inbox" aria-label="Inbox">
+        <span class="dock-emoji">📬</span>
+        <span class="badge hidden" id="mail-badge">0</span>
       </button>
-      <button class="nav-btn"        data-view="combat"   id="nav-combat"   aria-label="Combat">
-        <span class="nav-icon nav-icon--combat"></span><span class="nav-label">Combat</span>
+    </div>
+
+    <!-- MORE FAB (bottom right) — opens a grid of meta destinations -->
+    <div class="more-fab" id="more-fab">
+      <button class="more-fab__btn" id="nav-more" aria-haspopup="true" aria-expanded="false" aria-label="More">
+        <span class="nav-icon nav-icon--more"></span>
+        <span class="more-fab__dot hidden" id="nav-more-dot"></span>
       </button>
-      <button class="nav-btn"        data-view="world"    id="nav-world"    aria-label="World">
-        <span class="nav-icon nav-icon--world"></span><span class="nav-label">World</span>
-      </button>
-      <button class="nav-btn"        data-view="research" id="nav-research" aria-label="Research">
-        <span class="nav-icon nav-icon--research"></span><span class="nav-label">Research</span>
-      </button>
-      <button class="nav-btn"        data-view="quests"   id="nav-quests"   aria-label="Quests">
-        <span class="nav-icon nav-icon--quests"></span><span class="nav-label">Quests</span>
-      </button>
-      <button class="nav-btn"        data-view="economy"  id="nav-economy"  aria-label="Economy">
-        <span class="nav-icon nav-icon--economy"></span><span class="nav-label">Economy</span>
-      </button>
-      <button class="nav-btn"        data-view="events"   id="nav-events"   aria-label="Events">
-        <span class="nav-icon nav-icon--events"></span><span class="nav-label">Events</span>
-        <span class="badge hidden" id="events-badge">!</span>
-      </button>
-    </nav>
+      <div class="more-grid" id="nav-more-menu" role="menu">
+        <button class="nav-btn" id="nav-build" aria-label="Build" role="menuitem">
+          <span class="nav-icon nav-icon--build"></span><span class="nav-label">Build</span>
+          <span class="grid-dot hidden" id="nav-build-dot"></span>
+        </button>
+        <button class="nav-btn" data-view="quests" id="nav-quests" aria-label="Quests" role="menuitem">
+          <span class="nav-icon nav-icon--quests"></span><span class="nav-label">Quests</span>
+        </button>
+        <button class="nav-btn" data-view="combat" id="nav-combat" aria-label="Combat" role="menuitem">
+          <span class="nav-icon nav-icon--combat"></span><span class="nav-label">Combat</span>
+        </button>
+        <button class="nav-btn" data-view="economy" id="nav-economy" aria-label="Economy" role="menuitem">
+          <span class="nav-icon nav-icon--economy"></span><span class="nav-label">Economy</span>
+        </button>
+        <button class="nav-btn" data-view="events" id="nav-events" aria-label="Events" role="menuitem">
+          <span class="nav-icon nav-icon--events"></span><span class="nav-label">Events</span>
+          <span class="badge hidden" id="events-badge">!</span>
+        </button>
+        <button class="nav-btn nav-btn--soon" id="nav-arena" aria-label="Arena (coming soon)" role="menuitem" disabled>
+          <span class="nav-icon nav-icon--arena"></span><span class="nav-label">Arena</span>
+          <span class="nav-soon-tag">soon</span>
+        </button>
+      </div>
+    </div>
 
     <!-- STATUS BAR (kept for JS compatibility, visually hidden) -->
     <div class="game-statusbar hidden" id="game-statusbar" aria-hidden="true">

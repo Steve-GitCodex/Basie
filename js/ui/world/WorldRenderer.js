@@ -4,8 +4,8 @@
  * reads WorldMapManager + MarchManager snapshots, never mutates state; intents
  * flow out through the callbacks supplied by WorldMapUI.
  *
- * Layers: terrain → region circles (faction/owned shading + label) → POI markers
- * (icon + faction ring + state) → active march arcs with a moving army token →
+ * Layers: terrain → region territories (organic polygon fill + glow rim + label)
+ * → POI markers (icon + faction ring + level badge + state) → march arcs →
  * hover/selection highlight. Terrain/regions render in world space; markers and
  * arcs render in screen space so icons stay legible at every zoom.
  */
@@ -188,38 +188,131 @@ export class WorldRenderer {
   }
 
   _drawTerrain() {
-    const { w, h } = WORLD_MAP.bounds;
-    const ctx = this._ctx;
-    ctx.fillStyle = '#1b3a2a';
-    ctx.fillRect(0, 0, w, h);
-    // subtle grid so panning reads as movement
-    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-    ctx.lineWidth = 1;
-    for (let x = 0; x <= w; x += 200) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
-    for (let y = 0; y <= h; y += 200) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+    // No bounded "playfield" rectangle — that read as an outer box around the
+    // tiles. The backdrop sea (painted in _draw) extends seamlessly; each region
+    // tile is its own inked land mass floating on it, gutters are open sea.
+    // (intentionally empty)
   }
 
   _drawRegions() {
     const ctx = this._ctx;
-    for (const r of this._regions) {
-      const owned = this._wm.isPlayerOwned(r.id);
-      const faction = WORLD_MAP.factions[r.factionId];
-      const color = owned ? '#3ad17a' : (faction?.color ?? '#888');
-      ctx.beginPath();
-      ctx.arc(r.center.x, r.center.y, r.radius, 0, Math.PI * 2);
-      ctx.fillStyle = this._alpha(color, 0.10);
-      ctx.fill();
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = this._alpha(color, 0.5);
-      ctx.setLineDash(owned ? [] : [14, 10]);
+    for (const r of this._regions) this._drawRegionTile(r);
+  }
+
+  _drawRegionTile(r) {
+    const ctx = this._ctx;
+    const owned = this._wm.isPlayerOwned(r.id);
+    const ruin = !!r.isCommandCenter;
+    const faction = WORLD_MAP.factions[r.factionId];
+    const color = owned ? '#3ad17a' : (ruin ? '#9aa0a8' : (faction?.color ?? '#888'));
+    const locked = !owned && !this._wm.isRegionUnlocked(r.id);
+
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    // solid land body: a warm land base, then a faction-coloured tint
+    this._traceRegion(ctx, r);
+    ctx.fillStyle = '#222c26';
+    ctx.fill();
+    this._traceRegion(ctx, r);
+    ctx.fillStyle = this._alpha(color, owned ? 0.30 : 0.20);
+    ctx.fill();
+
+    // hand-drawn map border: a thick dark ink outline, then a thinner faction line
+    // sitting inside it (matte, not neon).
+    this._traceRegion(ctx, r);
+    ctx.lineWidth = ruin ? 13 : 11;
+    ctx.strokeStyle = `rgba(9,13,11,${locked ? 0.7 : 0.92})`;
+    ctx.stroke();
+    this._traceRegion(ctx, r);
+    ctx.lineWidth = ruin ? 4 : 3;
+    ctx.strokeStyle = this._alpha(color, locked ? 0.45 : (owned ? 0.95 : 0.8));
+    ctx.stroke();
+
+    // ruin "ready to assault" pulse (unlocked but still unowned)
+    if (ruin && !owned && !locked) {
+      const pulse = 0.3 + 0.4 * Math.sin(Date.now() / 380);
+      this._traceRegion(ctx, r);
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = this._alpha('#ffd34e', pulse);
       ctx.stroke();
-      ctx.setLineDash([]);
-      // label
-      ctx.fillStyle = this._alpha(color, 0.9);
-      ctx.font = '600 26px Outfit, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(`${r.name}${owned ? '  ✓' : ''}`, r.center.x, r.center.y - r.radius + 34);
     }
+
+    // locked overlay dims the tile + adds a lock glyph
+    if (locked) {
+      this._traceRegion(ctx, r);
+      ctx.fillStyle = 'rgba(6,12,10,0.45)';
+      ctx.fill();
+    }
+
+    // label at the centroid
+    const c = this._centroid(r);
+    ctx.textAlign = 'center';
+    if (locked) {
+      ctx.font = '30px Outfit, sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.fillText('🔒', c.x, c.y - 22);
+    }
+    ctx.fillStyle = this._alpha(color, locked ? 0.7 : 0.95);
+    ctx.font = `700 ${ruin ? 30 : 28}px Outfit, sans-serif`;
+    ctx.fillText(`${r.name}${owned ? '  ✓' : ''}`, c.x, c.y);
+  }
+
+  _centroid(r) {
+    const c = r.rect;
+    if (!c) return { x: r.center.x, y: r.center.y };
+    return { x: (c.x0 + c.x1) / 2, y: (c.y0 + c.y1) / 2 };
+  }
+
+  /** Trace a region's hand-drawn outline as a closed polyline (round joins soften
+   *  it). The points already carry the organic warp + seam inset, and seams stay
+   *  matched because the warp is a continuous field shared by both neighbours. */
+  _traceRegion(ctx, r) {
+    const pts = this._outline(r);
+    ctx.beginPath();
+    if (!pts) { ctx.arc(r.center.x, r.center.y, r.radius ?? 400, 0, Math.PI * 2); return; }
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+    ctx.closePath();
+  }
+
+  // A continuous warp field applied to ALL tiles so a border shared by two cells
+  // gets the same displacement from both sides → tiles stay tessellated while their
+  // straight cell edges read as organic hand-drawn curves.
+  _warpX(x, y) { return 30 * Math.sin(0.0034 * y + 1.3) + 16 * Math.sin(0.0072 * x + 0.6); }
+  _warpY(x, y) { return 30 * Math.sin(0.0031 * x + 2.1) + 16 * Math.sin(0.0067 * y + 1.9); }
+
+  /** Build a region tile outline from its `rect`: subdivide the perimeter, warp each
+   *  sample by the shared field, then inset toward the centroid so a thin seam shows
+   *  between neighbours. Cached per region id (stable across frames). */
+  _outline(r) {
+    const c = r.rect;
+    if (!c) return null;
+    this._outlineCache ??= new Map();
+    const hit = this._outlineCache.get(r.id);
+    if (hit) return hit;
+
+    const STEP = 90;   // perimeter sample spacing (world px)
+    const SEAM = 11;   // radial inset → ~2·SEAM thin seam between neighbours
+    const cx = (c.x0 + c.x1) / 2, cy = (c.y0 + c.y1) / 2;
+    const raw = [];
+    const edge = (x0, y0, x1, y1) => {
+      const n = Math.max(1, Math.round(Math.hypot(x1 - x0, y1 - y0) / STEP));
+      for (let i = 0; i < n; i++) { const t = i / n; raw.push([x0 + (x1 - x0) * t, y0 + (y1 - y0) * t]); }
+    };
+    edge(c.x0, c.y0, c.x1, c.y0); // top
+    edge(c.x1, c.y0, c.x1, c.y1); // right
+    edge(c.x1, c.y1, c.x0, c.y1); // bottom
+    edge(c.x0, c.y1, c.x0, c.y0); // left
+
+    const out = raw.map(([x, y]) => {
+      const wx = x + this._warpX(x, y);
+      const wy = y + this._warpY(x, y);
+      const dx = cx - wx, dy = cy - wy, d = Math.hypot(dx, dy) || 1;
+      return [wx + (dx / d) * SEAM, wy + (dy / d) * SEAM];
+    });
+    this._outlineCache.set(r.id, out);
+    return out;
   }
 
   _drawMarker(poi) {
@@ -251,17 +344,46 @@ export class WorldRenderer {
     // state sub-badge
     this._drawMarkerState(poi, s);
 
-    // label
+    // level badge (diamond, upper-left) — skip the player city
+    if (poi.type !== 'city' && poi.level != null) {
+      this._drawLevelBadge(s, poi.level, ring);
+    }
+
+    // label — prefix with the controlling faction's [TAG]
     if (this._camera.zoom > 0.45 || sel || hov) {
+      const tag = poi.type === 'city' ? '' : (faction?.tag ? `[${faction.tag}] ` : '');
+      const label = `${tag}${poi.name}`;
       ctx.font = '600 11px Outfit, sans-serif';
+      ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      const tw = ctx.measureText(poi.name).width;
+      const tw = ctx.measureText(label).width;
       ctx.fillRect(s.x - tw / 2 - 4, s.y + MARKER_R + 3, tw + 8, 15);
       ctx.fillStyle = '#dfe9f5';
-      ctx.fillText(poi.name, s.x, s.y + MARKER_R + 5);
+      ctx.fillText(label, s.x, s.y + MARKER_R + 5);
     }
     ctx.textBaseline = 'alphabetic';
+  }
+
+  _drawLevelBadge(s, level, color) {
+    const ctx = this._ctx;
+    const bx = s.x - MARKER_R - 1, by = s.y - MARKER_R - 1, r = 9;
+    ctx.save();
+    ctx.translate(bx, by);
+    ctx.rotate(Math.PI / 4);
+    ctx.fillStyle = color;
+    ctx.strokeStyle = 'rgba(0,0,0,0.65)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.rect(-r, -r, r * 2, r * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+    ctx.font = '700 11px Outfit, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(String(level), bx, by + 0.5);
   }
 
   _drawMarkerState(poi, s) {

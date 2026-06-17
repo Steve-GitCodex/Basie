@@ -67,7 +67,7 @@ export class MarchDispatchSheet {
     const pv = this._preview(this._poi.id, squadId);
     this._etaEl.textContent = pv
       ? `Travel: ${fmtDur(pv.etaMs)} each way (round trip ~${fmtDur(pv.etaMs * 2)})`
-      : '';
+      : '—';
     this._goBtn.disabled = false;
   }
 

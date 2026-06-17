@@ -9,9 +9,10 @@
  * instance index, hide timer); the host controller delegates hover/leave from
  * the CityRenderer and supplies a render callback + city accessor.
  */
-import { eventBus }         from '../../core/EventBus.js';
-import { RES_META, fmt }    from '../uiUtils.js';
-import { ISO_BUILDING_MAP } from './cityAssets.js';
+import { eventBus }              from '../../core/EventBus.js';
+import { RES_META, fmt }         from '../uiUtils.js';
+import { BUILDING_VIEW_ACTION, plotById } from '../../entities/GAME_DATA.js';
+import { ISO_BUILDING_MAP }      from './cityAssets.js';
 
 export class TileTooltip {
   /** @param {{ bm, rm, notifications, getCity:()=>any, requestRender:()=>void }} deps */
@@ -26,12 +27,11 @@ export class TileTooltip {
     this._idx           = 0;
   }
 
-  /** Wire tooltip-local listeners so re-entering the tooltip keeps it open. */
+  /** The tooltip is now click-driven: keep it open until an outside click. */
   mount() {
     const tt = document.getElementById('tile-tooltip');
     if (!tt) return;
     tt.addEventListener('mouseenter', () => this.clearHide());
-    tt.addEventListener('mouseleave', () => this.scheduleHide());
   }
 
   clearHide() { clearTimeout(this._hideTimeout); }
@@ -78,6 +78,23 @@ export class TileTooltip {
     const timeHint = !b.isMaxLevel && !b.isActivelyBuilding && b.nextLevelBuildTime
       ? `<span class="tt-time-hint">⏱ ${fmt(b.nextLevelBuildTime)}s</span>` : '';
 
+    // "Open its system" button (Barracks → Manage Squads, etc.) — only when built.
+    const viewAction = isBuilt ? BUILDING_VIEW_ACTION[buildingId] : null;
+    const routeBtn = viewAction
+      ? `<button class="btn btn-sm btn-secondary tt-route-btn">${viewAction.label}</button>` : '';
+    // "Details" → full building-info page (only meaningful once built).
+    const detailsBtn = isBuilt
+      ? `<button class="btn btn-sm btn-ghost tt-details-btn">ℹ️ Details</button>` : '';
+    // Cafeteria manual restock (re-homed from the retired detail panel).
+    const restockBtn = (isBuilt && buildingId === 'cafeteria' && !(this._bm.getAutomations?.().cafeteriaRestock))
+      ? `<button class="btn btn-sm btn-secondary tt-restock-btn">🔄 Restock</button>` : '';
+    // Relocate (re-homed from the retired detail panel) — built, not fixed, not mid-build.
+    const _instId   = `${buildingId}_${instanceIndex}`;
+    const _curPlot  = plotById(this._bm.getPlotOf?.(_instId) ?? '');
+    const canRelocate = isBuilt && !b.isActivelyBuilding && _curPlot && _curPlot.fixed !== buildingId;
+    const relocateBtn = canRelocate
+      ? `<button class="btn btn-sm btn-ghost tt-relocate-btn">📦 Move</button>` : '';
+
     tt.innerHTML = `
       <div class="tt-header">
         <div class="tt-sprite" style="background-image:url('${spriteUrl}')"></div>
@@ -93,6 +110,7 @@ export class TileTooltip {
         <button class="btn btn-sm ${btnCls} tt-upgrade-btn" ${btnDisabled ? 'disabled' : ''}>${btnText}</button>
         ${timeHint}
       </div>
+      ${(routeBtn || detailsBtn || restockBtn || relocateBtn) ? `<div class="tt-actions tt-actions--secondary">${routeBtn}${restockBtn}${relocateBtn}${detailsBtn}</div>` : ''}
       <div class="tt-arrow"></div>`;
 
     this._position(tt, tileRect);
@@ -109,6 +127,45 @@ export class TileTooltip {
         this._notifications?.show('warning', 'Cannot Build', r.reason);
       }
       this._requestRender();
+      this.showTile(buildingId, instanceIndex,
+        this._getCity()?.getTileScreenRect(buildingId, instanceIndex) ?? tileRect);
+    });
+
+    // Route to the building's system view (or training, pre-selected)
+    tt.querySelector('.tt-route-btn')?.addEventListener('click', e => {
+      e.stopPropagation();
+      eventBus.emit('ui:click');
+      this.hide(true);
+      if (viewAction.train) eventBus.emit('ui:openTraining', { buildingId });
+      else                  eventBus.emit('ui:navigateTo', viewAction.view);
+    });
+
+    // Open the full building-info page
+    tt.querySelector('.tt-details-btn')?.addEventListener('click', e => {
+      e.stopPropagation();
+      eventBus.emit('ui:click');
+      this.hide(true);
+      eventBus.emit('ui:openBuildingInfo', { buildingId, instanceIndex });
+    });
+
+    // Relocate this building (enters placement mode on the map)
+    tt.querySelector('.tt-relocate-btn')?.addEventListener('click', e => {
+      e.stopPropagation();
+      eventBus.emit('ui:click');
+      this.hide(true);
+      eventBus.emit('ui:relocateBuilding', { instanceId: _instId, zone: this._bm.zoneOfBuilding(buildingId) });
+    });
+
+    // Cafeteria manual restock to full
+    tt.querySelector('.tt-restock-btn')?.addEventListener('click', e => {
+      e.stopPropagation();
+      eventBus.emit('ui:click');
+      const stock = (this._bm.getCafeteriaStock?.() ?? []).find(s => s.instanceId === `cafeteria_${instanceIndex}`);
+      if (!stock) return;
+      const r = this._bm.restockCafeteria?.(stock.instanceId, stock.stockCap.food, stock.stockCap.water);
+      if (r && !r.success) {
+        this._notifications?.show('warning', 'Cannot Restock', r.reason ?? 'Not enough resources');
+      }
       this.showTile(buildingId, instanceIndex,
         this._getCity()?.getTileScreenRect(buildingId, instanceIndex) ?? tileRect);
     });

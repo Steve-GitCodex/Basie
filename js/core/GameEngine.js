@@ -57,31 +57,35 @@ export class GameEngine {
   }
 
   /**
-   * Calculate how long the player was offline and simulate ticks.
+   * Apply offline progress mathematically — O(queue_depth) not O(ticks).
+   * Each registered system may implement `applyOffline(elapsedSec, nowMs)` to
+   * handle its own time-sensitive state (queues, resource accumulation, marches).
+   * Systems without that method are skipped; no tick simulation is performed.
    * @param {number} lastSavedTimestamp - Unix ms timestamp from last save
-   * @returns {number} offlineMs
+   * @returns {number} credited offline ms (capped at 24 h)
    */
   calculateOfflineProgress(lastSavedTimestamp) {
     if (!lastSavedTimestamp) return 0;
-    const offlineMs = Date.now() - lastSavedTimestamp;
-    // Cap at 24 hours of offline progress
-    const cappedMs = Math.min(offlineMs, 24 * 60 * 60 * 1000);
-    if (cappedMs < 5000) return 0; // Ignore less than 5s offline
+    const realOfflineMs = Date.now() - lastSavedTimestamp;
+    const cappedMs      = Math.min(realOfflineMs, 24 * 60 * 60 * 1000);
+    if (cappedMs < 5000) return 0;
 
-    console.log(`[GameEngine] Simulating ${(cappedMs / 1000).toFixed(0)}s of offline progress.`);
-    // Fast-simulate ticks for offline period
-    let remaining = cappedMs;
-    while (remaining > this.TICK_RATE_MS) {
-      const dt = this.TICK_RATE_MS / 1000;
-      this._systems.forEach(sys => {
-        try { sys.update(dt); }
-        catch (e) {
-          console.error(`[GameEngine] Offline sim error in ${sys.name}:`, e);
-          this._log?.log('GameEngine', `Offline sim error in ${sys.name}: ${e?.message ?? e}`, 'error');
-        }
-      });
-      remaining -= this.TICK_RATE_MS;
+    const elapsedSec   = cappedMs / 1000;
+    // Use the capped endpoint as the effective 'now' so queue completion checks
+    // are consistent with the amount of time actually credited.
+    const effectiveNow = lastSavedTimestamp + cappedMs;
+
+    console.log(`[GameEngine] Offline catchup: ${(cappedMs / 1000).toFixed(0)}s credited (real away: ${(realOfflineMs / 1000).toFixed(0)}s).`);
+
+    for (const sys of this._systems) {
+      if (typeof sys.applyOffline !== 'function') continue;
+      try { sys.applyOffline(elapsedSec, effectiveNow); }
+      catch (e) {
+        console.error(`[GameEngine] Offline catchup error in ${sys.name}:`, e);
+        this._log?.log('GameEngine', `Offline catchup error in ${sys.name}: ${e?.message ?? e}`, 'error');
+      }
     }
+
     return cappedMs;
   }
 

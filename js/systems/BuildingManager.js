@@ -152,6 +152,44 @@ export class BuildingManager {
     this._cafeteria.update(dt);
   }
 
+  /**
+   * Mathematical offline catchup — completes any queue items whose `endsAt` falls
+   * within the offline window, cascading each completion to start the next item.
+   * O(queue_depth), not O(ticks).
+   * @param {number} _elapsedSec - unused (timestamps are absolute)
+   * @param {number} nowMs - effective 'now' for the offline window
+   */
+  applyOffline(_elapsedSec, nowMs) {
+    while (this._buildQueue.length > 0 && (this._buildQueue[0].endsAt ?? Infinity) <= nowMs) {
+      const item = this._buildQueue.shift();
+      const { buildingId, instanceIndex, pendingLevel } = item;
+
+      const instances = this._buildings.get(buildingId);
+      if (instances) {
+        if (!instances[instanceIndex]) {
+          instances[instanceIndex] = { instanceId: `${buildingId}_${instanceIndex}`, level: 0 };
+        }
+        instances[instanceIndex].level = pendingLevel;
+      }
+
+      // Cascade: start the next item from this item's completion time
+      if (this._buildQueue.length > 0) {
+        const next = this._buildQueue[0];
+        next.startedAt = item.endsAt;
+        next.endsAt    = item.endsAt + next.buildTimeSec * 1000;
+      }
+
+      this._recalculateAllCaps();
+      this._notifyRates();
+      eventBus.emit('building:completed', { id: buildingId, instanceIndex, building: { id: buildingId, level: pendingLevel } });
+      eventBus.emit('building:queueUpdated', this.getBuildQueue());
+    }
+
+    // Cafeteria drain + population growth/shrinkage for the offline window.
+    // Runs after queue completions so any cafeteria/house upgrades are already applied.
+    this._cafeteria.applyOffline(elapsedSec);
+  }
+
   // ─────────────────────────────────────────────
   // Pure query helpers (no side-effects)
   // ─────────────────────────────────────────────
@@ -743,6 +781,53 @@ export class BuildingManager {
   }
 
   /**
+   * Full "buildables inventory" catalog: every building type with placement
+   * status, for the Buildables panel. The UI groups/sorts/filters this list.
+   * @returns {Array<{ id, name, icon, category, zone, cost, effectLabel,
+   *   builtCount, maxCount, unlocked, lockReason, canAfford, availableToBuild,
+   *   hasFreePlot, maxed }>}
+   */
+  getBuildablesCatalog() {
+    const out = [];
+    for (const cfg of Object.values(BUILDINGS_CONFIG)) {
+      const zone       = this.zoneOfBuilding(cfg.id);
+      const instances  = this._buildings.get(cfg.id) ?? [];
+      const maxCount    = cfg.instanceSlots?.length ?? cfg.maxInstances ?? 1;
+      const builtCount  = instances.filter(i => (i.level ?? 0) > 0).length;
+      const reqCheck    = buildingRules.checkRequirements(cfg.requires, this._rulesCtx);
+      const unlocked    = reqCheck.met;
+      const lockReason  = unlocked
+        ? null
+        : (reqCheck.reason
+            || buildingRules.collectMissing(cfg.requires, this._rulesCtx).join(', ')
+            || 'Locked');
+      const availableIdx = this._findAvailableInstance(cfg.id);
+      const cost         = buildingRules.scaleCost(cfg.baseCost, cfg.costMultiplier, 0);
+      const hasFreePlot  = plotsInZone(zone).some(
+        p => (!p.fixed || p.fixed === cfg.id) && !this.getInstanceAt(p.id),
+      );
+      out.push({
+        id:   cfg.id,
+        name: cfg.name,
+        icon: cfg.icon,
+        category: cfg.category,
+        zone,
+        cost,
+        effectLabel: cfg.effectLabel ?? '',
+        builtCount,
+        maxCount,
+        unlocked,
+        lockReason,
+        canAfford:        this._rm.canAfford(cost),
+        availableToBuild: unlocked && availableIdx !== null,
+        hasFreePlot,
+        maxed:            builtCount >= maxCount,
+      });
+    }
+    return out;
+  }
+
+  /**
    * Start a build on a specific empty plot: assigns the plot to an available
    * unbuilt instance, then delegates to build(). Refuses to relocate an instance
    * that already holds a reserved plot — those are built via their own tile — so
@@ -771,11 +856,12 @@ export class BuildingManager {
       return { success: false, reason: 'This plot is already occupied.' };
     }
 
+    // Catalog placement is intentional: an UNBUILT instance's reserved (blueprint)
+    // plot moves to the chosen plot. idx comes from _findAvailableInstance, so the
+    // instance is always level 0 — moving its reservation never teleports a real
+    // building. (Interim until the full no-reservation redesign; see
+    // placement-teleport-bug.) Built instances are moved via relocate() instead.
     const prevPlot = this._placements.get(instanceId) ?? null;
-    if (prevPlot && prevPlot !== plotId) {
-      // Already reserved elsewhere — build it from its own tile, don't teleport it here.
-      return { success: false, reason: `${cfg.name} already has a spot — tap its tile to build it.` };
-    }
     this._placements.set(instanceId, plotId);
 
     const r = this.build(buildingId, idx);

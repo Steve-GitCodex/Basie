@@ -11,8 +11,12 @@ import { CityRenderer }      from '../city/CityRenderer.js';
 import { TileTooltip }       from '../city/TileTooltip.js';
 import { BuildingCards }     from '../buildings/BuildingCards.js';
 import { BuildQueueSidebar } from '../buildings/BuildQueueSidebar.js';
-import { BuildingDetailPanel } from '../buildings/BuildingDetailPanel.js';
+import { BuildablesPanel }     from '../buildings/BuildablesPanel.js';
+import { BuildingInfoPanel }   from '../buildings/BuildingInfoPanel.js';
 import { PlacementController } from '../buildings/PlacementController.js';
+
+/** How long the build-queue sidebar stays open after auto-opening on activity. */
+const SIDEBAR_AUTO_CLOSE_MS = 10000;
 
 export class BuildingsUI {
   /** @param {{ rm, bm, notifications, heroes }} systems */
@@ -39,19 +43,14 @@ export class BuildingsUI {
       inventory:     systems.inventory,
       notifications: systems.notifications,
     });
-    this._panel = new BuildingDetailPanel({
-      bm:            systems.bm,
-      rm:            systems.rm,
-      notifications: systems.notifications,
-      onRelocateRequest: (instId, zone) => this._placement.enterRelocateMode(instId, zone),
-    });
     this._placement = new PlacementController({
       bm:            systems.bm,
       notifications: systems.notifications,
       getCity:       () => this._city,
       tooltip:       this._tooltip,
-      closePanel:    () => this._panel.close(),
     });
+    this._buildables = new BuildablesPanel({ bm: systems.bm, rm: systems.rm });
+    this._info = new BuildingInfoPanel({ bm: systems.bm });
   }
 
   render() {
@@ -69,34 +68,26 @@ export class BuildingsUI {
       this._city = new CityRenderer({
         bm:   this._s.bm,
         host: cityHost,
+        // Click a building → summary tooltip + anchored action buttons (the old
+        // slide-up panel is retired). Hover only highlights (handled by the renderer).
         onTileClick: (bid, idx) => {
           eventBus.emit('ui:click');
           this._placement.exitRelocateMode();
-          this._panel.openBuilding(bid, idx);
-        },
-        onTileHover: (bid, idx) => {
-          this._tooltip.clearHide();
           const rect = this._city?.getTileScreenRect(bid, idx);
           if (rect) this._tooltip.showTile(bid, idx, rect);
         },
-        onTileLeave: () => {
-          this._tooltip.scheduleHide();
-        },
+        onTileHover: () => {},
+        onTileLeave: () => {},
         onPlotClick: (plotId, zone) => {
           eventBus.emit('ui:click');
           if (this._placement.isRelocating) { this._placement.tryRelocate(plotId); return; }
-          this._panel.openBuildSheet(plotId, zone);
+          // Empty-plot tap → open the Buildables panel scoped to this plot's zone.
+          eventBus.emit('ui:openBuildables', { zone, plotId });
         },
-        onPlotHover: (plotId, zone) => {
-          if (this._placement.isRelocating) return;
-          this._tooltip.clearHide();
-          const rect = this._city?.getPlotScreenRect(plotId);
-          if (rect) this._tooltip.showPlot(plotId, zone, rect);
-        },
+        onPlotHover: () => {},
         onEmptyClick: () => {
           this._tooltip.hide(true);
           this._placement.exitRelocateMode();
-          this._panel.close();
         },
       });
       this._city.init();
@@ -117,9 +108,28 @@ export class BuildingsUI {
 
     // Keep tooltip visible when mouse re-enters it
     this._tooltip.mount();
+    this._info.init();
+    this._buildables.init();
 
-    // Build queue sidebar toggle
+    // Buildables panel intents
+    this._unsubs.push(eventBus.on('ui:placeBuilding', ({ buildingId, plotId } = {}) => {
+      if (!buildingId) return;
+      if (plotId) {
+        const r = this._s.bm.buildOnPlot(buildingId, plotId);
+        if (!r.success) { eventBus.emit('ui:error'); this._s.notifications?.show('warning', 'Cannot Build', r.reason); }
+      } else {
+        // Placement highlights plots on the base-view city renderer — ensure we're there.
+        eventBus.emit('ui:navigateTo', 'base');
+        this._placement.enterBuildMode(buildingId);
+      }
+    }));
+    this._unsubs.push(eventBus.on('ui:relocateBuilding', ({ instanceId, zone } = {}) => {
+      if (instanceId) this._placement.enterRelocateMode(instanceId, zone);
+    }));
+
+    // Build queue sidebar toggle (manual interaction cancels any pending auto-close)
     document.getElementById('bq-toggle')?.addEventListener('click', () => {
+      this._cancelSidebarAutoClose();
       document.getElementById('bq-sidebar')?.classList.toggle('is-collapsed');
     });
 
@@ -131,18 +141,18 @@ export class BuildingsUI {
     this._unsubs.push(eventBus.on('building:started',           () => {
       this.render();
       this._tooltip.refresh();
-      document.getElementById('bq-sidebar')?.classList.remove('is-collapsed');
+      this._autoOpenSidebar();
     }));
     this._unsubs.push(eventBus.on('building:queueUpdated',      () => { this.render(); this._tooltip.refresh(); }));
     this._unsubs.push(eventBus.on('building:automationEnabled', () => this.render()));
     this._unsubs.push(eventBus.on('tech:researched',            () => this.render()));
     this._unsubs.push(eventBus.on('tech:queueUpdated',          () => {
       this._sidebar.render();
-      document.getElementById('bq-sidebar')?.classList.remove('is-collapsed');
+      this._autoOpenSidebar();
     }));
     this._unsubs.push(eventBus.on('unit:queueUpdated',          () => {
       this._sidebar.render();
-      document.getElementById('bq-sidebar')?.classList.remove('is-collapsed');
+      this._autoOpenSidebar();
     }));
     this._unsubs.push(eventBus.on('heroes:updated',             () => this.render()));
     this._tickThrottle = 0;
@@ -155,44 +165,54 @@ export class BuildingsUI {
         eventBus.emit('buildings:rendered');
       }
     }));
-    // Tutorial: open slide-up panel for the requested building
+    // Tutorial: center the camera on the focused building; the spotlight rings
+    // its tile and the player taps it to open the click-popup (with Build/Upgrade).
     this._unsubs.push(eventBus.on('buildings:focusBuilding', id => {
       this._city?.centerOnTile(id, 0, true);
-      this._panel.openBuilding(id, 0);
     }));
 
-    // Panel wiring
-    document.getElementById('btp-close')?.addEventListener('click', () => this._panel.close());
-    document.addEventListener('click', e => {
-      if (this._panel.bid !== null &&
-          !e.target.closest('#building-detail-panel') &&
-          !e.target.closest('#base-grid')) {
-        this._panel.close();
-      }
-    });
+    // Leaving the base view cancels any in-progress placement
     this._unsubs.push(eventBus.on('ui:viewChanged', v => {
-      if (v !== 'base') { this._panel.close(); this._placement.exitRelocateMode(); }
+      if (v !== 'base') this._placement.exitRelocateMode();
     }));
     this._unsubs.push(eventBus.on('building:relocated', () => this.render()));
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') this._placement.exitRelocateMode();
     });
-    this._unsubs.push(eventBus.on('building:completed', () => {
-      if (this._panel.bid !== null) this._panel.openBuilding(this._panel.bid, this._panel.idx);
-    }));
-    this._unsubs.push(eventBus.on('building:queueUpdated', () => {
-      if (this._panel.bid !== null) this._panel.openBuilding(this._panel.bid, this._panel.idx);
-    }));
-    this._unsubs.push(eventBus.on('building:cafeteria:restocked', () => {
-      if (this._panel.bid === 'cafeteria') this._panel.openBuilding('cafeteria', this._panel.idx);
-    }));
   }
 
   destroy() {
     this._unsubs?.forEach(fn => fn());
     this._unsubs = [];
+    this._cancelSidebarAutoClose();
     this._city?.destroy();
     this._city = null;
+  }
+
+  // ─────────────────────────────────────────────
+  // Build queue sidebar auto open/close
+  // ─────────────────────────────────────────────
+
+  /** Open the build-queue sidebar on activity, then auto-collapse after a delay. */
+  _autoOpenSidebar() {
+    const el = document.getElementById('bq-sidebar');
+    if (!el) return;
+    el.classList.remove('is-collapsed');
+    // Don't extend an already-pending auto-close: queue events (training/research
+    // ticks) fire repeatedly, and resetting the timer each time would keep the
+    // panel open indefinitely. Schedule once; the close fires on time.
+    if (this._sidebarAutoCloseTimer) return;
+    this._sidebarAutoCloseTimer = setTimeout(() => {
+      document.getElementById('bq-sidebar')?.classList.add('is-collapsed');
+      this._sidebarAutoCloseTimer = null;
+    }, SIDEBAR_AUTO_CLOSE_MS);
+  }
+
+  _cancelSidebarAutoClose() {
+    if (this._sidebarAutoCloseTimer) {
+      clearTimeout(this._sidebarAutoCloseTimer);
+      this._sidebarAutoCloseTimer = null;
+    }
   }
 
   // ─────────────────────────────────────────────

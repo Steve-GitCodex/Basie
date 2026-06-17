@@ -18,7 +18,11 @@ export class MarchPanel {
 
   render(marches) {
     if (!this._el) return;
-    if (!marches.length) { this._el.classList.add('hidden'); this._list.innerHTML = ''; return; }
+    if (!marches.length) {
+      this._el.classList.remove('hidden');
+      this._list.innerHTML = '<div class="world-marches__empty">No active marches</div>';
+      return;
+    }
     this._el.classList.remove('hidden');
     const now = Date.now();
     this._list.innerHTML = marches.map(m => this._item(m, now)).join('');
@@ -44,5 +48,5 @@ export class MarchPanel {
   }
 
   _c(v) { return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0; }
-  _fmt(ms) { const s = Math.max(0, Math.round(ms / 1000)); return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`; }
+  _fmt(ms) { const s = Math.round(Math.max(0, ms) / 1000); return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`; }
 }

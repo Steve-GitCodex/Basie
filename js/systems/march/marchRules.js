@@ -22,9 +22,11 @@ export function marchTypeForPOI(poi) {
  * @param {boolean} p.slotFree   a march slot is available
  * @param {boolean} p.squadBusy  the squad is already out on a march
  * @param {boolean} [p.hostileAvailable] camp/stronghold not waiting to respawn
+ * @param {boolean} [p.regionLocked] the target POI's region is not yet unlocked
  */
-export function canDispatch({ type, poi, squad, slotFree, squadBusy, hostileAvailable = true }) {
+export function canDispatch({ type, poi, squad, slotFree, squadBusy, hostileAvailable = true, regionLocked = false }) {
   if (!poi)            return { ok: false, reason: 'No target selected.' };
+  if (regionLocked)    return { ok: false, reason: 'Region locked — capture the regions leading to it first.' };
   if (!squad || !(squad.units?.length)) return { ok: false, reason: 'Squad is empty.' };
   if (squadBusy)       return { ok: false, reason: 'That squad is already marching.' };
   if (!slotFree)       return { ok: false, reason: 'No march slots free.' };

@@ -23,10 +23,10 @@ export class PoiDetailPanel {
     $('#wp-close')?.addEventListener('click', () => this._onClose());
   }
 
-  /** @param {object} vm { poi, region, owned, state, marchType, slotsFree } */
+  /** @param {object} vm { poi, region, owned, state, marchType, slotsFree, locked, lockReason } */
   open(vm) {
     if (!this._el) return;
-    const { poi, region, owned, state, marchType, slotsFree } = vm;
+    const { poi, region, owned, state, marchType, slotsFree, locked, lockReason } = vm;
     this._icon.textContent = poi.icon ?? '•';
     this._name.textContent = poi.name;
     this._sub.textContent = `${region?.name ?? ''}${owned ? ' · Yours' : ''}`;
@@ -40,8 +40,9 @@ export class PoiDetailPanel {
     if (marchType === 'gather') { btn.className = 'wp-gather'; btn.textContent = '🪣 Gather'; }
     else { btn.className = 'wp-attack'; btn.textContent = '⚔️ Attack'; }
 
-    const blocked = slotsFree <= 0 ? 'No march slots free' :
-      (marchType === 'attack' && state?.respawnAt ? 'Cleared — respawning' : null);
+    const blocked = locked ? (lockReason ?? 'Locked') :
+      (slotsFree <= 0 ? 'No march slots free' :
+      (marchType === 'attack' && state?.respawnAt ? 'Cleared — respawning' : null));
     if (blocked) { btn.disabled = true; btn.title = blocked; }
     btn.addEventListener('click', () => this._onAction(poi.id, marchType));
     this._actions.appendChild(btn);

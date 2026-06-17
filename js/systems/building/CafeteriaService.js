@@ -143,6 +143,86 @@ export class CafeteriaService {
     this._drainAndPopulation(dt);
   }
 
+  /**
+   * Mathematical offline catchup for the cafeteria/population loop.
+   * 1. Determines how many seconds of the offline window were "fed" vs "starved"
+   *    by comparing total cafeteria stock against total drain needed.
+   * 2. Drains stock proportionally, then applies growth (fed period) and
+   *    shrinkage (starvation period) to population.
+   * 3. If auto-restock was enabled, runs one refill pass from the global pool
+   *    (which already has its offline production credited).
+   * @param {number} elapsedSec
+   */
+  applyOffline(elapsedSec) {
+    const cafInstances   = this._getInstances('cafeteria').filter(c => (c.level ?? 0) > 0);
+    const houseInstances = this._getInstances('house').filter(h => (h.level ?? 0) > 0);
+    const population     = this._rm.getPopulation();
+    const hasConsumers   = houseInstances.length > 0 && population.cap > 0;
+
+    // ── Auto-restock pass (single sweep — resources are already credited) ─────
+    if (this._automations.cafeteriaRestock) {
+      const snap = this._rm.getSnapshot();
+      const globalFood  = snap.food?.amount  ?? 0;
+      const globalWater = snap.water?.amount ?? 0;
+      for (const inst of cafInstances) {
+        if (!inst.stock) inst.stock = { food: 0, water: 0 };
+        const cap        = this._stockCap(inst.level);
+        const foodNeeded  = Math.max(0, cap.food  - inst.stock.food);
+        const waterNeeded = Math.max(0, cap.water - inst.stock.water);
+        const foodAmt     = (foodNeeded  > 0 && globalFood  > POOL_RESERVE) ? Math.min(foodNeeded,  globalFood  - POOL_RESERVE) : 0;
+        const waterAmt    = (waterNeeded > 0 && globalWater > POOL_RESERVE) ? Math.min(waterNeeded, globalWater - POOL_RESERVE) : 0;
+        if (foodAmt > 0 || waterAmt > 0) this._applyRestock(inst, foodAmt, waterAmt);
+      }
+    }
+
+    if (!hasConsumers || cafInstances.length === 0) {
+      // No housing/cafeteria — no drain, no growth loop to apply
+      return;
+    }
+
+    const drainPerSec = this._totalDrainPerSec();
+
+    if (drainPerSec <= 0) {
+      // Population exists but somehow zero drain — allow growth if stocked
+      const cafStocked = cafInstances.some(c => (c.stock?.food ?? 0) > 0 && (c.stock?.water ?? 0) > 0);
+      if (cafStocked && population.current < population.cap) {
+        const headroom = 1 - (population.current / population.cap);
+        this._rm.growPopulation(POP_GROWTH_BASE * headroom * elapsedSec);
+      }
+      return;
+    }
+
+    // Total stock available across all cafeterias
+    const totalFood  = cafInstances.reduce((s, c) => s + (c.stock?.food  ?? 0), 0);
+    const totalWater = cafInstances.reduce((s, c) => s + (c.stock?.water ?? 0), 0);
+
+    // How many seconds of drain the stock could cover
+    const fedSec     = Math.min(elapsedSec, Math.min(totalFood, totalWater) / drainPerSec);
+    const starvedSec = elapsedSec - fedSec;
+
+    // Drain stock proportionally across instances for the fed period
+    if (fedSec > 0) {
+      const drainFood  = Math.min(totalFood,  drainPerSec * fedSec);
+      const drainWater = Math.min(totalWater, drainPerSec * fedSec);
+      for (const caf of cafInstances) {
+        if (!caf.stock) caf.stock = { food: 0, water: 0 };
+        if (totalFood  > 0) caf.stock.food  = Math.max(0, caf.stock.food  - drainFood  * (caf.stock.food  / totalFood));
+        if (totalWater > 0) caf.stock.water = Math.max(0, caf.stock.water - drainWater * (caf.stock.water / totalWater));
+      }
+    }
+
+    // Population growth during fed period (logistic — tapers as housing fills)
+    if (fedSec > 0 && population.current < population.cap) {
+      const headroom = 1 - (population.current / population.cap);
+      this._rm.growPopulation(POP_GROWTH_BASE * headroom * fedSec);
+    }
+
+    // Population shrinkage during starvation period
+    if (starvedSec > 0) {
+      this._rm.shrinkPopulation(0.02 * starvedSec);
+    }
+  }
+
   _autoRestock(dt) {
     if (!this._automations.cafeteriaRestock) return;
     this._autoRestockTimer += dt;

@@ -76,8 +76,9 @@ export class MarchManager {
     const check = canDispatch({
       type, poi, squad,
       slotFree: this.slotsFree() > 0,
-      squadBusy: this.isSquadMarching(squadId),
+      squadBusy: this.isSquadMarching(squadId) || (this._um.isSquadDeployed?.(squadId) ?? false),
       hostileAvailable: poi ? this._wm.isHostileAvailable(poi.id) : false,
+      regionLocked: poi ? !this._wm.isRegionUnlocked(poi.regionId) : false,
     });
     if (!check.ok) return { success: false, reason: check.reason };
 
@@ -139,6 +140,48 @@ export class MarchManager {
     if (done.length) this._marches = this._marches.filter(m => !done.includes(m.id));
   }
 
+  /**
+   * Mathematical offline catchup — advances all active marches through their phases
+   * using absolute timestamps. A march that departed, acted, and returned during the
+   * offline window is fully resolved in one pass. O(active marches), not O(ticks).
+   * @param {number} _elapsedSec - unused (timestamps are absolute)
+   * @param {number} nowMs - effective 'now' for the offline window
+   */
+  applyOffline(_elapsedSec, nowMs) {
+    if (!this._marches.length) return;
+    const done = [];
+
+    for (const m of this._marches) {
+      // Outbound → acting: resolve arrival at the actual arriveAt time
+      if (m.phase === 'outbound' && m.arriveAt <= nowMs) {
+        const poi = this._wm.getPOI(m.targetPoiId);
+        const res = resolveArrival(m, poi, { worldMapManager: this._wm, combatManager: this._cm });
+        m.payload  = res.payload ?? {};
+        m.outcome  = res.outcome;
+        m.phase    = 'acting';
+        m.actUntil = m.arriveAt + (res.dwellMs ?? 0); // cascade from arriveAt, not real-now
+        eventBus.emit('march:arrived', this._summary(m));
+      }
+
+      // Acting → returning
+      if (m.phase === 'acting' && m.actUntil <= nowMs) {
+        m.phase    = 'returning';
+        m.returnAt = m.actUntil + m.tripMs; // cascade from actUntil
+        eventBus.emit('march:returning', this._summary(m));
+      }
+
+      // Returning → done
+      if (m.phase === 'returning' && m.returnAt <= nowMs) {
+        if (m.payload && Object.keys(m.payload).length) this._rm.add(m.payload);
+        this._um.setSquadDeployed?.(m.squadId, false);
+        eventBus.emit('march:completed', this._summary(m));
+        done.push(m.id);
+      }
+    }
+
+    if (done.length) this._marches = this._marches.filter(m => !done.includes(m.id));
+  }
+
   _summary(m) {
     return {
       id: m.id, type: m.type, squadId: m.squadId, targetPoiId: m.targetPoiId,
@@ -156,6 +199,9 @@ export class MarchManager {
     this._marches = Array.isArray(state?.marches) ? state.marches : [];
     this._idSeq = state?.idSeq ?? (this._marches.reduce((mx, m) => Math.max(mx, m.id), 0) + 1);
     // Deploy flags are runtime-only — re-assert them from the restored marches.
-    for (const m of this._marches) this._um.setSquadDeployed?.(m.squadId, true);
+    // Guard against phantom squads (deleted while march was in-flight).
+    for (const m of this._marches) {
+      if (this._um.getSquad?.(m.squadId)) this._um.setSquadDeployed?.(m.squadId, true);
+    }
   }
 }

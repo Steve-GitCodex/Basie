@@ -8,7 +8,7 @@
  * Returns { outcome, payload, dwellMs }.
  */
 import { gatherDwellMs } from './marchMath.js';
-import { economicBonus } from '../world/regionBuffs.js';
+import { economicBonus, militaryMult } from '../world/regionBuffs.js';
 
 const ATTACK_DWELL_MS = 1500;
 
@@ -22,7 +22,7 @@ function _gather(march, poi, { worldMapManager }) {
   const granted = worldMapManager.takeFromNode(poi.id, march.loadCap);
   // Economic region buffs add a bonus on top of what the node yielded.
   const bonus = economicBonus(worldMapManager.activeBuffs(), poi.resource);
-  const carried = Math.floor(granted * (1 + bonus));
+  const carried = Math.min(march.loadCap, Math.floor(granted * (1 + bonus)));
   return {
     outcome: granted > 0 ? 'gathered' : 'empty',
     payload: granted > 0 ? { [poi.resource]: carried } : {},
@@ -31,12 +31,11 @@ function _gather(march, poi, { worldMapManager }) {
 }
 
 function _attack(march, poi, { worldMapManager, combatManager }) {
-  // resolveMarchBattle is added in Step 2; until then attacks resolve as a no-op
-  // so the gather flow can ship and be verified independently.
   if (typeof combatManager?.resolveMarchBattle !== 'function') {
     return { outcome: 'no_combat', payload: {}, dwellMs: ATTACK_DWELL_MS };
   }
-  const result = combatManager.resolveMarchBattle(march.squadId, poi.monsterId);
+  const milMult = militaryMult(worldMapManager.activeBuffs());
+  const result = combatManager.resolveMarchBattle(march.squadId, poi.monsterId, milMult);
   if (result?.victory) {
     worldMapManager.markHostileCleared(poi.id);
     if (poi.capturesRegion) worldMapManager.captureRegion(poi.capturesRegion);
