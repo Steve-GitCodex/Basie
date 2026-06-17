@@ -33,7 +33,10 @@ export class SettingsUI {
   // GAME SETTINGS MODAL (gear icon)
   // ══════════════════════════════════════════════════════════════════
 
-  _openSettings() {
+  // Settings now lives as a tab inside the profile modal (opened via the avatar).
+  _openSettings() { this._openProfile('settings'); }
+
+  _buildSettingsBody() {
     const s    = this._s.settings.getSettings();
     const diff = s.difficulty ?? 'normal';
     const DIFFS = [
@@ -41,13 +44,7 @@ export class SettingsUI {
       { id: 'normal', label: '🟡 Normal' },
       { id: 'hard',   label: '🔴 Hard'   },
     ];
-    openModal(`
-      <div class="modal-inner">
-        <div class="modal-top">
-          <div class="modal-icon">⚙️</div>
-          <div class="modal-title-block"><div class="modal-title">Settings</div></div>
-          <button class="modal-close">✕</button>
-        </div>
+    return `
         <div class="modal-section">
           <div class="modal-section-title">Preferences</div>
           <div style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-2) 0">
@@ -96,9 +93,10 @@ export class SettingsUI {
               <button class="btn btn-danger" id="btn-wipe-yes" style="flex:1">Yes, Delete Everything</button>
             </div>
           </div>
-        </div>
-      </div>`);
+        </div>`;
+  }
 
+  _bindSettingsBody() {
     document.getElementById('btn-toggle-sfx')?.addEventListener('click', e => {
       eventBus.emit('ui:click');
       this._s.settings.toggle('sfxEnabled');
@@ -165,6 +163,7 @@ export class SettingsUI {
       { id: 'profile',      label: '👤 Profile'     },
       { id: 'achievements', label: '🏆 Achievements' },
       { id: 'account',      label: '🔑 Account'      },
+      { id: 'settings',     label: '⚙️ Settings'     },
     ];
     const p = this._s.user?.getProfile() ?? {};
     return `
@@ -208,12 +207,14 @@ export class SettingsUI {
   _buildProfileTabContent() {
     if (this._activeTab === 'achievements') return this._buildAchievementsTab();
     if (this._activeTab === 'account')      return this._buildAccountTab();
+    if (this._activeTab === 'settings')     return this._buildSettingsBody();
     return this._buildProfileTab();
   }
 
   _bindProfileTabContent() {
     this._bindAccountHandlers();
     this._bindAchievementHandlers();
+    if (this._activeTab === 'settings') this._bindSettingsBody();
   }
 
   // ── Profile tab ────────────────────────────────────────────────────

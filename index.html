@@ -22,6 +22,7 @@
   <link rel="stylesheet" href="css/components/tabs.css" />
   <link rel="stylesheet" href="css/components/progress.css" />
   <link rel="stylesheet" href="css/components/worldmap.css" />
+  <link rel="stylesheet" href="css/components/world-view.css" />
   <link rel="stylesheet" href="css/components/battle.css" />
   <link rel="stylesheet" href="css/components/barracks.css" />
   <link rel="stylesheet" href="css/components/tooltip.css" />
@@ -33,6 +34,7 @@
   <link rel="stylesheet" href="css/components/tutorial.css" />
   <link rel="stylesheet" href="css/components/events.css" />
   <link rel="stylesheet" href="css/components/research.css" />
+  <link rel="stylesheet" href="css/components/hud.css" />
 </head>
 <body>
 
@@ -73,14 +75,10 @@
 
     <!-- HEADER -->
     <header class="game-header" id="game-header">
-      <div class="header-brand">
-        <span class="header-logo">⚔️</span>
-        <span class="header-title">BASIE</span>
-      </div>
       <!-- RESOURCE BAR -->
       <div class="resource-bar" id="resource-bar">
         <div class="resource-chip" id="res-wood" title="Wood">
-          <span class="res-icon">🪵</span>
+          <span class="res-icon res-icon--wood"></span>
           <div class="res-data">
             <span class="res-name">Wood</span>
             <span class="res-value" id="v-wood">0</span>
@@ -91,7 +89,7 @@
           </div>
         </div>
         <div class="resource-chip" id="res-stone" title="Stone">
-          <span class="res-icon">🪨</span>
+          <span class="res-icon res-icon--stone"></span>
           <div class="res-data">
             <span class="res-name">Stone</span>
             <span class="res-value" id="v-stone">0</span>
@@ -102,7 +100,7 @@
           </div>
         </div>
         <div class="resource-chip" id="res-food" title="Food">
-          <span class="res-icon">🌾</span>
+          <span class="res-icon res-icon--food"></span>
           <div class="res-data">
             <span class="res-name">Food</span>
             <span class="res-value" id="v-food">0</span>
@@ -113,7 +111,7 @@
           </div>
         </div>
         <div class="resource-chip" id="res-iron" title="Iron">
-          <span class="res-icon">⚙️</span>
+          <span class="res-icon res-icon--iron"></span>
           <div class="res-data">
             <span class="res-name">Iron</span>
             <span class="res-value" id="v-iron">0</span>
@@ -124,7 +122,7 @@
           </div>
         </div>
         <div class="resource-chip" id="res-water" title="Water">
-          <span class="res-icon">💧</span>
+          <span class="res-icon res-icon--water"></span>
           <div class="res-data">
             <span class="res-name">Water</span>
             <span class="res-value" id="v-water">0</span>
@@ -134,29 +132,8 @@
             <span class="res-rate" id="r-water">+0/s</span>
           </div>
         </div>
-        <div class="resource-chip" id="res-money" title="Money">
-          <span class="res-icon">🪙</span>
-          <div class="res-data">
-            <span class="res-name">Money</span>
-            <span class="res-value" id="v-money">0</span>
-          </div>
-          <div class="res-rate-col">
-            <span class="res-cap" id="c-money">/ 50k</span>
-            <span class="res-rate" id="r-money">+0/s</span>
-          </div>
-        </div>
-        <div class="resource-chip" id="res-diamond" title="Diamond">
-          <span class="res-icon">💎</span>
-          <div class="res-data">
-            <span class="res-name">Diamond</span>
-            <span class="res-value" id="v-diamond">0</span>
-          </div>
-          <div class="res-rate-col">
-            <span class="res-rate" id="r-diamond"></span>
-          </div>
-        </div>
         <div class="resource-chip" id="res-cafeteria" title="Cafeteria Stock" style="display:none">
-          <span class="res-icon">🍽️</span>
+          <span class="res-icon res-icon--cafeteria"></span>
           <div class="res-data">
             <span class="res-name">Cafeteria</span>
             <span class="res-value" id="v-cafeteria">0</span>
@@ -169,17 +146,23 @@
       </div>
       <!-- HEADER ACTIONS -->
       <div class="header-actions">
-        <button class="header-icon-btn buff-hud-badge hidden" id="buff-hud-badge" title="Active Buffs — click to manage" onclick="document.getElementById('nav-heroes')?.click()">
+        <button class="header-icon-btn buff-hud-badge hidden" id="buff-hud-badge" title="Active Buffs — click to manage">
           ⚗️ <span id="buff-badge-count">0</span>
           <span class="buff-badge-sep">·</span>
           <span id="buff-badge-timer"></span>
         </button>
-        <button class="header-icon-btn" id="btn-inventory" title="Inventory" aria-label="Inventory">🎒 <span class="badge badge--dot hidden" id="inventory-badge"></span></button>
-        <button class="header-icon-btn" id="btn-mail" title="Inbox" aria-label="Inbox">
-          📬 <span class="badge hidden" id="mail-badge">0</span>
-        </button>
-        <button class="header-icon-btn" id="btn-settings" title="Settings" aria-label="Settings">⚙️</button>
-        <div class="player-chip" id="player-chip">
+        <div class="resource-chip resource-chip--premium" id="res-money" title="Money">
+          <span class="res-icon res-icon--money"></span>
+          <span class="res-value" id="v-money">0</span>
+          <span class="res-rate" id="r-money"></span>
+          <span class="res-cap hidden" id="c-money"></span>
+        </div>
+        <div class="resource-chip resource-chip--premium" id="res-diamond" title="Diamond">
+          <span class="res-icon res-icon--diamond"></span>
+          <span class="res-value" id="v-diamond">0</span>
+          <span class="res-rate hidden" id="r-diamond"></span>
+        </div>
+        <div class="player-chip" id="player-chip" title="Profile & Settings">
           <span class="player-avatar" id="player-avatar">👑</span>
           <div class="player-data">
             <span class="player-name" id="player-name">Commander</span>
@@ -199,10 +182,61 @@
 
         <!-- BASE VIEW -->
         <section class="view active" id="view-base">
-          <!-- Visual base grid (the city map) -->
-          <div id="base-grid" class="base-grid"></div>
+          <!-- Isometric city map (canvas) -->
+          <div id="base-grid" class="base-grid base-grid--iso">
+            <canvas id="city-canvas"></canvas>
+            <!-- Inert positioned proxies so tutorial spotlight selectors keep working -->
+            <div id="city-proxy-layer" aria-hidden="true"></div>
+            <button id="city-home-btn" class="city-home-btn" title="Center on HQ">⌖</button>
+            <div id="city-loading" class="city-loading hidden">Loading city…</div>
+          </div>
           <!-- Hidden render target kept for JS compat -->
           <div id="buildings-grid" style="display:none" aria-hidden="true"></div>
+        </section>
+
+        <!-- WORLD VIEW — top-down march map -->
+        <section class="view hidden" id="view-world">
+          <div id="world-grid" class="world-grid">
+            <canvas id="world-canvas"></canvas>
+            <button id="world-home-btn" class="city-home-btn" title="Center on your city">⌖</button>
+
+            <!-- Active marches (top-left) -->
+            <div id="world-march-panel" class="world-marches hidden">
+              <div class="world-marches__head">Marches</div>
+              <div id="wm-list" class="world-marches__list"></div>
+            </div>
+
+            <!-- Territory legend (top-right) -->
+            <div id="world-legend" class="world-legend">
+              <div class="world-legend__head">Territory</div>
+              <div id="world-legend-list" class="world-legend__list"></div>
+            </div>
+
+            <!-- POI detail panel (slide-up) -->
+            <div id="world-poi-panel" class="world-panel hidden">
+              <div class="world-panel__head">
+                <span id="wp-icon"></span>
+                <div>
+                  <h3 id="wp-name"></h3>
+                  <span id="wp-sub" class="world-panel__sub"></span>
+                </div>
+                <button id="wp-close" class="world-panel__close" aria-label="Close">✕</button>
+              </div>
+              <div id="wp-body" class="world-panel__body"></div>
+              <div id="wp-actions" class="world-panel__actions"></div>
+            </div>
+
+            <!-- March dispatch sheet -->
+            <div id="march-sheet" class="world-sheet hidden">
+              <div class="world-sheet__head">
+                <h3 id="ms-title">Send Army</h3>
+                <button id="ms-close" class="world-panel__close" aria-label="Close" style="margin-left:auto">✕</button>
+              </div>
+              <div id="ms-squads" class="world-sheet__squads"></div>
+              <div id="ms-eta" class="world-sheet__eta"></div>
+              <button id="ms-dispatch" class="world-sheet__go" disabled>March</button>
+            </div>
+          </div>
         </section>
         <!-- Hover tooltip for building tiles (singleton, body-level) -->
         <div id="tile-tooltip" class="tile-tooltip" role="tooltip"></div>
@@ -408,36 +442,87 @@
           <div id="events-list"></div>
         </section>
       </main>
+
+      <!-- BUILDABLES INVENTORY (catalog overlay — More grid "Build" or empty-plot tap) -->
+      <div id="buildables-panel" class="buildables-panel hidden" role="dialog" aria-modal="true" aria-label="Buildables">
+        <div class="bp-sheet">
+          <div class="bp-head">
+            <h2 class="bp-title" id="bp-title">Buildables</h2>
+            <button class="bp-close" id="bp-close" aria-label="Close">×</button>
+          </div>
+          <div class="bp-controls">
+            <input type="search" id="bp-search" class="bp-search" placeholder="Search buildings…" aria-label="Search buildings" />
+            <div class="bp-group-tabs" id="bp-group" role="tablist">
+              <button class="bp-group-tab active" data-group="zone">Zone</button>
+              <button class="bp-group-tab" data-group="function">Function</button>
+              <button class="bp-group-tab" data-group="status">Status</button>
+            </div>
+            <select id="bp-sort" class="bp-sort" aria-label="Sort">
+              <option value="recommended">Recommended</option>
+              <option value="cost-asc">Cost ↑</option>
+              <option value="cost-desc">Cost ↓</option>
+              <option value="alpha">A–Z</option>
+            </select>
+          </div>
+          <div class="bp-body" id="bp-body"></div>
+        </div>
+      </div>
+
+      <!-- BUILDING INFO PAGE (full overlay opened from a tile's "Details" button) -->
+      <div id="building-info-overlay" class="binfo-overlay hidden" role="dialog" aria-modal="true" aria-label="Building details">
+        <div class="binfo-sheet">
+          <button class="binfo-close" id="binfo-close" aria-label="Close">×</button>
+          <div class="binfo-body" id="binfo-body"></div>
+        </div>
+      </div>
     </div>
 
-    <!-- BOTTOM TAB BAR (replaces sidebar) -->
-    <nav class="bottom-tab-bar" id="game-sidebar" aria-label="Game Navigation">
-      <button class="nav-btn active" data-view="base"     id="nav-base"     aria-label="Base">
-        <span class="nav-icon">🏰</span><span class="nav-label">Base</span>
+    <!-- FLOATING CONTROL CLUSTER — Inventory · Base⇄World flip · Mail (bottom center) -->
+    <div class="floating-dock" id="floating-dock" aria-label="Game Navigation">
+      <button class="dock-btn" id="btn-inventory" title="Inventory" aria-label="Inventory">
+        <span class="dock-emoji">🎒</span>
+        <span class="badge badge--dot hidden" id="inventory-badge"></span>
       </button>
-      <button class="nav-btn"        data-view="military" id="nav-military" aria-label="Military">
-        <span class="nav-icon">⚔️</span><span class="nav-label">Military</span>
+      <button class="dock-flip" id="nav-flip" aria-label="Switch between Base and World">
+        <span class="nav-icon nav-icon--world" id="flip-icon"></span>
+        <span class="dock-flip__label" id="flip-label">World</span>
       </button>
-      <button class="nav-btn"        data-view="heroes"   id="nav-heroes"   aria-label="Heroes">
-        <span class="nav-icon">🦸</span><span class="nav-label">Heroes</span>
+      <button class="dock-btn" id="btn-mail" title="Inbox" aria-label="Inbox">
+        <span class="dock-emoji">📬</span>
+        <span class="badge hidden" id="mail-badge">0</span>
       </button>
-      <button class="nav-btn"        data-view="combat"   id="nav-combat"   aria-label="Combat">
-        <span class="nav-icon">🔥</span><span class="nav-label">Combat</span>
+    </div>
+
+    <!-- MORE FAB (bottom right) — opens a grid of meta destinations -->
+    <div class="more-fab" id="more-fab">
+      <button class="more-fab__btn" id="nav-more" aria-haspopup="true" aria-expanded="false" aria-label="More">
+        <span class="nav-icon nav-icon--more"></span>
+        <span class="more-fab__dot hidden" id="nav-more-dot"></span>
       </button>
-      <button class="nav-btn"        data-view="research" id="nav-research" aria-label="Research">
-        <span class="nav-icon">🔬</span><span class="nav-label">Research</span>
-      </button>
-      <button class="nav-btn"        data-view="quests"   id="nav-quests"   aria-label="Quests">
-        <span class="nav-icon">📜</span><span class="nav-label">Quests</span>
-      </button>
-      <button class="nav-btn"        data-view="economy"  id="nav-economy"  aria-label="Economy">
-        <span class="nav-icon">🏪</span><span class="nav-label">Economy</span>
-      </button>
-      <button class="nav-btn"        data-view="events"   id="nav-events"   aria-label="Events">
-        <span class="nav-icon">🎉</span><span class="nav-label">Events</span>
-        <span class="badge hidden" id="events-badge">!</span>
-      </button>
-    </nav>
+      <div class="more-grid" id="nav-more-menu" role="menu">
+        <button class="nav-btn" id="nav-build" aria-label="Build" role="menuitem">
+          <span class="nav-icon nav-icon--build"></span><span class="nav-label">Build</span>
+          <span class="grid-dot hidden" id="nav-build-dot"></span>
+        </button>
+        <button class="nav-btn" data-view="quests" id="nav-quests" aria-label="Quests" role="menuitem">
+          <span class="nav-icon nav-icon--quests"></span><span class="nav-label">Quests</span>
+        </button>
+        <button class="nav-btn" data-view="combat" id="nav-combat" aria-label="Combat" role="menuitem">
+          <span class="nav-icon nav-icon--combat"></span><span class="nav-label">Combat</span>
+        </button>
+        <button class="nav-btn" data-view="economy" id="nav-economy" aria-label="Economy" role="menuitem">
+          <span class="nav-icon nav-icon--economy"></span><span class="nav-label">Economy</span>
+        </button>
+        <button class="nav-btn" data-view="events" id="nav-events" aria-label="Events" role="menuitem">
+          <span class="nav-icon nav-icon--events"></span><span class="nav-label">Events</span>
+          <span class="badge hidden" id="events-badge">!</span>
+        </button>
+        <button class="nav-btn nav-btn--soon" id="nav-arena" aria-label="Arena (coming soon)" role="menuitem" disabled>
+          <span class="nav-icon nav-icon--arena"></span><span class="nav-label">Arena</span>
+          <span class="nav-soon-tag">soon</span>
+        </button>
+      </div>
+    </div>
 
     <!-- STATUS BAR (kept for JS compatibility, visually hidden) -->
     <div class="game-statusbar hidden" id="game-statusbar" aria-hidden="true">

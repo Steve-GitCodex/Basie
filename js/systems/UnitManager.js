@@ -22,6 +22,8 @@ export class UnitManager {
     /** @type {Map<string, {id: string, name: string, units: Map<string, number>, slotUnitLinks: Map<number, string>}>} squadId -> squad */
     this._squads = new Map();
     this._squadCounter = 1;
+    /** @type {Set<string>} squadIds currently away on a world-map march (runtime-only; MarchManager re-asserts on load) */
+    this._deployedSquads = new Set();
     /** @type {Map<string, Array<{count, endsAt, name, icon, tier, tierKey, type?, fromTierKey?, cost}>>} buildingId -> linear queue (max 3, item[0] is active) */
     this._queues = new Map();
     // VIP perk: stacking train time reduction
@@ -107,6 +109,67 @@ export class UnitManager {
     if (queueChanged) {
       eventBus.emit('unit:queueUpdated', this.getAllQueues());
     }
+  }
+
+  /**
+   * Computes the training duration in ms for a queue item.
+   * Mirrors the cascade logic in update() so both paths stay in sync.
+   * @private
+   */
+  _computeTrainMs(item, buildingId) {
+    const { unitId, tier } = this._parseTierKey(item.tierKey);
+    const cfg      = UNITS_CONFIG[unitId];
+    const tierCfg  = cfg?.tiers?.[tier - 1] ?? cfg;
+    const bldgLevel  = this._bm.getLevelOf(buildingId);
+    const bldgCfg    = BUILDINGS_CONFIG[buildingId];
+    const slotIdx    = bldgCfg?.trainingSlots ? Math.min(bldgLevel - 1, bldgCfg.trainingSlots.length - 1) : -1;
+    const slotEntry  = slotIdx >= 0 ? bldgCfg.trainingSlots[slotIdx] : null;
+    const timeMult   = slotEntry?.trainTimeMultiplier ?? 1;
+    const durSec     = item.type === 'upgrade'
+      ? (tierCfg?.upgradeTime ?? Math.ceil((tierCfg?.trainTime ?? 10) * 0.35))
+      : (tierCfg?.trainTime ?? 10);
+    return durSec * 1000 * item.count * this._vipTrainMultiplier * timeMult;
+  }
+
+  /**
+   * Mathematical offline catchup — completes any training queue items whose `endsAt`
+   * falls within the offline window, cascading each completion to the next item.
+   * O(total queue depth across all buildings), not O(ticks).
+   * @param {number} _elapsedSec - unused (timestamps are absolute)
+   * @param {number} nowMs - effective 'now' for the offline window
+   */
+  applyOffline(_elapsedSec, nowMs) {
+    let anyChanged = false;
+
+    for (const [buildingId, queueArray] of this._queues.entries()) {
+      while (queueArray.length > 0 && (queueArray[0].endsAt ?? Infinity) <= nowMs) {
+        const item = queueArray.shift();
+
+        if (item.type === 'upgrade') {
+          const fromCount = this._reserve.get(item.fromTierKey) ?? 0;
+          this._reserve.set(item.fromTierKey, Math.max(0, fromCount - item.count));
+          const toCount = this._reserve.get(item.tierKey) ?? 0;
+          this._reserve.set(item.tierKey, toCount + item.count);
+        } else {
+          const existing = this._reserve.get(item.tierKey) ?? 0;
+          this._reserve.set(item.tierKey, existing + item.count);
+        }
+
+        // Cascade: start the next item from this item's completion time
+        if (queueArray.length > 0) {
+          const next     = queueArray[0];
+          const trainMs  = this._computeTrainMs(next, buildingId);
+          next.startedAt = item.endsAt;
+          next.endsAt    = item.endsAt + trainMs;
+        }
+
+        eventBus.emit('unit:trained', { tierKey: item.tierKey, count: item.count });
+        eventBus.emit('army:updated');
+        anyChanged = true;
+      }
+    }
+
+    if (anyChanged) eventBus.emit('unit:queueUpdated', this.getAllQueues());
   }
 
   /**
@@ -427,8 +490,18 @@ export class UnitManager {
         if (!cfg || !tierCfg) continue;
         units.push({ unitId, tier, tierKey, count, name: tierCfg.name, icon: cfg.icon, category: cfg.category, stats: tierCfg.stats, buildingId: cfg.buildingId });
       }
-      return { ...s, units, slotUnitLinks: s.slotUnitLinks ?? new Map(), slotUnits: s.slotUnits ?? new Map() };
+      return { ...s, units, deployed: this._deployedSquads.has(s.id), slotUnitLinks: s.slotUnitLinks ?? new Map(), slotUnits: s.slotUnits ?? new Map() };
     });
+  }
+
+  /** Mark/unmark a squad as away on a world-map march (runtime-only). */
+  setSquadDeployed(squadId, deployed) {
+    if (deployed) this._deployedSquads.add(squadId);
+    else this._deployedSquads.delete(squadId);
+  }
+
+  isSquadDeployed(squadId) {
+    return this._deployedSquads.has(squadId);
   }
 
   getSquad(squadId) {
@@ -443,7 +516,7 @@ export class UnitManager {
       if (!cfg || !tierCfg) continue;
       units.push({ unitId, tier, tierKey, count, name: tierCfg.name, icon: cfg.icon, category: cfg.category, stats: tierCfg.stats, buildingId: cfg.buildingId });
     }
-    return { ...squad, units, slotUnitLinks: squad.slotUnitLinks ?? new Map(), slotUnits: squad.slotUnits ?? new Map() };
+    return { ...squad, units, deployed: this._deployedSquads.has(squad.id), slotUnitLinks: squad.slotUnitLinks ?? new Map(), slotUnits: squad.slotUnits ?? new Map() };
   }
 
   /**

@@ -21,15 +21,13 @@ const RARITY_META = {
   legendary: { label: 'Legendary', color: 'var(--clr-tier-legendary)' },
 };
 
-const TYPE_GROUPS = [
-  { type: 'speed_boost',         label: '⏩ Speed Boosts' },
-  { type: 'resource_bundle',     label: '📦 Resource Bundles' },
-  { type: 'buff',                label: '⚗️ Buffs' },
-  { type: 'xp_bundle',           label: '📖 XP Bundles' },
-  { type: 'recruitment_scroll',  label: '🎲 Recruitment Scrolls' },
-  { type: 'hero_card',           label: '🃏 Hero Cards' },
-  { type: 'hero_card_universal', label: '🎴 Universal Hero Cards' },
-  { type: 'hero_fragment',       label: '🔮 Hero Fragments' },
+// Item types grouped into the top tab bar (each tab shows a count badge).
+const TABS = [
+  { id: 'special',  label: '🎁 Special',  types: ['hero_card', 'hero_card_universal', 'hero_fragment'] },
+  { id: 'resource', label: '📦 Resource', types: ['resource_bundle'] },
+  { id: 'speedup',  label: '⏩ Speedup',  types: ['speed_boost'] },
+  { id: 'boost',    label: '⚗️ Boost',    types: ['buff', 'xp_bundle'] },
+  { id: 'scroll',   label: '🎲 Scroll',   types: ['recruitment_scroll'] },
 ];
 
 export class InventoryUI {
@@ -41,6 +39,8 @@ export class InventoryUI {
     this._newItemIds    = new Set(); // item-type reward IDs shown with gold highlight
     this._hasNewRewards = false;     // true if any reward arrived while panel was closed
     this._clearNewTimer = null;
+    this._activeTab      = null;     // selected tab id (reset on close → re-evaluated on open)
+    this._selectedItemId = null;     // tile whose detail popover is shown
   }
 
   // ─────────────────────────────────────────────
@@ -97,6 +97,8 @@ export class InventoryUI {
     const overlay = document.getElementById('inventory-panel-overlay');
     const panel   = document.getElementById('inventory-panel');
     if (!overlay || !panel) return;
+    // Toggle: tapping the dock button again closes the panel.
+    if (this._isOpen()) { this._close(); return; }
     overlay.classList.add('open');
     panel.classList.add('open');
     this._render();
@@ -117,6 +119,8 @@ export class InventoryUI {
     clearTimeout(this._clearNewTimer);
     this._newItemIds.clear();
     this._hasNewRewards = false;
+    this._activeTab = null;
+    this._selectedItemId = null;
     this._updateInventoryBadge();
   }
 
@@ -134,66 +138,98 @@ export class InventoryUI {
       this._s.heroes?.getRosterWithState?.().filter(h => h.isOwned).map(h => h.id) ?? []
     );
 
-    const groups = TYPE_GROUPS
-      .map(g => ({ ...g, items: allItems.filter(i => i.type === g.type && i.quantity > 0) }))
-      .filter(g => g.items.length > 0);
-
-    let bodyHtml = '';
-
+    // Empty inventory — no tabs/grid.
     if (ownedItems.length === 0) {
-      bodyHtml = `
-        <div class="inv-empty">
-          <div class="inv-empty-icon">🎒</div>
-          <div class="inv-empty-title">Your inventory is empty</div>
-          <div class="inv-empty-sub">Buy items from the <strong>🛒 Shop</strong> tab.</div>
+      panel.innerHTML = `
+        ${this._headerHtml()}
+        <div class="inv-panel-body">
+          <div class="inv-empty">
+            <div class="inv-empty-icon">🎒</div>
+            <div class="inv-empty-title">Your inventory is empty</div>
+            <div class="inv-empty-sub">Buy items from the <strong>🛒 Shop</strong> tab.</div>
+          </div>
         </div>`;
-    } else {
-      for (let gi = 0; gi < groups.length; gi++) {
-        const group    = groups[gi];
-        // Auto-expand if first group OR if it contains a newly granted item.
-        const hasNew   = group.items.some(i => this._newItemIds.has(i.id));
-        const expanded = gi === 0 || hasNew;
-        const totalQty = group.items.reduce((s, i) => s + i.quantity, 0);
-        bodyHtml += `
-          <div class="inv-group">
-            <button class="inv-group-hdr${expanded ? '' : ' collapsed'}" aria-expanded="${expanded ? 'true' : 'false'}">
-              <span class="inv-group-label-text">${group.label}</span>
-              <span class="inv-group-count">×${totalQty}</span>
-              <span class="inv-group-chevron">▾</span>
-            </button>
-            <div class="inv-cards-wrap${expanded ? '' : ' hidden'}">`;
-        for (const item of group.items) {
-          const rarityM    = RARITY_META[item.rarity] ?? {};
-          const rarityHtml = rarityM.label
-            ? `<div class="inv-card-rarity" style="color:${rarityM.color}">${rarityM.label}</div>`
-            : '';
-          const isNew = this._newItemIds.has(item.id);
-          bodyHtml += `
-            <div class="inv-card${isNew ? ' inv-card--new' : ''}" data-item-id="${item.id}">
-              <div class="inv-card-top">
-                <span class="inv-card-icon">${item.icon}</span>
-                <div class="inv-card-info">
-                  <div class="inv-card-name">${item.name}</div>
-                  ${rarityHtml}
-                </div>
-                <span class="inv-card-qty">×${item.quantity}</span>
-              </div>
-              ${item.description ? `<div class="inv-card-desc">${item.description}</div>` : ''}
-              <div class="inv-card-action">${this._buildActionHtml(item, ownedHeroIds)}</div>
-            </div>`;
-        }
-        bodyHtml += `</div></div>`;
-      }
+      this._bindListeners(panel);
+      return;
     }
 
+    // Per-tab item buckets + count badges.
+    const tabs = TABS.map(t => {
+      const items = ownedItems.filter(i => t.types.includes(i.type));
+      return { ...t, items, count: items.reduce((s, i) => s + i.quantity, 0) };
+    });
+    const nonEmpty = tabs.filter(t => t.items.length > 0);
+
+    // Choose the active tab: keep the current one if it still has items, else
+    // prefer a tab holding a newly granted item, else the first non-empty tab.
+    if (!this._activeTab || !nonEmpty.some(t => t.id === this._activeTab)) {
+      const newTab = nonEmpty.find(t => t.items.some(i => this._newItemIds.has(i.id)));
+      this._activeTab = (newTab ?? nonEmpty[0] ?? tabs[0]).id;
+      this._selectedItemId = null;
+    }
+    const active = tabs.find(t => t.id === this._activeTab);
+
+    const tabsHtml = tabs.map(t => `
+      <button class="inv-tab${t.id === this._activeTab ? ' inv-tab--active' : ''}"
+              data-tab="${t.id}" ${t.items.length ? '' : 'disabled'}>
+        <span class="inv-tab__label">${t.label}</span>
+        ${t.count ? `<span class="inv-tab__count">${t.count}</span>` : ''}
+      </button>`).join('');
+
+    const gridHtml = active.items.map(item => {
+      const isNew = this._newItemIds.has(item.id);
+      const sel   = this._selectedItemId === item.id;
+      const rarity = RARITY_META[item.rarity] ? item.rarity : 'common';
+      return `
+        <button class="inv-tile inv-tile--${rarity}${isNew ? ' inv-tile--new' : ''}${sel ? ' inv-tile--selected' : ''}"
+                data-item-id="${item.id}" title="${item.name}">
+          <span class="inv-tile__icon">${item.icon}</span>
+          <span class="inv-tile__qty">${item.quantity}</span>
+        </button>`;
+    }).join('');
+
+    // Detail popover for the selected tile (reuses the existing action builder).
+    const selItem = this._selectedItemId
+      ? active.items.find(i => i.id === this._selectedItemId)
+      : null;
+    const detailHtml = selItem ? this._detailHtml(selItem, ownedHeroIds) : '';
+
     panel.innerHTML = `
+      ${this._headerHtml()}
+      <div class="inv-tabs">${tabsHtml}</div>
+      <div class="inv-panel-body">
+        <div class="inv-grid">${gridHtml}</div>
+      </div>
+      ${detailHtml}`;
+
+    this._bindListeners(panel);
+  }
+
+  _headerHtml() {
+    return `
       <div class="inv-panel-header">
         <span class="inv-panel-title">🎒 Inventory</span>
         <button class="btn btn-sm btn-ghost" id="inv-panel-close">✕</button>
-      </div>
-      <div class="inv-panel-body">${bodyHtml}</div>`;
+      </div>`;
+  }
 
-    this._bindListeners(panel);
+  _detailHtml(item, ownedHeroIds) {
+    const rarityM = RARITY_META[item.rarity] ?? {};
+    const meta = rarityM.label
+      ? `<span style="color:${rarityM.color}">${rarityM.label}</span> · ×${item.quantity}`
+      : `×${item.quantity}`;
+    return `
+      <div class="inv-detail">
+        <div class="inv-detail__head">
+          <span class="inv-detail__icon">${item.icon}</span>
+          <div class="inv-detail__info">
+            <div class="inv-detail__name">${item.name}</div>
+            <div class="inv-detail__meta">${meta}</div>
+          </div>
+        </div>
+        ${item.description ? `<div class="inv-detail__desc">${item.description}</div>` : ''}
+        <div class="inv-card-action">${this._buildActionHtml(item, ownedHeroIds)}</div>
+      </div>`;
   }
 
   _buildActionHtml(item, ownedHeroIds) {
@@ -286,13 +322,23 @@ export class InventoryUI {
       this._close();
     });
 
-    // ── Collapse toggles ──────────────────────────────────────────────────
-    panel.querySelectorAll('.inv-group-hdr').forEach(hdr => {
-      hdr.addEventListener('click', () => {
-        const isOpen = hdr.getAttribute('aria-expanded') === 'true';
-        hdr.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
-        hdr.classList.toggle('collapsed', isOpen);
-        hdr.nextElementSibling?.classList.toggle('hidden', isOpen);
+    // ── Tab switching ─────────────────────────────────────────────────────
+    panel.querySelectorAll('.inv-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        eventBus.emit('ui:click');
+        this._activeTab = tab.dataset.tab;
+        this._selectedItemId = null;
+        this._render();
+      });
+    });
+
+    // ── Tile selection → show detail popover ──────────────────────────────
+    panel.querySelectorAll('.inv-tile').forEach(tile => {
+      tile.addEventListener('click', () => {
+        eventBus.emit('ui:click');
+        const id = tile.dataset.itemId;
+        this._selectedItemId = this._selectedItemId === id ? null : id;
+        this._render();
       });
     });
 
@@ -372,7 +418,7 @@ export class InventoryUI {
       btn.addEventListener('click', e => {
         eventBus.emit('ui:click');
         const itemId = e.currentTarget.dataset.item;
-        const card   = e.currentTarget.closest('.inv-card');
+        const card   = e.currentTarget.closest('.inv-detail');
         this._showHeroPicker(itemId, card);
       });
     });

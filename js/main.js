@@ -29,6 +29,8 @@ import { ChallengeManager }    from './systems/ChallengeManager.js';
 import { StoryManager }        from './systems/StoryManager.js';
 import { TutorialManager }     from './systems/TutorialManager.js';
 import { EventManager }        from './systems/EventManager.js';
+import { WorldMapManager }     from './systems/world/WorldMapManager.js';
+import { MarchManager }        from './systems/march/MarchManager.js';
 import { UIManager }           from './ui/UIManager.js';
 import { TimerService }        from './ui/TimerService.js';
 import { TooltipService }      from './ui/TooltipService.js';
@@ -77,6 +79,8 @@ const challengeManager    = new ChallengeManager(resourceManager, mailManager, i
 const storyManager = new StoryManager();
 const tutorialManager = new TutorialManager(userManager);
 const eventManager = new EventManager(resourceManager, mailManager, inventoryManager, userManager);
+const worldMapManager = new WorldMapManager();
+const marchManager    = new MarchManager(unitManager, combatManager, resourceManager, worldMapManager, buildingManager);
 
 // Wire InventoryManager into MailManager so mail attachment claims go to inventory
 mailManager.setInventoryManager(inventoryManager);
@@ -129,6 +133,8 @@ engine.registerSystem(challengeManager);
 engine.registerSystem(userManager);
 engine.registerSystem(achievementManager);
 engine.registerSystem(eventManager);
+engine.registerSystem(worldMapManager);
+engine.registerSystem(marchManager);
 
 // =============================================
 // SERIALIZATION
@@ -150,6 +156,8 @@ function getGameState() {
     challenges:   challengeManager.serialize(),
     story:        storyManager.serialize(),
     events:       eventManager.serialize(),
+    worldMap:     worldMapManager.serialize(),
+    march:        marchManager.serialize(),
     gameMode:     engine.gameMode,
     lastSavedTimestamp: Date.now(),
   };
@@ -174,6 +182,8 @@ function applyGameState(state) {
   challengeManager.deserialize(state.challenges);
   storyManager.deserialize(state.story);
   eventManager.deserialize(state.events);
+  if (state.worldMap) worldMapManager.deserialize(state.worldMap);
+  if (state.march)    marchManager.deserialize(state.march);
 }
 
 // =============================================
@@ -416,6 +426,8 @@ function launchGame(authScreen, gameShell, externalState = null) {
     achievements:  achievementManager,
     challenges:    challengeManager,
     events:        eventManager,
+    worldMap:      worldMapManager,
+    march:         marchManager,
     notifications: notificationManager,
     sound:        soundManager,
     story:        storyManager,
@@ -596,6 +608,8 @@ function launchGame(authScreen, gameShell, externalState = null) {
     clearSave:  () => saveManager.clear?.(),
     challenges: challengeManager,
     events:     eventManager,
+    worldMap:   worldMapManager,
+    march:      marchManager,
   };
 
   console.log('[Basie] 🏰 Phase 4 launched!');

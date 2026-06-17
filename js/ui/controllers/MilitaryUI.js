@@ -31,6 +31,8 @@ export class MilitaryUI {
   init() {
     this._bindBuildingTabs();
     eventBus.on('ui:viewChanged',    v => { if (v === 'military') this.render(); });
+    // Open the Training view pre-selected to a specific trainer (from a building click)
+    eventBus.on('ui:openTraining',   ({ buildingId } = {}) => this._focusBuilding(buildingId));
     eventBus.on('unit:queueUpdated', q  => this._renderTrainingQueue(q));
     eventBus.on('army:updated',      () => this._renderReserveUnits(this._activeBuildingId));
     eventBus.on('building:completed',() => this.render());
@@ -68,6 +70,22 @@ export class MilitaryUI {
         this._renderReserveUnits(this._activeBuildingId);
       });
     });
+  }
+
+  /**
+   * Open the Training view focused on a specific trainer building. Called from
+   * a building click via the `ui:openTraining` event.
+   */
+  _focusBuilding(buildingId) {
+    if (buildingId && MILITARY_BUILDINGS.some(b => b.id === buildingId)) {
+      this._activeBuildingId = buildingId;
+    }
+    // NavigationUI handles showing the Training sub-tab; here we just select the
+    // chosen trainer and re-render (works whether the view is visible yet or not).
+    document.querySelectorAll('.military-building-tab').forEach(b =>
+      b.classList.toggle('active', b.dataset.building === this._activeBuildingId));
+    this._renderBuildingStatus();
+    this._renderReserveUnits(this._activeBuildingId);
   }
 
   _renderBuildingStatus() {

@@ -84,6 +84,51 @@ export class TechnologyManager {
     }
   }
 
+  /**
+   * Mathematical offline catchup — completes any research items whose `researchEndsAt`
+   * falls within the offline window, cascading each completion to the next queued tech.
+   * O(queue_depth), not O(ticks).
+   * @param {number} _elapsedSec - unused (timestamps are absolute)
+   * @param {number} nowMs - effective 'now' for the offline window
+   */
+  applyOffline(_elapsedSec, nowMs) {
+    let anyCompleted = false;
+
+    while (this._queue.length > 0) {
+      const activeId = this._queue[0];
+      const state    = this._state.get(activeId);
+      if (!state?.researchEndsAt || state.researchEndsAt > nowMs) break;
+
+      const completedAt    = state.researchEndsAt;
+      state.researchEndsAt = null;
+      state.startedAt      = null;
+      state.level         += 1;
+
+      const cfg = TECH_CONFIG[activeId];
+      this._applyEffects(cfg);
+      eventBus.emit('tech:researched', { id: activeId, name: cfg.name, level: state.level, effects: cfg.effects });
+
+      this._queue.shift();
+
+      // Cascade: start the next item from this item's completion time (not Date.now())
+      if (this._queue.length > 0) {
+        const nextId    = this._queue[0];
+        const nextState = this._state.get(nextId);
+        const nextCfg   = TECH_CONFIG[nextId];
+        const timeSec   = Math.ceil(this._timeForLevel(nextCfg, nextState.level + 1) * this._vipResearchMultiplier);
+        nextState.startedAt      = completedAt;
+        nextState.researchEndsAt = completedAt + timeSec * 1000;
+      }
+
+      anyCompleted = true;
+    }
+
+    if (anyCompleted) {
+      eventBus.emit('tech:updated',      this.getTechWithState());
+      eventBus.emit('tech:queueUpdated', this.getQueue());
+    }
+  }
+
   // ─────────────────────────────────────────────
   // Public actions
   // ─────────────────────────────────────────────

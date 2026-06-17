@@ -1,0 +1,383 @@
+/**
+ * BuildQueueSidebar.js
+ * Renders the fixed-right activity sidebar (#build-queue-panel): three queue
+ * sections — BUILD, RESEARCH, TRAINING — each listing active + queued items with
+ * progress, cancel/refund and speed-up actions, plus the shared speed-up picker.
+ *
+ * Extracted from BuildingsUI. Self-contained: reads queue state from the build /
+ * tech / unit managers and acts via EventBus + manager calls; the host re-invokes
+ * render() on queue events.
+ */
+import { eventBus } from '../../core/EventBus.js';
+
+export class BuildQueueSidebar {
+  /** @param {{ bm, tm, um, inventory, notifications }} deps */
+  constructor({ bm, tm, um, inventory, notifications }) {
+    this._bm            = bm;
+    this._tm            = tm;
+    this._um            = um;
+    this._inventory     = inventory;
+    this._notifications = notifications;
+  }
+
+  render() {
+    const panel = document.getElementById('build-queue-panel');
+    if (!panel) return;
+
+    panel.innerHTML = '';
+    panel.appendChild(this._buildBuildSection());
+    panel.appendChild(this._buildResearchSection());
+    panel.appendChild(this._buildTrainingSection());
+
+    // Badge = total active items across all queues
+    const buildActive    = (this._bm?.getBuildQueue() ?? []).length;
+    const researchActive = (this._tm?.getQueue()      ?? []).length;
+    const trainActive    = (this._um?.getAllQueues()   ?? []).length;
+    const total = buildActive + researchActive + trainActive;
+    const countEl = document.getElementById('bq-toggle-count');
+    if (countEl) countEl.textContent = total > 0 ? String(total) : '0';
+  }
+
+  _buildBuildSection() {
+    const bm       = this._bm;
+    const queue    = bm.getBuildQueue();
+    const maxSlots = bm.getMaxBuildSlots();
+    const slotInfo = bm.getBuildSlotInfo();
+    const now      = Date.now();
+
+    const section = document.createElement('div');
+    section.className = 'aq-section';
+
+    const header = document.createElement('div');
+    header.className = 'aq-section-header aq-section-header--build';
+    header.innerHTML = `<span class="aq-section-icon">🏗️</span><span class="aq-section-title">BUILD</span><span class="aq-section-count">${queue.length}/${maxSlots}</span>`;
+    section.appendChild(header);
+
+    const items = document.createElement('div');
+    items.className = 'aq-items';
+
+    // Active + queued items
+    for (const queueItem of queue) {
+      const cfg = queueItem.cfg ?? {};
+      const el  = document.createElement('div');
+
+      if (queueItem.isActive) {
+        const startedAt = queueItem.startedAt ?? 0;
+        const endsAt    = queueItem.endsAt    ?? 0;
+        const pct       = endsAt ? Math.max(0, Math.min(100, ((now - startedAt) / (endsAt - startedAt)) * 100)) : 0;
+        const secsLeft  = endsAt ? Math.max(0, Math.ceil((endsAt - now) / 1000)) : 0;
+        el.className = 'aq-slot aq-slot--active';
+        el.innerHTML = `
+          <div class="aq-slot-row">
+            <span class="aq-slot-icon">${cfg.icon ?? '🏗️'}</span>
+            <div class="aq-slot-info">
+              <div class="aq-slot-name">${cfg.name ?? queueItem.buildingId}</div>
+              <div class="aq-slot-sub">→ Lv.${queueItem.pendingLevel}</div>
+            </div>
+            <div class="aq-slot-actions">
+              <button class="aq-speed-btn" title="Speed Up">⏩</button>
+              <button class="aq-cancel-btn" title="Cancel &amp; refund">✕</button>
+            </div>
+          </div>
+          <div class="progress-container aq-progress" data-timer-start="${startedAt}" data-timer-end="${endsAt}">
+            <div class="progress-label aq-progress-label">
+              <span class="progress-time-label">${secsLeft}s</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill progress-fill-primary" style="width:${pct}%"></div></div>
+          </div>`;
+        el.querySelector('.aq-cancel-btn')?.addEventListener('click', e => {
+          e.stopPropagation();
+          eventBus.emit('ui:click');
+          const r = bm.cancelBuild(0);
+          if (!r.success) this._notifications?.show('warning', 'Cannot Cancel', r.reason);
+        });
+        el.querySelector('.aq-speed-btn')?.addEventListener('click', e => {
+          e.stopPropagation();
+          eventBus.emit('ui:click');
+          this._openSpeedupPicker(el, 'building', secsLeft);
+        });
+      } else {
+        el.className = 'aq-slot aq-slot--queued';
+        el.innerHTML = `
+          <div class="aq-slot-row">
+            <span class="aq-slot-icon">${cfg.icon ?? '🏗️'}</span>
+            <div class="aq-slot-info">
+              <div class="aq-slot-name">${cfg.name ?? queueItem.buildingId}</div>
+              <div class="aq-slot-sub">→ Lv.${queueItem.pendingLevel} · #${queueItem.queuePosition + 1}</div>
+            </div>
+            <button class="aq-cancel-btn" title="Cancel &amp; refund">✕</button>
+          </div>`;
+        const pos = queueItem.queuePosition;
+        el.querySelector('.aq-cancel-btn')?.addEventListener('click', e => {
+          e.stopPropagation();
+          eventBus.emit('ui:click');
+          const r = bm.cancelBuild(pos);
+          if (!r.success) this._notifications?.show('warning', 'Cannot Cancel', r.reason);
+        });
+      }
+      items.appendChild(el);
+    }
+
+    // Show empty state only if all unlocked slots are empty
+    if (queue.length === 0) {
+      const emptyEl = document.createElement('div');
+      emptyEl.className = 'aq-empty';
+      emptyEl.textContent = 'No builds queued';
+      items.appendChild(emptyEl);
+    }
+
+    // Summarize locked slots compactly
+    const lockedCount = slotInfo.filter(s => !s.unlocked).length;
+    if (lockedCount > 0) {
+      const lockEl = document.createElement('div');
+      lockEl.className = 'aq-locked-summary';
+      lockEl.innerHTML = `🔒 ${lockedCount} slot${lockedCount > 1 ? 's' : ''} locked`;
+      items.appendChild(lockEl);
+    }
+
+    section.appendChild(items);
+    return section;
+  }
+
+  _buildResearchSection() {
+    const tm    = this._tm;
+    const queue = tm ? tm.getQueue() : [];
+    const now   = Date.now();
+
+    const section = document.createElement('div');
+    section.className = 'aq-section';
+
+    const header = document.createElement('div');
+    header.className = 'aq-section-header aq-section-header--research';
+    header.innerHTML = `<span class="aq-section-icon">🔬</span><span class="aq-section-title">RESEARCH</span><span class="aq-section-count">${queue.length}</span>`;
+    section.appendChild(header);
+
+    const items = document.createElement('div');
+    items.className = 'aq-items';
+
+    if (!tm || queue.length === 0) {
+      const emptyEl = document.createElement('div');
+      emptyEl.className = 'aq-empty';
+      emptyEl.textContent = 'No research active';
+      items.appendChild(emptyEl);
+    } else {
+      for (const item of queue) {
+        const el = document.createElement('div');
+        if (item.isActive && item.researchEndsAt) {
+          const pct      = Math.max(0, Math.min(100, ((now - (item.startedAt ?? 0)) / (item.researchEndsAt - (item.startedAt ?? 0))) * 100));
+          const secsLeft = Math.max(0, Math.ceil((item.researchEndsAt - now) / 1000));
+          el.className = 'aq-slot aq-slot--active';
+          el.innerHTML = `
+            <div class="aq-slot-row">
+              <span class="aq-slot-icon">${item.icon ?? '🔬'}</span>
+              <div class="aq-slot-info">
+                <div class="aq-slot-name">${item.name}</div>
+                <div class="aq-slot-sub">→ Lv.${item.targetLevel}</div>
+              </div>
+              <div class="aq-slot-actions">
+                <button class="aq-speed-btn" title="Speed Up">⏩</button>
+                <button class="aq-cancel-btn" title="Cancel &amp; refund">✕</button>
+              </div>
+            </div>
+            <div class="progress-container aq-progress" data-timer-start="${item.startedAt}" data-timer-end="${item.researchEndsAt}">
+              <div class="progress-label aq-progress-label">
+                <span class="progress-time-label">${secsLeft}s</span>
+              </div>
+              <div class="progress-bar"><div class="progress-fill progress-fill-success" style="width:${pct}%"></div></div>
+            </div>`;
+          const techId = item.techId;
+          el.querySelector('.aq-cancel-btn')?.addEventListener('click', e => {
+            e.stopPropagation();
+            eventBus.emit('ui:click');
+            const r = tm.cancelResearch(techId);
+            if (!r.success) this._notifications?.show('warning', 'Cannot Cancel', r.reason);
+          });
+          el.querySelector('.aq-speed-btn')?.addEventListener('click', e => {
+            e.stopPropagation();
+            eventBus.emit('ui:click');
+            this._openSpeedupPicker(el, 'research', secsLeft);
+          });
+        } else {
+          el.className = 'aq-slot aq-slot--queued';
+          el.innerHTML = `
+            <div class="aq-slot-row">
+              <span class="aq-slot-icon">${item.icon ?? '🔬'}</span>
+              <div class="aq-slot-info">
+                <div class="aq-slot-name">${item.name}</div>
+                <div class="aq-slot-sub">→ Lv.${item.targetLevel} · #${item.queuePosition + 1}</div>
+              </div>
+              <button class="aq-cancel-btn" title="Cancel &amp; refund">✕</button>
+            </div>`;
+          const techId = item.techId;
+          el.querySelector('.aq-cancel-btn')?.addEventListener('click', e => {
+            e.stopPropagation();
+            eventBus.emit('ui:click');
+            const r = tm.cancelResearch(techId);
+            if (!r.success) this._notifications?.show('warning', 'Cannot Cancel', r.reason);
+          });
+        }
+        items.appendChild(el);
+      }
+    }
+
+    section.appendChild(items);
+    return section;
+  }
+
+  _buildTrainingSection() {
+    const um    = this._um;
+    const items = um ? um.getAllQueues() : [];
+    const now   = Date.now();
+
+    const section = document.createElement('div');
+    section.className = 'aq-section';
+
+    const header = document.createElement('div');
+    header.className = 'aq-section-header aq-section-header--training';
+    header.innerHTML = `<span class="aq-section-icon">⚔️</span><span class="aq-section-title">TRAINING</span><span class="aq-section-count">${items.length}</span>`;
+    section.appendChild(header);
+
+    const itemsEl = document.createElement('div');
+    itemsEl.className = 'aq-items';
+
+    if (!um || items.length === 0) {
+      const emptyEl = document.createElement('div');
+      emptyEl.className = 'aq-empty';
+      emptyEl.textContent = 'No units training';
+      itemsEl.appendChild(emptyEl);
+    } else {
+      for (const item of items) {
+        const el = document.createElement('div');
+        const isActive = item.queueIndex === 0 && item.endsAt > 0;
+        if (isActive) {
+          const pct      = Math.max(0, Math.min(100, ((now - (item.startedAt ?? 0)) / (item.endsAt - (item.startedAt ?? 0))) * 100));
+          const secsLeft = Math.max(0, Math.ceil((item.endsAt - now) / 1000));
+          el.className = 'aq-slot aq-slot--active';
+          el.innerHTML = `
+            <div class="aq-slot-row">
+              <span class="aq-slot-icon">${item.icon ?? '⚔️'}</span>
+              <div class="aq-slot-info">
+                <div class="aq-slot-name">${item.name ?? item.unitId} ×${item.count}</div>
+                <div class="aq-slot-sub">T${item.tier}</div>
+              </div>
+              <div class="aq-slot-actions">
+                <button class="aq-speed-btn" title="Speed Up">⏩</button>
+                <button class="aq-cancel-btn" title="Cancel &amp; refund">✕</button>
+              </div>
+            </div>
+            <div class="progress-container aq-progress" data-timer-start="${item.startedAt}" data-timer-end="${item.endsAt}">
+              <div class="progress-label aq-progress-label">
+                <span class="progress-time-label">${secsLeft}s</span>
+              </div>
+              <div class="progress-bar"><div class="progress-fill progress-fill-danger" style="width:${pct}%"></div></div>
+            </div>`;
+          const { buildingId, queueIndex } = item;
+          el.querySelector('.aq-cancel-btn')?.addEventListener('click', e => {
+            e.stopPropagation();
+            eventBus.emit('ui:click');
+            const r = um.cancelTrain(buildingId, queueIndex);
+            if (!r.success) this._notifications?.show('warning', 'Cannot Cancel', r.reason);
+          });
+          el.querySelector('.aq-speed-btn')?.addEventListener('click', e => {
+            e.stopPropagation();
+            eventBus.emit('ui:click');
+            this._openSpeedupPicker(el, 'training', secsLeft);
+          });
+        } else {
+          el.className = 'aq-slot aq-slot--queued';
+          el.innerHTML = `
+            <div class="aq-slot-row">
+              <span class="aq-slot-icon">${item.icon ?? '⚔️'}</span>
+              <div class="aq-slot-info">
+                <div class="aq-slot-name">${item.name ?? item.unitId} ×${item.count}</div>
+                <div class="aq-slot-sub">T${item.tier} · #${item.queueIndex + 1}</div>
+              </div>
+              <button class="aq-cancel-btn" title="Cancel &amp; refund">✕</button>
+            </div>`;
+          const { buildingId, queueIndex } = item;
+          el.querySelector('.aq-cancel-btn')?.addEventListener('click', e => {
+            e.stopPropagation();
+            eventBus.emit('ui:click');
+            const r = um.cancelTrain(buildingId, queueIndex);
+            if (!r.success) this._notifications?.show('warning', 'Cannot Cancel', r.reason);
+          });
+        }
+        itemsEl.appendChild(el);
+      }
+    }
+
+    section.appendChild(itemsEl);
+    return section;
+  }
+
+  _openSpeedupPicker(anchorEl, queueType, secsLeft) {
+    // Remove any existing picker
+    document.querySelector('.speedup-picker')?.remove();
+
+    const inventory = this._inventory;
+    if (!inventory) return;
+
+    const owned = inventory.getOwnedItems().filter(i =>
+      i.type === 'speed_boost' && (i.target === queueType || i.target === 'any')
+    );
+
+    const picker = document.createElement('div');
+    picker.className = 'speedup-picker';
+
+    if (owned.length === 0) {
+      picker.innerHTML = `
+        <div class="speedup-picker-empty">
+          <span>No speedups available.</span>
+          <button class="btn btn-xs btn-primary speedup-goto-shop">🛒 Buy from Shop</button>
+        </div>`;
+      picker.querySelector('.speedup-goto-shop')?.addEventListener('click', () => {
+        picker.remove();
+        eventBus.emit('ui:navigateTo', 'shop');
+      });
+    } else {
+      // Find recommended: smallest skipSeconds that covers remaining time, or largest available
+      const sorted = [...owned].sort((a, b) => a.skipSeconds - b.skipSeconds);
+      const recommended = sorted.find(i => i.skipSeconds >= secsLeft) ?? sorted[sorted.length - 1];
+
+      picker.innerHTML = `
+        <div class="speedup-picker-title">⏩ Speed Up</div>
+        ${sorted.map(item => {
+          const isRec = item.id === recommended.id;
+          const label = item.skipSeconds >= 999999 ? 'Instant'
+            : item.skipSeconds >= 3600 ? `${Math.round(item.skipSeconds / 3600)}h`
+            : `${Math.round(item.skipSeconds / 60)}m`;
+          const typeTag = item.target === 'any' ? ' (Universal)' : '';
+          return `
+            <button class="speedup-option${isRec ? ' speedup-recommended' : ''}" data-item="${item.id}">
+              <span class="speedup-option-icon">${item.icon}</span>
+              <span class="speedup-option-label">${label}${typeTag}</span>
+              <span class="speedup-option-qty">×${item.quantity}</span>
+              ${isRec ? '<span class="speedup-rec-badge">⭐ Best</span>' : ''}
+            </button>`;
+        }).join('')}`;
+
+      picker.querySelectorAll('.speedup-option').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const itemId = btn.dataset.item;
+          const r = inventory.useItem(itemId, { queueType });
+          picker.remove();
+          if (!r.success) {
+            this._notifications?.show('warning', 'Cannot Speed Up', r.reason);
+          } else {
+            const remaining = r.completed ? 'Done!' : `${Math.ceil((r.remaining ?? 0) / 1000)}s left`;
+            this._notifications?.show('success', '⏩ Sped Up!', remaining);
+          }
+        });
+      });
+    }
+
+    // Close on outside click
+    const closeHandler = (e) => {
+      if (!picker.contains(e.target)) { picker.remove(); document.removeEventListener('pointerdown', closeHandler, true); }
+    };
+    setTimeout(() => document.addEventListener('pointerdown', closeHandler, true), 0);
+
+    anchorEl.style.position = 'relative';
+    anchorEl.appendChild(picker);
+  }
+}

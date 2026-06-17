@@ -132,6 +132,7 @@
   --z-base:       1;
   --z-overlay:    100;
   --z-modal:      200;
+  --z-nav:        210;  /* bottom tab bar — always above modals/panels */
   --z-toast:      300;
   --z-tooltip:    400;
   --z-scene:      500;

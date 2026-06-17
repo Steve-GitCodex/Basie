@@ -33,6 +33,7 @@ import { GachaUI }      from './controllers/GachaUI.js';
 import { MilitaryUI }   from './controllers/MilitaryUI.js';
 import { ChallengesUI } from './controllers/ChallengesUI.js';
 import { EventsUI }     from './controllers/EventsUI.js';
+import { WorldMapUI }   from './controllers/WorldMapUI.js';
 import { RES_META, openModal, closeModal } from './uiUtils.js';
 import { INVENTORY_ITEMS } from '../entities/GAME_DATA.js';
 import { eventBus }     from '../core/EventBus.js';
@@ -173,6 +174,13 @@ export class UIManager {
       notifications: systems.notifications,
     });
 
+    this._world = new WorldMapUI({
+      worldMap:      systems.worldMap,
+      march:         systems.march,
+      um:            systems.um,
+      notifications: systems.notifications,
+    });
+
     this._init();
   }
 
@@ -194,6 +202,7 @@ export class UIManager {
     this._gacha.init();
     this._challenges.init();
     this._events.init();
+    this._world.init();
     eventBus.on('story:chapter_triggered', chapter => this._showStoryModal(chapter));
 
     // ── Tutorial overlay ────────────────────────────────────────────────

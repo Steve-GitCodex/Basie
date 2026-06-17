@@ -17,6 +17,8 @@ export class NavigationUI {
   constructor(systems) {
     this._s = systems;
     this._activeView = 'base';
+    // The last-shown "primary" map view (base|world); the flip button toggles between them.
+    this._primaryView = 'base';
     this._sessionStartMs = Date.now();
     // Tracks the last-active sub-tab id per group view — derived from TAB_GROUPS so new groups are automatically included
     this._activeSubTab = Object.fromEntries(Object.keys(TAB_GROUPS).map(k => [k, null]));
@@ -29,6 +31,9 @@ export class NavigationUI {
   init() {
     this._bindNavigation();
     this._bindHeaderButtons();
+    this._bindMoreMenu();
+    this._bindFlip();
+    this._updateFlipButton();
     this._subscribeToEvents();
     this._renderResources(this._s.rm.getSnapshot());
     this._renderProfile(this._s.user.getProfile());
@@ -38,11 +43,13 @@ export class NavigationUI {
     if (this._s.achievements) {
       this._updateAchievementsBadge(this._s.achievements.getAll());
     }
+    this._refreshMoreBadges();
   }
 
   // ---- NAVIGATION ----
   _bindNavigation() {
     document.querySelectorAll('.nav-btn').forEach(btn => {
+      if (!btn.dataset.view) return; // non-view buttons (e.g. #nav-build) bind separately
       btn.addEventListener('click', () => {
         eventBus.emit('ui:click');
         if (btn.classList.contains('nav-tab--locked')) {
@@ -51,6 +58,11 @@ export class NavigationUI {
         }
         this._switchView(btn.dataset.view);
       });
+    });
+    // Build button opens the Buildables panel (full catalog, no plot context)
+    document.getElementById('nav-build')?.addEventListener('click', () => {
+      eventBus.emit('ui:click');
+      eventBus.emit('ui:openBuildables', {});
     });
     this._bindSubTabs();
   }
@@ -157,6 +169,52 @@ export class NavigationUI {
     }
   }
 
+  /** Wire the single Base⇄World flip button (replaces the two map tabs). */
+  _bindFlip() {
+    document.getElementById('nav-flip')?.addEventListener('click', () => {
+      eventBus.emit('ui:click');
+      const target = this._primaryView === 'base' ? 'world' : 'base';
+      if (target === 'world' && !this._isTabUnlocked('world')) {
+        this._showLockedTooltip(document.getElementById('nav-flip'), this._getTabLockReason('world'));
+        return;
+      }
+      this._switchView(target);
+    });
+  }
+
+  /** Reflect the flip button's destination (where tapping it will take you). */
+  _updateFlipButton() {
+    const target = this._primaryView === 'base' ? 'world' : 'base';
+    const icon  = document.getElementById('flip-icon');
+    const label = document.getElementById('flip-label');
+    if (icon)  icon.className = `nav-icon nav-icon--${target}`;
+    if (label) label.textContent = target === 'world' ? 'World' : 'Base';
+    document.getElementById('nav-flip')?.classList.toggle('dock-flip--locked',
+      target === 'world' && !this._isTabUnlocked('world'));
+  }
+
+  /** Wire the "More" overflow popover (Quests / Combat / Economy / Events / Arena). */
+  _bindMoreMenu() {
+    const btn  = document.getElementById('nav-more');
+    const menu = document.getElementById('nav-more-menu');
+    if (!btn || !menu) return;
+
+    const close = () => { menu.classList.remove('is-open'); btn.setAttribute('aria-expanded', 'false'); };
+    const open  = () => { menu.classList.add('is-open');    btn.setAttribute('aria-expanded', 'true');  };
+
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      eventBus.emit('ui:click');
+      menu.classList.contains('is-open') ? close() : open();
+    });
+    // Selecting a menu item navigates (via the .nav-btn binding) then closes the menu
+    menu.querySelectorAll('.nav-btn').forEach(item => item.addEventListener('click', () => close()));
+    // Close on outside click
+    document.addEventListener('click', e => {
+      if (menu.classList.contains('is-open') && !menu.contains(e.target) && e.target !== btn) close();
+    });
+  }
+
   _bindHeaderButtons() {
     document.getElementById('btn-mail')?.addEventListener('click', () => {
       eventBus.emit('ui:click');
@@ -173,6 +231,11 @@ export class NavigationUI {
     document.getElementById('player-chip')?.addEventListener('click', () => {
       eventBus.emit('ui:click');
       eventBus.emit('ui:openProfile');
+    });
+    // Buff badge → Heroes (manage buffs); Heroes is now building-tied, no nav button
+    document.getElementById('buff-hud-badge')?.addEventListener('click', () => {
+      eventBus.emit('ui:click');
+      eventBus.emit('ui:navigateTo', 'heroes');
     });
   }
 
@@ -197,20 +260,32 @@ export class NavigationUI {
       this._refreshUnlockStates();
       this._renderAllBadges(); // keep badge visuals in sync after unlock state changes
       this._onBuildingCompleted(d);
+      this._refreshMoreBadges();
     });
     eventBus.on('building:started',       ()   => this._refreshStatusBar());
+    eventBus.on('building:queueUpdated',  ()   => this._refreshMoreBadges()); // plot occupancy changed
+    eventBus.on('building:relocated',     ()   => this._refreshMoreBadges());
     eventBus.on('unit:trained',           d    => { this._refreshStatusBar(); if (d) this._onUnitTrained(d); });
     eventBus.on('army:updated',           ()   => this._refreshStatusBar());
-    eventBus.on('tech:researched',        d    => { this._refreshStatusBar(); if (d) this._onTechResearched(d); });
+    eventBus.on('tech:researched',        d    => { this._refreshStatusBar(); if (d) this._onTechResearched(d); this._refreshMoreBadges(); });
     eventBus.on('tech:started',           ()   => this._refreshStatusBar());
+    eventBus.on('ui:viewChanged',         v    => {
+      if (v === 'base' || v === 'world') this._primaryView = v;
+      this._updateFlipButton();
+    });
     eventBus.on('ui:navigateTo',          v    => this._switchView(v));
+    // Building click → Train: show the Military group and force the Training sub-tab
+    // (navigateTo('military') alone would restore the last sub-tab, e.g. Barracks).
+    eventBus.on('ui:openTraining',        ()   => { this._switchView('military'); this._switchSubTab('military', 'training'); });
     eventBus.on('population:updated',     ()   => this._refreshStatusBar());
     eventBus.on('buffs:updated',          buffs => this._updateBuffBadge(buffs));
-    eventBus.on('building:cafeteria:shortfall', () => {
-      this._s.notifications?.show('warning', '🍽️ Food Running Low', 'Cafeteria supplies are critically low — population is shrinking!');
+    eventBus.on('building:cafeteria:shortfall', ({ severity, message } = {}) => {
+      const title = severity === 'info' ? '🍽️ Restock Reminder' : '🍽️ Food Running Low';
+      this._s.notifications?.show(severity ?? 'warning', title,
+        message ?? 'Cafeteria supplies are low — restock food & water.');
     });
     eventBus.on('challenges:updated',  challenges => this._updateChallengesBadge(challenges));
-    eventBus.on('events:updated',       state      => this._updateEventsBadge(state));
+    eventBus.on('events:updated',       state      => { this._updateEventsBadge(state); this._refreshMoreBadges(); });
     eventBus.on('user:vipUpdate',       ()         => this._renderProfile(this._s.user.getProfile()));
     eventBus.on('achievement:unlocked', d          => {
       this._s.notifications?.show('success', '🏆 Achievement Unlocked!', d?.name ?? 'Achievement unlocked');
@@ -240,6 +315,8 @@ export class NavigationUI {
       const locked = !this._isSubTabUnlocked(`sub:${subViewId}`);
       btn.classList.toggle('sub-tab-btn--locked', locked);
     });
+
+    this._updateFlipButton(); // world may have just unlocked (Rally Point built)
   }
 
   /** Returns true if the top-level tab for viewId is currently accessible. */
@@ -367,8 +444,30 @@ export class NavigationUI {
     }
   }
 
+  /**
+   * Refresh the More grid's attention cues: a "build available" dot on #nav-build,
+   * plus an aggregate dot on the closed More FAB when anything inside needs action.
+   */
+  _refreshMoreBadges() {
+    const buildAvailable = this._buildAvailable();
+    document.getElementById('nav-build-dot')?.classList.toggle('hidden', !buildAvailable);
+
+    const eventsActive = !document.getElementById('events-badge')?.classList.contains('hidden');
+    const gridBadged = ['nav-quests', 'nav-combat', 'nav-economy', 'nav-events']
+      .some(id => document.getElementById(id)?.classList.contains('tab-has-badge'));
+    const any = buildAvailable || eventsActive || gridBadged;
+    document.getElementById('nav-more-dot')?.classList.toggle('hidden', !any);
+  }
+
+  /** True if any building is unlocked, unbuilt, and has a free plot to sit on. */
+  _buildAvailable() {
+    return (this._s.bm.getBuildablesCatalog?.() ?? [])
+      .some(i => i.availableToBuild && i.hasFreePlot);
+  }
+
   /** Add or remove the attention dot + chip on a single button element. */
   _applyBadgeDot(btn, messages) {
+    if (!btn) return;
     let dot  = btn.querySelector('.tab-attention-dot');
     let chip = btn.querySelector('.tab-attention-chip');
     if (messages.length === 0) {
@@ -391,6 +490,15 @@ export class NavigationUI {
 
   // ---- BADGE EVENT HANDLERS ----
 
+  /**
+   * Tabs reached by clicking a building (no bottom-bar button). Their attention
+   * cue is redirected to the Base toggle, where the player goes to find them.
+   */
+  _isBuildingTiedTab(tabKey) {
+    return tabKey === 'heroes' || tabKey === 'research'
+        || tabKey === 'sub:barracks' || tabKey === 'sub:training';
+  }
+
   _onBuildingCompleted(d) {
     if (!d) return;
     const buildingId   = d.id; // always set per BuildingManager emit
@@ -402,9 +510,11 @@ export class NavigationUI {
       this._addBadge('base', `${buildingName} complete`);
     }
 
-    // Badge the mapped gameplay tab if the player isn't already viewing it
+    // Badge the mapped gameplay tab if the player isn't already viewing it.
+    // Building-tied tabs (heroes/research/barracks/training) have no bar button —
+    // the 'base' badge above already covers them, so skip the orphaned key.
     const tabKey = buildingId ? BUILDING_TAB_MAP[buildingId] : null;
-    if (tabKey) {
+    if (tabKey && !this._isBuildingTiedTab(tabKey)) {
       const isSub  = tabKey.startsWith('sub:');
       const subId  = isSub ? tabKey.slice(4) : null;
       const isVisible = isSub
@@ -424,7 +534,7 @@ export class NavigationUI {
           this._addBadge('base', `New: ${name}`);
         }
         const bTabKey = BUILDING_TAB_MAP[bid];
-        if (bTabKey) {
+        if (bTabKey && !this._isBuildingTiedTab(bTabKey)) {
           const bIsSub  = bTabKey.startsWith('sub:');
           const bSubId  = bIsSub ? bTabKey.slice(4) : null;
           const bVisible = bIsSub
@@ -440,20 +550,20 @@ export class NavigationUI {
 
   _onUnitTrained(d) {
     if (!d) return;
-    const trainingGroup  = this._getGroupForSubTab('training');
-    const isTrainingOpen = this._activeSubTab[trainingGroup] === 'training';
-    if (!isTrainingOpen) {
+    // Training is building-tied — surface the cue on the Base toggle (unless on base).
+    if (this._activeView !== 'base') {
       const unitCfg = d.tierKey ? UNITS_CONFIG[d.tierKey] : null;
       const label   = unitCfg?.name ?? d.tierKey ?? 'Unit';
-      this._addBadge('sub:training', `Training complete: ${label}`);
+      this._addBadge('base', `Training complete: ${label}`);
     }
   }
 
   _onTechResearched(d) {
-    if (this._activeView !== 'research') {
+    // Research is building-tied (Workshop) — cue the Base toggle instead of a nav button.
+    if (this._activeView !== 'base') {
       const name = d.name ?? 'Technology';
       const lvl  = d.level ? ` Lv ${d.level}` : '';
-      this._addBadge('research', `${name}${lvl} researched`);
+      this._addBadge('base', `${name}${lvl} researched`);
     }
   }
 
@@ -477,6 +587,13 @@ export class NavigationUI {
       if (valEl)  valEl.textContent  = fmt(res.amount);
       if (rateEl) rateEl.textContent = res.perSec > 0 ? `+${res.perSec.toFixed(1)}/s` : '';
       if (capEl && res.cap !== Infinity) capEl.textContent = `/ ${fmt(res.cap)}`;
+      // Capacity fill-bar (HUD v2): drive the chip's ::after width via --fill.
+      const chip = document.getElementById(`res-${key}`);
+      if (chip && res.cap && res.cap !== Infinity) {
+        const pct = Math.max(0, Math.min(1, res.amount / res.cap));
+        chip.style.setProperty('--fill', pct.toFixed(3));
+        chip.title = `${RES_META[key]?.name ?? key}: ${fmt(res.amount)} / ${fmt(res.cap)}`;
+      }
     }
     // Cafeteria aggregate stock chip
     this._renderCafeteriaChip();
