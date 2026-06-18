@@ -43,6 +43,8 @@ const LABEL_MIN_ZOOM = 0.65;
 // Bump BUILDING_FIT > 1 for the "structure overflows the lot" genre look.
 const BUILDING_FIT = 1.0;
 const HEADROOM = 2; // px above the diamond covered by a building sprite (proxy/hit rect)
+const SPEEDUP_BADGE_R  = 11; // world-px radius of the ⏩ speed-up badge over a building
+const SPEEDUP_BADGE_DY = 30; // world-px the badge centre sits above the tile centre
 const DAY_CYCLE_MS = 8 * 60 * 1000; // full day/night loop
 const MAX_NIGHT = 0.32; // peak darkness alpha
 const DRONE_SPEED = 1.1; // tiles per second
@@ -73,6 +75,7 @@ export class CityRenderer {
    *           onPlotClick?: (plotId:string, zone:string) => void,
    *           onPlotHover?: (plotId:string, zone:string) => void,
    *           onTileLeave?: () => void,
+   *           onSpeedupClick?: (bid:string, idx:number, badgeRect:object) => void,
    *           onEmptyClick?: () => void }} opts
    */
   constructor(opts) {
@@ -83,6 +86,7 @@ export class CityRenderer {
     this._onPlotClick = opts.onPlotClick ?? (() => {});
     this._onPlotHover = opts.onPlotHover ?? (() => {});
     this._onTileLeave = opts.onTileLeave ?? (() => {});
+    this._onSpeedupClick = opts.onSpeedupClick ?? (() => {});
     this._onEmptyClick = opts.onEmptyClick ?? (() => {});
 
     this.ready = false;
@@ -369,6 +373,12 @@ export class CityRenderer {
         !wasDrag.moved &&
         performance.now() - wasDrag.t < TAP_MAX_MS
       ) {
+        // The ⏩ speed-up badge sits above a constructing building and wins the tap.
+        const badge = this._speedupBadgeAtClient(e.clientX, e.clientY);
+        if (badge) {
+          this._onSpeedupClick(badge.buildingId, badge.instanceIndex, this._speedupBadgeRect(badge));
+          return;
+        }
         const slot = this._slotAtClient(e.clientX, e.clientY);
         if (!slot) this._onEmptyClick();
         else if (slot.empty) this._onPlotClick(slot.plotId, slot.zone);
@@ -518,8 +528,7 @@ export class CityRenderer {
     const z = cam.zoom * this._dpr;
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = "hsl(215, 28%, 7%)";
-    ctx.fillRect(0, 0, this._canvas.width, this._canvas.height);
+    this._fillBackdrop(ctx);
     ctx.setTransform(z, 0, 0, z, cam.x * this._dpr, cam.y * this._dpr);
     ctx.imageSmoothingEnabled = true;
 
@@ -592,6 +601,25 @@ export class CityRenderer {
 
     // 5 — day/night ambient tint + window lights
     this._drawAmbient(now);
+  }
+
+  /**
+   * Ambient backdrop behind the terrain. With the searchlight pan clamp the frame
+   * can extend a little past the island at the extremes; a soft twilight gradient
+   * makes that read as sky/water rather than an empty void. Cached per canvas height.
+   */
+  _fillBackdrop(ctx) {
+    const w = this._canvas.width, h = this._canvas.height;
+    if (!this._backdrop || this._backdropH !== h) {
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0,   'hsl(212, 42%, 15%)');
+      g.addColorStop(0.5, 'hsl(214, 36%, 10%)');
+      g.addColorStop(1,   'hsl(217, 32%, 6%)');
+      this._backdrop  = g;
+      this._backdropH = h;
+    }
+    ctx.fillStyle = this._backdrop;
+    ctx.fillRect(0, 0, w, h);
   }
 
   /** A dark rounded pill with the building name — used for the hovered tile. */
@@ -788,7 +816,56 @@ export class CityRenderer {
     ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
     ctx.fillStyle = "hsl(45, 95%, 55%)";
     ctx.fillRect(x, y, w * pct, h);
-    this._drawText("🏗️", c.x, y - 8, 12);
+    this._drawSpeedupBadge(c.x, c.y - SPEEDUP_BADGE_DY, now);
+  }
+
+  /** Tappable gold ⏩ badge above a building under construction (opens the picker). */
+  _drawSpeedupBadge(cx, cy, now) {
+    const ctx = this._ctx;
+    const pulse = 0.5 + 0.5 * Math.sin(now / 400);
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, SPEEDUP_BADGE_R, 0, Math.PI * 2);
+    ctx.fillStyle = "hsl(45, 90%, 52%)";
+    ctx.shadowColor = `hsla(45, 95%, 60%, ${0.45 + 0.35 * pulse})`;
+    ctx.shadowBlur = 6 + 5 * pulse;
+    ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = "hsla(45, 100%, 88%, 0.9)";
+    ctx.stroke();
+    ctx.restore();
+    this._drawText("⏩", cx, cy + 0.5, 12, "hsl(228, 45%, 12%)");
+  }
+
+  /** Viewport rect of a building's speed-up badge (for anchoring the picker). */
+  _speedupBadgeRect(slot) {
+    if (!this._canvas) return null;
+    const base = this._canvas.getBoundingClientRect();
+    const z = this._camera.zoom;
+    const c = tileToWorld(slot.col, slot.row);
+    const s = this._camera.worldToScreen(c.x, c.y - SPEEDUP_BADGE_DY);
+    const r = SPEEDUP_BADGE_R * z;
+    return {
+      left: base.left + s.x - r, top: base.top + s.y - r,
+      width: 2 * r, height: 2 * r,
+      get right() { return this.left + this.width; },
+      get bottom() { return this.top + this.height; },
+    };
+  }
+
+  /** The constructing slot whose speed-up badge is under the given client point, or null. */
+  _speedupBadgeAtClient(clientX, clientY) {
+    if (!this._canvas) return null;
+    const base = this._canvas.getBoundingClientRect();
+    const z = this._camera.zoom;
+    const hitR = (SPEEDUP_BADGE_R + 4) * z;   // a little tap slop
+    for (const slot of this._slots) {
+      if (!slot.isBuilding) continue;
+      const c = tileToWorld(slot.col, slot.row);
+      const s = this._camera.worldToScreen(c.x, c.y - SPEEDUP_BADGE_DY);
+      if (Math.hypot(clientX - (base.left + s.x), clientY - (base.top + s.y)) <= hitR) return slot;
+    }
+    return null;
   }
 
   _drawLevelBadge(slot) {

@@ -8,7 +8,8 @@
  * tech / unit managers and acts via EventBus + manager calls; the host re-invokes
  * render() on queue events.
  */
-import { eventBus } from '../../core/EventBus.js';
+import { eventBus }          from '../../core/EventBus.js';
+import { openSpeedupPicker } from './SpeedupPicker.js';
 
 export class BuildQueueSidebar {
   /** @param {{ bm, tm, um, inventory, notifications }} deps */
@@ -311,73 +312,11 @@ export class BuildQueueSidebar {
   }
 
   _openSpeedupPicker(anchorEl, queueType, secsLeft) {
-    // Remove any existing picker
-    document.querySelector('.speedup-picker')?.remove();
-
-    const inventory = this._inventory;
-    if (!inventory) return;
-
-    const owned = inventory.getOwnedItems().filter(i =>
-      i.type === 'speed_boost' && (i.target === queueType || i.target === 'any')
-    );
-
-    const picker = document.createElement('div');
-    picker.className = 'speedup-picker';
-
-    if (owned.length === 0) {
-      picker.innerHTML = `
-        <div class="speedup-picker-empty">
-          <span>No speedups available.</span>
-          <button class="btn btn-xs btn-primary speedup-goto-shop">🛒 Buy from Shop</button>
-        </div>`;
-      picker.querySelector('.speedup-goto-shop')?.addEventListener('click', () => {
-        picker.remove();
-        eventBus.emit('ui:navigateTo', 'shop');
-      });
-    } else {
-      // Find recommended: smallest skipSeconds that covers remaining time, or largest available
-      const sorted = [...owned].sort((a, b) => a.skipSeconds - b.skipSeconds);
-      const recommended = sorted.find(i => i.skipSeconds >= secsLeft) ?? sorted[sorted.length - 1];
-
-      picker.innerHTML = `
-        <div class="speedup-picker-title">⏩ Speed Up</div>
-        ${sorted.map(item => {
-          const isRec = item.id === recommended.id;
-          const label = item.skipSeconds >= 999999 ? 'Instant'
-            : item.skipSeconds >= 3600 ? `${Math.round(item.skipSeconds / 3600)}h`
-            : `${Math.round(item.skipSeconds / 60)}m`;
-          const typeTag = item.target === 'any' ? ' (Universal)' : '';
-          return `
-            <button class="speedup-option${isRec ? ' speedup-recommended' : ''}" data-item="${item.id}">
-              <span class="speedup-option-icon">${item.icon}</span>
-              <span class="speedup-option-label">${label}${typeTag}</span>
-              <span class="speedup-option-qty">×${item.quantity}</span>
-              ${isRec ? '<span class="speedup-rec-badge">⭐ Best</span>' : ''}
-            </button>`;
-        }).join('')}`;
-
-      picker.querySelectorAll('.speedup-option').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const itemId = btn.dataset.item;
-          const r = inventory.useItem(itemId, { queueType });
-          picker.remove();
-          if (!r.success) {
-            this._notifications?.show('warning', 'Cannot Speed Up', r.reason);
-          } else {
-            const remaining = r.completed ? 'Done!' : `${Math.ceil((r.remaining ?? 0) / 1000)}s left`;
-            this._notifications?.show('success', '⏩ Sped Up!', remaining);
-          }
-        });
-      });
-    }
-
-    // Close on outside click
-    const closeHandler = (e) => {
-      if (!picker.contains(e.target)) { picker.remove(); document.removeEventListener('pointerdown', closeHandler, true); }
-    };
-    setTimeout(() => document.addEventListener('pointerdown', closeHandler, true), 0);
-
-    anchorEl.style.position = 'relative';
-    anchorEl.appendChild(picker);
+    openSpeedupPicker({
+      anchorRect:    anchorEl.getBoundingClientRect(),
+      queueType, secsLeft,
+      inventory:     this._inventory,
+      notifications: this._notifications,
+    });
   }
 }

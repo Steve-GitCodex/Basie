@@ -15,6 +15,13 @@ import { uvRanges, worldToUV, uvShiftToWorld } from './isoMath.js';
 
 const MAX_ZOOM = 2.0;
 
+// Pan clamp model — "searchlight", not "sun". Instead of pinning every viewport
+// corner onto terrain (which strangles the short/vertical axis), we let the frame
+// overhang the island edge by up to this fraction of the viewport on each side.
+// Terrain (incl. the decorative ring) still fills the great majority of the frame;
+// only a small wedge of backdrop shows at the very extremes. 0 = old cover clamp.
+const EDGE_OVERHANG = 0.22;
+
 export class CityCamera {
   constructor(onChange) {
     this.x = 0;          // screen-px offset
@@ -106,14 +113,19 @@ export class CityCamera {
     const u0 = Math.min(...uvs.map(p => p.u)), u1 = Math.max(...uvs.map(p => p.u));
     const v0 = Math.min(...uvs.map(p => p.v)), v1 = Math.max(...uvs.map(p => p.v));
 
+    // Allowed overhang per axis = fraction of the viewport's own (u, v) span, so
+    // the frame may slide this far past the island edge before being blocked.
+    const overU = EDGE_OVERHANG * (u1 - u0);
+    const overV = EDGE_OVERHANG * (v1 - v0);
+
     const correct = (lo, hi, LO, HI) => {
       if (hi - lo > HI - LO) return ((LO + HI) - (lo + hi)) / 2; // overflow: center
       if (lo < LO) return LO - lo;
       if (hi > HI) return HI - hi;
       return 0;
     };
-    const du = correct(u0, u1, r.u0, r.u1);
-    const dv = correct(v0, v1, r.v0, r.v1);
+    const du = correct(u0, u1, r.u0 - overU, r.u1 + overU);
+    const dv = correct(v0, v1, r.v0 - overV, r.v1 + overV);
     if (!du && !dv) return;
 
     // Shift the *view window* by (du, dv) ⇒ shift the offset the other way.

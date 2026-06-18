@@ -536,17 +536,28 @@
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  z-index: 800;
-  min-width: 220px;
-  max-width: 290px;
-  background: var(--surface-2, #1a1f2e);
-  border: 1px solid var(--border-color, rgba(255,255,255,0.12));
-  border-radius: 8px;
-  box-shadow: 0 8px 28px rgba(0,0,0,0.6);
-  padding: 8px;
+  z-index: 1200;
+  min-width: 248px;
+  max-width: 300px;
+  background: linear-gradient(180deg, hsla(225, 30%, 16%, 0.99), hsla(228, 36%, 10%, 0.99));
+  border: 1px solid hsla(45, 80%, 60%, 0.45);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.7), 0 0 0 1px hsla(45, 90%, 60%, 0.08), 0 0 22px hsla(45, 90%, 55%, 0.12);
+  padding: 10px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+}
+/* Floating variant (shared SpeedupPicker.js) — JS sets position:fixed + coords. */
+.speedup-picker--floating {
+  animation: speedup-pop 0.14s ease-out;
+}
+@keyframes speedup-pop {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 /* Ensure picker isn't clipped by the parent slot or strip */
@@ -567,12 +578,16 @@
 }
 
 .speedup-picker-title {
-  font-size: 0.82rem;
-  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
   color: var(--clr-gold, #f0c040);
-  padding: 2px 4px 6px;
-  border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.08));
-  margin-bottom: 2px;
+  padding: 2px 2px 8px;
+  border-bottom: 1px solid hsla(45, 70%, 60%, 0.22);
+  margin-bottom: 4px;
 }
 
 .speedup-picker-empty {
@@ -588,48 +603,62 @@
 .speedup-option {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: var(--surface-1, #22283a);
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid hsla(220, 25%, 50%, 0.22);
+  border-radius: 9px;
+  background: hsla(222, 28%, 20%, 0.55);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-  font-size: 0.78rem;
+  transition: background 0.14s, border-color 0.14s, transform 0.14s;
+  font-size: 0.82rem;
   color: var(--text-primary, #e0e0e0);
 }
 
 .speedup-option:hover {
-  background: var(--surface-3, #2a3148);
+  background: hsla(45, 60%, 30%, 0.28);
   border-color: var(--clr-gold, #f0c040);
+  transform: translateY(-1px);
 }
+.speedup-option:active { transform: translateY(0); }
 
 .speedup-recommended {
-  border-color: var(--clr-gold, #f0c040);
-  background: rgba(240, 192, 64, 0.08);
+  border-color: hsla(45, 85%, 60%, 0.7);
+  background: rgba(240, 192, 64, 0.12);
+  box-shadow: inset 0 0 0 1px hsla(45, 90%, 60%, 0.25);
 }
 
 .speedup-option-icon {
-  font-size: 1rem;
+  font-size: 1.25rem;
   flex-shrink: 0;
+  width: 26px;
+  text-align: center;
 }
 
 .speedup-option-label {
   flex: 1;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .speedup-option-qty {
   font-size: 0.72rem;
-  opacity: 0.7;
+  font-weight: 700;
+  color: var(--text-secondary, #9aa7c0);
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: hsla(220, 25%, 35%, 0.5);
   min-width: 24px;
-  text-align: right;
+  text-align: center;
 }
 
 .speedup-rec-badge {
-  font-size: 0.65rem;
-  color: var(--clr-gold, #f0c040);
-  font-weight: 600;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: hsl(228, 40%, 12%);
+  background: var(--clr-gold, #f0c040);
+  padding: 2px 7px;
+  border-radius: 999px;
   white-space: nowrap;
 }
 

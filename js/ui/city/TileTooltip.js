@@ -40,6 +40,53 @@ export class TileTooltip {
     this._hideTimeout = setTimeout(() => this.hide(), delay);
   }
 
+  /** Derive the upgrade/build button's label, style and disabled state from an instance. */
+  _upgradeButtonState(b, isBuilt, nextLv) {
+    if (!b.requirementsMet) return { btnText: `🔒 ${b.requirementsReason ?? 'Locked'}`, btnCls: 'btn-ghost',   btnDisabled: true };
+    if (b.isMaxLevel)       return { btnText: '⭐ Max Level',                            btnCls: 'btn-ghost',   btnDisabled: true };
+    const label = isBuilt ? `→ Lv.${nextLv}` : 'Build';
+    if (!b.canAfford)       return { btnText: label, btnCls: 'btn-ghost',   btnDisabled: true };
+    return                         { btnText: label, btnCls: 'btn-primary', btnDisabled: false };
+  }
+
+  /**
+   * Reactive in-place update for the open tooltip: refresh cost-chip affordability
+   * and the upgrade button as the player's resources change — WITHOUT rebuilding the
+   * tooltip's DOM (which would eat in-flight clicks on the action buttons). Mirrors the
+   * NavigationUI HUD pattern. No-op unless the tooltip is open on a built/buildable tile.
+   */
+  patchAffordability() {
+    const tt = document.getElementById('tile-tooltip');
+    if (!tt || !this._bid || !tt.classList.contains('is-visible')) return;
+
+    const bType = this._bm.getBuildingTypesWithInstances().find(t => t.id === this._bid);
+    const b     = bType?.instances[this._idx];
+    if (!b) return;
+    const snap = this._rm.getSnapshot();
+
+    // Cost chips — toggle affordable/unaffordable in place (matched by resource key).
+    const entries = Object.entries(b.cost);
+    tt.querySelectorAll('.tt-costs .cost-chip').forEach((chip, i) => {
+      const res = chip.dataset.res ?? entries[i]?.[0];
+      const amt = b.cost[res];
+      if (amt == null) return;
+      const has = (snap[res]?.amount ?? 0) >= amt;
+      chip.classList.toggle('affordable', has);
+      chip.classList.toggle('unaffordable', !has);
+    });
+
+    // Upgrade button — text/style/disabled may flip as affordability changes.
+    const btn = tt.querySelector('.tt-upgrade-btn');
+    if (btn) {
+      const isBuilt = b.level > 0;
+      const { btnText, btnCls, btnDisabled } = this._upgradeButtonState(b, isBuilt, b.effectiveLevel + 1);
+      if (btn.textContent !== btnText) btn.textContent = btnText;
+      btn.disabled = btnDisabled;
+      btn.classList.toggle('btn-primary', btnCls === 'btn-primary');
+      btn.classList.toggle('btn-ghost',   btnCls === 'btn-ghost');
+    }
+  }
+
   showTile(buildingId, instanceIndex, tileRect) {
     const tt = document.getElementById('tile-tooltip');
     if (!tt || !tileRect) return;
@@ -56,7 +103,7 @@ export class TileTooltip {
 
     const costHtml = Object.entries(b.cost).map(([res, amt]) => {
       const has = (snap[res]?.amount ?? 0) >= amt;
-      return `<span class="cost-chip ${has ? 'affordable' : 'unaffordable'}">${RES_META[res]?.icon ?? '?'} ${fmt(amt)}</span>`;
+      return `<span class="cost-chip ${has ? 'affordable' : 'unaffordable'}" data-res="${res}">${RES_META[res]?.icon ?? '?'} ${fmt(amt)}</span>`;
     }).join('');
 
     const now = Date.now();
@@ -69,11 +116,7 @@ export class TileTooltip {
       </div>`;
     })() : '';
 
-    let btnText, btnCls, btnDisabled;
-    if (!b.requirementsMet)  { btnText = `🔒 ${b.requirementsReason ?? 'Locked'}`;  btnCls = 'btn-ghost'; btnDisabled = true;  }
-    else if (b.isMaxLevel)   { btnText = '⭐ Max Level';                              btnCls = 'btn-ghost'; btnDisabled = true;  }
-    else if (!b.canAfford)   { btnText = isBuilt ? `→ Lv.${nextLv}` : 'Build';       btnCls = 'btn-ghost'; btnDisabled = true;  }
-    else                     { btnText = isBuilt ? `→ Lv.${nextLv}` : 'Build';       btnCls = 'btn-primary';                    btnDisabled = false; }
+    const { btnText, btnCls, btnDisabled } = this._upgradeButtonState(b, isBuilt, nextLv);
 
     const timeHint = !b.isMaxLevel && !b.isActivelyBuilding && b.nextLevelBuildTime
       ? `<span class="tt-time-hint">⏱ ${fmt(b.nextLevelBuildTime)}s</span>` : '';
@@ -82,9 +125,10 @@ export class TileTooltip {
     const viewAction = isBuilt ? BUILDING_VIEW_ACTION[buildingId] : null;
     const routeBtn = viewAction
       ? `<button class="btn btn-sm btn-secondary tt-route-btn">${viewAction.label}</button>` : '';
-    // "Details" → full building-info page (only meaningful once built).
+    // "Details" → full building-info page. Icon-only, pinned to the popup's top-right
+    // so it never crowds (and overlaps) the action row.
     const detailsBtn = isBuilt
-      ? `<button class="btn btn-sm btn-ghost tt-details-btn">ℹ️ Details</button>` : '';
+      ? `<button class="tt-info-btn" title="Building details" aria-label="Building details">ⓘ</button>` : '';
     // Cafeteria manual restock (re-homed from the retired detail panel).
     const restockBtn = (isBuilt && buildingId === 'cafeteria' && !(this._bm.getAutomations?.().cafeteriaRestock))
       ? `<button class="btn btn-sm btn-secondary tt-restock-btn">🔄 Restock</button>` : '';
@@ -96,6 +140,7 @@ export class TileTooltip {
       ? `<button class="btn btn-sm btn-ghost tt-relocate-btn">📦 Move</button>` : '';
 
     tt.innerHTML = `
+      ${detailsBtn}
       <div class="tt-header">
         <div class="tt-sprite" style="background-image:url('${spriteUrl}')"></div>
         <div class="tt-title-block">
@@ -110,7 +155,7 @@ export class TileTooltip {
         <button class="btn btn-sm ${btnCls} tt-upgrade-btn" ${btnDisabled ? 'disabled' : ''}>${btnText}</button>
         ${timeHint}
       </div>
-      ${(routeBtn || detailsBtn || restockBtn || relocateBtn) ? `<div class="tt-actions tt-actions--secondary">${routeBtn}${restockBtn}${relocateBtn}${detailsBtn}</div>` : ''}
+      ${(routeBtn || restockBtn || relocateBtn) ? `<div class="tt-actions tt-actions--secondary">${routeBtn}${restockBtn}${relocateBtn}</div>` : ''}
       <div class="tt-arrow"></div>`;
 
     this._position(tt, tileRect);
@@ -141,7 +186,7 @@ export class TileTooltip {
     });
 
     // Open the full building-info page
-    tt.querySelector('.tt-details-btn')?.addEventListener('click', e => {
+    tt.querySelector('.tt-info-btn')?.addEventListener('click', e => {
       e.stopPropagation();
       eventBus.emit('ui:click');
       this.hide(true);

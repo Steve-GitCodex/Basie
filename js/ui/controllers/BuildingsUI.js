@@ -11,6 +11,7 @@ import { CityRenderer }      from '../city/CityRenderer.js';
 import { TileTooltip }       from '../city/TileTooltip.js';
 import { BuildingCards }     from '../buildings/BuildingCards.js';
 import { BuildQueueSidebar } from '../buildings/BuildQueueSidebar.js';
+import { openSpeedupPicker }  from '../buildings/SpeedupPicker.js';
 import { BuildablesPanel }     from '../buildings/BuildablesPanel.js';
 import { BuildingInfoPanel }   from '../buildings/BuildingInfoPanel.js';
 import { PlacementController } from '../buildings/PlacementController.js';
@@ -78,6 +79,13 @@ export class BuildingsUI {
         },
         onTileHover: () => {},
         onTileLeave: () => {},
+        // Tap the ⏩ badge on a building under construction → speed-up picker, anchored
+        // at the badge (the active build is always queue slot 0).
+        onSpeedupClick: (bid, idx, badgeRect) => {
+          eventBus.emit('ui:click');
+          this._tooltip.hide(true);
+          this._openBuildingSpeedup(badgeRect);
+        },
         onPlotClick: (plotId, zone) => {
           eventBus.emit('ui:click');
           if (this._placement.isRelocating) { this._placement.tryRelocate(plotId); return; }
@@ -155,15 +163,17 @@ export class BuildingsUI {
       this._autoOpenSidebar();
     }));
     this._unsubs.push(eventBus.on('heroes:updated',             () => this.render()));
+    // Resources changing every tick must NOT rebuild the tooltip / sidebar / cards.
+    // Live progress bars are animated in place by TimerService; here we only patch the
+    // open tooltip's cost-chip affordability + upgrade button in place (throttled).
+    // (`buildings:rendered`, for the tutorial spotlight ring, is emitted continuously by
+    // CityRenderer's render loop, so it no longer needs a timer here.)
     this._tickThrottle = 0;
     this._unsubs.push(eventBus.on('resources:tick', () => {
       const now = Date.now();
-      if (now - this._tickThrottle >= 2000) {
-        this._tickThrottle = now;
-        this.render();
-        this._tooltip.refresh();
-        eventBus.emit('buildings:rendered');
-      }
+      if (now - this._tickThrottle < 1000) return;
+      this._tickThrottle = now;
+      this._tooltip.patchAffordability();
     }));
     // Tutorial: center the camera on the focused building; the spotlight rings
     // its tile and the player taps it to open the click-popup (with Build/Upgrade).
@@ -221,6 +231,20 @@ export class BuildingsUI {
 
   _renderBaseGrid() {
     this._city?.syncState();
+  }
+
+  /** Open the shared speed-up picker for the active build, anchored at the tapped badge. */
+  _openBuildingSpeedup(anchorRect) {
+    if (!anchorRect) return;
+    const active   = this._s.bm.getBuildQueue?.()[0];
+    const secsLeft = active?.endsAt ? Math.max(0, Math.ceil((active.endsAt - Date.now()) / 1000)) : 0;
+    openSpeedupPicker({
+      anchorRect,
+      queueType:     'building',
+      secsLeft,
+      inventory:     this._s.inventory,
+      notifications: this._s.notifications,
+    });
   }
 }
 

@@ -682,6 +682,32 @@
   align-items: center;
   gap: var(--space-3);
   margin-bottom: var(--space-2);
+  padding-right: 26px;            /* reserve room for the top-right info button */
+}
+
+/* Icon-only "Details" button pinned to the popup's top-right corner */
+.tt-info-btn {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid hsla(200, 60%, 50%, 0.35);
+  background: hsla(210, 32%, 16%, 0.7);
+  color: var(--clr-text-secondary);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 1;
+  transition: color var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+}
+.tt-info-btn:hover {
+  color: var(--clr-primary);
+  border-color: hsla(200, 80%, 55%, 0.7);
+  background: hsla(200, 100%, 50%, 0.12);
 }
 
 .tt-sprite {

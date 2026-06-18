@@ -452,18 +452,19 @@
           </div>
           <div class="bp-controls">
             <input type="search" id="bp-search" class="bp-search" placeholder="Search buildings…" aria-label="Search buildings" />
-            <div class="bp-group-tabs" id="bp-group" role="tablist">
-              <button class="bp-group-tab active" data-group="zone">Zone</button>
-              <button class="bp-group-tab" data-group="function">Function</button>
-              <button class="bp-group-tab" data-group="status">Status</button>
-            </div>
-            <select id="bp-sort" class="bp-sort" aria-label="Sort">
+            <select id="bp-groupby" class="bp-select" aria-label="Group by">
+              <option value="zone">Group: Zone</option>
+              <option value="function">Group: Function</option>
+              <option value="status">Group: Status</option>
+            </select>
+            <select id="bp-sort" class="bp-select" aria-label="Sort">
               <option value="recommended">Recommended</option>
               <option value="cost-asc">Cost ↑</option>
               <option value="cost-desc">Cost ↓</option>
               <option value="alpha">A–Z</option>
             </select>
           </div>
+          <div class="bp-tabs" id="bp-tabs" role="tablist"></div>
           <div class="bp-body" id="bp-body"></div>
         </div>
       </div>
