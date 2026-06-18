@@ -181,8 +181,10 @@ export class TileTooltip {
       e.stopPropagation();
       eventBus.emit('ui:click');
       this.hide(true);
-      if (viewAction.train) eventBus.emit('ui:openTraining', { buildingId });
-      else                  eventBus.emit('ui:navigateTo', viewAction.view);
+      if (viewAction.train)         eventBus.emit('ui:openTraining', { buildingId });
+      else if (viewAction.squads)   eventBus.emit('ui:openSquads', { buildingId, instanceIndex });
+      else if (viewAction.research) eventBus.emit('ui:openResearch');
+      else                          eventBus.emit('ui:navigateTo', viewAction.view);
     });
 
     // Open the full building-info page

@@ -44,21 +44,9 @@ export const TAB_UNLOCK_CONDITIONS = {
   },
 
   // ── Grouped top-level tabs (unlocked if any child is unlocked) ────────────
-  military: { type: 'group_any' },
+  // Training & Squads are now tooltip-opened modals (no Military group view).
   quests:   { type: 'group_any' },
   economy:  { type: 'group_any' },
-
-  // ── Sub-tabs: Military ────────────────────────────────────────────────────
-  'sub:barracks': {
-    type: 'building',
-    buildingId: 'barracks',
-    label: 'Build a Barracks',
-  },
-  'sub:training': {
-    type: 'building_any',
-    buildingIds: ['infantryhall', 'archeryrange', 'cavalrystable', 'siegeworkshop'],
-    label: 'Build any training building: Infantry Hall, Archery Range, Cavalry Stable, or Siege Workshop (requires HQ Lv 2)',
-  },
 
   // ── Sub-tabs: Economy ─────────────────────────────────────────────────────
   'sub:market': {
@@ -89,12 +77,6 @@ export const TAB_UNLOCK_CONDITIONS = {
  *             same event value they already listen for.
  */
 export const TAB_GROUPS = {
-  military: {
-    subTabs: [
-      { id: 'barracks', label: '⚔️ Barracks',  viewId: 'barracks' },
-      { id: 'training', label: '🗡️ Training',  viewId: 'military' },
-    ],
-  },
   quests: {
     subTabs: [
       { id: 'quests',     label: '📜 Quests',     viewId: 'quests'     },
@@ -115,13 +97,8 @@ export const TAB_GROUPS = {
  * or 'sub:X' for sub-tabs).
  */
 export const BUILDING_TAB_MAP = {
-  // Military sub-tabs
-  barracks:      'sub:barracks',
-  infantryhall:  'sub:training',
-  archeryrange:  'sub:training',
-  cavalrystable: 'sub:training',
-  siegeworkshop: 'sub:training',
-  // Standalone tabs
+  // Trainer & Barracks buildings open modals (no badge tab) — completion still
+  // badges the Base toggle via _onBuildingCompleted.
   heroquarters:  'heroes',
   workshop:      'research',
   magictower:    'research',
@@ -134,15 +111,15 @@ export const BUILDING_TAB_MAP = {
  * carries Military/Heroes/Research buttons; those views are reached by clicking
  * the building that owns them.
  *
- * Each entry: { label, view } routes via `ui:navigateTo(view)`, OR { label, train }
- * for trainer buildings, which emit `ui:openTraining` with the buildingId so the
- * Military view opens pre-selected to that trainer.
+ * Each entry: { label, view } routes via `ui:navigateTo(view)`; { label, train }
+ * for trainer buildings emits `ui:openTraining` (opens the compact Training modal);
+ * { label, squads } emits `ui:openSquads` (opens the per-building Squad modal).
  */
 export const BUILDING_VIEW_ACTION = {
-  barracks:      { label: '⚔️ Manage Squads', view: 'barracks' },
+  barracks:      { label: '⚔️ Manage Squads', squads: true },
   heroquarters:  { label: '🦸 Heroes',        view: 'heroes'   },
-  workshop:      { label: '🔬 Research',       view: 'research' },
-  magictower:    { label: '🔬 Research',       view: 'research' },
+  workshop:      { label: '🔬 Research',       research: true },
+  magictower:    { label: '🔬 Research',       research: true },
   rallypoint:    { label: '🌍 World Map',      view: 'world'    },
   infantryhall:  { label: '🗡️ Train',          train: true },
   archeryrange:  { label: '🏹 Train',          train: true },

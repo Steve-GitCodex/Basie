@@ -145,3 +145,25 @@ export const TECH_CONFIG = {
     prereqTechs: [],
   },
 };
+
+/**
+ * TECH_BRANCHES — research branches shown as the Level-1 card grid in ResearchUI.
+ * Each tech belongs to exactly one branch (see TECH_BRANCH_OF below); drilling into
+ * a card opens that branch's interconnected (scroll-down, no pan/zoom) node tree.
+ */
+export const TECH_BRANCHES = [
+  { id: 'economy', label: 'Economy', icon: '🪙' },
+  { id: 'combat',  label: 'Combat',  icon: '⚔️' },
+  { id: 'units',   label: 'Units',   icon: '🛡️' },
+];
+
+const TECH_BRANCH_OF = {
+  improved_smelting: 'economy', reinforced_lumber: 'economy', rapid_construction: 'economy', infrastructure: 'economy',
+  steel_armor: 'combat', battle_formations: 'combat', advanced_tactics: 'combat',
+  infantry_mastery: 'units', ranged_mastery: 'units', cavalry_mastery: 'units', siege_mastery: 'units', elite_training: 'units',
+};
+
+// Author the branch onto each tech config so it flows through TechnologyManager.getTechWithState().
+for (const [techId, branch] of Object.entries(TECH_BRANCH_OF)) {
+  if (TECH_CONFIG[techId]) TECH_CONFIG[techId].branch = branch;
+}

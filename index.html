@@ -249,85 +249,9 @@
           <div class="bq-sidebar__content" id="build-queue-panel"></div>
         </aside>
 
-        <!-- MILITARY GROUP VIEW (sub-tabs: Barracks | Training) -->
-        <section class="view hidden" id="view-military">
-          <!-- Sub-tab navigation -->
-          <div class="sub-tab-bar" data-group="military">
-            <button class="sub-tab-btn" data-sub-view="barracks" data-group="military">⚔️ Barracks</button>
-            <button class="sub-tab-btn" data-sub-view="training" data-group="military">🗡️ Training</button>
-          </div>
-          <!-- Locked-state card (shown when a locked sub-tab is clicked) -->
-          <div class="sub-view-locked hidden" id="sub-locked-military">
-            <div class="locked-state-card">
-              <div class="locked-state-icon">🔒</div>
-              <h3 class="locked-title">Locked</h3>
-              <p class="locked-reason"></p>
-            </div>
-          </div>
-          <!-- Sub-view: Barracks -->
-          <div class="sub-view hidden" id="sub-view-barracks">
-            <div class="view-header">
-              <h2>⚔️ Barracks</h2>
-              <p class="view-subtitle">Manage your squads and assign heroes</p>
-            </div>
-            <div class="barracks-layout">
-              <!-- Training Queue (visible only when active) -->
-              <div class="barracks-section" style="display:none">
-                <div class="barracks-section-header">
-                  <h3><span class="section-icon">⏱️</span> Training Queue</h3>
-                </div>
-                <div class="training-queue-container">
-                  <div class="training-queue-list" id="training-queue-list"></div>
-                </div>
-              </div>
-              <!-- Squads -->
-              <div class="squads-layout">
-                <!-- Left: Squad List -->
-                <div class="squads-sidebar">
-                  <div class="squads-header">
-                    <h4>Squads</h4>
-                    <span id="squad-cap-display" class="squad-cap-label"></span>
-                    <button class="btn btn-sm btn-primary" id="btn-create-squad">+ New</button>
-                  </div>
-                  <div class="squads-list" id="squads-list"></div>
-                  <div class="barracks-squad-slots" id="barracks-squad-slots"></div>
-                </div>
-                <!-- Right: Squad Management Panel -->
-                <div class="squad-management-panel" id="squad-management-panel">
-                  <div class="squad-panel-placeholder">Select a squad to manage</div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <!-- Sub-view: Training -->
-          <div class="sub-view hidden" id="sub-view-training">
-            <div class="view-header">
-              <h2>🗡️ Training</h2>
-              <p class="view-subtitle">Train units at your military buildings</p>
-            </div>
-            <div class="military-layout">
-              <!-- Training Queue: 4 building slots (pinned top, hidden when empty) -->
-              <div class="military-queue-section" style="display:none" id="military-queue-section">
-                <div class="military-queue-header">
-                  <span class="section-icon">⏱️</span>
-                  <h3>Training Queues</h3>
-                </div>
-                <div class="military-queue-grid" id="military-queue-grid"></div>
-              </div>
-              <!-- Building Picker Tabs -->
-              <div class="military-building-tabs">
-                <button class="military-building-tab active" data-building="infantryhall">🗡️ Infantry Hall</button>
-                <button class="military-building-tab" data-building="archeryrange">🏹 Archery Range</button>
-                <button class="military-building-tab" data-building="cavalrystable">🐴 Cavalry Stable</button>
-                <button class="military-building-tab" data-building="siegeworkshop">💥 Siege Workshop</button>
-              </div>
-              <!-- Building Status Banner -->
-              <div id="military-building-status" class="military-building-status"></div>
-              <!-- Unit Training Cards -->
-              <div class="buildings-grid" id="military-units-grid"></div>
-            </div>
-          </div>
-        </section>
+        <!-- Training & Squads are now compact modals opened from the trainer / Barracks
+             tile tooltips (MilitaryUI / BarracksUI). The old #view-military group view
+             and its sub-tabs were removed in the 2026-06 modal redesign. -->
 
         <!-- HEROES VIEW -->
         <section class="view hidden" id="view-heroes">
@@ -356,14 +280,8 @@
           </div>
         </section>
 
-        <!-- RESEARCH VIEW -->
-        <section class="view hidden" id="view-research">
-          <div class="view-header">
-            <h2>🔬 Research</h2>
-            <p class="view-subtitle">Unlock new technologies and upgrades</p>
-          </div>
-          <div id="tech-tree" style="display:flex; flex-direction:column; gap:1rem;"></div>
-        </section>
+        <!-- Research is now a bottom-sheet panel (#research-panel), opened from the
+             Workshop / Magic Tower tile tooltip. The old #view-research page was removed. -->
 
         <!-- QUESTS GROUP VIEW (sub-tabs: Quests | Challenges) -->
         <section class="view hidden" id="view-quests">
@@ -444,6 +362,17 @@
       </main>
 
       <!-- BUILDABLES INVENTORY (catalog overlay — More grid "Build" or empty-plot tap) -->
+      <!-- Training & Squad bottom-sheets (rendered by MilitaryUI / BarracksUI) -->
+      <div id="train-panel" class="game-sheet hidden" role="dialog" aria-modal="true" aria-label="Train Units">
+        <div class="game-sheet__panel" id="train-sheet"></div>
+      </div>
+      <div id="squad-panel" class="game-sheet hidden" role="dialog" aria-modal="true" aria-label="Manage Squad">
+        <div class="game-sheet__panel" id="squad-sheet"></div>
+      </div>
+      <div id="research-panel" class="game-sheet hidden" role="dialog" aria-modal="true" aria-label="Research">
+        <div class="game-sheet__panel" id="research-sheet"></div>
+      </div>
+
       <div id="buildables-panel" class="buildables-panel hidden" role="dialog" aria-modal="true" aria-label="Buildables">
         <div class="bp-sheet">
           <div class="bp-head">

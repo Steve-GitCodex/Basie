@@ -1,194 +1,137 @@
 /* =============================================
- * RESEARCH — NODE-GRAPH TECH TREE
+ * RESEARCH — two-level: branch grid → vertical scroll tree (no pan/zoom)
  * ============================================= */
 
-/* ── Tree header ─────────────────────────────────────────────────────── */
-.research-tree-header {
-  font-weight: 700;
-  font-size: var(--text-sm);
-  color: var(--clr-text-primary);
-  margin: var(--space-4) 0 var(--space-2);
+/* ── Level 1: branch card grid ───────────────────────────────────────── */
+.research-branch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--space-3);
+  margin: var(--space-3) 0;
+}
+.research-branch-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: var(--space-4) var(--space-3) var(--space-3);
+  background: var(--clr-bg-elevated);
+  border: 1px solid var(--clr-border-light);
+  border-top: 3px solid var(--branch-color, var(--clr-primary));
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+.research-branch-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+.rb-active-dot { position: absolute; top: 6px; right: 8px; font-size: 0.8rem; }
+.rb-icon { font-size: 2rem; line-height: 1; }
+.rb-pct {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.4rem;
+  color: var(--branch-color, var(--clr-text-primary));
+}
+.rb-name { font-weight: 700; font-size: var(--text-sm); color: var(--clr-text-primary); }
+.rb-sub { font-size: var(--text-xs); color: var(--clr-text-secondary); }
+.rb-meter {
+  width: 100%; height: 5px;
+  border-radius: var(--radius-full);
+  background: var(--clr-bg-surface);
+  overflow: hidden;
+  margin-top: 4px;
+}
+.rb-meter-fill { display: block; height: 100%; background: var(--branch-color, var(--clr-primary)); }
+
+/* ── Level 2: tree head ──────────────────────────────────────────────── */
+.research-tree-head {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  margin: var(--space-3) 0 var(--space-2);
+}
+.research-tree-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--text-md);
+  color: var(--clr-text-primary);
 }
 
-.tree-hint {
-  font-size: var(--text-xs);
-  font-weight: 400;
-  color: var(--clr-text-muted);
-  letter-spacing: 0.01em;
-}
-
-/* ── Viewport (clipping container) ──────────────────────────────────── */
-.tech-graph-viewport {
+/* ── Tree scroll container (inside the panel — vertical handled by the sheet) ── */
+.research-tree-scroll {
   position: relative;
-  overflow: hidden;
   width: 100%;
-  height: calc(100vh - var(--header-height) - 280px);
-  min-height: 420px;
-  max-height: 680px;
-  border: 1px solid var(--clr-border-light);
-  border-radius: var(--radius-lg);
-  background: var(--clr-bg-base);
-  cursor: grab;
-  user-select: none;
+  overflow-x: auto;
+  overflow-y: visible;
 }
+.research-tree-stage { position: relative; margin: 0 auto; }
+.research-tree-edges { position: absolute; top: 0; left: 0; pointer-events: none; overflow: visible; }
+.research-tree-nodes { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+.research-tree-nodes .tech-node-inner { height: 100%; box-sizing: border-box; }
 
-.tech-graph-viewport:active { cursor: grabbing; }
-
-/* ── Stage (single transform target) ────────────────────────────────── */
-.tech-graph-stage {
-  position: absolute;
-  top: 0;
-  left: 0;
-  transform-origin: 0 0;
-  /* width & height set inline from JS */
-}
-
-/* ── SVG edge overlay ────────────────────────────────────────────────── */
-.tech-graph-edges {
-  position: absolute;
-  top: 0;
-  left: 0;
-  pointer-events: none;
-  overflow: visible;
-}
-
-/* ── Node HTML layer ─────────────────────────────────────────────────── */
-.tech-graph-nodes {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-}
-
-/* ── Individual node ─────────────────────────────────────────────────── */
-.tech-graph-node {
-  position: absolute;
-  cursor: pointer;
-  transition: filter var(--transition-base);
-}
-
+/* ── Slim node (shared .tech-graph-node class) ───────────────────────── */
+.tech-graph-node { position: absolute; cursor: pointer; }
 .tech-graph-node:hover .tech-node-inner {
-  box-shadow: 0 0 0 2px var(--clr-primary), var(--shadow-lg);
+  box-shadow: 0 0 0 2px var(--clr-primary), var(--shadow-md);
   transform: translateY(-2px);
 }
-
-/* Node inner card */
 .tech-node-inner {
-  background: var(--clr-bg-elevated);
-  border: 2px solid var(--clr-border-light);
-  border-radius: var(--radius-md);
-  padding: var(--space-3);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  transition: box-shadow var(--transition-base), transform var(--transition-base), border-color var(--transition-base);
-  backdrop-filter: blur(8px);
-}
-
-/* Node header row */
-.tech-node-header {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  background: var(--clr-bg-elevated);
+  border: 2px solid var(--clr-border-light);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-4);
+  transition: box-shadow var(--transition-base), transform var(--transition-base), border-color var(--transition-base);
 }
-
-.tech-node-icon {
-  font-size: 1.5rem;
-  flex-shrink: 0;
-  line-height: 1;
+.tech-tier-stripe {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
 }
-
-.tech-node-titles {
-  flex: 1;
-  min-width: 0;
-}
-
+.tech-node-icon { font-size: 1.4rem; flex-shrink: 0; line-height: 1; }
+.tech-node-titles { flex: 1; min-width: 0; }
 .tech-node-name {
   font-weight: 700;
   font-size: var(--text-sm);
   color: var(--clr-text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.tech-node-lvl { font-size: var(--text-xs); color: var(--clr-text-muted); margin-top: 1px; }
+.tech-node-badge { font-size: 12px; flex-shrink: 0; line-height: 1; }
 
-.tech-node-lvl {
-  font-size: var(--text-xs);
-  color: var(--clr-text-muted);
-  margin-top: 1px;
-}
+/* State variants */
+.tech-node-locked .tech-node-inner { opacity: 0.6; }
+.tech-node-locked .tech-node-icon  { filter: grayscale(0.6); }
+.tech-node-maxed  .tech-node-inner { border-color: var(--clr-gold) !important; box-shadow: 0 0 8px rgba(244, 196, 48, 0.25); }
+.tech-node-active .tech-node-inner { border-color: var(--clr-primary) !important; }
 
-/* Status badges */
-.tech-node-badge {
-  font-size: 9px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: var(--radius-full);
-  flex-shrink: 0;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.tgnb-maxed  { background: var(--clr-gold);    color: #000; }
-.tgnb-active { background: var(--clr-success);  color: #000; }
-.tgnb-queued { background: var(--clr-warning);  color: #000; }
-
-/* Tier pip */
-.tech-tier-pip {
-  font-size: 9px;
-  font-weight: 800;
-  padding: 1px 5px;
-  border-radius: var(--radius-sm);
-  color: #000;
-  flex-shrink: 0;
-  letter-spacing: 0.02em;
-}
-
-/* Effect summary line */
-.tech-node-effect {
-  font-size: var(--text-xs);
-  color: var(--clr-text-secondary);
-  line-height: 1.4;
-}
-
-/* Locked reason */
-.tech-node-locked-msg {
-  font-size: var(--text-xs);
-  color: var(--clr-danger);
-  font-weight: 600;
-}
-
-/* Cost chips row inside node */
-.tech-node-costs {
+/* ── Bottom active-research bar ──────────────────────────────────────── */
+.research-active-bar {
+  position: sticky;
+  bottom: 0;
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--clr-bg-surface);
+  border: 1px solid var(--clr-border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
 }
+.research-active-bar--idle { justify-content: center; }
+.rab-idle { font-size: var(--text-xs); color: var(--clr-text-muted); }
+.rab-icon { font-size: 1.4rem; flex-shrink: 0; }
+.rab-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.rab-name { font-size: var(--text-xs); color: var(--clr-text-primary); }
+.rab-queued { color: var(--clr-text-muted); }
+.rab-time { font-size: var(--text-xs); font-family: var(--font-mono); color: var(--clr-text-secondary); }
 
-/* ── State variants ──────────────────────────────────────────────────── */
-.tech-node-locked .tech-node-inner {
-  opacity: 0.55;
-  filter: grayscale(0.4);
-}
-
-.tech-node-locked .tech-node-icon {
-  filter: grayscale(0.6);
-}
-
-.tech-node-maxed .tech-node-inner {
-  border-color: var(--clr-gold) !important;
-  box-shadow: 0 0 8px rgba(244, 196, 48, 0.25);
-}
-
-.tech-node-active .tech-node-inner {
-  border-color: var(--clr-primary) !important;
-}
-
-/* ── Node popover ────────────────────────────────────────────────────── */
+/* ── Node popover (unchanged) ────────────────────────────────────────── */
 .tech-node-popover {
   position: absolute;
   left: 0;
@@ -197,7 +140,7 @@
   background: var(--clr-bg-elevated);
   border: 1px solid var(--clr-border-light);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-xl);
+  box-shadow: var(--shadow-lg);
   z-index: 200;
   display: flex;
   flex-direction: column;
@@ -205,8 +148,7 @@
   padding: var(--space-3);
   backdrop-filter: blur(12px);
   pointer-events: all;
-  /* Slide in */
-  animation: popoverIn 150ms var(--easing-spring) both;
+  animation: popoverIn 150ms var(--transition-spring) both;
 }
 
 @keyframes popoverIn {
@@ -214,55 +156,42 @@
   to   { opacity: 1; transform: translateY(0)    scale(1);    }
 }
 
-.popover-head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-sm);
-}
+.popover-head { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); }
+.popover-head strong { flex: 1; font-weight: 700; color: var(--clr-text-primary); }
+.popover-lvl { font-size: var(--text-xs); color: var(--clr-text-muted); }
+.popover-desc { font-size: var(--text-xs); color: var(--clr-text-secondary); line-height: 1.5; }
+.popover-bonus { font-size: var(--text-xs); color: var(--clr-text-secondary); }
+.popover-next { color: var(--clr-success); font-weight: 600; }
+.popover-missing { font-size: var(--text-xs); color: var(--clr-danger); font-weight: 600; }
+.popover-cost { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.popover-actions { display: flex; gap: var(--space-2); margin-top: var(--space-1); }
+.tech-time-hint { font-size: var(--text-xs); color: var(--clr-text-muted); }
 
-.popover-head strong {
+/* ── Research bottom-sheet shell (panel-hosted) ──────────────────────── */
+.research-modal { display: flex; flex-direction: column; min-height: 260px; }
+.rs-header {
+  position: sticky; top: 0; z-index: 3;
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-4) var(--space-5) var(--space-3);
+  background: linear-gradient(180deg, hsla(214, 36%, 12%, 1), hsla(214, 38%, 10%, 0.96));
+  border-bottom: 1px solid var(--clr-border);
+}
+.rs-title {
   flex: 1;
+  font-family: var(--font-display);
   font-weight: 700;
+  font-size: var(--text-lg);
   color: var(--clr-text-primary);
 }
-
-.popover-lvl {
-  font-size: var(--text-xs);
-  color: var(--clr-text-muted);
-}
-
-.popover-desc {
-  font-size: var(--text-xs);
+.rs-back, .rs-close {
+  width: 32px; height: 32px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--clr-border);
+  background: transparent;
   color: var(--clr-text-secondary);
-  line-height: 1.5;
+  font-size: 1rem; cursor: pointer;
 }
-
-.popover-bonus {
-  font-size: var(--text-xs);
-  color: var(--clr-text-secondary);
-}
-
-.popover-next {
-  color: var(--clr-success);
-  font-weight: 600;
-}
-
-.popover-missing {
-  font-size: var(--text-xs);
-  color: var(--clr-danger);
-  font-weight: 600;
-}
-
-.popover-cost {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  align-items: center;
-}
-
-.popover-actions {
-  display: flex;
-  gap: var(--space-2);
-  margin-top: var(--space-1);
-}
+.rs-back:hover  { color: var(--clr-primary); border-color: var(--clr-primary); }
+.rs-close:hover { color: var(--clr-text-primary); background: var(--clr-bg-hover); }
+.rs-body { padding: var(--space-4) var(--space-5); }
+.research-modal .research-active-bar { margin: var(--space-3) var(--space-5) var(--space-4); }

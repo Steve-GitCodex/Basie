@@ -26,7 +26,7 @@ export {
 } from './data/heroes.js';
 export { INVENTORY_ITEMS, SHOP_CONFIG, DIAMOND_PACKAGES, VIP_TIERS } from './data/economy.js';
 export { MONSTERS_CONFIG, CAMPAIGNS_CONFIG, ENCOUNTER_MODIFIERS, DIFFICULTY_MODIFIERS, SURVIVAL_MONSTER } from './data/combat.js';
-export { TECH_CONFIG } from './data/tech.js';
+export { TECH_CONFIG, TECH_BRANCHES } from './data/tech.js';
 export {
   QUESTS_CONFIG, ACHIEVEMENTS_CONFIG, CHALLENGES_CONFIG,
   DAILY_PASS_CONFIG, CHALLENGE_PASS_CONFIG,

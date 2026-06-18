@@ -274,9 +274,8 @@ export class NavigationUI {
       this._updateFlipButton();
     });
     eventBus.on('ui:navigateTo',          v    => this._switchView(v));
-    // Building click → Train: show the Military group and force the Training sub-tab
-    // (navigateTo('military') alone would restore the last sub-tab, e.g. Barracks).
-    eventBus.on('ui:openTraining',        ()   => { this._switchView('military'); this._switchSubTab('military', 'training'); });
+    // Building click → Train / Manage Squads now open compact modals (handled by
+    // MilitaryUI / BarracksUI). NavigationUI no longer switches to a Military view.
     eventBus.on('population:updated',     ()   => this._refreshStatusBar());
     eventBus.on('buffs:updated',          buffs => this._updateBuffBadge(buffs));
     eventBus.on('building:cafeteria:shortfall', ({ severity, message } = {}) => {

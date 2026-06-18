@@ -610,6 +610,7 @@ function launchGame(authScreen, gameShell, externalState = null) {
     events:     eventManager,
     worldMap:   worldMapManager,
     march:      marchManager,
+    eventBus,   // exposed for debugging/automation (watch/emit EventBus traffic)
   };
 
   console.log('[Basie] 🏰 Phase 4 launched!');

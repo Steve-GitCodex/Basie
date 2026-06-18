@@ -259,10 +259,9 @@ export class UIManager {
 
     // Perform the full initial render
     this._buildings.render();
-    this._barracks.render();
+    // BarracksUI, MilitaryUI & ResearchUI are modal-driven (opened from building tooltips) — no initial render.
     this._heroes.render();
     this._combat.render();
-    this._research.render();
     this._quests.render();
     this._market.render();
 

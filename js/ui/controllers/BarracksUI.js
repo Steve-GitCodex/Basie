@@ -1,429 +1,293 @@
-﻿/**
+/**
  * BarracksUI.js
- * Renders: reserve unit cards (with training controls),
- * squad management panel, and training queue.
+ * Per-building SQUAD MODAL (replaces the old #view-military Barracks sub-tab page).
  *
- * maxAffordable calculation now delegates to ResourceManager.maxAffordable()
- * instead of being computed inline.
+ * Opened from a Barracks tile tooltip (`ui:openSquads { buildingId, instanceIndex }`).
+ * Each Barracks instance == one squad. Layout: ‹ squad name + Lv › · combat stat strip ·
+ * 2×2 hero+unit slot tiles. A ‹ › pager cycles the player's built Barracks (squads).
+ * Hero/unit assignment reuses the floating pickers below.
  */
 import { eventBus } from '../../core/EventBus.js';
-import { UNITS_CONFIG, BUILDINGS_CONFIG, INVENTORY_ITEMS, HEROES_CONFIG, HERO_CLASSIFICATIONS } from '../../entities/GAME_DATA.js';
-import { RES_META, fmt } from '../uiUtils.js';
+import { UNITS_CONFIG, BUILDINGS_CONFIG, HEROES_CONFIG, HERO_CLASSIFICATIONS } from '../../entities/GAME_DATA.js';
 
 export class BarracksUI {
-  /**
-   * @param {{ rm, um, heroes, notifications }} systems
-   */
+  /** @param {{ rm, um, heroes, inventory, notifications }} systems */
   constructor(systems) {
     this._s = systems;
-    this._activeSquadId = null;
+    this._activeInstance = 0; // index into built barracks instances
+    this._open = false;
   }
 
   init() {
-    this._bindBarracksTabs();
-    this._bindCreateSquadButton();
-
-    eventBus.on('ui:viewChanged',    v => { if (v === 'barracks') this.render(); });
-    eventBus.on('army:updated',        () => this.render());
-    eventBus.on('unit:queueUpdated',   () => this.render()); // P5: refresh squad panel when training queue changes
-    eventBus.on('heroes:updated', () => {
-      if (this._activeSquadId) this._renderSquadPanel(this._activeSquadId);
-    });
+    eventBus.on('ui:openSquads', ({ instanceIndex } = {}) => this._openModal(instanceIndex));
+    eventBus.on('army:updated',      () => { if (this._open) this._renderModal(); });
+    eventBus.on('unit:queueUpdated', () => { if (this._open) this._renderModal(); });
+    eventBus.on('heroes:updated',    () => { if (this._open) this._renderModal(); });
   }
 
-  render() {
-    this._renderSquads();
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  _builtCount() {
+    return this._s.um._bm?.getBuiltInstanceCount?.('barracks') ?? 0;
   }
 
-  // ---- TAB WIRING ----
-  _bindBarracksTabs() {
-    document.querySelectorAll('.barracks-tab-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        eventBus.emit('ui:click');
-        const tabId   = btn.dataset.tab;
-        const tabGroup = btn.closest('.barracks-tabs');
-        if (!tabGroup) return;
-        tabGroup.querySelectorAll('.barracks-tab-btn').forEach(b => b.classList.remove('active'));
-        tabGroup.querySelectorAll('.barracks-tab-content').forEach(c => c.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById(tabId)?.classList.add('active');
-      });
-    });
-  }
-
-  _bindCreateSquadButton() {
-    document.getElementById('btn-create-squad')?.addEventListener('click', () => {
-      eventBus.emit('ui:click');
-      const num              = this._s.um.getSquads().length + 1;
-      const squadIdx         = this._s.um.getSquads().length;
-      const barracksInstId   = `barracks_${squadIdx}`;
-      const result = this._s.um.createSquad(`Squad ${num}`, barracksInstId);
-      if (!result.success) {
-        eventBus.emit('ui:error');
-        this._s.notifications?.show('warning', 'Squad Limit Reached', result.reason);
-        return;
-      }
-      this._renderSquadsList();
-      setTimeout(() => {
-        const newBtn = document.querySelector(`[data-squad-id="${result.squadId}"]`);
-        if (newBtn) newBtn.click();
-      }, 0);
-    });
-  }
-
-  // ---- SQUADS ----
-  _renderSquads() {
-    this._renderSquadsList();
-    const squads = this._s.um.getSquads();
-    // Restore previously active squad, or default to first
-    const squadToShow = (this._activeSquadId && squads.find(s => s.id === this._activeSquadId))
-      ? this._activeSquadId
-      : (squads.length > 0 ? squads[0].id : null);
-    this._renderSquadPanel(squadToShow);
-  }
-
-  _renderSquadsList() {
-    const squadsList = document.getElementById('squads-list');
-    if (!squadsList) return;
-    squadsList.innerHTML = '';
-
-    const squads    = this._s.um.getSquads();
-    const maxSquads = this._s.um.getMaxSquads();
-    const bm        = this._s.um._bm;
-
-    // Update squad cap display in header
-    const capEl = document.getElementById('squad-cap-display');
-    if (capEl) capEl.textContent = `${squads.length} / ${maxSquads} Squads`;
-
-    // Disable New button if at cap or no barracks
-    const newBtn = document.getElementById('btn-create-squad');
-    if (newBtn) {
-      const atCap = squads.length >= maxSquads;
-      const noBarracks = maxSquads === 0;
-      newBtn.disabled = atCap || noBarracks;
-      newBtn.title = noBarracks
-        ? 'Build a Barracks first to create squads'
-        : atCap ? 'Build another Barracks to unlock a new squad slot' : 'Create a new squad';
+  /**
+   * Ensure a squad exists for built barracks instance `i`, then return it.
+   * Keyed by `barracksInstanceId` (NOT array index) so deleting/recreating a squad
+   * never breaks the instance↔squad mapping or collides with another instance.
+   */
+  _squadForInstance(i) {
+    const um = this._s.um;
+    const instId = `barracks_${i}`;
+    let squad = um.getSquads().find(s => s.barracksInstanceId === instId);
+    if (!squad && um.getSquads().length < um.getMaxSquads()) {
+      const r = um.createSquad(`Squad ${i + 1}`, instId);
+      squad = (r?.squadId ? um.getSquad?.(r.squadId) : null)
+        ?? um.getSquads().find(s => s.barracksInstanceId === instId);
     }
-
-    squads.forEach((squad, idx) => {
-      const btn = document.createElement('button');
-      btn.className = 'squad-tab-btn';
-      btn.dataset.squadId = squad.id;
-      if (idx === 0) btn.classList.add('active');
-      btn.textContent = squad.name;
-      btn.addEventListener('click', () => {
-        squadsList.querySelectorAll('.squad-tab-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        this._activeSquadId = squad.id;
-        this._renderSquadPanel(squad.id);
-      });
-      squadsList.appendChild(btn);
-    });
-
-    // ── Barracks squad slot indicators ───────────────────────────────────────
-    const slotsEl = document.getElementById('barracks-squad-slots');
-    if (!slotsEl || !bm) return;
-    slotsEl.innerHTML = '';
-
-    // Read slot config from BUILDINGS_CONFIG so it stays in sync with data
-    const BARRACKS_SLOTS = BUILDINGS_CONFIG['barracks']?.instanceSlots ?? [];
-    const barracksLevel  = bm.getLevelOf('barracks');
-    const barracksBuilt  = barracksLevel > 0;
-    // stat boost: +5% squad stats per barracks level
-    const boostPct = barracksLevel * 5;
-
-    const infoRow = document.createElement('div');
-    infoRow.className = 'barracks-slot-info-row';
-    if (barracksLevel > 0) {
-      // Find the next locked barracks instance to show the HQ hint
-      const nextLockedSlot = BARRACKS_SLOTS.find(s =>
-        s.condition && Object.entries(s.condition).some(([bId, lv]) => bm.getLevelOf(bId) < lv)
-      );
-      const nextReqLevel = nextLockedSlot ? Object.values(nextLockedSlot.condition)[0] : null;
-      const nextSlotNum  = nextLockedSlot ? nextLockedSlot.index + 1 : null;
-      infoRow.innerHTML = `
-        <span class="barracks-boost-badge">⚔️ +${boostPct}% squad stats</span>
-        ${nextReqLevel ? `<span class="barracks-next-hint">HQ Lv.${nextReqLevel} unlocks barracks slot ${nextSlotNum}</span>` : ''}`;
-    }
-    slotsEl.appendChild(infoRow);
-
-    const slotsGrid = document.createElement('div');
-    slotsGrid.className = 'barracks-slots-grid';
-    BARRACKS_SLOTS.forEach(({ index, condition }) => {
-      const conditionMet = !condition || Object.entries(condition).every(([bId, lv]) => bm.getLevelOf(bId) >= lv);
-      const isOccupied   = squads.length > index;
-      const reqLevel     = condition ? Object.values(condition)[0] : null;
-      const reqLabel     = reqLevel ? `HQ Lv.${reqLevel}` : null;
-
-      const slot = document.createElement('div');
-      if (!barracksBuilt) {
-        if (!condition) {
-          slot.className = 'barracks-slot barracks-slot--empty';
-          slot.title = 'Build a Barracks to unlock your first squad slot';
-          slot.innerHTML = `<span class="slot-num">${index + 1}</span><span class="slot-label">Build Barracks</span>`;
-        } else {
-          slot.className = 'barracks-slot barracks-slot--locked';
-          slot.title = `${reqLabel} required to unlock slot ${index + 1}`;
-          slot.innerHTML = `<span class="slot-num">${index + 1}</span><span class="slot-lock">🔒 ${reqLabel}</span>`;
-        }
-      } else if (!conditionMet) {
-        slot.className = 'barracks-slot barracks-slot--locked';
-        slot.title = `${reqLabel} required to unlock slot ${index + 1}`;
-        slot.innerHTML = `<span class="slot-num">${index + 1}</span><span class="slot-lock">🔒 ${reqLabel}</span>`;
-      } else if (isOccupied) {
-        slot.className = 'barracks-slot barracks-slot--active';
-        slot.title = `Slot ${index + 1}: ${squads[index]?.name ?? 'Squad'}`;
-        slot.innerHTML = `<span class="slot-num">${index + 1}</span><span class="slot-label">${squads[index]?.name ?? 'Squad'}</span>`;
-      } else {
-        slot.className = 'barracks-slot barracks-slot--available';
-        slot.title = `Slot ${index + 1}: available — create a new squad`;
-        slot.innerHTML = `<span class="slot-num">${index + 1}</span><span class="slot-label">Available</span>`;
-      }
-      slotsGrid.appendChild(slot);
-    });
-    slotsEl.appendChild(slotsGrid);
+    return squad ?? null;
   }
 
-  _renderSquadPanel(squadId) {
-    const panel = document.getElementById('squad-management-panel');
-    if (!panel) return;
-    panel.innerHTML = '';
-    this._activeSquadId = squadId;
+  // ── Open / render ─────────────────────────────────────────────────────────
+  _openModal(instanceIndex) {
+    const built = this._builtCount();
+    if (built === 0) {
+      this._s.notifications?.show('warning', 'No Barracks', 'Build a Barracks first to manage squads.');
+      return;
+    }
+    const i = Number.isInteger(instanceIndex) ? instanceIndex : this._activeInstance;
+    this._activeInstance = Math.max(0, Math.min(i, built - 1));
+    this._panel = document.getElementById('squad-panel');
+    this._sheet = document.getElementById('squad-sheet');
+    if (!this._panel || !this._sheet) return;
+    this._panel.classList.remove('hidden');
+    document.body.classList.add('sheet-open');
+    this._open = true;
+    this._panel.onclick = e => { if (e.target === this._panel) this._close(); };
+    this._escHandler = e => { if (e.key === 'Escape') this._close(); };
+    document.addEventListener('keydown', this._escHandler);
+    this._renderModal();
+  }
 
-    if (!squadId) {
-      panel.innerHTML = '<div class="squad-panel-placeholder">Select a squad to manage</div>';
+  _close() {
+    this._panel?.classList.add('hidden');
+    document.body.classList.remove('sheet-open');
+    if (this._escHandler) document.removeEventListener('keydown', this._escHandler);
+    document.querySelectorAll('.hero-assign-picker, .slot-unit-type-picker').forEach(p => p.remove());
+    this._open = false;
+  }
+
+  _renderModal() {
+    if (!this._sheet) return;
+    this._sheet.innerHTML = '<div class="squad-modal"></div>';
+    const root = this._sheet.firstElementChild;
+
+    const squad = this._squadForInstance(this._activeInstance);
+    if (!squad) {
+      root.innerHTML = `
+        <div class="sq-header">
+          <div class="sq-title"><span class="sq-title-icon">⚔️</span><div class="sq-title-name">Squads</div></div>
+          <button class="modal-close sq-close" aria-label="Close">✕</button>
+        </div>
+        <div class="sq-empty">No squad available for this Barracks.</div>`;
       return;
     }
 
-    const squads = this._s.um.getSquads();
-    const squad   = squads.find(s => s.id === squadId);
-    if (!squad) return;
+    const built  = this._builtCount();
+    const multi  = built > 1;
+    const instId = squad.barracksInstanceId ?? `barracks_${this._activeInstance}`;
+    const bm     = this._s.um._bm;
+    const level  = bm?.getInstanceLevelOf?.(instId) ?? bm?.getLevelOf?.('barracks') ?? 1;
 
-    const squadIdx          = squads.findIndex(s => s.id === squadId);
-    const barracksInstanceId = `barracks_${squadIdx}`;
-
-    const reserve    = this._s.um.getReserve();
-    const reserveMap = {}; // tierKey → full unit object
-    reserve.forEach(u => { reserveMap[u.tierKey] = u; });
-
+    // Combat summary
+    const bonuses = this._s.heroes?.getCombatBonuses?.(squad.id) ?? { attackMult: 1, defenseMult: 1, lossReduction: 0 };
     const unitCount = squad.units.reduce((sum, u) => sum + u.count, 0);
+    let totAtk = 0, totDef = 0;
+    for (const u of squad.units) { totAtk += (u.stats?.attack ?? 0) * u.count; totDef += (u.stats?.defense ?? 0) * u.count; }
+    const score = Math.round((totAtk * bonuses.attackMult + totDef * bonuses.defenseMult) * Math.max(1, unitCount));
 
-    // Compute combat stats for header chips
-    const combatBonuses = this._s.heroes?.getCombatBonuses?.(squadId) ?? { attackMult: 1, defenseMult: 1, lossReduction: 0 };
-    let totalAttack = 0, totalDefense = 0;
-    for (const u of squad.units) {
-      totalAttack  += (u.stats?.attack  ?? 0) * u.count;
-      totalDefense += (u.stats?.defense ?? 0) * u.count;
-    }
-    const combatScore = Math.round(
-      (totalAttack * combatBonuses.attackMult + totalDefense * combatBonuses.defenseMult) *
-      Math.max(1, unitCount)
-    );
+    const pagerPrev = multi ? '<button class="sq-pager sq-pager--prev" aria-label="Previous squad">‹</button>' : '';
+    const pagerNext = multi ? '<button class="sq-pager sq-pager--next" aria-label="Next squad">›</button>' : '';
 
-    // Header
-    const header = document.createElement('div');
-    header.className = 'squad-panel-header';
-    header.innerHTML = `
-      <span class="squad-flag">🚩</span>
-      <span class="squad-name-display">${squad.name}</span>
-      <span class="squad-header-stat">${unitCount} units · ${squad.units.length} types</span>
-      <span class="squad-combat-chip" title="ATK multiplier">⚔️ ×${combatBonuses.attackMult.toFixed(2)}</span>
-      <span class="squad-combat-chip" title="DEF multiplier">🛡️ ×${combatBonuses.defenseMult.toFixed(2)}</span>
-      ${combatBonuses.lossReduction > 0 ? `<span class="squad-combat-chip" title="Casualty reduction">🩺 -${(combatBonuses.lossReduction * 100).toFixed(0)}%</span>` : ''}
-      <span class="squad-combat-chip squad-combat-chip--score" title="Combat score">💪 ${combatScore.toLocaleString()}</span>
-      <button class="btn-squad-rename" title="Rename squad">✎</button>
-      <button class="btn-squad-delete" title="Delete squad">🗑</button>`;
-    panel.appendChild(header);
+    root.innerHTML = `
+      <div class="sq-header">
+        ${pagerPrev}
+        <div class="sq-title">
+          <span class="sq-title-icon">🚩</span>
+          <div>
+            <div class="sq-title-name">${squad.name}</div>
+            <div class="sq-title-sub">Barracks Lv.${level} · ${unitCount} units · ${squad.units.length} types</div>
+          </div>
+        </div>
+        ${pagerNext}
+        <button class="sq-rename" title="Rename squad">✎</button>
+        <button class="sq-delete" title="Reset squad (clear units &amp; heroes)">🗑</button>
+        <button class="modal-close sq-close" aria-label="Close">✕</button>
+      </div>
+      <div class="sq-stats">
+        <span class="sq-stat" title="Attack multiplier">⚔️ ×${bonuses.attackMult.toFixed(2)}</span>
+        <span class="sq-stat" title="Defense multiplier">🛡️ ×${bonuses.defenseMult.toFixed(2)}</span>
+        ${bonuses.lossReduction > 0 ? `<span class="sq-stat" title="Casualty reduction">🩺 -${(bonuses.lossReduction * 100).toFixed(0)}%</span>` : ''}
+        <span class="sq-stat sq-stat--score" title="Combat score">💪 ${score.toLocaleString()}</span>
+      </div>
+      <div class="sq-tiles" id="sq-tiles"></div>`;
 
-    header.querySelector('.btn-squad-rename').addEventListener('click', () => {
-      const nameSpan  = header.querySelector('.squad-name-display');
-      const renameBtn = header.querySelector('.btn-squad-rename');
-      const input     = document.createElement('input');
-      input.type = 'text'; input.value = squad.name; input.className = 'squad-rename-input'; input.maxLength = 30;
-      const confirmBtn = document.createElement('button');
-      confirmBtn.className = 'btn-rename-confirm'; confirmBtn.title = 'Save'; confirmBtn.textContent = '✓';
-      const cancelBtn = document.createElement('button');
-      cancelBtn.className = 'btn-rename-cancel'; cancelBtn.title = 'Cancel'; cancelBtn.textContent = '✕';
-      nameSpan.replaceWith(input);
-      renameBtn.replaceWith(confirmBtn);
-      header.insertBefore(cancelBtn, header.querySelector('.btn-squad-delete'));
-      input.focus(); input.select();
-      const save   = () => { const n = input.value.trim(); if (n && n !== squad.name) { this._s.um.renameSquad(squad.id, n); this._renderSquadsList(); } this._renderSquadPanel(squad.id); };
-      const cancel = () => this._renderSquadPanel(squad.id);
-      confirmBtn.addEventListener('click', save);
-      cancelBtn.addEventListener('click', cancel);
-      input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); save(); } if (e.key === 'Escape') { e.preventDefault(); cancel(); } });
-    });
+    // Bind header controls
+    root.querySelector('.sq-close')?.addEventListener('click', () => this._close());
+    root.querySelector('.sq-pager--prev')?.addEventListener('click', () => this._page(-1));
+    root.querySelector('.sq-pager--next')?.addEventListener('click', () => this._page(1));
+    root.querySelector('.sq-rename')?.addEventListener('click', () => this._renameSquad(squad));
+    root.querySelector('.sq-delete')?.addEventListener('click', () => this._deleteSquad(squad, instId));
 
-    header.querySelector('.btn-squad-delete').addEventListener('click', () => {
-      eventBus.emit('ui:click');
-      // Unassign all heroes from this barracks instance before deleting the squad
-      const heroesHere = this._s.heroes?.getHeroesForBuilding(barracksInstanceId) ?? [];
-      for (const h of heroesHere) {
-        this._s.heroes?.unassignHeroFromBuilding(h.heroId);
-      }
-      this._s.um.deleteSquad(squad.id);
-      this.render();
-    });
-
-    // Hero Slots Section (4 slots per squad)
-    panel.appendChild(this._buildHeroSlotsSection(squad.id, barracksInstanceId));
-  }
-
-  // ---- HERO SLOTS ----
-  _buildHeroSlotsSection(squadId, barracksInstanceId) {
-    const squadSlots    = BUILDINGS_CONFIG['barracks']?.squadSlots ?? [];
-    const MAX_SLOTS     = squadSlots.length || 4;
-    const bm            = this._s.um._bm;
-    const barracksLevel = bm
-      ? (bm.getInstanceLevelOf?.(barracksInstanceId) ?? bm.getLevelOf('barracks'))
-      : 1;
-    const _levelStats   = BUILDINGS_CONFIG['barracks']?.levelStats ?? [];
-    const slotCapacity  = barracksLevel > 0 && _levelStats.length > 0
-      ? (_levelStats[Math.min(barracksLevel - 1, _levelStats.length - 1)]?.slotCapacity ?? Infinity)
-      : Infinity;
-    const heroes = this._s.heroes;
-    const section = document.createElement('div');
-    section.className = 'squad-hero-section';
-
-    const heading = document.createElement('h5');
-    heading.className = 'squad-hero-heading';
-    heading.textContent = '⚔️ Hero Command';
-    section.appendChild(heading);
-
-    const subtitle = document.createElement('p');
-    subtitle.className = 'squad-hero-subtitle';
-    subtitle.textContent = 'Pair each hero with a unit type — matched types gain a strategic bonus.';
-    section.appendChild(subtitle);
-
-    const allHeroesHere = heroes ? heroes.getHeroesForBuilding(barracksInstanceId) : [];
-    const squad = this._s.um?.getSquad(squadId);
-    const slotUnitLinks = squad?.slotUnitLinks ?? new Map();
-
+    // Build the 2×2 slot tiles
+    const tilesEl = root.querySelector('#sq-tiles');
+    const squadSlots = BUILDINGS_CONFIG['barracks']?.squadSlots ?? [];
+    const MAX_SLOTS  = squadSlots.length || 4;
     for (let i = 0; i < MAX_SLOTS; i++) {
-      // Check if this hero/unit row is unlocked by the barracks's current level
-      const slotCfg      = squadSlots[i];
-      const condition    = slotCfg?.condition ?? null;
-      const slotUnlocked = !condition || Object.entries(condition).every(([bId, lv]) =>
-        (bId === 'barracks' ? barracksLevel : (bm ? bm.getLevelOf(bId) : 0)) >= lv
-      );
-
-      if (!slotUnlocked) {
-        const reqLevel = condition ? Object.values(condition)[0] : null;
-        const locked   = document.createElement('div');
-        locked.className = 'squad-hero-slot-card squad-hero-slot-card--locked';
-        locked.innerHTML = `
-          <div class="slot-locked-content">
-            <span class="slot-locked-icon">🔒</span>
-            <span class="slot-locked-label">Upgrade Barracks to Lv.${reqLevel}</span>
-          </div>`;
-        section.appendChild(locked);
-        continue;
-      }
-
-      // Hero is looked up by slotIndex — fully independent of unit assignment
-      const hero     = allHeroesHere.find(h => h.assignment?.slotIndex === i) ?? null;
-      const heroCfg  = hero ? HEROES_CONFIG[hero.heroId] : null;
-      const classCfg = heroCfg ? (HERO_CLASSIFICATIONS[heroCfg.classification] ?? HERO_CLASSIFICATIONS.combat) : null;
-
-      const slotUnit      = this._s.um?.getSlotUnit(squadId, i) ?? null;
-      const linkedUnitType = slotUnit?.unitId ?? (slotUnitLinks.get(i) ?? null);
-      const linkedUnitCfg  = linkedUnitType ? UNITS_CONFIG[linkedUnitType] : null;
-      const isEffective = !!(hero && linkedUnitType && classCfg &&
-        (classCfg.preferredUnitTypes ?? []).includes(linkedUnitType));
-
-      const card = document.createElement('div');
-      card.className = 'squad-hero-slot-card';
-
-      // Hero half
-      const heroHalf = document.createElement('div');
-      heroHalf.className = hero ? 'slot-hero-half slot-hero-half--filled' : 'slot-hero-half slot-hero-half--empty';
-      if (hero && heroCfg) {
-        const stars = hero.stars ? '★'.repeat(hero.stars) : '';
-        const classHtml = classCfg
-          ? `<span class="hero-class-badge class-${heroCfg.classification}">${classCfg.icon} ${classCfg.label}</span>`
-          : '';
-        heroHalf.innerHTML = `
-          <div class="slot-portrait slot-portrait--${heroCfg.tier ?? 'common'}">${heroCfg.icon ?? '?'}</div>
-          <div class="slot-info">
-            <div class="slot-name">${heroCfg.name}</div>
-            <div class="slot-level">Lv.${hero.level}${stars ? ' ' + stars : ''}</div>
-            <div class="slot-hero-xp-row">
-              <div class="slot-hero-xp-bar"><div class="slot-hero-xp-fill" style="width:${Math.min(100, Math.round((hero.xp / hero.xpToNext) * 100))}%"></div></div>
-              <span class="slot-hero-xp">${hero.xp} / ${hero.xpToNext}</span>
-            </div>
-            ${classHtml}
-          </div>
-          <button class="slot-unassign" title="Remove hero">✕</button>`;
-        heroHalf.querySelector('.slot-unassign').addEventListener('click', e => {
-          e.stopPropagation(); eventBus.emit('ui:click');
-          // Removing a hero does NOT affect units — units belong to the slot, not the hero
-          heroes.unassignHeroFromBuilding(hero.heroId);
-        });
-        heroHalf.addEventListener('click', () => {
-          eventBus.emit('ui:click');
-          this._openHeroAssignPicker(squadId, barracksInstanceId, i, card);
-        });
-      } else {
-        heroHalf.innerHTML = '<div class="slot-empty-icon">+</div><div class="slot-empty-label">Add Hero</div>';
-        heroHalf.addEventListener('click', () => { eventBus.emit('ui:click'); this._openHeroAssignPicker(squadId, barracksInstanceId, i, card); });
-      }
-      card.appendChild(heroHalf);
-
-      // Divider
-      const divider = document.createElement('div'); divider.className = 'slot-divider'; card.appendChild(divider);
-
-      // Unit half — independent of hero presence
-      const unitHalf = document.createElement('div');
-      unitHalf.className = linkedUnitType ? 'slot-unit-half slot-unit-half--filled' : 'slot-unit-half slot-unit-half--empty';
-      if (linkedUnitType && linkedUnitCfg) {
-        const chipHtml = isEffective
-          ? '<span class="slot-effectiveness-chip slot-effectiveness-chip--effective">✦ Effective</span>'
-          : hero ? '<span class="slot-effectiveness-chip slot-effectiveness-chip--neutral">↗ Neutral</span>' : '';
-        const capDisplay = isFinite(slotCapacity) ? ` / ${slotCapacity.toLocaleString()}` : '';
-        const tierPill = slotUnit
-          ? `<span class="slot-unit-tier-pill"><span class="slot-unit-tier-num">T${slotUnit.tier}</span> ${slotUnit.name} ×${slotUnit.count}${capDisplay}</span>`
-          : '';
-        unitHalf.innerHTML = `
-          <div class="slot-unit-icon">${linkedUnitCfg.icon}</div>
-          <div class="slot-unit-info">
-            <div class="slot-unit-name">${linkedUnitCfg.name}</div>
-            <div class="slot-unit-badges">${tierPill}${chipHtml}</div>
-          </div>
-          <button class="slot-unlink" title="Remove units from slot">✕</button>`;
-        unitHalf.querySelector('.slot-unlink').addEventListener('click', e => {
-          e.stopPropagation(); eventBus.emit('ui:click');
-          this._s.um?.clearSlotUnits(squadId, i);
-          this._renderSquadPanel(squadId);
-        });
-        unitHalf.addEventListener('click', e => {
-          if (e.target.closest('.slot-unlink')) return;
-          eventBus.emit('ui:click');
-          this._openUnitTypePicker(squadId, i, card, classCfg);
-        });
-      } else {
-        // Any slot (with or without a hero) can have units assigned
-        unitHalf.innerHTML = '<div class="slot-empty-icon">+</div><div class="slot-empty-label">Add Unit</div>';
-        unitHalf.addEventListener('click', () => { eventBus.emit('ui:click'); this._openUnitTypePicker(squadId, i, card, classCfg); });
-      }
-      card.appendChild(unitHalf);
-      section.appendChild(card);
+      tilesEl.appendChild(this._buildTile(squad, instId, level, i, squadSlots[i]));
     }
-
-    return section;
   }
 
+  _page(dir) {
+    eventBus.emit('ui:click');
+    const built = this._builtCount();
+    if (built < 2) return;
+    this._activeInstance = (this._activeInstance + dir + built) % built;
+    this._renderModal();
+  }
+
+  // ── A single 2×2 slot tile (hero over unit) ───────────────────────────────
+  _buildTile(squad, barracksInstanceId, barracksLevel, slotIndex, slotCfg) {
+    const bm = this._s.um._bm;
+    const condition = slotCfg?.condition ?? null;
+    const unlocked = !condition || Object.entries(condition).every(([bId, lv]) =>
+      (bId === 'barracks' ? barracksLevel : (bm ? bm.getLevelOf(bId) : 0)) >= lv);
+
+    const tile = document.createElement('div');
+    tile.className = 'sq-tile';
+
+    if (!unlocked) {
+      const reqLevel = condition ? Object.values(condition)[0] : null;
+      tile.classList.add('sq-tile--locked');
+      tile.innerHTML = `<div class="sq-tile-lock"><span>🔒</span><span>Barracks Lv.${reqLevel}</span></div>`;
+      return tile;
+    }
+
+    const heroes = this._s.heroes;
+    const allHeroesHere = heroes ? heroes.getHeroesForBuilding(barracksInstanceId) : [];
+    const hero    = allHeroesHere.find(h => h.assignment?.slotIndex === slotIndex) ?? null;
+    const heroCfg = hero ? HEROES_CONFIG[hero.heroId] : null;
+    const classCfg = heroCfg ? (HERO_CLASSIFICATIONS[heroCfg.classification] ?? HERO_CLASSIFICATIONS.combat) : null;
+
+    const slotUnit       = this._s.um?.getSlotUnit(squad.id, slotIndex) ?? null;
+    const linkedUnitType = slotUnit?.unitId ?? (squad.slotUnitLinks?.get?.(slotIndex) ?? null);
+    const linkedUnitCfg  = linkedUnitType ? UNITS_CONFIG[linkedUnitType] : null;
+    const isEffective = !!(hero && linkedUnitType && classCfg &&
+      (classCfg.preferredUnitTypes ?? []).includes(linkedUnitType));
+
+    // Hero half (top)
+    const heroHalf = document.createElement('div');
+    heroHalf.className = `sq-hero ${hero ? 'sq-hero--filled' : 'sq-hero--empty'}`;
+    if (hero && heroCfg) {
+      const stars = hero.stars ? '★'.repeat(hero.stars) : '';
+      heroHalf.innerHTML = `
+        <div class="sq-hero-portrait sq-portrait--${heroCfg.tier ?? 'common'}">${heroCfg.icon ?? '?'}</div>
+        <div class="sq-hero-info">
+          <div class="sq-hero-name">${heroCfg.name}</div>
+          <div class="sq-hero-lvl">Lv.${hero.level}${stars ? ' ' + stars : ''}</div>
+        </div>
+        <button class="sq-hero-clear" title="Remove hero">✕</button>`;
+      heroHalf.querySelector('.sq-hero-clear').addEventListener('click', e => {
+        e.stopPropagation(); eventBus.emit('ui:click');
+        heroes.unassignHeroFromBuilding(hero.heroId);
+      });
+    } else {
+      heroHalf.innerHTML = '<div class="sq-add-icon">＋</div><div class="sq-add-label">Add Hero</div>';
+    }
+    heroHalf.addEventListener('click', e => {
+      if (e.target.closest('.sq-hero-clear')) return;
+      eventBus.emit('ui:click');
+      this._openHeroAssignPicker(squad.id, barracksInstanceId, slotIndex, tile);
+    });
+    tile.appendChild(heroHalf);
+
+    // Unit half (bottom)
+    const unitHalf = document.createElement('div');
+    unitHalf.className = `sq-unit ${linkedUnitType ? 'sq-unit--filled' : 'sq-unit--empty'}`;
+    if (linkedUnitType && linkedUnitCfg) {
+      const chip = isEffective ? '<span class="sq-eff sq-eff--good">✦</span>' : (hero ? '<span class="sq-eff">↗</span>' : '');
+      const tierTxt = slotUnit ? `T${slotUnit.tier} ×${slotUnit.count}` : '';
+      unitHalf.innerHTML = `
+        <div class="sq-unit-icon">${linkedUnitCfg.icon}</div>
+        <div class="sq-unit-info">
+          <div class="sq-unit-name">${linkedUnitCfg.name} ${chip}</div>
+          <div class="sq-unit-tier">${tierTxt}</div>
+        </div>
+        <button class="sq-unit-clear" title="Remove units">✕</button>`;
+      unitHalf.querySelector('.sq-unit-clear').addEventListener('click', e => {
+        e.stopPropagation(); eventBus.emit('ui:click');
+        this._s.um?.clearSlotUnits(squad.id, slotIndex);
+        this._renderModal();
+      });
+    } else {
+      unitHalf.innerHTML = '<div class="sq-add-icon">＋</div><div class="sq-add-label">Add Unit</div>';
+    }
+    unitHalf.addEventListener('click', e => {
+      if (e.target.closest('.sq-unit-clear')) return;
+      eventBus.emit('ui:click');
+      this._openUnitTypePicker(squad.id, slotIndex, tile, classCfg);
+    });
+    tile.appendChild(unitHalf);
+
+    return tile;
+  }
+
+  // ── Rename / delete ───────────────────────────────────────────────────────
+  _renameSquad(squad) {
+    eventBus.emit('ui:click');
+    const titleEl = this._sheet?.querySelector('.sq-title-name');
+    if (!titleEl) return;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'sq-rename-input';
+    input.value = squad.name;
+    input.maxLength = 30;
+    titleEl.replaceWith(input);
+    input.focus();
+    input.select();
+
+    let done = false;
+    const finish = save => {
+      if (done) return;
+      done = true;
+      if (save) {
+        const n = input.value.trim();
+        if (n && n !== squad.name) this._s.um.renameSquad(squad.id, n.slice(0, 30));
+      }
+      this._renderModal();
+    };
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter')  { e.preventDefault(); finish(true); }
+      else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+    });
+    input.addEventListener('blur', () => finish(true));
+  }
+
+  _deleteSquad(squad, barracksInstanceId) {
+    eventBus.emit('ui:click');
+    const heroesHere = this._s.heroes?.getHeroesForBuilding(barracksInstanceId) ?? [];
+    for (const h of heroesHere) this._s.heroes?.unassignHeroFromBuilding(h.heroId);
+    this._s.um.deleteSquad(squad.id);
+    this._renderModal();
+  }
+
+  // ── HERO PICKER (floating) ────────────────────────────────────────────────
   _openHeroAssignPicker(squadId, barracksInstanceId, slotIndex, cardEl) {
-    // Remove any existing floating picker
     document.querySelectorAll('.hero-assign-picker').forEach(p => p.remove());
 
     const heroes = this._s.heroes;
     if (!heroes) return;
 
     const roster = heroes.getRosterWithState();
-    // Available: owned heroes NOT already in this exact slot of this barracks.
-    // Heroes in other slots or buildings CAN be moved here.
     const available = roster.filter(h =>
       h.isOwned &&
       !(h.assignment.type === 'building' && h.assignment.buildingId === barracksInstanceId && h.assignment.slotIndex === slotIndex)
@@ -460,9 +324,7 @@ export class BarracksUI {
       row.addEventListener('click', () => {
         eventBus.emit('ui:click');
         const result = heroes.assignHeroToBuilding(h.id, barracksInstanceId, slotIndex);
-        if (!result.success) {
-          this._s.notifications?.show('warning', 'Cannot Assign', result.reason);
-        }
+        if (!result.success) this._s.notifications?.show('warning', 'Cannot Assign', result.reason);
         picker.remove();
       });
       list.appendChild(row);
@@ -475,24 +337,19 @@ export class BarracksUI {
     cancel.addEventListener('click', e => { e.stopPropagation(); picker.remove(); });
     picker.appendChild(cancel);
 
-    // Float the picker centered over the clicked card
-    const _positionPicker = (p, anchor) => {
-      const W = 300, MARGIN = 8;
-      const r = anchor.getBoundingClientRect();
-      let left = r.left + (r.width - W) / 2;
-      left = Math.max(MARGIN, Math.min(left, window.innerWidth - W - MARGIN));
-      const top = Math.max(MARGIN, Math.min(r.top, window.innerHeight - 420));
-      p.style.cssText = `position:fixed;top:${top}px;left:${left}px;width:${W}px;z-index:2000;max-height:${window.innerHeight - top - MARGIN * 2}px;overflow-y:auto;`;
-    };
-    _positionPicker(picker, cardEl);
+    const W = 300, MARGIN = 8;
+    const r = cardEl.getBoundingClientRect();
+    let left = r.left + (r.width - W) / 2;
+    left = Math.max(MARGIN, Math.min(left, window.innerWidth - W - MARGIN));
+    const top = Math.max(MARGIN, Math.min(r.top, window.innerHeight - 420));
+    picker.style.cssText = `position:fixed;top:${top}px;left:${left}px;width:${W}px;z-index:2000;max-height:${window.innerHeight - top - MARGIN * 2}px;overflow-y:auto;`;
     document.body.appendChild(picker);
-    const dismissHero = e => { if (!picker.contains(e.target) && !cardEl.contains(e.target)) { picker.remove(); document.removeEventListener('click', dismissHero); } };
-    setTimeout(() => document.addEventListener('click', dismissHero), 0);
+    const dismiss = e => { if (!picker.contains(e.target) && !cardEl.contains(e.target)) { picker.remove(); document.removeEventListener('click', dismiss); } };
+    setTimeout(() => document.addEventListener('click', dismiss), 0);
   }
 
-  // ---- UNIT TYPE PICKER ----
+  // ── UNIT TYPE PICKER (floating, 2-step) ───────────────────────────────────
   _openUnitTypePicker(squadId, slotIndex, cardEl, classCfg) {
-    // Remove any existing floating picker
     document.querySelectorAll('.slot-unit-type-picker').forEach(p => p.remove());
 
     const reserve = this._s.um?.getReserve() ?? [];
@@ -545,13 +402,11 @@ export class BarracksUI {
     const renderAssignStep = (unitType, cfg) => {
       picker.innerHTML = '';
 
-      // Always fetch a fresh reserve snapshot so displayed counts are accurate
       const freshReserve = this._s.um?.getReserve() ?? [];
       const tiers = freshReserve
         .filter(u => u.unitId === unitType && u.count > 0)
         .sort((a, b) => b.tier - a.tier);
 
-      // Slot capacity for this specific barracks instance
       const _squadData = this._s.um?.getSquad(squadId);
       const _bm        = this._s.um?._bm;
       const _bldgCfg   = BUILDINGS_CONFIG['barracks'];
@@ -587,52 +442,48 @@ export class BarracksUI {
           const row = document.createElement('div');
           row.className = 'sut-tier-row';
 
-          // Top line: name + available count
           const info = document.createElement('div');
           info.className = 'sut-tier-info';
           info.innerHTML = `<span class="sut-tier-name">T${u.tier} ${tierName}</span><span class="sut-tier-reserve">📦 ${u.count} available</span>`;
 
-          // Step multiplier chips + [−] [input] [+] [Assign]
           const bottom = document.createElement('div');
           bottom.className = 'sut-tier-bottom';
 
           const multiplierRow = document.createElement('div');
           multiplierRow.className = 'sut-qty-presets';
 
-          let step = 1;
-
+          // Units of THIS tier already in the slot (so we resume from where we left off).
           const _existingCount = (_curSlotUnit?.unitId === unitType && _curSlotUnit?.tier === u.tier) ? _curSlotUnit.count : 0;
-          const _maxAssignable = Math.max(0, Math.min(u.count, isFinite(_slotCap) ? _slotCap - _existingCount : u.count));
+          const _maxAddable = Math.max(0, Math.min(u.count, isFinite(_slotCap) ? _slotCap - _existingCount : u.count));
+          const _maxTotal   = _existingCount + _maxAddable;
 
+          // The input is the slot's TARGET TOTAL — pre-filled with the current count.
           const input = document.createElement('input');
-          input.type = 'number'; input.className = 'sq-transfer-amt'; input.value = _maxAssignable > 0 ? '1' : '0'; input.min = '1'; input.max = String(_maxAssignable);
+          input.type = 'number'; input.className = 'sq-transfer-amt';
+          input.value = String(_existingCount); input.min = String(_existingCount); input.max = String(_maxTotal);
 
-          const clamp = val => Math.min(_maxAssignable, Math.max(1, val));
+          const clamp = val => Math.min(_maxTotal, Math.max(_existingCount, val));
 
           if (isFinite(_slotCap)) {
             const capRow = document.createElement('div');
             capRow.className = 'sut-cap-hint';
-            capRow.textContent = `Slot: ${_existingCount} / ${_slotCap.toLocaleString()} units${_maxAssignable <= 0 ? ' — full' : ''}`;
+            capRow.textContent = `Slot: ${_existingCount} / ${_slotCap.toLocaleString()} units${_maxAddable <= 0 ? ' — full' : ''}`;
             row.appendChild(capRow);
           }
 
-          [1, 5, 10, 25].filter(n => n === 1 || n <= _maxAssignable).forEach(n => {
+          // Quick-add presets — each ADDS its amount to the running total.
+          [5, 10, 25, 50].filter(n => n <= _maxAddable).forEach(n => {
             const chip = document.createElement('button');
-            chip.className = 'sut-qty-chip' + (n === 1 ? ' sut-qty-chip--active' : '');
-            chip.textContent = `×${n}`;
-            chip.addEventListener('click', e => {
-              e.stopPropagation();
-              step = n;
-              multiplierRow.querySelectorAll('.sut-qty-chip').forEach(c => c.classList.remove('sut-qty-chip--active'));
-              chip.classList.add('sut-qty-chip--active');
-            });
+            chip.className = 'sut-qty-chip';
+            chip.textContent = `+${n}`;
+            chip.addEventListener('click', e => { e.stopPropagation(); input.value = clamp(+input.value + n); });
             multiplierRow.appendChild(chip);
           });
 
           const maxChip = document.createElement('button');
           maxChip.className = 'sut-qty-chip sut-qty-chip--max';
           maxChip.textContent = 'Max';
-          maxChip.addEventListener('click', e => { e.stopPropagation(); input.value = _maxAssignable; });
+          maxChip.addEventListener('click', e => { e.stopPropagation(); input.value = _maxTotal; });
           multiplierRow.appendChild(maxChip);
 
           const controls = document.createElement('div');
@@ -645,16 +496,18 @@ export class BarracksUI {
           const addBtn = document.createElement('button');
           addBtn.className = 'btn btn-primary btn-sm sut-add-btn'; addBtn.textContent = 'Assign';
 
-          minusBtn.addEventListener('click', e => { e.stopPropagation(); input.value = clamp(+input.value - step); });
-          plusBtn.addEventListener('click',  e => { e.stopPropagation(); input.value = clamp(+input.value + step); });
+          minusBtn.addEventListener('click', e => { e.stopPropagation(); input.value = clamp(+input.value - 1); });
+          plusBtn.addEventListener('click',  e => { e.stopPropagation(); input.value = clamp(+input.value + 1); });
           addBtn.addEventListener('click', e => {
             e.stopPropagation();
-            const qty = clamp(parseInt(input.value) || 1);
+            const target = clamp(parseInt(input.value) || _existingCount);
+            const qty = target - _existingCount; // only the newly-added amount is assigned
+            if (qty < 1) { this._s.notifications?.show('info', 'Select an Amount', 'Increase the amount to add more units.'); return; }
             const result = this._s.um?.assignToSquad(squadId, unitType, qty, u.tier, slotIndex);
             if (result?.success) {
               this._s.um?.linkSlotUnit(squadId, slotIndex, unitType);
               picker.remove();
-              this._renderSquadPanel(squadId);
+              this._renderModal();
             } else {
               this._s.notifications?.show('warning', 'Cannot Assign', result?.reason ?? 'Failed');
             }
@@ -680,7 +533,6 @@ export class BarracksUI {
 
     renderTypeGrid();
 
-    // Float the picker centered over the clicked card
     const W = 460, MARGIN = 8;
     const r = cardEl.getBoundingClientRect();
     let left = r.left + (r.width - W) / 2;
@@ -692,136 +544,4 @@ export class BarracksUI {
     const dismiss = e => { if (!picker.contains(e.target) && !cardEl.contains(e.target)) { picker.remove(); document.removeEventListener('click', dismiss); } };
     setTimeout(() => document.addEventListener('click', dismiss), 0);
   }
-
-  // ---- UNIT ROWS ----
-  _createSquadUnitRow(squad, unit, reserveMap) {
-    const row      = document.createElement('div');
-    row.className  = 'squad-unit-row';
-    const available = reserveMap[unit.tierKey]?.count ?? 0;
-    const canAdd    = available > 0;
-
-    const infoDiv  = document.createElement('div');
-    infoDiv.className = 'unit-info';
-    infoDiv.innerHTML = `
-      <span class="unit-icon">${unit.icon}</span>
-      <div class="unit-details">
-        <div class="unit-name">${unit.name}</div>
-        <div class="unit-meta">T${unit.tier ?? 1} · <span class="unit-count">×${unit.count}</span> In Squad · <span style="color:var(--clr-text-muted)">+${available} available</span></div>
-      </div>`;
-
-    const controlsDiv = document.createElement('div');
-    controlsDiv.className = 'unit-controls squad-unit-controls';
-    controlsDiv.innerHTML = `
-      <div class="sq-transfer-label">Transfer:</div>
-      <div class="control-pill">
-        <button class="btn-pill-left btn-sq-minus" data-unit="${unit.unitId}" title="Remove from squad">−</button>
-        <input type="number" class="sq-transfer-amt" data-unit="${unit.unitId}" value="1" min="1" max="${unit.count}">
-        <button class="btn-pill-right btn-sq-add"   data-unit="${unit.unitId}" title="Add from reserve" ${!canAdd ? 'disabled' : ''}>+</button>
-      </div>`;
-
-    controlsDiv.querySelector('.btn-sq-minus').addEventListener('click', () => {
-      eventBus.emit('ui:click');
-      const amt = parseInt(controlsDiv.querySelector('.sq-transfer-amt').value, 10) || 1;
-      if (this._s.um.removeFromSquad(squad.id, unit.unitId, amt, unit.tier ?? 1).success) this.render();
-    });
-    controlsDiv.querySelector('.btn-sq-add').addEventListener('click', () => {
-      eventBus.emit('ui:click');
-      const amt = parseInt(controlsDiv.querySelector('.sq-transfer-amt').value, 10) || 1;
-      if (this._s.um.assignToSquad(squad.id, unit.unitId, amt, unit.tier ?? 1).success) this.render();
-    });
-
-    row.appendChild(infoDiv);
-    row.appendChild(controlsDiv);
-    return row;
-  }
-
-  _createSquadAddSection(squad, reserveMap) {
-    const section = document.createElement('div');
-    section.className = 'squad-add-section';
-    const label = document.createElement('div');
-    label.className = 'squad-add-label';
-    label.textContent = 'Assign from Reserve';
-
-    const controls = document.createElement('div');
-    controls.className = 'squad-add-controls';
-
-    // Custom dropdown replacing native <select>
-    const dropdownWrap = document.createElement('div');
-    dropdownWrap.className = 'squad-dropdown';
-
-    const trigger = document.createElement('button');
-    trigger.type = 'button';
-    trigger.className = 'squad-dropdown-trigger';
-    trigger.innerHTML = '<span class="squad-select-label">Select unit...</span><span class="chevron">▼</span>';
-
-    const panel = document.createElement('div');
-    panel.className = 'squad-dropdown-panel';
-
-    const hiddenInput = document.createElement('input');
-    hiddenInput.type = 'hidden';
-    hiddenInput.className = 'squad-add-hidden-value';
-    hiddenInput.value = '';
-
-    let hasReserve = false;
-    Object.entries(reserveMap).forEach(([tierKey, unitObj]) => {
-      const count = unitObj.count ?? 0;
-      if (count > 0 && !squad.units.find(u => u.tierKey === tierKey)) {
-        const opt = document.createElement('div');
-        opt.className = 'squad-dropdown-option';
-        opt.dataset.value = tierKey;
-        opt.innerHTML = `${unitObj.name} <span class="squad-opt-units">(${count} available)</span>`;
-        opt.addEventListener('click', () => {
-          eventBus.emit('ui:click');
-          hiddenInput.value = tierKey;
-          trigger.querySelector('.squad-select-label').textContent = `${unitObj.name} (${count} available)`;
-          panel.querySelectorAll('.squad-dropdown-option').forEach(o => o.classList.remove('selected'));
-          opt.classList.add('selected');
-          dropdownWrap.classList.remove('open');
-        });
-        panel.appendChild(opt);
-        hasReserve = true;
-      }
-    });
-
-    trigger.addEventListener('click', () => {
-      eventBus.emit('ui:click');
-      dropdownWrap.classList.toggle('open');
-    });
-    document.addEventListener('click', (e) => {
-      if (!dropdownWrap.contains(e.target)) dropdownWrap.classList.remove('open');
-    }, { capture: true });
-
-    dropdownWrap.appendChild(trigger);
-    dropdownWrap.appendChild(panel);
-    dropdownWrap.appendChild(hiddenInput);
-
-    const amountGroup = document.createElement('div');
-    amountGroup.className = 'amount-input-group';
-    const input = document.createElement('input');
-    input.type = 'number'; input.value = '1'; input.min = '1';
-    const btn   = document.createElement('button');
-    btn.className = 'btn btn-sm btn-primary btn-add';
-    btn.textContent = 'Add';
-    btn.disabled = !hasReserve;
-
-    btn.addEventListener('click', () => {
-      eventBus.emit('ui:click');
-      const tierKey = hiddenInput.value;
-      const amt     = parseInt(input.value, 10) || 1;
-      if (!tierKey) return;
-      const lastT  = tierKey.lastIndexOf('_t');
-      const unitId = lastT === -1 ? tierKey : tierKey.substring(0, lastT);
-      const tier   = lastT === -1 ? 1 : (parseInt(tierKey.substring(lastT + 2)) || 1);
-      if (this._s.um.assignToSquad(squad.id, unitId, amt, tier).success) this.render();
-    });
-
-    amountGroup.appendChild(input);
-    amountGroup.appendChild(btn);
-    controls.appendChild(dropdownWrap);
-    controls.appendChild(amountGroup);
-    section.appendChild(label);
-    section.appendChild(controls);
-    return section;
-  }
-
 }
