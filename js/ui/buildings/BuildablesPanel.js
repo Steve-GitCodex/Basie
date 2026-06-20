@@ -8,20 +8,21 @@
  *   • full catalog  → `ui:placeBuilding { buildingId }`        (enters placement mode)
  *   • plot-scoped   → `ui:placeBuilding { buildingId, plotId }` (builds on that plot)
  */
-import { eventBus }      from '../../core/EventBus.js';
-import { RES_META, fmt } from '../uiUtils.js';
+import { eventBus }          from '../../core/EventBus.js';
+import { RES_META, fmt }     from '../uiUtils.js';
+import { icon, iconFromEmoji } from '../icons.js';
 
 const ZONE_GROUPS = [
-  { id: 'production',  label: '⚒️ Production'  },
-  { id: 'civic',       label: '🏛️ Civic'       },
-  { id: 'residential', label: '🏠 Residential' },
-  { id: 'military',    label: '⚔️ Military'    },
+  { id: 'production',  label: `${icon('production')} Production`  },
+  { id: 'civic',       label: `${icon('column')} Civic`           },
+  { id: 'residential', label: `${icon('house')} Residential`      },
+  { id: 'military',    label: `${icon('sword')} Military`         },
 ];
 const FUNCTION_GROUPS = [
-  { id: 'core',       label: '🏛️ Core'       },
-  { id: 'production', label: '⚒️ Production' },
-  { id: 'population', label: '👥 Population' },
-  { id: 'military',   label: '⚔️ Military'   },
+  { id: 'core',       label: `${icon('column')} Core`             },
+  { id: 'production', label: `${icon('production')} Production`   },
+  { id: 'population', label: `${icon('house')} Population`        },
+  { id: 'military',   label: `${icon('sword')} Military`          },
 ];
 
 export class BuildablesPanel {
@@ -134,7 +135,7 @@ export class BuildablesPanel {
       html = decoCard;
     } else if (this._activeTab === 'all') {
       html = groups.map(g => this._renderGroup(g.label, g.items)).join('');
-      if (showDeco) html += `<div class="bp-group"><div class="bp-group__head">🎨 Decorations</div>${decoCard}</div>`;
+      if (showDeco) html += `<div class="bp-group"><div class="bp-group__head">${icon('star-burst')} Decorations</div>${decoCard}</div>`;
     } else {
       const g = groups.find(x => x.id === this._activeTab);
       html = g ? `<div class="bp-cards">${g.items.map(i => this._card(i)).join('')}</div>` : '';
@@ -160,7 +161,7 @@ export class BuildablesPanel {
     }
     const tabs = [{ id: 'all', label: 'All', count: total }];
     groups.forEach(g => tabs.push({ id: g.id, label: g.label, count: g.items.length }));
-    if (showDeco) tabs.push({ id: 'deco', label: '🎨 Decorations', count: null });
+    if (showDeco) tabs.push({ id: 'deco', label: `${icon('star-burst')} Decorations`, count: null });
 
     // One real group + All is redundant — collapse the strip.
     this._tabs$.style.display = (tabs.length <= 2) ? 'none' : '';
@@ -188,9 +189,9 @@ export class BuildablesPanel {
     const sort = (arr) => arr.slice().sort(this._comparator());
     if (this._grouping === 'status') {
       const buckets = [
-        { id: 'available', label: '✅ Available', items: sort(items.filter(i => i.unlocked && i.availableToBuild && !i.maxed)) },
-        { id: 'locked',    label: '🔒 Locked',    items: sort(items.filter(i => !i.unlocked)) },
-        { id: 'maxed',     label: '⭐ Maxed',     items: sort(items.filter(i => i.unlocked && i.maxed)) },
+        { id: 'available', label: `${icon('check', 'icon--success')} Available`, items: sort(items.filter(i => i.unlocked && i.availableToBuild && !i.maxed)) },
+        { id: 'locked',    label: `${icon('lock')} Locked`,                      items: sort(items.filter(i => !i.unlocked)) },
+        { id: 'maxed',     label: `${icon('star-burst', 'icon--gold')} Maxed`,   items: sort(items.filter(i => i.unlocked && i.maxed)) },
       ];
       return buckets.filter(b => b.items.length);
     }
@@ -238,8 +239,8 @@ export class BuildablesPanel {
     // Availability → tag + whether the build button is enabled
     const inPlotMode = !!this._plotId;
     let tag, enabled;
-    if (!i.unlocked)              { tag = `🔒 ${i.lockReason ?? 'Locked'}`;  enabled = false; }
-    else if (i.maxed)            { tag = '⭐ Max';                          enabled = false; }
+    if (!i.unlocked)              { tag = `${icon('lock')} ${i.lockReason ?? 'Locked'}`;       enabled = false; }
+    else if (i.maxed)            { tag = `${icon('star-burst', 'icon--gold')} Max`;             enabled = false; }
     else if (!i.availableToBuild){ tag = `${i.builtCount}/${i.maxCount} · unlocks later`; enabled = false; }
     else if (!inPlotMode && !i.hasFreePlot) { tag = 'No free plot'; enabled = false; }
     else                         { tag = `${i.builtCount}/${i.maxCount} built`; enabled = i.canAfford; }
@@ -249,7 +250,7 @@ export class BuildablesPanel {
       : `<button class="btn btn-sm btn-ghost" disabled>${i.canAfford === false && i.unlocked && !i.maxed && i.availableToBuild ? 'Need resources' : '—'}</button>`;
 
     return `<div class="bp-card${enabled ? '' : ' bp-card--off'}" data-id="${i.id}">
-      <div class="bp-card__icon">${i.icon ?? '🏗️'}</div>
+      <div class="bp-card__icon">${iconFromEmoji(i.icon ?? '') || icon('hammer')}</div>
       <div class="bp-card__main">
         <div class="bp-card__name">${i.name}</div>
         ${i.effectLabel ? `<div class="bp-card__effect">${i.effectLabel}</div>` : ''}

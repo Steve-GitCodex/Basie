@@ -14,6 +14,7 @@
 import { eventBus }        from '../../core/EventBus.js';
 import { HEROES_CONFIG,
          GACHA_CONFIG }    from '../../entities/GAME_DATA.js';
+import { icon } from '../icons.js';
 
 const RARITY_META = {
   common:    { label: 'Common',    color: 'var(--clr-tier-common)'    },
@@ -23,11 +24,11 @@ const RARITY_META = {
 
 // Item types grouped into the top tab bar (each tab shows a count badge).
 const TABS = [
-  { id: 'special',  label: '🎁 Special',  types: ['hero_card', 'hero_card_universal', 'hero_fragment'] },
-  { id: 'resource', label: '📦 Resource', types: ['resource_bundle'] },
-  { id: 'speedup',  label: '⏩ Speedup',  types: ['speed_boost'] },
-  { id: 'boost',    label: '⚗️ Boost',    types: ['buff', 'xp_bundle'] },
-  { id: 'scroll',   label: '🎲 Scroll',   types: ['recruitment_scroll'] },
+  { id: 'special',  label: `${icon('gift')} Special`,  types: ['hero_card', 'hero_card_universal', 'hero_fragment'] },
+  { id: 'resource', label: `${icon('box')} Resource`, types: ['resource_bundle'] },
+  { id: 'speedup',  label: `${icon('speedup')} Speedup`,  types: ['speed_boost'] },
+  { id: 'boost',    label: `${icon('flask-potion')} Boost`,    types: ['buff', 'xp_bundle'] },
+  { id: 'scroll',   label: `${icon('scroll')} Scroll`,   types: ['recruitment_scroll'] },
 ];
 
 export class InventoryUI {
@@ -144,9 +145,9 @@ export class InventoryUI {
         ${this._headerHtml()}
         <div class="inv-panel-body">
           <div class="inv-empty">
-            <div class="inv-empty-icon">🎒</div>
+            <div class="inv-empty-icon">${icon('backpack')}</div>
             <div class="inv-empty-title">Your inventory is empty</div>
-            <div class="inv-empty-sub">Buy items from the <strong>🛒 Shop</strong> tab.</div>
+            <div class="inv-empty-sub">Buy items from the <strong>${icon('gift')} Shop</strong> tab.</div>
           </div>
         </div>`;
       this._bindListeners(panel);
@@ -208,7 +209,7 @@ export class InventoryUI {
   _headerHtml() {
     return `
       <div class="inv-panel-header">
-        <span class="inv-panel-title">🎒 Inventory</span>
+        <span class="inv-panel-title">${icon('backpack')} Inventory</span>
         <button class="btn btn-sm btn-ghost" id="inv-panel-close">✕</button>
       </div>`;
   }
@@ -239,7 +240,7 @@ export class InventoryUI {
       const can100 = item.quantity >= 100;
       return `
         <div class="inv-scroll-actions">
-          <button class="btn btn-xs btn-gold inv-use-scroll" data-item="${item.id}" data-tier="${item.tier}">🎲 Roll 1×</button>
+          <button class="btn btn-xs btn-gold inv-use-scroll" data-item="${item.id}" data-tier="${item.tier}">${icon('scroll')} Roll 1×</button>
           <button class="btn btn-xs btn-secondary inv-bulk-scroll"
             data-tier="${item.tier}" data-count="10"
             ${can10 ? '' : 'disabled'}
@@ -280,7 +281,7 @@ export class InventoryUI {
       return `
         <div class="inv-frag-actions">
           ${canSummon
-            ? `<button class="btn btn-xs btn-gold inv-summon-frag" data-item="${item.id}" data-hero="${heroId}">✨ Summon</button>`
+            ? `<button class="btn btn-xs btn-gold inv-summon-frag" data-item="${item.id}" data-hero="${heroId}">${icon('star-burst', 'icon--gold')} Summon</button>`
             : ''}
           ${canConvert
             ? `<button class="btn btn-xs btn-primary inv-convert-frag" data-item="${item.id}" data-hero="${heroId}">→ XP</button>`

@@ -10,6 +10,7 @@
  */
 import { eventBus }          from '../../core/EventBus.js';
 import { openSpeedupPicker } from './SpeedupPicker.js';
+import { icon, iconFromEmoji } from '../icons.js';
 
 export class BuildQueueSidebar {
   /** @param {{ bm, tm, um, inventory, notifications }} deps */
@@ -51,7 +52,7 @@ export class BuildQueueSidebar {
 
     const header = document.createElement('div');
     header.className = 'aq-section-header aq-section-header--build';
-    header.innerHTML = `<span class="aq-section-icon">🏗️</span><span class="aq-section-title">BUILD</span><span class="aq-section-count">${queue.length}/${maxSlots}</span>`;
+    header.innerHTML = `<span class="aq-section-icon">${icon('hammer')}</span><span class="aq-section-title">BUILD</span><span class="aq-section-count">${queue.length}/${maxSlots}</span>`;
     section.appendChild(header);
 
     const items = document.createElement('div');
@@ -70,7 +71,7 @@ export class BuildQueueSidebar {
         el.className = 'aq-slot aq-slot--active';
         el.innerHTML = `
           <div class="aq-slot-row">
-            <span class="aq-slot-icon">${cfg.icon ?? '🏗️'}</span>
+            <span class="aq-slot-icon">${iconFromEmoji(cfg.icon ?? '') || icon('hammer')}</span>
             <div class="aq-slot-info">
               <div class="aq-slot-name">${cfg.name ?? queueItem.buildingId}</div>
               <div class="aq-slot-sub">→ Lv.${queueItem.pendingLevel}</div>
@@ -101,7 +102,7 @@ export class BuildQueueSidebar {
         el.className = 'aq-slot aq-slot--queued';
         el.innerHTML = `
           <div class="aq-slot-row">
-            <span class="aq-slot-icon">${cfg.icon ?? '🏗️'}</span>
+            <span class="aq-slot-icon">${iconFromEmoji(cfg.icon ?? '') || icon('hammer')}</span>
             <div class="aq-slot-info">
               <div class="aq-slot-name">${cfg.name ?? queueItem.buildingId}</div>
               <div class="aq-slot-sub">→ Lv.${queueItem.pendingLevel} · #${queueItem.queuePosition + 1}</div>
@@ -132,7 +133,7 @@ export class BuildQueueSidebar {
     if (lockedCount > 0) {
       const lockEl = document.createElement('div');
       lockEl.className = 'aq-locked-summary';
-      lockEl.innerHTML = `🔒 ${lockedCount} slot${lockedCount > 1 ? 's' : ''} locked`;
+      lockEl.innerHTML = `${icon('lock')} ${lockedCount} slot${lockedCount > 1 ? 's' : ''} locked`;
       items.appendChild(lockEl);
     }
 
@@ -150,7 +151,7 @@ export class BuildQueueSidebar {
 
     const header = document.createElement('div');
     header.className = 'aq-section-header aq-section-header--research';
-    header.innerHTML = `<span class="aq-section-icon">🔬</span><span class="aq-section-title">RESEARCH</span><span class="aq-section-count">${queue.length}</span>`;
+    header.innerHTML = `<span class="aq-section-icon">${icon('flask')}</span><span class="aq-section-title">RESEARCH</span><span class="aq-section-count">${queue.length}</span>`;
     section.appendChild(header);
 
     const items = document.createElement('div');
@@ -170,7 +171,7 @@ export class BuildQueueSidebar {
           el.className = 'aq-slot aq-slot--active';
           el.innerHTML = `
             <div class="aq-slot-row">
-              <span class="aq-slot-icon">${item.icon ?? '🔬'}</span>
+              <span class="aq-slot-icon">${iconFromEmoji(item.icon ?? '') || icon('flask')}</span>
               <div class="aq-slot-info">
                 <div class="aq-slot-name">${item.name}</div>
                 <div class="aq-slot-sub">→ Lv.${item.targetLevel}</div>
@@ -202,7 +203,7 @@ export class BuildQueueSidebar {
           el.className = 'aq-slot aq-slot--queued';
           el.innerHTML = `
             <div class="aq-slot-row">
-              <span class="aq-slot-icon">${item.icon ?? '🔬'}</span>
+              <span class="aq-slot-icon">${iconFromEmoji(item.icon ?? '') || icon('flask')}</span>
               <div class="aq-slot-info">
                 <div class="aq-slot-name">${item.name}</div>
                 <div class="aq-slot-sub">→ Lv.${item.targetLevel} · #${item.queuePosition + 1}</div>
@@ -235,7 +236,7 @@ export class BuildQueueSidebar {
 
     const header = document.createElement('div');
     header.className = 'aq-section-header aq-section-header--training';
-    header.innerHTML = `<span class="aq-section-icon">⚔️</span><span class="aq-section-title">TRAINING</span><span class="aq-section-count">${items.length}</span>`;
+    header.innerHTML = `<span class="aq-section-icon">${icon('sword')}</span><span class="aq-section-title">TRAINING</span><span class="aq-section-count">${items.length}</span>`;
     section.appendChild(header);
 
     const itemsEl = document.createElement('div');
@@ -256,7 +257,7 @@ export class BuildQueueSidebar {
           el.className = 'aq-slot aq-slot--active';
           el.innerHTML = `
             <div class="aq-slot-row">
-              <span class="aq-slot-icon">${item.icon ?? '⚔️'}</span>
+              <span class="aq-slot-icon">${iconFromEmoji(item.icon ?? '') || icon('sword')}</span>
               <div class="aq-slot-info">
                 <div class="aq-slot-name">${item.name ?? item.unitId} ×${item.count}</div>
                 <div class="aq-slot-sub">T${item.tier}</div>
@@ -288,7 +289,7 @@ export class BuildQueueSidebar {
           el.className = 'aq-slot aq-slot--queued';
           el.innerHTML = `
             <div class="aq-slot-row">
-              <span class="aq-slot-icon">${item.icon ?? '⚔️'}</span>
+              <span class="aq-slot-icon">${iconFromEmoji(item.icon ?? '') || icon('sword')}</span>
               <div class="aq-slot-info">
                 <div class="aq-slot-name">${item.name ?? item.unitId} ×${item.count}</div>
                 <div class="aq-slot-sub">T${item.tier} · #${item.queueIndex + 1}</div>

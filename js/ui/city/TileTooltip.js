@@ -13,6 +13,7 @@ import { eventBus }              from '../../core/EventBus.js';
 import { RES_META, fmt }         from '../uiUtils.js';
 import { BUILDING_VIEW_ACTION, plotById } from '../../entities/GAME_DATA.js';
 import { ISO_BUILDING_MAP }      from './cityAssets.js';
+import { icon } from '../icons.js';
 
 export class TileTooltip {
   /** @param {{ bm, rm, notifications, getCity:()=>any, requestRender:()=>void }} deps */
@@ -42,8 +43,8 @@ export class TileTooltip {
 
   /** Derive the upgrade/build button's label, style and disabled state from an instance. */
   _upgradeButtonState(b, isBuilt, nextLv) {
-    if (!b.requirementsMet) return { btnText: `🔒 ${b.requirementsReason ?? 'Locked'}`, btnCls: 'btn-ghost',   btnDisabled: true };
-    if (b.isMaxLevel)       return { btnText: '⭐ Max Level',                            btnCls: 'btn-ghost',   btnDisabled: true };
+    if (!b.requirementsMet) return { btnText: `${icon('lock')} ${b.requirementsReason ?? 'Locked'}`, btnCls: 'btn-ghost',   btnDisabled: true };
+    if (b.isMaxLevel)       return { btnText: 'Max Level',                               btnCls: 'btn-ghost',   btnDisabled: true };
     const label = isBuilt ? `→ Lv.${nextLv}` : 'Build';
     if (!b.canAfford)       return { btnText: label, btnCls: 'btn-ghost',   btnDisabled: true };
     return                         { btnText: label, btnCls: 'btn-primary', btnDisabled: false };
@@ -111,7 +112,7 @@ export class TileTooltip {
       const pct  = Math.max(0, Math.min(100, ((now - (b.startedAt ?? 0)) / (b.constructionEndsAt - (b.startedAt ?? 0))) * 100));
       const secs = Math.max(0, Math.ceil((b.constructionEndsAt - now) / 1000));
       return `<div class="tt-progress progress-container" data-timer-start="${b.startedAt}" data-timer-end="${b.constructionEndsAt}">
-        <div class="progress-label"><span>🏗️ Building…</span><span class="progress-time-label">${secs}s</span></div>
+        <div class="progress-label"><span>${icon('hammer')} Building…</span><span class="progress-time-label">${secs}s</span></div>
         <div class="progress-bar"><div class="progress-fill progress-fill-primary" style="width:${pct}%"></div></div>
       </div>`;
     })() : '';
@@ -131,13 +132,13 @@ export class TileTooltip {
       ? `<button class="tt-info-btn" title="Building details" aria-label="Building details">ⓘ</button>` : '';
     // Cafeteria manual restock (re-homed from the retired detail panel).
     const restockBtn = (isBuilt && buildingId === 'cafeteria' && !(this._bm.getAutomations?.().cafeteriaRestock))
-      ? `<button class="btn btn-sm btn-secondary tt-restock-btn">🔄 Restock</button>` : '';
+      ? `<button class="btn btn-sm btn-secondary tt-restock-btn">Restock</button>` : '';
     // Relocate (re-homed from the retired detail panel) — built, not fixed, not mid-build.
     const _instId   = `${buildingId}_${instanceIndex}`;
     const _curPlot  = plotById(this._bm.getPlotOf?.(_instId) ?? '');
     const canRelocate = isBuilt && !b.isActivelyBuilding && _curPlot && _curPlot.fixed !== buildingId;
     const relocateBtn = canRelocate
-      ? `<button class="btn btn-sm btn-ghost tt-relocate-btn">📦 Move</button>` : '';
+      ? `<button class="btn btn-sm btn-ghost tt-relocate-btn">Move</button>` : '';
 
     tt.innerHTML = `
       ${detailsBtn}

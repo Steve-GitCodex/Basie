@@ -34,6 +34,7 @@
   <link rel="stylesheet" href="css/components/tutorial.css" />
   <link rel="stylesheet" href="css/components/events.css" />
   <link rel="stylesheet" href="css/components/research.css" />
+  <link rel="stylesheet" href="css/components/icons.css" />
   <link rel="stylesheet" href="css/components/hud.css" />
 </head>
 <body>
@@ -50,7 +51,7 @@
   <div id="auth-screen" class="auth-screen">
     <div class="auth-card">
       <div class="auth-logo">
-        <span class="auth-logo-icon">⚔️</span>
+        <span class="auth-logo-icon"><span class="icon icon--sword icon--xl"></span></span>
         <h1 class="auth-logo-title">BASIE</h1>
         <p class="auth-logo-sub">Command. Build. Conquer.</p>
       </div>
@@ -65,7 +66,7 @@
         </div>
         <p id="auth-error" class="auth-error hidden"></p>
         <button type="submit" class="btn btn-primary btn-full" id="auth-submit">Login</button>
-        <button type="button" class="btn btn-ghost btn-full" id="auth-guest">⚔️ Play as Guest</button>
+        <button type="button" class="btn btn-ghost btn-full" id="auth-guest"><span class="icon icon--sword"></span> Play as Guest</button>
       </form>
     </div>
   </div>
@@ -147,7 +148,7 @@
       <!-- HEADER ACTIONS -->
       <div class="header-actions">
         <button class="header-icon-btn buff-hud-badge hidden" id="buff-hud-badge" title="Active Buffs — click to manage">
-          ⚗️ <span id="buff-badge-count">0</span>
+          <span class="icon icon--flask-potion"></span> <span id="buff-badge-count">0</span>
           <span class="buff-badge-sep">·</span>
           <span id="buff-badge-timer"></span>
         </button>
@@ -163,13 +164,13 @@
           <span class="res-rate hidden" id="r-diamond"></span>
         </div>
         <div class="player-chip" id="player-chip" title="Profile & Settings">
-          <span class="player-avatar" id="player-avatar">👑</span>
+          <span class="player-avatar" id="player-avatar"><span class="icon icon--crown icon--gold"></span></span>
           <div class="player-data">
             <span class="player-name" id="player-name">Commander</span>
             <span class="player-level" id="player-level">Lv. 1</span>
           </div>
           <span class="vip-badge hidden" id="vip-badge" title=""></span>
-          <span class="badge hidden" id="achievements-badge" title="Unclaimed achievement rewards">🏆</span>
+          <span class="badge hidden" id="achievements-badge" title="Unclaimed achievement rewards"><span class="icon icon--star-burst icon--gold"></span></span>
         </div>
       </div>
     </header>
@@ -243,7 +244,7 @@
         <!-- Build Queue Sidebar (fixed right, collapsible) -->
         <aside class="bq-sidebar is-collapsed" id="bq-sidebar">
           <button class="bq-sidebar__toggle" id="bq-toggle" title="Activity Queues">
-            <span class="bq-sidebar__toggle-icon">⚡</span>
+            <span class="bq-sidebar__toggle-icon"><span class="icon icon--lightning"></span></span>
             <span class="bq-sidebar__toggle-count" id="bq-toggle-count">0</span>
           </button>
           <div class="bq-sidebar__content" id="build-queue-panel"></div>
@@ -256,7 +257,7 @@
         <!-- HEROES VIEW -->
         <section class="view hidden" id="view-heroes">
           <div class="view-header">
-            <h2>🦸 Heroes</h2>
+            <h2><span class="icon icon--crown icon--gold"></span> Heroes</h2>
             <p class="view-subtitle">Recruit legendary champions via Hero Cards — assign them to your squad or buildings</p>
           </div>
           <div class="heroes-grid" id="heroes-grid"></div>
@@ -265,7 +266,7 @@
         <!-- COMBAT VIEW -->
         <section class="view hidden" id="view-combat">
           <div class="view-header">
-            <h2>🔥 Combat</h2>
+            <h2><span class="icon icon--fire icon--danger"></span> Combat</h2>
             <p class="view-subtitle">Send your forces to battle monsters</p>
           </div>
           <div class="combat-layout">
@@ -287,13 +288,13 @@
         <section class="view hidden" id="view-quests">
           <!-- Sub-tab navigation -->
           <div class="sub-tab-bar" data-group="quests">
-            <button class="sub-tab-btn" data-sub-view="quests" data-group="quests">📜 Quests</button>
-            <button class="sub-tab-btn" data-sub-view="challenges" data-group="quests">🏆 Challenges<span class="badge hidden" id="challenges-badge">0</span></button>
+            <button class="sub-tab-btn" data-sub-view="quests" data-group="quests"><span class="icon icon--scroll"></span> Quests</button>
+            <button class="sub-tab-btn" data-sub-view="challenges" data-group="quests"><span class="icon icon--star-burst icon--gold"></span> Challenges<span class="badge hidden" id="challenges-badge">0</span></button>
           </div>
           <!-- Locked-state card -->
           <div class="sub-view-locked hidden" id="sub-locked-quests">
             <div class="locked-state-card">
-              <div class="locked-state-icon">🔒</div>
+              <div class="locked-state-icon"><span class="icon icon--lock"></span></div>
               <h3 class="locked-title">Locked</h3>
               <p class="locked-reason"></p>
             </div>
@@ -301,7 +302,7 @@
           <!-- Sub-view: Quests content -->
           <div class="sub-view hidden" id="sub-view-quests">
             <div class="view-header">
-              <h2>📜 Quests</h2>
+              <h2><span class="icon icon--scroll"></span> Quests</h2>
               <p class="view-subtitle">Complete objectives to earn rewards</p>
             </div>
             <div class="quests-list" id="quests-list"></div>
@@ -309,7 +310,7 @@
           <!-- Sub-view: Challenges content -->
           <div class="sub-view hidden" id="sub-view-challenges">
             <div class="view-header">
-              <h2>🏆 Challenges</h2>
+              <h2><span class="icon icon--star-burst icon--gold"></span> Challenges</h2>
               <p class="view-subtitle">Complete daily and weekly objectives to earn rewards</p>
             </div>
             <div id="challenges-list"></div>
@@ -320,13 +321,13 @@
         <section class="view hidden" id="view-economy">
           <!-- Sub-tab navigation -->
           <div class="sub-tab-bar" data-group="economy">
-            <button class="sub-tab-btn" data-sub-view="market" data-group="economy">🏪 Market</button>
-            <button class="sub-tab-btn" data-sub-view="shop"   data-group="economy">🛒 Shop</button>
+            <button class="sub-tab-btn" data-sub-view="market" data-group="economy"><span class="icon icon--money"></span> Market</button>
+            <button class="sub-tab-btn" data-sub-view="shop"   data-group="economy"><span class="icon icon--gift"></span> Shop</button>
           </div>
           <!-- Locked-state card -->
           <div class="sub-view-locked hidden" id="sub-locked-economy">
             <div class="locked-state-card">
-              <div class="locked-state-icon">🔒</div>
+              <div class="locked-state-icon"><span class="icon icon--lock"></span></div>
               <h3 class="locked-title">Locked</h3>
               <p class="locked-reason"></p>
             </div>
@@ -334,7 +335,7 @@
           <!-- Sub-view: Market content -->
           <div class="sub-view hidden" id="sub-view-market">
             <div class="view-header">
-              <h2>🏪 Market</h2>
+              <h2><span class="icon icon--money"></span> Market</h2>
               <p class="view-subtitle">Trade resources at market rates — prices rise with repeated purchases</p>
             </div>
             <div class="buildings-grid" id="market-grid"></div>
@@ -342,7 +343,7 @@
           <!-- Sub-view: Shop content -->
           <div class="sub-view hidden" id="sub-view-shop">
             <div class="view-header">
-              <h2>🛒 Shop</h2>
+              <h2><span class="icon icon--gift"></span> Shop</h2>
               <p class="view-subtitle">Purchase hero cards, XP bundles, and premium items</p>
             </div>
             <div id="shop-container" class="shop-container"></div>
@@ -352,7 +353,7 @@
         <!-- EVENTS VIEW -->
         <section class="view hidden" id="view-events">
           <div class="view-header">
-            <h2>🎉 Events</h2>
+            <h2><span class="icon icon--star-burst"></span> Events</h2>
             <p class="view-subtitle">Limited-time events with exclusive rewards</p>
           </div>
           <!-- Active-event banner injected here by EventsUI; hidden when no event is live -->
@@ -410,7 +411,7 @@
     <!-- FLOATING CONTROL CLUSTER — Inventory · Base⇄World flip · Mail (bottom center) -->
     <div class="floating-dock" id="floating-dock" aria-label="Game Navigation">
       <button class="dock-btn" id="btn-inventory" title="Inventory" aria-label="Inventory">
-        <span class="dock-emoji">🎒</span>
+        <span class="icon icon--backpack icon--lg"></span>
         <span class="badge badge--dot hidden" id="inventory-badge"></span>
       </button>
       <button class="dock-flip" id="nav-flip" aria-label="Switch between Base and World">
@@ -418,7 +419,7 @@
         <span class="dock-flip__label" id="flip-label">World</span>
       </button>
       <button class="dock-btn" id="btn-mail" title="Inbox" aria-label="Inbox">
-        <span class="dock-emoji">📬</span>
+        <span class="icon icon--envelope icon--lg"></span>
         <span class="badge hidden" id="mail-badge">0</span>
       </button>
     </div>

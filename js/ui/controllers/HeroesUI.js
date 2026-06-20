@@ -8,6 +8,7 @@ import { eventBus }        from '../../core/EventBus.js';
 import { INVENTORY_ITEMS,
          AWAKENING_CONFIG,
          HERO_CLASSIFICATIONS } from '../../entities/GAME_DATA.js';
+import { icon, iconFromEmoji } from '../icons.js';
 
 const TIER_META = {
   common:    { label: 'Common',    symbol: '●', cssClass: 'hero-card--common' },
@@ -68,10 +69,10 @@ export class HeroesUI {
         <button class="tier-pill pill-legendary ${this._tierFilter === 'legendary' ? 'tier-pill--active' : ''}" data-tier="legendary">★ Legendary</button>
       </div>
       <div class="hero-bonus-strip">
-        <span class="hero-bonus-chip" title="Attack multiplier">⚔️ ×${bonuses.attackMult.toFixed(2)}</span>
-        <span class="hero-bonus-chip" title="Defense multiplier">🛡️ ×${bonuses.defenseMult.toFixed(2)}</span>
-        ${bonuses.lossReduction > 0 ? `<span class="hero-bonus-chip hero-bonus-chip--green">🩺 -${(bonuses.lossReduction * 100).toFixed(0)}%</span>` : ''}
-        <span class="hero-squad-badge">⚔️ ${totalSquad} Assigned</span>
+        <span class="hero-bonus-chip" title="Attack multiplier">${icon('sword')} ×${bonuses.attackMult.toFixed(2)}</span>
+        <span class="hero-bonus-chip" title="Defense multiplier">${icon('shield')} ×${bonuses.defenseMult.toFixed(2)}</span>
+        ${bonuses.lossReduction > 0 ? `<span class="hero-bonus-chip hero-bonus-chip--green">${icon('heart', 'icon--success')} -${(bonuses.lossReduction * 100).toFixed(0)}%</span>` : ''}
+        <span class="hero-squad-badge">${icon('sword')} ${totalSquad} Assigned</span>
       </div>`;
 
     controlBar.querySelectorAll('.tier-pill').forEach(btn => {
@@ -139,7 +140,7 @@ export class HeroesUI {
         const skill = (selected.skills ?? []).find(s => s.id === el.dataset.skillId);
         if (!skill) return;
         const locked    = !skill.unlocked;
-        const typeLabel = skill.type === 'active' ? '⚡ Active' : '✨ Passive';
+        const typeLabel = skill.type === 'active' ? `${icon('lightning')} Active` : 'Passive';
         el.dataset.tooltipHtml = locked
           ? `<div class="tt-title">${skill.icon ?? ''} ${skill.name}</div><div class="tt-row tt-sub">${typeLabel} · Unlocks at Lv.${skill.unlockLevel}</div><div class="tt-sep"></div><div class="tt-row tt-muted">${skill.description}</div>`
           : `<div class="tt-title">${skill.icon ?? ''} ${skill.name}</div><div class="tt-row tt-sub">${typeLabel}</div><div class="tt-sep"></div><div class="tt-row">${skill.description}</div>`;
@@ -147,7 +148,7 @@ export class HeroesUI {
 
       this._bindDetailListeners(detailPane, selected);
     } else {
-      detailPane.innerHTML = `<div class="heroes-detail-empty"><span class="heroes-detail-empty-icon">👈</span><p>Select a hero to manage them</p></div>`;
+      detailPane.innerHTML = `<div class="heroes-detail-empty"><p>Select a hero to manage them</p></div>`;
     }
   }
   // ── Buff Section ────────────────────────────────────────────────────────────────────────
@@ -158,7 +159,7 @@ export class HeroesUI {
     section.id = 'heroes-buff-section';
     const heading = document.createElement('div');
     heading.className = 'heroes-buff-heading';
-    heading.innerHTML = '<span class="buff-heading-icon">⛏️</span> Active Buffs <span class="buff-heading-sub">(production boosts from Inventory items)</span>';
+    heading.innerHTML = `<span class="buff-heading-icon">${icon("production")}</span> Active Buffs <span class="buff-heading-sub">(production boosts from Inventory items)</span>`;
     section.appendChild(heading);
     this._renderBuffCards(section);
     return section;
@@ -177,7 +178,7 @@ export class HeroesUI {
         <div class="buff-empty">
           <span class="buff-empty-icon">⏳</span>
           <p>No active buffs.</p>
-          <p class="buff-empty-hint">Use production boost items from your 🎒 Inventory to temporarily increase all resource rates.</p>
+          <p class="buff-empty-hint">Use production boost items from your Inventory to temporarily increase all resource rates.</p>
         </div>`;
     } else {
       buffs.forEach((b, i) => {
@@ -193,7 +194,7 @@ export class HeroesUI {
         card.className = 'buff-card';
         card.dataset.buffIndex = i;
         card.innerHTML = `
-          <div class="buff-card-icon">⛏️</div>
+          <div class="buff-card-icon">${icon("production")}</div>
           <div class="buff-card-body">
             <div class="buff-card-name">Production Boost</div>
             <div class="buff-card-effect">+${(b.value * 100).toFixed(0)}% all resources</div>
@@ -244,10 +245,10 @@ export class HeroesUI {
         const barracksIdx = parseInt((hero.assignedBuilding ?? '').replace('barracks_', ''), 10);
         const squads = this._s.um?.getSquads() ?? [];
         const squadName = squads[barracksIdx]?.name ?? `Squad ${barracksIdx + 1}`;
-        chipText = `⚔️ ${squadName}`;
+        chipText = `${icon('sword')} ${squadName}`;
       } else if (hero.isInBuilding) {
         chipClass = 'chip-building';
-        chipText = `🏠 ${hero.assignedBuilding ?? 'Building'}`;
+        chipText = `${icon('house')} ${hero.assignedBuilding ?? 'Building'}`;
       }
       statusHtml = `<span class="hero-assignment-chip ${chipClass}">${chipText}</span>`;
     } else {
@@ -307,14 +308,14 @@ export class HeroesUI {
 
     const statsHtml = `
       <div class="hero-stat-grid">
-        <div class="hero-stat"><span class="hero-stat-icon">❤️</span><span class="hero-stat-label">HP</span><span class="hero-stat-value">${(hero.effectiveStats?.hp ?? hero.stats.hp).toLocaleString()}</span></div>
-        <div class="hero-stat"><span class="hero-stat-icon">⚔️</span><span class="hero-stat-label">ATK</span><span class="hero-stat-value">${hero.effectiveStats?.attack ?? hero.stats.attack}</span></div>
-        <div class="hero-stat"><span class="hero-stat-icon">🛡️</span><span class="hero-stat-label">DEF</span><span class="hero-stat-value">${hero.effectiveStats?.defense ?? hero.stats.defense}</span></div>
+        <div class="hero-stat"><span class="hero-stat-icon">${icon('heart', 'icon--danger')}</span><span class="hero-stat-label">HP</span><span class="hero-stat-value">${(hero.effectiveStats?.hp ?? hero.stats.hp).toLocaleString()}</span></div>
+        <div class="hero-stat"><span class="hero-stat-icon">${icon('sword')}</span><span class="hero-stat-label">ATK</span><span class="hero-stat-value">${hero.effectiveStats?.attack ?? hero.stats.attack}</span></div>
+        <div class="hero-stat"><span class="hero-stat-icon">${icon('shield')}</span><span class="hero-stat-label">DEF</span><span class="hero-stat-value">${hero.effectiveStats?.defense ?? hero.stats.defense}</span></div>
       </div>`;
 
     const auraHtml = `
       <div class="hero-aura-chip">
-        <span class="aura-icon">✨</span>
+        <span class="aura-icon">${icon('xp', 'icon--glow')}</span>
         <span>${AURA_LABELS[hero.aura.type] ?? hero.aura.type} +${(hero.aura.value * 100).toFixed(0)}%</span>
       </div>`;
 
@@ -337,13 +338,13 @@ export class HeroesUI {
         <div class="hero-detail-section">
           <div class="hero-detail-section-title">Recruitment</div>
           <div class="hero-card-req ${canRecruit ? 'req-available' : 'req-missing'}">
-            <span class="req-icon">${hasSpecific ? '🃏' : hasUniversal ? '🎴' : '🔒'}</span>
+            <span class="req-icon">${hasSpecific ? icon('scroll') : hasUniversal ? icon('gift') : icon('lock')}</span>
             <span class="req-label">${canRecruit
               ? `${cardName} ×${hasSpecific ? hero.specificCardQty : hero.universalCardQty}`
               : `Requires: ${tierMeta.label} Hero Card`}</span>
           </div>
           <button class="btn btn-gold btn-recruit w-full" data-hero="${hero.id}" data-card="${cardUsed ?? ''}" ${!canRecruit ? 'disabled' : ''}>
-            ${canRecruit ? '👑 Recruit Hero' : '🔒 Card Required'}
+            ${canRecruit ? `${icon('crown')} Recruit Hero` : `${icon('lock')} Card Required`}
           </button>
         </div>
         <div class="hero-detail-section">
@@ -352,11 +353,11 @@ export class HeroesUI {
             <div class="hero-detail-frag-bar" style="width:${fragPct}%"></div>
           </div>
           <div class="hero-detail-frag-label">
-            <span>🔮 ${hero.fragmentQty ?? 0} / ${hero.fragmentsNeeded ?? '?'} fragments</span>
+            <span>${icon('flask-potion')} ${hero.fragmentQty ?? 0} / ${hero.fragmentsNeeded ?? '?'} fragments</span>
             <span>${fragPct}%</span>
           </div>
           ${hero.canSummonByFrags
-            ? `<button class="btn btn-primary btn-summon-frags w-full" data-hero="${hero.id}">✨ Summon from Fragments</button>`
+            ? `<button class="btn btn-primary btn-summon-frags w-full" data-hero="${hero.id}">${icon('star-burst', 'icon--gold')} Summon from Fragments</button>`
             : ''}
         </div>`;
 
@@ -378,16 +379,16 @@ export class HeroesUI {
             <button class="btn btn-xs btn-xp-bundle btn-primary" data-hero="${hero.id}" data-bundle="${b.id}">
               ${b.label} <span class="xp-qty-badge">×${this._s.inventory.getQuantity(b.id)}</span>
             </button>`).join('')
-        : `<span class="hero-xp-hint">Buy Tomes from <strong>🛒 Shop</strong></span>`;
+        : `<span class="hero-xp-hint">Buy Tomes from <strong>Shop</strong></span>`;
 
       const skillsHtml = (hero.skills ?? []).map(skill => {
-        const typeIcon  = skill.type === 'active' ? '⚡' : '✨';
+        const typeIcon  = skill.type === 'active' ? icon('lightning') : icon('xp', 'icon--glow');
         const typeLabel = skill.type === 'active' ? 'Active' : 'Passive';
         const locked    = !skill.unlocked;
         return `
           <div class="hero-skill-slot ${locked ? 'hero-skill-slot--locked' : `hero-skill-slot--${skill.type}`}"
                data-skill-id="${skill.id}">
-            <span class="hero-skill-icon">${locked ? '🔒' : (skill.icon ?? typeIcon)}</span>
+            <span class="hero-skill-icon">${locked ? icon('lock') : (iconFromEmoji(skill.icon ?? '') || typeIcon)}</span>
             <div class="hero-skill-info">
               <span class="hero-skill-name">${skill.name}</span>
               <span class="hero-skill-type hero-skill-type--${skill.type}">${typeLabel}</span>
@@ -401,13 +402,13 @@ export class HeroesUI {
       const atMaxStars = hero.stars >= maxStars;
       const fragNeeded = hero.nextStarCost?.fragments[hero.tier] ?? 0;
       const awakenHtml = atMaxStars
-        ? `<div class="hero-awaken-maxed">✨ Fully Awakened!</div>`
+        ? `<div class="hero-awaken-maxed">${icon('star-burst', 'icon--gold')} Fully Awakened!</div>`
         : `<div class="hero-awaken-costs">
             <button class="btn btn-xs btn-awaken-card ${hero.canAwakenByCard ? 'btn-gold' : 'btn-ghost'}" data-hero="${hero.id}" ${!hero.canAwakenByCard ? 'disabled' : ''}>
-              🃏 Card (${hero.nextStarCost?.cards ?? 1} dup${(hero.nextStarCost?.cards ?? 1) > 1 ? 's' : ''})
+              ${icon('scroll')} Card (${hero.nextStarCost?.cards ?? 1} dup${(hero.nextStarCost?.cards ?? 1) > 1 ? 's' : ''})
             </button>
             <button class="btn btn-xs btn-awaken-frag ${hero.canAwakenByFrag ? 'btn-primary' : 'btn-ghost'}" data-hero="${hero.id}" ${!hero.canAwakenByFrag ? 'disabled' : ''}>
-              🔮 Frags (${hero.fragmentQty ?? 0}/${fragNeeded})
+              ${icon('flask-potion')} Frags (${hero.fragmentQty ?? 0}/${fragNeeded})
             </button>
           </div>`;
 
@@ -420,9 +421,9 @@ export class HeroesUI {
       const _classCfg = HERO_CLASSIFICATIONS[hero.classification] ?? HERO_CLASSIFICATIONS.combat;
 
       const assignmentStatusChip = hero.isInSquad
-        ? `<div class="hero-assignment-chip chip-squad mb-3">⚔️ ${squadNameDisplay}</div>`
+        ? `<div class="hero-assignment-chip chip-squad mb-3">${icon('sword')} ${squadNameDisplay}</div>`
         : hero.isInBuilding
-          ? `<div class="hero-assignment-chip chip-building mb-3">🏠 ${hero.assignedBuilding ?? 'Building'}</div>`
+          ? `<div class="hero-assignment-chip chip-building mb-3">${icon('house')} ${hero.assignedBuilding ?? 'Building'}</div>`
           : `<div class="hero-assignment-chip chip-idle mb-3">○ Unassigned</div>`;
 
       // Squad assignment: show dropdown of available squads or unassign button
@@ -432,7 +433,7 @@ export class HeroesUI {
         : hero.isInBuilding
           ? `<button class="btn btn-danger btn-unassign-building w-full" data-hero="${hero.id}">Unstation from Building</button>`
           : squads.length === 0
-            ? `<div class="hero-no-squads-hint">⚔️ Create a squad in the Barracks first, then assign heroes there.</div>`
+            ? `<div class="hero-no-squads-hint">${icon('sword')} Create a squad in the Barracks first, then assign heroes there.</div>`
             : `<div class="hero-squad-assign-row">
                 <div class="squad-dropdown hero-squad-dropdown" data-hero="${hero.id}">
                   <button type="button" class="squad-dropdown-trigger">
@@ -447,13 +448,13 @@ export class HeroesUI {
                   </div>
                   <input type="hidden" class="squad-select-value" value="">
                 </div>
-                <button class="btn btn-primary btn-assign-squad" data-hero="${hero.id}">⚔️ Assign</button>
+                <button class="btn btn-primary btn-assign-squad" data-hero="${hero.id}">${icon('sword')} Assign</button>
               </div>
-              <button class="btn btn-secondary btn-assign-building mt-2" data-hero="${hero.id}" data-hero-name="${hero.name}">🏠 Station at Building</button>`;
+              <button class="btn btn-secondary btn-assign-building mt-2" data-hero="${hero.id}" data-hero-name="${hero.name}">${icon('house')} Station at Building</button>`;
 
       contentHtml = `
         <div class="hero-detail-section">
-          <div class="hero-detail-section-title">✨ Awakening — Star ${hero.stars}/${maxStars}</div>
+          <div class="hero-detail-section-title">${icon('star-burst', 'icon--gold')} Awakening — Star ${hero.stars}/${maxStars}</div>
           <div class="hero-stars-row">${starHtml}</div>
           ${awakenHtml}
         </div>
@@ -466,7 +467,7 @@ export class HeroesUI {
           <div class="hero-xp-actions">${bundleHtml}</div>
         </div>
         <div class="hero-detail-section">
-          <div class="hero-detail-section-title">⚡ Skills</div>
+          <div class="hero-detail-section-title">${icon('lightning')} Skills</div>
           ${skillsHtml || '<span class="hero-skills-empty">No skills defined.</span>'}
         </div>
         <div class="hero-detail-section">
@@ -483,7 +484,7 @@ export class HeroesUI {
           <div class="hero-detail-header-info">
             <div class="hero-detail-badges-row">
               <div class="hero-tier-badge tier-badge-${hero.tier}">${tierMeta.symbol} ${tierMeta.label}</div>
-              ${hero.classification ? `<div class="hero-class-badge class-${hero.classification}">${(HERO_CLASSIFICATIONS[hero.classification]?.icon ?? '⚔️')} ${(HERO_CLASSIFICATIONS[hero.classification]?.label ?? hero.classification)}</div>` : ''}
+              ${hero.classification ? `<div class="hero-class-badge class-${hero.classification}">${iconFromEmoji(HERO_CLASSIFICATIONS[hero.classification]?.icon ?? '') || icon('sword')} ${(HERO_CLASSIFICATIONS[hero.classification]?.label ?? hero.classification)}</div>` : ''}
             </div>
             <div class="hero-detail-name">${hero.name}</div>
             <div class="hero-detail-title-sub">${hero.title}</div>

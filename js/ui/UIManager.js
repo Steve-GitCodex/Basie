@@ -35,6 +35,7 @@ import { ChallengesUI } from './controllers/ChallengesUI.js';
 import { EventsUI }     from './controllers/EventsUI.js';
 import { WorldMapUI }   from './controllers/WorldMapUI.js';
 import { RES_META, openModal, closeModal } from './uiUtils.js';
+import { icon, iconFromEmoji } from './icons.js';
 import { INVENTORY_ITEMS } from '../entities/GAME_DATA.js';
 import { eventBus }     from '../core/EventBus.js';
 
@@ -298,7 +299,7 @@ export class UIManager {
     setTimeout(() => {
       const banner = document.createElement('div');
       banner.className = `victory-banner${isDefeat ? ' defeat' : ''}`;
-      banner.textContent = isDefeat ? '❌ Defeated!' : '⚔️ Victory!';
+      banner.innerHTML = isDefeat ? `${icon('x-circle', 'icon--danger')} Defeated!` : `${icon('sword', 'icon--gold')} Victory!`;
       document.body.appendChild(banner);
       setTimeout(() => banner.remove(), 2500);
 
@@ -345,14 +346,13 @@ export class UIManager {
     displayList.forEach((item, i) => {
       let label;
       if (item.type === 'resource') {
-        const icon = RES_META[item.itemId]?.icon ?? '✨';
-        label = `${icon} ×${item.quantity}`;
+        const ico = RES_META[item.itemId]?.icon ?? '';
+        label = `${ico} ×${item.quantity}`;
       } else {
-        // P8: use the item's own icon and name instead of a generic 📦
         const cfg  = INVENTORY_ITEMS[item.itemId];
-        const icon = cfg?.icon ?? '📦';
+        const ico  = iconFromEmoji(cfg?.icon ?? '') || icon('box');
         const name = cfg?.name ?? item.itemId;
-        label = `${icon} ${name} ×${item.quantity}`;
+        label = `${ico} ${name} ×${item.quantity}`;
       }
       spawnCard(label, i);
     });
@@ -407,16 +407,16 @@ export class UIManager {
     }).join('');
 
     const milestoneNote = streak % 30 === 0
-      ? `<p style="color:var(--clr-gold);font-size:0.85rem;text-align:center;margin:0.5rem 0">🌟 Milestone: ${streak}-day streak!</p>`
+      ? `<p style="color:var(--clr-gold);font-size:0.85rem;text-align:center;margin:0.5rem 0">${icon('star-burst', 'icon--gold')} Milestone: ${streak}-day streak!</p>`
       : '';
 
     openModal(`
       <div class="modal-inner">
         <div class="modal-top">
-          <div class="modal-icon">🎁</div>
+          <div class="modal-icon">${icon('gift', 'icon--gold')}</div>
           <div class="modal-title-block">
             <div class="modal-title">Daily Login Reward</div>
-            <div class="modal-subtitle">🔥 Day ${day} · ${streak}-day streak</div>
+            <div class="modal-subtitle">${icon('fire', 'icon--danger')} Day ${day} · ${streak}-day streak</div>
           </div>
         </div>
         ${milestoneNote}
@@ -501,18 +501,18 @@ export class UIManager {
 
       // Update button
       const btn = panel.querySelector('#story-btn-next');
-      if (btn) btn.textContent = isLast ? 'Collect Rewards ✨' : 'Next ▶';
+      if (btn) btn.textContent = isLast ? 'Collect Rewards' : 'Next ▶';
     };
 
     // Build the modal content
     const rewardHtml = Object.entries(chapter.rewards ?? {}).map(([k, v]) =>
-      `<span class="story-reward-chip">${RES_META[k]?.icon ?? '✨'} +${v} ${k}</span>`
+      `<span class="story-reward-chip">${RES_META[k]?.icon ?? ''} +${v} ${k}</span>`
     ).join('');
 
     panel.innerHTML = `
       <div class="story-header">
         <span class="story-chapter-arc" style="background:${chapter.arcColor ?? '#6c5ce7'}">${chapter.arc ?? 'Chapter'}</span>
-        <span class="story-chapter-icon">${chapter.icon}</span>
+        <span class="story-chapter-icon">${iconFromEmoji(chapter.icon ?? '')}</span>
         <div class="story-chapter-title">${chapter.title}</div>
         <button class="story-skip-btn" id="story-btn-skip">Skip ×</button>
       </div>

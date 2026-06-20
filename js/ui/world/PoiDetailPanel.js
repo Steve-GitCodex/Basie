@@ -37,8 +37,8 @@ export class PoiDetailPanel {
     if (poi.type === 'city') { this._show(); return; }
 
     const btn = document.createElement('button');
-    if (marchType === 'gather') { btn.className = 'wp-gather'; btn.textContent = '🪣 Gather'; }
-    else { btn.className = 'wp-attack'; btn.textContent = '⚔️ Attack'; }
+    if (marchType === 'gather') { btn.className = 'wp-gather'; btn.textContent = 'Gather'; }
+    else { btn.className = 'wp-attack'; btn.textContent = 'Attack'; }
 
     const blocked = locked ? (lockReason ?? 'Locked') :
       (slotsFree <= 0 ? 'No march slots free' :

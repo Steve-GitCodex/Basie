@@ -13,6 +13,7 @@
 import { eventBus } from '../../core/EventBus.js';
 import { MONSTERS_CONFIG, UNITS_CONFIG } from '../../entities/GAME_DATA.js';
 import { RES_META, fmt, openModal, closeModal } from '../uiUtils.js';
+import { icon, iconFromEmoji } from '../icons.js';
 
 export class CombatUI {
   /**
@@ -61,8 +62,8 @@ export class CombatUI {
     // ── Shared mode header ──────────────────────────────────────────
     const modeLabel = {
       campaign: null, // no badge needed for default mode
-      survival: '<div class="sandbox-banner" style="background:var(--clr-danger)22;border:1px solid var(--clr-danger)44;color:var(--clr-danger)">🌊 <strong>Survival Mode</strong> — Endless waves, escalating difficulty</div>',
-      sandbox:  '<div class="sandbox-banner">🧪 <strong>Sandbox Mode</strong> — Resources Unlimited &middot; Instant Timers</div>',
+      survival: `<div class="sandbox-banner" style="background:var(--clr-danger)22;border:1px solid var(--clr-danger)44;color:var(--clr-danger)">${icon('lightning', 'icon--danger')} <strong>Survival Mode</strong> — Endless waves, escalating difficulty</div>`,
+      sandbox:  `<div class="sandbox-banner">${icon('flask-potion', 'icon--gold')} <strong>Sandbox Mode</strong> — Resources Unlimited &middot; Instant Timers</div>`,
     };
     const bannerHtml = modeLabel[gameMode] ?? '';
     panel.innerHTML = `<h3>Campaign Map</h3>${bannerHtml}`;
@@ -98,8 +99,8 @@ export class CombatUI {
       }
       node.innerHTML = `
         <div class="campaign-node-circle">
-          ${stage.isLocked ? '<span class="node-lock-icon">🔒</span>' : ''}
-          ${stage.icon}
+          ${stage.isLocked ? `<span class="node-lock-icon">${icon('lock')}</span>` : ''}
+          ${iconFromEmoji(stage.icon ?? '')}
         </div>
         <div class="campaign-node-name">${stage.name}</div>
         <div class="campaign-node-diff">Stage ${stage.stage}</div>`;
@@ -156,7 +157,7 @@ export class CombatUI {
     survivalDiv.style.cssText = 'padding:var(--space-4);margin-top:var(--space-3)';
     survivalDiv.innerHTML = `
       <div style="text-align:center;padding:var(--space-4) 0">
-        <div style="font-size:3rem;margin-bottom:var(--space-2)">🌊</div>
+        <div style="font-size:3rem;margin-bottom:var(--space-2)">${icon('lightning', 'icon--xl icon--danger')}</div>
         <div style="font-size:var(--text-xl);font-weight:700;margin-bottom:var(--space-1)">Survival Arena</div>
         <div style="color:var(--clr-text-secondary);font-size:var(--text-sm)">
           Fight endless escalating waves. Enemies grow stronger by 5% each wave.
@@ -188,7 +189,7 @@ export class CombatUI {
           <select id="survival-squad-select" class="styled-select" style="flex:1">
             ${squadOptions}
           </select>
-          <button class="btn btn-danger" id="btn-survival-fight" style="white-space:nowrap">⚔️ Fight Wave ${wave + 1}</button>
+          <button class="btn btn-danger" id="btn-survival-fight" style="white-space:nowrap">${icon('sword')} Fight Wave ${wave + 1}</button>
         </div>
       `}
     `;
@@ -201,7 +202,7 @@ export class CombatUI {
       const proxy = {
         id:    'survival_wave',
         name:  `Survival Wave ${survState.wave + 1}`,
-        icon:  '🌊',
+        icon:  icon('lightning', 'icon--danger icon--xl'),
         waves: [{ name: 'Survival Enemies', hp: 0, attack: 0, count: 0 }], // placeholder for wave count display
       };
       this._openBattleArena(proxy, squadId);
@@ -211,7 +212,7 @@ export class CombatUI {
   // ── Survival dummy for _openBattleArena signature ─────────────────
   get _survivalMonsterProxy() {
     const { wave } = this._s.cm.getSurvivalState?.() ?? { wave: 0 };
-    return { id: 'survival_wave', name: `Survival Wave ${wave + 1}`, icon: '🌊' };
+    return { id: 'survival_wave', name: `Survival Wave ${wave + 1}`, icon: icon('lightning', 'icon--danger icon--xl') };
   }
 
   _renderCampaignDetail(stage, canAttack) {
@@ -231,23 +232,23 @@ export class CombatUI {
     }
 
     const rewardsHtml = Object.entries(monster.rewards).map(([r, v]) =>
-      `<span class="cost-chip affordable">${RES_META[r]?.icon ?? '✨'} ${fmt(isReduced ? Math.max(1, Math.floor(v * 0.1)) : v)}</span>`
+      `<span class="cost-chip affordable">${RES_META[r]?.icon ?? ''} ${fmt(isReduced ? Math.max(1, Math.floor(v * 0.1)) : v)}</span>`
     ).join('');
 
     const wavesHtml = monster.waves.map((w, i) =>
-      `<div class="campaign-wave-row"><div class="campaign-wave-dot"></div><span>Wave ${i + 1}: ${w.name} (×${w.count}) — ❤️${w.hp} ⚔️${w.attack}${w.specialAbility ? ` 💥${w.specialAbility}` : ''}</span></div>`
+      `<div class="campaign-wave-row"><div class="campaign-wave-dot"></div><span>Wave ${i + 1}: ${w.name} (×${w.count}) — ${icon('heart', 'icon--danger')}${w.hp} ${icon('sword')}${w.attack}${w.specialAbility ? ` ${icon('lightning')}${w.specialAbility}` : ''}</span></div>`
     ).join('');
 
     const victoryInfo = prog.victories > 0
       ? `<div style="font-size:var(--text-xs);color:${hasRewardsLeft ? 'var(--clr-success)' : 'var(--clr-warning)'};margin-bottom:var(--space-2)">
           ${hasRewardsLeft
-            ? `✅ ${prog.victories} win${prog.victories > 1 ? 's' : ''} · Full rewards: ${prog.rewardsRemaining} remaining`
-            : `⚠️ ${prog.victories} wins · No more full rewards (10% loot)`}
+            ? `${icon('check', 'icon--success')} ${prog.victories} win${prog.victories > 1 ? 's' : ''} · Full rewards: ${prog.rewardsRemaining} remaining`
+            : `${icon('warning')} ${prog.victories} wins · No more full rewards (10% loot)`}
         </div>`
       : '';
 
     const modifierBanner = modifier
-      ? `<div class="encounter-modifier-banner">⚡ Encounter modifier: <strong>${modifier.icon} ${modifier.name}</strong> — ${modifier.description}</div>`
+      ? `<div class="encounter-modifier-banner">${icon('lightning')} Encounter modifier: <strong>${icon('lightning')} ${modifier.name}</strong> — ${modifier.description}</div>`
       : '';
 
     const squads     = this._s.um.getSquads();
@@ -262,7 +263,7 @@ export class CombatUI {
 
     area.innerHTML = `
       <div class="campaign-detail">
-        <div class="campaign-detail-icon">${monster.icon}</div>
+        <div class="campaign-detail-icon">${iconFromEmoji(monster.icon ?? '')}</div>
         <div class="campaign-detail-body">
           <div class="campaign-detail-name">${monster.name}</div>
           <div class="campaign-detail-desc">${monster.description}</div>
@@ -284,7 +285,7 @@ export class CombatUI {
             <div id="readiness-badge-area" style="margin-top:var(--space-2)"></div>
           </div>
           <button class="btn btn-danger w-full" id="btn-campaign-attack" ${squads.length === 0 ? 'disabled' : ''}>
-            ${prog.victories === 0 ? '⚔️ Deploy Squad' : isReduced ? '⚔️ Re-fight (10% loot)' : '⚔️ Re-fight'}
+            ${prog.victories === 0 ? `${icon('sword')} Deploy Squad` : isReduced ? `${icon('sword')} Re-fight (10% loot)` : `${icon('sword')} Re-fight`}
           </button>
         </div>
       </div>`;
@@ -323,10 +324,10 @@ export class CombatUI {
       if (!badgeArea || !squadId || !this._s.cm.estimateSurvival) return;
       const est = this._s.cm.estimateSurvival(squadId, stage.monsterId);
       if (!est) { badgeArea.innerHTML = ''; return; }
-      const cls  = est.likelyTooWeak ? 'weak' : est.survivalPct < 60 ? 'risky' : 'ready';
-      const icon = est.likelyTooWeak ? '⚠️' : est.survivalPct < 60 ? '⚡' : '✅';
-      const lbl  = est.victory ? 'Victory likely' : `~${Math.round(est.survivalPct)}% survival`;
-      badgeArea.innerHTML = `<span class="readiness-badge ${cls}">${icon} ${lbl}</span>`;
+      const cls       = est.likelyTooWeak ? 'weak' : est.survivalPct < 60 ? 'risky' : 'ready';
+      const statusIco = est.likelyTooWeak ? icon('warning') : est.survivalPct < 60 ? icon('lightning') : icon('check', 'icon--success');
+      const lbl       = est.victory ? 'Victory likely' : `~${Math.round(est.survivalPct)}% survival`;
+      badgeArea.innerHTML = `<span class="readiness-badge ${cls}">${statusIco} ${lbl}</span>`;
     };
 
     // Initial readiness check
@@ -371,10 +372,10 @@ export class CombatUI {
     content.innerHTML = `
       <div class="modal-inner">
         <div class="modal-top">
-          <div class="modal-title-block"><div class="modal-title">⚠️ Low Readiness</div></div>
+          <div class="modal-title-block"><div class="modal-title">${icon('warning')} Low Readiness</div></div>
         </div>
         <div style="text-align:center;padding:var(--space-6) var(--space-4)">
-          <div style="font-size:3rem;margin-bottom:var(--space-3)">☠️</div>
+          <div style="font-size:3rem;margin-bottom:var(--space-3)">${icon('skull', 'icon--xl icon--danger')}</div>
           <p style="color:var(--clr-warning);font-weight:700;font-size:var(--text-lg);margin-bottom:var(--space-2)">
             ~${survivalPct}% estimated survival
           </p>
@@ -383,7 +384,7 @@ export class CombatUI {
           </p>
           <div style="display:flex;gap:var(--space-3);justify-content:center">
             <button class="btn btn-secondary" id="btn-warn-cancel">Cancel</button>
-            <button class="btn btn-danger" id="btn-warn-proceed">⚔️ Fight Anyway</button>
+            <button class="btn btn-danger" id="btn-warn-proceed">${icon('sword')} Fight Anyway</button>
           </div>
         </div>
       </div>`;
@@ -405,24 +406,24 @@ export class CombatUI {
     content.innerHTML = `
       <div class="modal-inner">
         <div class="modal-top">
-          <div class="modal-title-block"><div class="modal-title">⚔️ ${monster.name}</div></div>
+          <div class="modal-title-block"><div class="modal-title">${icon('sword')} ${monster.name}</div></div>
         </div>
         <div class="battle-arena" id="battle-arena">
           <div class="battle-combatants">
             <div class="battle-side">
-              <div class="battle-sprite player-sprite" id="player-sprite">🗡️</div>
+              <div class="battle-sprite player-sprite" id="player-sprite">${icon('sword', 'icon--xl')}</div>
               <div class="battle-name" style="color:var(--clr-primary)">Your Army</div>
               <div class="battle-hp-bar"><div class="progress-bar"><div class="progress-fill progress-fill-hp" id="player-hp-bar" style="width:100%"></div></div></div>
             </div>
             <div class="battle-vs">VS</div>
             <div class="battle-side">
-              <div class="battle-sprite enemy-sprite" id="enemy-sprite">${monster.icon}</div>
+              <div class="battle-sprite enemy-sprite" id="enemy-sprite">${iconFromEmoji(monster.icon ?? '')}</div>
               <div class="battle-name" style="color:var(--clr-danger)">${monster.name}</div>
               <div class="battle-hp-bar"><div class="progress-bar"><div class="progress-fill progress-fill-hp" id="enemy-hp-bar" style="width:100%"></div></div></div>
             </div>
           </div>
           <div id="battle-wave-counter" class="battle-wave-counter" style="display:none"></div>
-          <div class="battle-feed" id="battle-feed"><div class="battle-line system">⚔️ Battle begins! (${monster.waves.length} waves)</div></div>
+          <div class="battle-feed" id="battle-feed"><div class="battle-line system">Battle begins! (${monster.waves.length} waves)</div></div>
         </div>
         <div id="battle-result-area" style="display:none"></div>
         <div class="modal-actions" id="battle-actions">
@@ -471,7 +472,7 @@ export class CombatUI {
 
     // Show modifier banner in feed if applicable
     if (modifier) {
-      addLine(`⚡ Modifier: ${modifier.icon} ${modifier.name} — ${modifier.description}`, 'system');
+      addLine(`Modifier: ${modifier.name} — ${modifier.description}`, 'system');
       await sleep(600);
     }
 
@@ -574,16 +575,16 @@ export class CombatUI {
         const isReduced = result.reducedReward;
         const rewardChips = rewards && victory
           ? Object.entries(rewards).map(([r, v], i) =>
-              `<div class="battle-reward-chip" style="animation-delay:${0.2 + i * 0.1}s">${RES_META[r]?.icon ?? '✨'} +${fmt(v)} ${r}</div>`
+              `<div class="battle-reward-chip" style="animation-delay:${0.2 + i * 0.1}s">${RES_META[r]?.icon ?? ''} +${fmt(v)} ${r}</div>`
             ).join('')
           : '';
 
         resultArea.innerHTML = `
           <div class="battle-result">
-            <span class="battle-result-icon">${victory ? '🏆' : '💀'}</span>
+            <span class="battle-result-icon">${victory ? icon('star-burst', 'icon--gold icon--appear') : icon('skull', 'icon--danger icon--appear')}</span>
             <div class="battle-result-title ${victory ? 'victory' : 'defeat'}">${victory ? 'Victory!' : 'Defeated!'}</div>
             <p style="color:var(--clr-text-secondary)">${victory
-              ? (isReduced ? '⚠️ Reduced loot — no more full rewards from this encounter.' : 'Your forces triumphed!')
+              ? (isReduced ? `${icon('warning', 'icon--warning')} Reduced loot — no more full rewards from this encounter.` : 'Your forces triumphed!')
               : 'Your forces were overwhelmed. Regroup and try again!'}</p>
             ${rewards && victory ? `<div class="battle-rewards">${rewardChips}</div>` : ''}
           </div>`;
@@ -614,7 +615,7 @@ export class CombatUI {
     const el = document.getElementById('battle-log');
     if (!el) return;
     el.innerHTML = log.length === 0
-      ? '<div class="empty-state" style="padding:var(--space-6)"><div class="empty-state-icon">⚔️</div><p class="empty-state-title">No battles yet</p></div>'
+      ? `<div class="empty-state" style="padding:var(--space-6)"><div class="empty-state-icon">${icon('sword')}</div><p class="empty-state-title">No battles yet</p></div>`
       : log.map(e => {
           const isWin = e.result === 'Victory';
           return `<div style="padding:var(--space-2) var(--space-3);background:var(--clr-bg-elevated);border-radius:var(--radius-md);border:1px solid ${isWin?'var(--clr-success)':'var(--clr-danger)'}33;display:flex;justify-content:space-between;align-items:center">

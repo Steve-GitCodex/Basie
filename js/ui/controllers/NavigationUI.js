@@ -9,6 +9,7 @@
 import { eventBus } from '../../core/EventBus.js';
 import { RES_META, fmt } from '../uiUtils.js';
 import { VIP_TIERS, TAB_UNLOCK_CONDITIONS, TAB_GROUPS, BUILDING_TAB_MAP, HQ_UNLOCK_TABLE, BUILDINGS_CONFIG, UNITS_CONFIG } from '../../entities/GAME_DATA.js';
+import { icon } from '../icons.js';
 
 export class NavigationUI {
   /**
@@ -279,7 +280,7 @@ export class NavigationUI {
     eventBus.on('population:updated',     ()   => this._refreshStatusBar());
     eventBus.on('buffs:updated',          buffs => this._updateBuffBadge(buffs));
     eventBus.on('building:cafeteria:shortfall', ({ severity, message } = {}) => {
-      const title = severity === 'info' ? '🍽️ Restock Reminder' : '🍽️ Food Running Low';
+      const title = severity === 'info' ? 'Restock Reminder' : 'Food Running Low';
       this._s.notifications?.show(severity ?? 'warning', title,
         message ?? 'Cafeteria supplies are low — restock food & water.');
     });
@@ -371,7 +372,7 @@ export class NavigationUI {
     const tooltip = document.createElement('div');
     tooltip.id        = 'tab-lock-tooltip';
     tooltip.className = 'tab-unlock-tooltip';
-    tooltip.textContent = `🔒 ${message}`;
+    tooltip.innerHTML = `${icon('lock')} ${message}`;
     const rect = btn.getBoundingClientRect();
     tooltip.style.bottom = `${window.innerHeight - rect.top + 8}px`;
     tooltip.style.left   = `${Math.min(rect.left + rect.width / 2, window.innerWidth - 140)}px`;
@@ -621,7 +622,7 @@ export class NavigationUI {
     // Color the chip when stock is low
     const pct = minCap > 0 ? minStock / minCap : 1;
     chip.style.borderColor = pct < 0.2 ? 'var(--clr-danger)' : '';
-    if (rateEl) rateEl.textContent = pct < 0.2 ? '⚠️ Low' : '';
+    if (rateEl) rateEl.innerHTML = pct < 0.2 ? `${icon('warning')} Low` : '';
   }
 
   // ---- PROFILE ----
@@ -636,7 +637,7 @@ export class NavigationUI {
       const tier = this._s.user?.getVipTier() ?? 0;
       if (tier > 0) {
         const tierCfg = VIP_TIERS.find(t => t.tier === tier);
-        badgeEl.textContent     = `${tierCfg?.badge ?? '👑'} ${tierCfg?.label ?? `VIP ${tier}`}`;
+        badgeEl.innerHTML = `${icon('crown')} ${tierCfg?.label ?? `VIP ${tier}`}`;
         badgeEl.title           = tierCfg?.description ?? '';
         badgeEl.classList.remove('hidden');
         badgeEl.dataset.vipTier = tier;

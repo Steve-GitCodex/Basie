@@ -9,6 +9,7 @@
  */
 import { eventBus } from '../../core/EventBus.js';
 import { UNITS_CONFIG, BUILDINGS_CONFIG, HEROES_CONFIG, HERO_CLASSIFICATIONS } from '../../entities/GAME_DATA.js';
+import { icon, iconFromEmoji } from '../icons.js';
 
 export class BarracksUI {
   /** @param {{ rm, um, heroes, inventory, notifications }} systems */
@@ -85,7 +86,7 @@ export class BarracksUI {
     if (!squad) {
       root.innerHTML = `
         <div class="sq-header">
-          <div class="sq-title"><span class="sq-title-icon">⚔️</span><div class="sq-title-name">Squads</div></div>
+          <div class="sq-title"><span class="sq-title-icon">${icon('sword')}</span><div class="sq-title-name">Squads</div></div>
           <button class="modal-close sq-close" aria-label="Close">✕</button>
         </div>
         <div class="sq-empty">No squad available for this Barracks.</div>`;
@@ -112,7 +113,7 @@ export class BarracksUI {
       <div class="sq-header">
         ${pagerPrev}
         <div class="sq-title">
-          <span class="sq-title-icon">🚩</span>
+          <span class="sq-title-icon">${icon('sword', 'icon--gold')}</span>
           <div>
             <div class="sq-title-name">${squad.name}</div>
             <div class="sq-title-sub">Barracks Lv.${level} · ${unitCount} units · ${squad.units.length} types</div>
@@ -120,14 +121,14 @@ export class BarracksUI {
         </div>
         ${pagerNext}
         <button class="sq-rename" title="Rename squad">✎</button>
-        <button class="sq-delete" title="Reset squad (clear units &amp; heroes)">🗑</button>
+        <button class="sq-delete" title="Reset squad (clear units &amp; heroes)">${icon('trash')}</button>
         <button class="modal-close sq-close" aria-label="Close">✕</button>
       </div>
       <div class="sq-stats">
-        <span class="sq-stat" title="Attack multiplier">⚔️ ×${bonuses.attackMult.toFixed(2)}</span>
-        <span class="sq-stat" title="Defense multiplier">🛡️ ×${bonuses.defenseMult.toFixed(2)}</span>
-        ${bonuses.lossReduction > 0 ? `<span class="sq-stat" title="Casualty reduction">🩺 -${(bonuses.lossReduction * 100).toFixed(0)}%</span>` : ''}
-        <span class="sq-stat sq-stat--score" title="Combat score">💪 ${score.toLocaleString()}</span>
+        <span class="sq-stat" title="Attack multiplier">${icon('sword')} ×${bonuses.attackMult.toFixed(2)}</span>
+        <span class="sq-stat" title="Defense multiplier">${icon('shield')} ×${bonuses.defenseMult.toFixed(2)}</span>
+        ${bonuses.lossReduction > 0 ? `<span class="sq-stat" title="Casualty reduction">${icon('heart', 'icon--success')} -${(bonuses.lossReduction * 100).toFixed(0)}%</span>` : ''}
+        <span class="sq-stat sq-stat--score" title="Combat score">${icon('star-burst', 'icon--gold')} ${score.toLocaleString()}</span>
       </div>
       <div class="sq-tiles" id="sq-tiles"></div>`;
 
@@ -168,7 +169,7 @@ export class BarracksUI {
     if (!unlocked) {
       const reqLevel = condition ? Object.values(condition)[0] : null;
       tile.classList.add('sq-tile--locked');
-      tile.innerHTML = `<div class="sq-tile-lock"><span>🔒</span><span>Barracks Lv.${reqLevel}</span></div>`;
+      tile.innerHTML = `<div class="sq-tile-lock"><span>${icon('lock')}</span><span>Barracks Lv.${reqLevel}</span></div>`;
       return tile;
     }
 
@@ -383,8 +384,8 @@ export class BarracksUI {
           <span class="sut-icon">${cfg.icon}</span>
           <span class="sut-name">${cfg.name}</span>
           <div class="sut-counts">
-            <span class="sut-in-squad" title="In this slot">⚔️ ${inSlot}</span>
-            <span class="sut-in-reserve" title="In reserve">📦 ${inReserve}</span>
+            <span class="sut-in-squad" title="In this slot">${icon('sword')} ${inSlot}</span>
+            <span class="sut-in-reserve" title="In reserve">${icon('box')} ${inReserve}</span>
           </div>
           ${isPreferred ? '<span class="sut-star">⭐ Match</span>' : ''}`;
         btn.addEventListener('click', e => { e.stopPropagation(); eventBus.emit('ui:click'); renderAssignStep(unitType, cfg); });
@@ -444,7 +445,7 @@ export class BarracksUI {
 
           const info = document.createElement('div');
           info.className = 'sut-tier-info';
-          info.innerHTML = `<span class="sut-tier-name">T${u.tier} ${tierName}</span><span class="sut-tier-reserve">📦 ${u.count} available</span>`;
+          info.innerHTML = `<span class="sut-tier-name">T${u.tier} ${tierName}</span><span class="sut-tier-reserve">${icon('box')} ${u.count} available</span>`;
 
           const bottom = document.createElement('div');
           bottom.className = 'sut-tier-bottom';

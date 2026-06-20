@@ -4,6 +4,7 @@
  */
 import { eventBus } from '../../core/EventBus.js';
 import { RES_META, fmt } from '../uiUtils.js';
+import { icon } from '../icons.js';
 
 export class MarketUI {
   /**
@@ -42,8 +43,8 @@ export class MarketUI {
             <span style="color:var(--clr-text-muted)">→</span>
             <span class="cost-chip affordable">${RES_META[trade.to.resource]?.icon} ${fmt(trade.currentGain)} ${trade.to.resource}</span>
           </div>
-          ${!trade.canAfford ? `<p style="font-size:var(--text-xs);color:var(--clr-danger);margin-top:var(--space-1)">🔒 Not enough ${RES_META[trade.from.resource]?.name ?? trade.from.resource}</p>` : ''}
-          ${inflated ? `<p style="font-size:var(--text-xs);color:var(--clr-warning)">⚠️ ×${trade.inflationMult} price (${trade.purchaseCount} purchases)</p>` : ''}
+          ${!trade.canAfford ? `<p style="font-size:var(--text-xs);color:var(--clr-danger);margin-top:var(--space-1)">${icon('lock')} Not enough ${RES_META[trade.from.resource]?.name ?? trade.from.resource}</p>` : ''}
+          ${inflated ? `<p style="font-size:var(--text-xs);color:var(--clr-warning)">${icon('warning')} ×${trade.inflationMult} price (${trade.purchaseCount} purchases)</p>` : ''}
         </div>
         <div class="card-footer">
           <button class="btn btn-sm ${trade.canAfford ? 'btn-gold' : 'btn-ghost'} btn-trade" ${!trade.canAfford ? 'disabled' : ''}>Trade</button>

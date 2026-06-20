@@ -8,6 +8,7 @@
 import { eventBus }                                         from '../../core/EventBus.js';
 import { SHOP_CONFIG, INVENTORY_ITEMS, DIAMOND_PACKAGES, VIP_TIERS } from '../../entities/GAME_DATA.js';
 import { fmt, openModal, closeModal }                        from '../uiUtils.js';
+import { icon, iconFromEmoji }                               from '../icons.js';
 
 const RARITY_META = {
   common:    { label: 'Common',    color: 'var(--clr-tier-common)' },
@@ -40,7 +41,7 @@ export class ShopUI {
     // ── Category tabs ──────────────────────────────────────────────────────
     const tabsHtml = SHOP_CONFIG.map(cat => `
       <button class="shop-cat-tab${this._activeCategory === cat.id ? ' active' : ''}" data-cat="${cat.id}">
-        ${cat.icon} ${cat.label}
+        ${iconFromEmoji(cat.icon ?? '')} ${cat.label}
       </button>`).join('');
 
     container.innerHTML = `
@@ -93,9 +94,9 @@ export class ShopUI {
     const nextTier = VIP_TIERS.find(t => t.tier > vipTier);
     const progressNote = nextTier
       ? (spent + pkg.diamonds >= nextTier.threshold
-          ? `Spending brings you to ✅ ${nextTier.label}`
+          ? `Spending brings you to ${icon('check', 'icon--success')} ${nextTier.label}`
           : `${(spent + pkg.diamonds).toLocaleString()} / ${nextTier.threshold.toLocaleString()} towards ${nextTier.label}`)
-      : '👑 Max VIP reached!';
+      : `${icon('crown', 'icon--gold')} Max VIP reached!`;
 
     const featuredBadge = entry.featured ? '<span class="shop-featured-badge">★ Best Value</span>' : '';
 
@@ -103,10 +104,10 @@ export class ShopUI {
     card.className = `shop-item-card diamond-package-card${featured}`;
     card.innerHTML = `
       ${featuredBadge}
-      <div class="shop-item-icon diamond-pkg-icon">${entry.icon}</div>
+      <div class="shop-item-icon diamond-pkg-icon">${iconFromEmoji(entry.icon ?? '') || icon('diamond')}</div>
       <div class="shop-item-info">
         <div class="shop-item-name">${entry.label}</div>
-        <div class="diamond-pkg-count">💎 ${pkg.diamonds.toLocaleString()} Diamonds</div>
+        <div class="diamond-pkg-count">${icon('diamond')} ${pkg.diamonds.toLocaleString()} Diamonds</div>
         <div class="shop-item-desc">${entry.description}</div>
         <div class="diamond-pkg-vip-note">${progressNote}</div>
       </div>
@@ -127,7 +128,7 @@ export class ShopUI {
     openModal(`
       <div class="modal-inner">
         <div class="modal-top">
-          <div class="modal-icon">💎</div>
+          <div class="modal-icon">${icon('diamond', 'icon--xl')}</div>
           <div class="modal-title-block">
             <div class="modal-title">Confirm Purchase</div>
             <div class="modal-subtitle">Simulated — <strong style="color:var(--clr-warning)">no real charge</strong> is made.</div>
@@ -135,7 +136,7 @@ export class ShopUI {
           <button class="modal-close btn-ghost">✕</button>
         </div>
         <div style="text-align:center;padding:var(--space-5);background:var(--clr-bg-elevated);border-radius:var(--radius-lg)">
-          <div style="font-size:2.5rem">💎</div>
+          <div style="font-size:2.5rem">${icon('diamond', 'icon--xl')}</div>
           <div style="font-size:var(--text-xl);font-weight:700;color:var(--clr-primary-light);margin-top:var(--space-2)">${pkg.diamonds.toLocaleString()} Diamonds</div>
           <div style="color:var(--clr-text-muted);font-size:var(--text-sm);margin-top:var(--space-1)">${pkg.displayPrice} (simulated)</div>
         </div>
@@ -161,9 +162,9 @@ export class ShopUI {
     const comingSoon = entry.comingSoon === true;
 
     // Resolve item config (may be null for premium stubs)
-    const cfg    = entry.itemId ? (INVENTORY_ITEMS[entry.itemId] ?? null) : null;
-    const icon   = cfg?.icon   ?? entry.icon   ?? '?';
-    const name   = cfg?.name   ?? entry.label  ?? 'Unknown';
+    const cfg     = entry.itemId ? (INVENTORY_ITEMS[entry.itemId] ?? null) : null;
+    const itemIcon = iconFromEmoji(cfg?.icon ?? entry.icon ?? '') || icon('box');
+    const name    = cfg?.name   ?? entry.label  ?? 'Unknown';
     const desc   = cfg?.description ?? entry.description ?? '';
     const rarity = cfg?.rarity ?? null;
     
@@ -172,11 +173,11 @@ export class ShopUI {
     if (typeof entry.moneyCost === 'number') {
       cost = entry.moneyCost;
       currency = 'money';
-      currencyIcon = '🪙';
+      currencyIcon = icon('money');
     } else if (typeof entry.diamondCost === 'number') {
       cost = entry.diamondCost;
       currency = 'diamond';
-      currencyIcon = '💎';
+      currencyIcon = icon('diamond');
     } else {
       cost = null;
     }
@@ -214,7 +215,7 @@ export class ShopUI {
     card.className = `shop-item-card${comingSoon ? ' shop-item-locked' : ''}${entry.featured ? ' shop-item-featured' : ''}`;
     card.innerHTML = `
       ${featuredBadge}
-      <div class="shop-item-icon">${icon}</div>
+      <div class="shop-item-icon">${itemIcon}</div>
       <div class="shop-item-info">
         <div class="shop-item-name">${name}</div>
         ${rarityBadge}
@@ -224,7 +225,7 @@ export class ShopUI {
         ${ownedBadge}
         ${costHtml}
         ${comingSoon
-          ? `<button class="btn btn-sm btn-ghost" disabled>🔒 Coming Soon</button>`
+          ? `<button class="btn btn-sm btn-ghost" disabled>${icon('lock')} Coming Soon</button>`
           : slotAlreadyOwned
             ? `<button class="btn btn-sm btn-ghost" disabled>\u2705 Purchased</button>`
             : isAutomationActive
@@ -257,12 +258,12 @@ export class ShopUI {
       costAmount = moneyCost;
       costObj = { money: moneyCost };
       currency = 'money';
-      currencyIcon = '🪙';
+      currencyIcon = 'gold';
     } else if (typeof diamondCost === 'number') {
       costAmount = diamondCost;
       costObj = { diamond: diamondCost };
       currency = 'diamond';
-      currencyIcon = '💎';
+      currencyIcon = 'diamond';
     } else {
       eventBus.emit('ui:error');
       this._s.notifications?.show('warning', 'Cannot Buy', 'Invalid item cost configuration.');

@@ -4,6 +4,7 @@
  * Follows the same controller pattern as QuestsUI.
  */
 import { eventBus } from '../../core/EventBus.js';
+import { icon, iconFromEmoji } from '../icons.js';
 
 export class ChallengesUI {
   constructor(systems) {
@@ -26,10 +27,10 @@ export class ChallengesUI {
     const weekly     = all.filter(c => c.type === 'weekly');
 
     container.innerHTML = `
-      ${this._renderPassStrip('📅 Daily Pass', 'Resets at midnight', dailyPass, 'daily')}
-      ${this._renderSection('📅 Daily Challenges', daily)}
-      ${this._renderPassStrip('📆 Weekly Pass', 'Resets each Monday', weeklyPass, 'weekly')}
-      ${this._renderSection('📆 Weekly Challenges', weekly)}
+      ${this._renderPassStrip(`${icon('clock')} Daily Pass`, 'Resets at midnight', dailyPass, 'daily')}
+      ${this._renderSection(`${icon('clock')} Daily Challenges`, daily)}
+      ${this._renderPassStrip(`${icon('star-burst')} Weekly Pass`, 'Resets each Monday', weeklyPass, 'weekly')}
+      ${this._renderSection(`${icon('star-burst')} Weekly Challenges`, weekly)}
     `;
 
     container.querySelectorAll('.btn-claim-challenge').forEach(btn => {
@@ -61,13 +62,13 @@ export class ChallengesUI {
       ].filter(Boolean).join(' ');
 
       const inner = m.claimed
-        ? `<span class="pass-chest-icon">${m.icon ?? '📦'}</span><span class="pass-chest-check">✓</span>`
+        ? `<span class="pass-chest-icon">${iconFromEmoji(m.icon ?? '') || icon('gift')}</span><span class="pass-chest-check">${icon('check', 'icon--success')}</span>`
         : claimable
           ? `<button class="btn-claim-milestone" data-pass-type="${passType}" data-ms-index="${m.index}" title="Claim: ${m.label}">
-               <span class="pass-chest-icon">${m.icon ?? '📦'}</span>
+               <span class="pass-chest-icon">${iconFromEmoji(m.icon ?? '') || icon('gift')}</span>
                <span class="pass-chest-claim-hint">Claim</span>
              </button>`
-          : `<span class="pass-chest-icon">${m.icon ?? '📦'}</span>`;
+          : `<span class="pass-chest-icon">${iconFromEmoji(m.icon ?? '') || icon('gift')}</span>`;
 
       return `<div class="${classes}" style="left:${chestPct}%">${inner}</div>`;
     }).join('');
@@ -122,7 +123,7 @@ export class ChallengesUI {
       : '';
 
     const btnHtml = isClaimed
-      ? `<button class="btn btn-sm" disabled>✅ Claimed</button>`
+      ? `<button class="btn btn-sm" disabled>${icon('check', 'icon--success')} Claimed</button>`
       : isDone
         ? `<button class="btn btn-sm btn-gold btn-claim-challenge" data-id="${c.id}">Claim</button>`
         : `<button class="btn btn-sm" disabled>Locked</button>`;
@@ -139,7 +140,7 @@ export class ChallengesUI {
         </div>
         <div class="challenge-footer">
           <span class="challenge-progress">${c.progress} / ${c.objective.count}</span>
-          <span class="challenge-reward">🎁 ${rewardText}</span>
+          <span class="challenge-reward">${icon('gift')} ${rewardText}</span>
           ${btnHtml}
         </div>
       </div>

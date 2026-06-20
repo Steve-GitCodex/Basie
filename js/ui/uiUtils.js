@@ -3,15 +3,17 @@
  * Shared display constants and utilities used across all UI controllers.
  */
 
+import { icon } from './icons.js';
+
 export const RES_META = {
-  wood:    { icon: '🪵', label: 'Wood'    },
-  stone:   { icon: '🪨', label: 'Stone'   },
-  iron:    { icon: '⚙️', label: 'Iron'    },
-  food:    { icon: '🌾', label: 'Food'    },
-  water:   { icon: '💧', label: 'Water'   },
-  diamond: { icon: '💎', label: 'Diamond' },
-  money:   { icon: '🪙', label: 'Money'   },
-  xp:      { icon: '✨', label: 'XP'      },
+  wood:    { icon: icon('wood'),                  label: 'Wood'    },
+  stone:   { icon: icon('stone'),                 label: 'Stone'   },
+  iron:    { icon: icon('iron'),                  label: 'Iron'    },
+  food:    { icon: icon('food'),                  label: 'Food'    },
+  water:   { icon: icon('water'),                 label: 'Water'   },
+  diamond: { icon: icon('diamond', 'icon--glow'), label: 'Diamond' },
+  money:   { icon: icon('money'),                 label: 'Money'   },
+  xp:      { icon: icon('xp', 'icon--glow'),      label: 'XP'      },
 };
 
 /**

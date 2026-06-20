@@ -1,0 +1,102 @@
+/* ── Unified icon system ──────────────────────────────────────────────────────
+ * All icons use CSS mask-image so they tint via currentColor.
+ * Set --icon on a variant class; base class reads it.
+ * --------------------------------------------------------------------------- */
+
+.icon {
+  display: inline-block;
+  width: 18px; height: 18px;
+  background-color: currentColor;
+  -webkit-mask: var(--icon) center / contain no-repeat;
+  mask:         var(--icon) center / contain no-repeat;
+  vertical-align: middle;
+  flex-shrink: 0;
+  transition: transform var(--transition-fast, 120ms ease);
+}
+.icon--lg { width: 22px; height: 22px; }
+.icon--xl { width: 2.5rem; height: 2.5rem; }
+
+/* ── Color modifiers ─────────────────────────────────────────────────────── */
+.icon--gold    { color: var(--clr-gold); }
+.icon--danger  { color: var(--clr-danger); }
+.icon--success { color: var(--clr-success); }
+.icon--warning { color: var(--clr-warning); }
+.icon--primary { color: var(--clr-primary); }
+.icon--muted   { color: var(--clr-text-muted); }
+
+/* ── Animations ──────────────────────────────────────────────────────────── */
+@keyframes icon-appear {
+  0%   { transform: scale(0.4); opacity: 0; }
+  65%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1);   opacity: 1; }
+}
+.icon--appear { animation: icon-appear 280ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+@keyframes icon-pulse {
+  0%, 100% { filter: drop-shadow(0 0 0px currentColor); }
+  50%       { filter: drop-shadow(0 0 5px currentColor); opacity: .85; }
+}
+.icon--glow { animation: icon-pulse 2s ease-in-out infinite; }
+
+@keyframes icon-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-4px); }
+}
+.icon--active { animation: icon-bounce 0.6s ease-in-out infinite; }
+
+.icon--interactive:hover { transform: scale(1.15) translateY(-1px); }
+.cost-chip:hover .icon   { filter: drop-shadow(0 0 3px currentColor); }
+
+/* ── Variants: shared with res-icon (same file, different rendering context) */
+.icon--wood     { --icon: url('/assets/icons/svg/wood.svg'); }
+.icon--stone    { --icon: url('/assets/icons/svg/stone.svg'); }
+.icon--iron     { --icon: url('/assets/icons/svg/iron.svg'); }
+.icon--food     { --icon: url('/assets/icons/svg/food.svg'); }
+.icon--water    { --icon: url('/assets/icons/svg/water.svg'); }
+.icon--money    { --icon: url('/assets/icons/svg/money.svg'); }
+.icon--diamond  { --icon: url('/assets/icons/svg/diamond.svg'); }
+
+/* ── Variants: shared with nav-icon ─────────────────────────────────────── */
+.icon--shield   { --icon: url('/assets/icons/svg/shield.svg'); }
+.icon--flask    { --icon: url('/assets/icons/svg/flask.svg'); }
+.icon--lightning { --icon: url('/assets/icons/svg/lightning.svg'); }
+.icon--hammer   { --icon: url('/assets/icons/svg/hammer.svg'); }
+.icon--world    { --icon: url('/assets/icons/svg/world.svg'); }
+
+/* ── Variants: combat / military ─────────────────────────────────────────── */
+.icon--sword    { --icon: url('/assets/icons/svg/sword.svg'); }
+.icon--bow      { --icon: url('/assets/icons/svg/bow.svg'); }
+.icon--skull    { --icon: url('/assets/icons/svg/skull.svg'); }
+.icon--fire     { --icon: url('/assets/icons/svg/fire.svg'); }
+.icon--heart    { --icon: url('/assets/icons/svg/heart.svg'); }
+
+/* ── Variants: UI chrome ────────────────────────────────────────────────── */
+.icon--warning  { --icon: url('/assets/icons/svg/warning.svg'); }
+.icon--check    { --icon: url('/assets/icons/svg/check.svg'); }
+.icon--x-circle { --icon: url('/assets/icons/svg/x-circle.svg'); }
+.icon--lock     { --icon: url('/assets/icons/svg/lock.svg'); }
+.icon--infinity { --icon: url('/assets/icons/svg/infinity.svg'); }
+.icon--clock    { --icon: url('/assets/icons/svg/clock.svg'); }
+.icon--speedup  { --icon: url('/assets/icons/svg/speedup.svg'); }
+.icon--gear     { --icon: url('/assets/icons/svg/gear.svg'); }
+.icon--search   { --icon: url('/assets/icons/svg/search.svg'); }
+.icon--gift     { --icon: url('/assets/icons/svg/gift.svg'); }
+.icon--trash    { --icon: url('/assets/icons/svg/trash.svg'); }
+.icon--archive  { --icon: url('/assets/icons/svg/archive.svg'); }
+
+/* ── Variants: player / game items ──────────────────────────────────────── */
+.icon--backpack  { --icon: url('/assets/icons/svg/backpack.svg'); }
+.icon--envelope  { --icon: url('/assets/icons/svg/envelope.svg'); }
+.icon--scroll    { --icon: url('/assets/icons/svg/scroll.svg'); }
+.icon--crown     { --icon: url('/assets/icons/svg/crown.svg'); }
+.icon--star-burst { --icon: url('/assets/icons/svg/star-burst.svg'); }
+.icon--xp        { --icon: url('/assets/icons/svg/xp.svg'); }
+
+/* ── Variants: buildings / economy ──────────────────────────────────────── */
+.icon--gather      { --icon: url('/assets/icons/svg/gather.svg'); }
+.icon--flask-potion { --icon: url('/assets/icons/svg/flask-potion.svg'); }
+.icon--box         { --icon: url('/assets/icons/svg/box.svg'); }
+.icon--house       { --icon: url('/assets/icons/svg/house.svg'); }
+.icon--production  { --icon: url('/assets/icons/svg/production.svg'); }
+.icon--column      { --icon: url('/assets/icons/svg/column.svg'); }
+.icon--fork-plate  { --icon: url('/assets/icons/svg/fork-plate.svg'); }

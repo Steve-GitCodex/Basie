@@ -10,6 +10,7 @@
 import { eventBus }      from '../../core/EventBus.js';
 import { RES_META, fmt } from '../uiUtils.js';
 import { BUILDINGS_CONFIG, HEROES_CONFIG, HQ_UNLOCK_TABLE, UNITS_CONFIG, TECH_CONFIG } from '../../entities/GAME_DATA.js';
+import { icon, iconFromEmoji } from '../icons.js';
 
 export class BuildingCards {
   /** @param {{ bm, rm, heroes, notifications, requestRender:()=>void }} deps */
@@ -32,10 +33,10 @@ export class BuildingCards {
     const snap = this._rm.getSnapshot();
 
     const CATEGORIES = [
-      { id: 'core',       label: 'Core',       icon: '🏛️' },
-      { id: 'production', label: 'Production', icon: '⚒️' },
-      { id: 'population', label: 'Population', icon: '👥' },
-      { id: 'military',   label: 'Military',   icon: '⚔️' },
+      { id: 'core',       label: 'Core',       icon: icon('column') },
+      { id: 'production', label: 'Production', icon: icon('production') },
+      { id: 'population', label: 'Population', icon: icon('house') },
+      { id: 'military',   label: 'Military',   icon: icon('sword') },
     ];
 
     const allTypes   = this._bm.getBuildingTypesWithInstances();
@@ -93,7 +94,7 @@ export class BuildingCards {
         btn.innerHTML = `
           <span class="bc-type-icon">${bType.icon}</span>
           <span>${bType.name}</span>
-          ${bType.isHQLocked ? `<span class="bc-type-lock">🔒</span>`
+          ${bType.isHQLocked ? `<span class="bc-type-lock">${icon('lock')}</span>`
             : isBuilding ? '<span class="bc-pip bc-pip-building"></span>'
             : hasBuilt ? `<span class="bc-type-count">${builtCount}</span>` : ''}`;
         btn.addEventListener('click', () => {
@@ -161,13 +162,13 @@ export class BuildingCards {
             heroStationHtml = `
               <div class="hero-station-section">
                 <button class="btn btn-xs btn-station-hero" data-hero="${compatCfg.id}" data-instance="${b.instanceId}">
-                  ${compatCfg.icon} Station ${compatCfg.name}
+                  ${iconFromEmoji(compatCfg.icon ?? '')} Station ${compatCfg.name}
                 </button>
               </div>`;
           } else if (heroState?.isOwned && heroState.isInSquad) {
             heroStationHtml = `
               <div class="hero-station-section hero-station-busy">
-                <span class="stationed-busy-label">${compatCfg.icon} ${compatCfg.name} is on squad duty</span>
+                <span class="stationed-busy-label">${iconFromEmoji(compatCfg.icon ?? '')} ${compatCfg.name} is on squad duty</span>
               </div>`;
           }
         }
@@ -183,7 +184,7 @@ export class BuildingCards {
 
     const progressHtml = b.isActivelyBuilding && b.constructionEndsAt ? `
       <div class="progress-container" data-timer-start="${startedAt}" data-timer-end="${b.constructionEndsAt}">
-        <div class="progress-label"><span>🏗️ Building…</span><span class="progress-time-label">${secsLeft}s</span></div>
+        <div class="progress-label"><span>${icon('hammer')} Building…</span><span class="progress-time-label">${secsLeft}s</span></div>
         <div class="progress-bar"><div class="progress-fill progress-fill-primary" style="width:${pct}%"></div></div>
       </div>` : '';
 
@@ -193,11 +194,11 @@ export class BuildingCards {
       const numericEffects = Object.entries(b.effects ?? {}).filter(([, v]) => typeof v === 'number');
       if (numericEffects.length > 0 && b.level > 0) {
         const parts = numericEffects.map(([res, rate]) => {
-          const icon = RES_META[res]?.icon ?? res;
+          const resIcon = RES_META[res]?.icon ?? res;
           const cur  = +(rate * b.level).toFixed(1);
-          if (isMaxed_) return `${icon} ${cur}/s`;
+          if (isMaxed_) return `${resIcon} ${cur}/s`;
           const nxt  = +(rate * (b.level + 1)).toFixed(1);
-          return `${icon} ${cur}/s → ${nxt}/s`;
+          return `${resIcon} ${cur}/s → ${nxt}/s`;
         });
         return `<div class="building-effect-label">${parts.join(' · ')}</div>`;
       }
@@ -212,13 +213,13 @@ export class BuildingCards {
           return b.effectLabel ? `<div class="building-effect-label">${b.effectLabel}</div>` : '';
         }
         const parts = entries.map(([res, capPerLv]) => {
-          const icon = RES_META[res]?.icon ?? res;
+          const resIcon = RES_META[res]?.icon ?? res;
           const cur  = fmt(capPerLv * b.level);
-          if (isMaxed_) return `${icon} +${cur}`;
+          if (isMaxed_) return `${resIcon} +${cur}`;
           const nxt  = fmt(capPerLv * (b.level + 1));
-          return `${icon} +${cur} → +${nxt}`;
+          return `${resIcon} +${cur} → +${nxt}`;
         });
-        return `<div class="building-effect-label">📦 ${parts.join(' · ')}</div>`;
+        return `<div class="building-effect-label">${icon('box')} ${parts.join(' · ')}</div>`;
       }
       // Fallback: static label from config
       return b.effectLabel ? `<div class="building-effect-label">${b.effectLabel}</div>` : '';
@@ -226,7 +227,7 @@ export class BuildingCards {
 
     const autoRestockActive = b.id === 'cafeteria' && (this._bm?.getAutomations()?.cafeteriaRestock === true);
     const automationBadge   = autoRestockActive
-      ? `<div class="cafeteria-auto-badge">🤖 Auto-restock active</div>` : '';
+      ? `<div class="cafeteria-auto-badge">${icon('gear')} Auto-restock active</div>` : '';
 
     const cafeteriaStockHtml = (b.id === 'cafeteria' && b.level > 0) ? (() => {
       const _cfp = BUILDINGS_CONFIG['cafeteria']?.foodCapacityPerLevel  ?? 200;
@@ -236,17 +237,17 @@ export class BuildingCards {
       const food  = Math.floor(b.stock?.food  ?? 0);
       const water = Math.floor(b.stock?.water ?? 0);
       const depletionStr = (() => {
-        if (food <= 0 || water <= 0) return '⚠️ Empty — needs restock';
-        if (!b.drainRatePerSec) return '♾️ No consumption';
-        if (!isFinite(b.depletionSec)) return '♾️ Stocked';
+        if (food <= 0 || water <= 0) return `${icon('warning', 'icon--warning')} Empty — needs restock`;
+        if (!b.drainRatePerSec) return '∞ No consumption';
+        if (!isFinite(b.depletionSec)) return '∞ Stocked';
         const s = Math.max(0, Math.floor(b.depletionSec));
-        if (s < 60) return `⏱️ ~${s}s until empty`;
+        if (s < 60) return `${icon('clock')} ~${s}s until empty`;
         const m = Math.floor(s / 60), r = s % 60;
-        return `⏱️ ~${m}m ${r}s until empty`;
+        return `${icon('clock')} ~${m}m ${r}s until empty`;
       })();
       return `<div class="cafeteria-stock">
-        <div class="cafeteria-stock-row"><span>🌾 Food stock</span><span>${food} / ${stockCap}</span></div>
-        <div class="cafeteria-stock-row"><span>💧 Water stock</span><span>${water} / ${wtrCap}</span></div>
+        <div class="cafeteria-stock-row"><span>${icon('food')} Food stock</span><span>${food} / ${stockCap}</span></div>
+        <div class="cafeteria-stock-row"><span>${icon('water')} Water stock</span><span>${water} / ${wtrCap}</span></div>
         <div class="cafeteria-stock-row cafeteria-depletion"><span>${depletionStr}</span></div>
       </div>`;
     })() : '';
@@ -258,7 +259,7 @@ export class BuildingCards {
       : 0;
 
     const queueBadgeHtml = b.queuedCount > 0 && !b.isActivelyBuilding
-      ? `<span class="build-queue-badge">🏗️ ×${b.queuedCount} queued</span>` : '';
+      ? `<span class="build-queue-badge">${icon('hammer')} ×${b.queuedCount} queued</span>` : '';
 
     // HQ preview: show what the next level unlocks on the townhall card
     const hqPreviewHtml = b.id === 'townhall' ? this._buildHQPreview() : '';
@@ -267,10 +268,10 @@ export class BuildingCards {
     const hqBenefitsHtml = (b.id === 'townhall' && b.level > 0) ? (() => {
       const ben = this._bm.getHQBenefits();
       const parts = [];
-      if (ben.productionBonus > 0) parts.push(`⚒️ +${Math.round(ben.productionBonus * 100)}% Production`);
-      if (ben.attackBonus > 0)     parts.push(`⚔️ +${Math.round(ben.attackBonus * 100)}% ATK`);
-      if (ben.defenseBonus > 0)    parts.push(`🛡️ +${Math.round(ben.defenseBonus * 100)}% DEF`);
-      if (ben.storageBonus > 0)    parts.push(`📦 +${Math.round(ben.storageBonus * 100)}% Storage`);
+      if (ben.productionBonus > 0) parts.push(`${icon('production')} +${Math.round(ben.productionBonus * 100)}% Production`);
+      if (ben.attackBonus > 0)     parts.push(`${icon('sword')} +${Math.round(ben.attackBonus * 100)}% ATK`);
+      if (ben.defenseBonus > 0)    parts.push(`${icon('shield')} +${Math.round(ben.defenseBonus * 100)}% DEF`);
+      if (ben.storageBonus > 0)    parts.push(`${icon('box')} +${Math.round(ben.storageBonus * 100)}% Storage`);
       if (parts.length === 0) return '';
       return `<div class="hq-benefits"><span class="hq-benefits-title">Active HQ Bonuses:</span> ${parts.join(' · ')}</div>`;
     })() : '';
@@ -299,7 +300,7 @@ export class BuildingCards {
       const foodCap = rm?.getFoodCapacity?.() ?? 0;
       const pop     = rm?.getPopulation?.() ?? { current: 0, cap: 0 };
       const popPerLv = BUILDINGS_CONFIG['house']?.populationCapacityPerLevel ?? 10;
-      return `<div class="building-info-row">🍽️ Cafeteria stock cap: ${foodCap} &nbsp;·&nbsp; 👥 Pop: ${Math.floor(pop.current)}/${pop.cap} (+${popPerLv} on upgrade)</div>`;
+      return `<div class="building-info-row">${icon('fork-plate')} Cafeteria stock cap: ${foodCap} &nbsp;·&nbsp; ${icon('house')} Pop: ${Math.floor(pop.current)}/${pop.cap} (+${popPerLv} on upgrade)</div>`;
     })() : '';
 
     // Bank: show population requirement for next upgrade level
@@ -310,15 +311,15 @@ export class BuildingCards {
       const rm  = this._rm;
       const pop = rm?.getPopulation?.() ?? { current: 0, cap: 0 };
       const met = pop.current >= nextPopReq;
-      return `<div class="building-info-row${met ? '' : ' building-info-row--warn'}">👥 Pop for Lv.${nextLv}: ${Math.floor(pop.current)}/${nextPopReq}${met ? ' ✓' : ' ✗'}</div>`;
+      return `<div class="building-info-row${met ? '' : ' building-info-row--warn'}">${icon('house')} Pop for Lv.${nextLv}: ${Math.floor(pop.current)}/${nextPopReq}${met ? ' ✓' : ' ✗'}</div>`;
     })() : '';
 
     const timeHint = !isMaxed && !b.isActivelyBuilding && b.nextLevelBuildTime
       ? `<span class="tech-time-hint">⏱ ${fmt(b.nextLevelBuildTime)}s</span>` : '';
 
     let btnText, btnCls, btnDisabled;
-    if (!b.requirementsMet)  { btnText = `🔒 ${reqText}`;                             btnCls = 'btn-ghost'; btnDisabled = true;  }
-    else if (isMaxed)        { btnText = '⭐ Max Level';                               btnCls = 'btn-ghost'; btnDisabled = true;  }
+    if (!b.requirementsMet)  { btnText = `${icon('lock')} ${reqText}`;                 btnCls = 'btn-ghost'; btnDisabled = true;  }
+    else if (isMaxed)        { btnText = `${icon('star-burst', 'icon--gold')} Max Level`; btnCls = 'btn-ghost'; btnDisabled = true;  }
     else if (!b.canAfford)   { btnText = b.level === 0 ? 'Build' : `→ Lv.${nextLv}`; btnCls = 'btn-ghost'; btnDisabled = true;  }
     else                     { btnText = b.level === 0 ? 'Build' : `→ Lv.${nextLv}`; btnCls = b.level === 0 ? 'btn-primary' : 'btn-ghost'; btnDisabled = false; }
 
@@ -327,7 +328,7 @@ export class BuildingCards {
     card.dataset.bid = b.id;
     card.innerHTML = `
       <div class="card-header">
-        <div class="card-icon">${b.icon}</div>
+        <div class="card-icon">${iconFromEmoji(b.icon ?? '')}</div>
         <div style="flex:1;min-width:0">
           <div class="card-title">${b.name}${instLabel}</div>
           <div class="card-subtitle">${b.description}</div>
@@ -351,7 +352,7 @@ export class BuildingCards {
       <div class="card-footer">
         <button class="btn btn-sm ${btnCls} btn-build" ${btnDisabled ? 'disabled' : ''}>${btnText}</button>
         ${timeHint}
-        ${b.id === 'cafeteria' && b.level > 0 ? `<button class="btn btn-sm btn-primary btn-restock-cafeteria" data-instance="${b.instanceId}" data-cap="${cafRestockCap}">🔄 Restock</button>` : ''}
+        ${b.id === 'cafeteria' && b.level > 0 ? `<button class="btn btn-sm btn-primary btn-restock-cafeteria" data-instance="${b.instanceId}" data-cap="${cafRestockCap}">${icon('fork-plate')} Restock</button>` : ''}
         ${b.level > 0 && !b.isActivelyBuilding ? `<span style="font-size:var(--text-xs);color:var(--clr-text-muted)">Lv.${b.level}/${b.maxLevel}</span>` : ''}
       </div>`;
 
@@ -409,26 +410,26 @@ export class BuildingCards {
         const numericEffects = Object.entries(b.effects ?? {}).filter(([, v]) => typeof v === 'number');
         if (numericEffects.length && b.level > 0) {
           numericEffects.forEach(([res, rate]) => {
-            const icon = RES_META[res]?.icon ?? res;
+            const resIcon = RES_META[res]?.icon ?? res;
             const cur  = +(rate * b.level).toFixed(1);
             const nxt  = +(rate * (b.level + 1)).toFixed(1);
-            ttParts.push(`<div class="tt-row"><span class="tt-label">${icon} Rate</span><span>${cur}/s → <strong>${nxt}/s</strong></span></div>`);
+            ttParts.push(`<div class="tt-row"><span class="tt-label">${resIcon} Rate</span><span>${cur}/s → <strong>${nxt}/s</strong></span></div>`);
           });
         }
         if (b.storageCap) {
           Object.entries(b.storageCap).forEach(([res, capPerLv]) => {
-            const icon = RES_META[res]?.icon ?? res;
+            const resIcon = RES_META[res]?.icon ?? res;
             const lv  = b.level;
             const cur = Array.isArray(capPerLv) ? fmt(capPerLv[lv] ?? 0) : fmt(capPerLv * lv);
             const nxt = Array.isArray(capPerLv) ? fmt(capPerLv[lv + 1] ?? 0) : fmt(capPerLv * (lv + 1));
-            ttParts.push(`<div class="tt-row"><span class="tt-label">${icon} Cap</span><span>+${cur} → <strong>+${nxt}</strong></span></div>`);
+            ttParts.push(`<div class="tt-row"><span class="tt-label">${resIcon} Cap</span><span>+${cur} → <strong>+${nxt}</strong></span></div>`);
           });
         }
         if (b.nextLevelBuildTime) {
-          ttParts.push(`<div class="tt-row"><span class="tt-label">⏱ Build time</span><span>${fmt(b.nextLevelBuildTime)}s</span></div>`);
+          ttParts.push(`<div class="tt-row"><span class="tt-label">${icon('clock')} Build time</span><span>${fmt(b.nextLevelBuildTime)}s</span></div>`);
         }
       } else {
-        ttParts.push(`<div class="tt-row tt-muted">⭐ Maximum level reached</div>`);
+        ttParts.push(`<div class="tt-row tt-muted">${icon('star-burst', 'icon--gold')} Maximum level reached</div>`);
       }
       if (ttParts.length) {
         const head = `<div class="tt-title">${b.name}${!b.isMaxLevel ? ` → Lv.${nextLv}` : ''}</div>`;
@@ -453,14 +454,14 @@ export class BuildingCards {
     card.className = 'card building-card building-card-locked';
     card.innerHTML = `
       <div class="card-header" style="opacity:0.45">
-        <div class="card-icon">${bType.icon}</div>
+        <div class="card-icon">${iconFromEmoji(bType.icon ?? '')}</div>
         <div style="flex:1;min-width:0">
           <div class="card-title">${bType.name} <span class="instance-label">#${slot.instanceIndex + 1}</span></div>
           <div class="card-subtitle">Additional slot</div>
         </div>
       </div>
       <div class="card-body locked-slot-body">
-        <div class="locked-slot-icon">🔒</div>
+        <div class="locked-slot-icon">${icon('lock')}</div>
         ${condText ? `<div class="locked-slot-req">Requires: ${condText}</div>` : ''}
       </div>`;
     return card;
@@ -472,14 +473,14 @@ export class BuildingCards {
     card.className = 'card building-card building-card-locked';
     card.innerHTML = `
       <div class="card-header" style="opacity:0.45">
-        <div class="card-icon">${bType.icon}</div>
+        <div class="card-icon">${iconFromEmoji(bType.icon ?? '')}</div>
         <div style="flex:1;min-width:0">
           <div class="card-title">${bType.name}</div>
           <div class="card-subtitle">${bType.description}</div>
         </div>
       </div>
       <div class="card-body locked-slot-body">
-        <div class="locked-slot-icon">🔒</div>
+        <div class="locked-slot-icon">${icon('lock')}</div>
         <div class="locked-slot-req">Requires HQ Lv.${bType.hqRequiredLevel}</div>
         ${bType.effectLabel ? `<div class="building-effect-label" style="opacity:0.5;margin-top:6px">${bType.effectLabel}</div>` : ''}
       </div>`;
@@ -500,15 +501,15 @@ export class BuildingCards {
 
     if (entry.buildings.length > 0) {
       const names = entry.buildings.map(id => BUILDINGS_CONFIG[id]?.name ?? id).join(', ');
-      parts.push(`<div class="hq-preview-row">🏗️ <strong>Buildings:</strong> ${names}</div>`);
+      parts.push(`<div class="hq-preview-row">${icon('hammer')} <strong>Buildings:</strong> ${names}</div>`);
     }
     if (entry.units.length > 0) {
       const names = entry.units.map(id => UNITS_CONFIG[id]?.name ?? id).join(', ');
-      parts.push(`<div class="hq-preview-row">⚔️ <strong>Units:</strong> ${names}</div>`);
+      parts.push(`<div class="hq-preview-row">${icon('sword')} <strong>Units:</strong> ${names}</div>`);
     }
     if (entry.techs.length > 0) {
       const names = entry.techs.map(id => TECH_CONFIG[id]?.name ?? id).join(', ');
-      parts.push(`<div class="hq-preview-row">🔬 <strong>Techs:</strong> ${names}</div>`);
+      parts.push(`<div class="hq-preview-row">${icon('flask')} <strong>Techs:</strong> ${names}</div>`);
     }
 
     const b = entry.benefits;
@@ -518,10 +519,10 @@ export class BuildingCards {
     if (b.defenseBonus > 0)    bonusParts.push(`+${Math.round(b.defenseBonus * 100)}% DEF`);
     if (b.storageBonus > 0)    bonusParts.push(`+${Math.round(b.storageBonus * 100)}% Storage`);
     if (bonusParts.length > 0) {
-      parts.push(`<div class="hq-preview-row">📈 <strong>Bonuses:</strong> ${bonusParts.join(', ')}</div>`);
+      parts.push(`<div class="hq-preview-row">${icon('star-burst', 'icon--gold')} <strong>Bonuses:</strong> ${bonusParts.join(', ')}</div>`);
     }
 
     if (parts.length === 0) return '';
-    return `<div class="hq-preview"><div class="hq-preview-title">🔓 HQ Lv.${nextLv} Unlocks:</div>${parts.join('')}</div>`;
+    return `<div class="hq-preview"><div class="hq-preview-title">${icon('lock')} HQ Lv.${nextLv} Unlocks:</div>${parts.join('')}</div>`;
   }
 }

@@ -6,6 +6,7 @@
  */
 import { eventBus } from '../../core/EventBus.js';
 import { openModal, closeModal } from '../uiUtils.js';
+import { icon } from '../icons.js';
 
 const RARITY_COLORS = {
   common:    'var(--clr-text-secondary)',
@@ -40,9 +41,9 @@ export class SettingsUI {
     const s    = this._s.settings.getSettings();
     const diff = s.difficulty ?? 'normal';
     const DIFFS = [
-      { id: 'easy',   label: '🟢 Easy'   },
-      { id: 'normal', label: '🟡 Normal' },
-      { id: 'hard',   label: '🔴 Hard'   },
+      { id: 'easy',   label: 'Easy'   },
+      { id: 'normal', label: 'Normal' },
+      { id: 'hard',   label: 'Hard'   },
     ];
     return `
         <div class="modal-section">
@@ -160,16 +161,16 @@ export class SettingsUI {
   // ── Shell ──────────────────────────────────────────────────────────
   _buildProfileShell() {
     const tabs = [
-      { id: 'profile',      label: '👤 Profile'     },
-      { id: 'achievements', label: '🏆 Achievements' },
-      { id: 'account',      label: '🔑 Account'      },
-      { id: 'settings',     label: '⚙️ Settings'     },
+      { id: 'profile',      label: 'Profile'      },
+      { id: 'achievements', label: 'Achievements' },
+      { id: 'account',      label: 'Account'      },
+      { id: 'settings',     label: 'Settings'     },
     ];
     const p = this._s.user?.getProfile() ?? {};
     return `
       <div class="modal-inner">
         <div class="modal-top">
-          <div class="modal-icon">👑</div>
+          <div class="modal-icon">${icon('crown', 'icon--gold')}</div>
           <div class="modal-title-block">
             <div class="modal-title">${p.username ?? 'Commander'}</div>
             <div class="modal-subtitle">Level ${p.level ?? 1} Commander</div>
@@ -288,7 +289,7 @@ export class SettingsUI {
       }
       if (a.reward.items?.length) rewardParts.push(`+${a.reward.items.length} item(s)`);
       const rewardLine = rewardParts.length
-        ? `<div style="font-size:10px;color:var(--clr-gold);margin-top:2px">🎁 ${rewardParts.join(' · ')}</div>`
+        ? `<div style="font-size:10px;color:var(--clr-gold);margin-top:2px">${icon('gift')} ${rewardParts.join(' · ')}</div>`
         : '';
 
       const claimBtn = (a.completed && !a.claimed)
@@ -301,7 +302,7 @@ export class SettingsUI {
         <div class="achievement-card${stClass}${msClass}">
           <div class="achievement-icon">${a.icon}</div>
           <div class="achievement-body">
-            <div class="achievement-name">${a.name}${a.completed ? ' ✅' : ''}</div>
+            <div class="achievement-name">${a.name}${a.completed ? ` ${icon('check', 'icon--success')}` : ''}</div>
             <div class="achievement-desc">${a.description}</div>
             <div class="achievement-rarity ${a.rarity}">${a.rarity}</div>
             ${rewardLine}
@@ -385,7 +386,7 @@ export class SettingsUI {
           align-items:center;
           gap:var(--space-3);
         ">
-          <span style="font-size:1.5rem">${isGuest ? '👤' : '✅'}</span>
+          <span style="font-size:1.5rem">${isGuest ? icon('lock') : icon('check', 'icon--success')}</span>
           <div>
             <div style="font-weight:600;font-size:var(--text-sm)">${isGuest ? 'Playing as Guest' : 'Registered Account'}</div>
             <div style="color:var(--clr-text-secondary);font-size:var(--text-xs);margin-top:2px">
@@ -420,7 +421,7 @@ export class SettingsUI {
                 Account creation unavailable in this build. Your save is stored in your browser automatically.
               </div>
               <button class="btn btn-sm btn-ghost w-full" disabled style="opacity:0.5;cursor:not-allowed">
-                🔒 Account Linking — Unavailable
+                Account Linking — Unavailable
               </button>
             `}
           </div>

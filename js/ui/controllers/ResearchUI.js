@@ -11,6 +11,7 @@
 import { eventBus }            from '../../core/EventBus.js';
 import { RES_META, fmt }       from '../uiUtils.js';
 import { TECH_BRANCHES }       from '../../entities/GAME_DATA.js';
+import { icon, iconFromEmoji } from '../icons.js';
 
 const TIER_COLORS  = { 1: 'var(--clr-success)', 2: 'var(--clr-gold)', 3: 'var(--clr-danger)', 4: 'var(--clr-primary)' };
 const BRANCH_COLOR = { economy: 'var(--clr-gold)', combat: 'var(--clr-danger)', units: 'var(--clr-primary)' };
@@ -62,7 +63,7 @@ export class ResearchUI {
       <div class="research-modal">
         <div class="rs-header">
           ${inTree ? '<button class="rs-back" title="Back to branches">←</button>' : ''}
-          <div class="rs-title">${inTree ? `${branch?.icon ?? ''} ${branch?.label ?? 'Research'}` : '🔬 Research'}</div>
+          <div class="rs-title">${inTree ? `${iconFromEmoji(branch?.icon ?? '')} ${branch?.label ?? 'Research'}` : `${icon('flask')} Research`}</div>
           <button class="rs-close" aria-label="Close">✕</button>
         </div>
         <div class="rs-body" id="rs-body"></div>
@@ -106,7 +107,7 @@ export class ResearchUI {
       card.className = 'research-branch-card';
       card.style.setProperty('--branch-color', color);
       card.innerHTML = `
-        ${active ? '<span class="rb-active-dot" title="Researching">🔬</span>' : ''}
+        ${active ? `<span class="rb-active-dot" title="Researching">${icon('flask')}</span>` : ''}
         <span class="rb-icon">${branch.icon}</span>
         <span class="rb-pct">${pct}%</span>
         <span class="rb-name">${branch.label}</span>
@@ -214,10 +215,10 @@ export class ResearchUI {
     const tierColor = TIER_COLORS[t.tier] ?? 'var(--clr-border-light)';
 
     let statusBadge = '';
-    if (t.isMaxed)       statusBadge = '<span class="tech-node-badge tgnb-maxed">⭐</span>';
-    else if (t.isActive) statusBadge = '<span class="tech-node-badge tgnb-active">🔬</span>';
+    if (t.isMaxed)       statusBadge = '<span class="tech-node-badge tgnb-maxed">★</span>';
+    else if (t.isActive) statusBadge = `<span class="tech-node-badge tgnb-active">${icon('flask')}</span>`;
     else if (t.isQueued) statusBadge = '<span class="tech-node-badge tgnb-queued">⏳</span>';
-    else if (isLocked)   statusBadge = '<span class="tech-node-badge tgnb-locked">🔒</span>';
+    else if (isLocked)   statusBadge = `<span class="tech-node-badge tgnb-locked">${icon('lock')}</span>`;
 
     const node = document.createElement('div');
     node.className = `tech-graph-node${isLocked ? ' tech-node-locked' : t.isMaxed ? ' tech-node-maxed' : t.level > 0 ? ' tech-node-active' : ''}`;
@@ -253,10 +254,10 @@ export class ResearchUI {
     const timeHtml = t.nextLevelTime ? `<span class="tech-time-hint">⏱ ${fmt(t.nextLevelTime)}s</span>` : '';
 
     let btnHtml = '';
-    if (t.isMaxed)       btnHtml = '<button class="btn btn-sm btn-ghost" disabled>⭐ Maxed</button>';
+    if (t.isMaxed)       btnHtml = '<button class="btn btn-sm btn-ghost" disabled>Maxed</button>';
     else if (t.isActive) btnHtml = '<button class="btn btn-sm btn-ghost" disabled>⏳ Researching…</button>';
     else if (t.isQueued) btnHtml = `<button class="btn btn-sm btn-ghost" disabled>⏳ Queued (#${t.queuePosition + 1})</button>`;
-    else if (!isLocked)  btnHtml = `<button class="btn btn-sm btn-primary popover-research-btn" data-techid="${t.id}">🔬 Research Lv.${t.level + 1}</button>`;
+    else if (!isLocked)  btnHtml = `<button class="btn btn-sm btn-primary popover-research-btn" data-techid="${t.id}">${icon('flask')} Research Lv.${t.level + 1}</button>`;
 
     const popover = document.createElement('div');
     popover.className = 'tech-node-popover';
@@ -270,7 +271,7 @@ export class ResearchUI {
       <div class="popover-desc">${t.description}</div>
       ${t.level > 0 ? `<div class="popover-bonus">✓ Current: ${this._fmtEffects(t.effects, t.level)}</div>` : ''}
       ${!t.isMaxed ? `<div class="popover-bonus popover-next">↑ Lv.${t.level + 1}: ${this._fmtEffects(t.effects, t.level + 1)}</div>` : ''}
-      ${isLocked ? `<div class="popover-missing">🔒 ${this._s.tech.canResearch(t.id).missingRequirements.join(', ') || 'Requirements not met'}</div>` : ''}
+      ${isLocked ? `<div class="popover-missing">${icon('lock')} ${this._s.tech.canResearch(t.id).missingRequirements.join(', ') || 'Requirements not met'}</div>` : ''}
       ${!isLocked && !t.isMaxed ? `<div class="popover-cost">${costHtml} ${timeHtml}</div>` : ''}
       <div class="popover-actions">${btnHtml}</div>`;
 
@@ -373,7 +374,7 @@ export class ResearchUI {
       picker.innerHTML = `
         <div class="speedup-picker-empty">
           <span>No speedups available.</span>
-          <button class="btn btn-xs btn-primary speedup-goto-shop">🛒 Buy from Shop</button>
+          <button class="btn btn-xs btn-primary speedup-goto-shop">Buy from Shop</button>
         </div>`;
       picker.querySelector('.speedup-goto-shop')?.addEventListener('click', () => {
         picker.remove();

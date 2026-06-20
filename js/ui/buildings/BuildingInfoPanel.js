@@ -11,6 +11,7 @@ import { eventBus }         from '../../core/EventBus.js';
 import { RES_META, fmt }    from '../uiUtils.js';
 import { BUILDINGS_CONFIG } from '../../entities/GAME_DATA.js';
 import { ISO_BUILDING_MAP } from '../city/cityAssets.js';
+import { icon, iconFromEmoji } from '../icons.js';
 
 export class BuildingInfoPanel {
   /** @param {{ bm }} deps */
@@ -53,7 +54,7 @@ export class BuildingInfoPanel {
 
     this._body.innerHTML = `
       <div class="binfo-header">
-        <div class="binfo-sprite" ${sprite ? `style="background-image:url('${sprite}')"` : ''}>${sprite ? '' : (cfg.icon ?? '🏛️')}</div>
+        <div class="binfo-sprite" ${sprite ? `style="background-image:url('${sprite}')"` : ''}>${sprite ? '' : iconFromEmoji(cfg.icon ?? '')}</div>
         <div class="binfo-title-block">
           <h2 class="binfo-name">${cfg.name}</h2>
           <div class="binfo-sub">${curLevel > 0 ? `Level ${curLevel} / ${cfg.maxLevel}` : `Not built · max Lv.${cfg.maxLevel}`}${cfg.category ? ` · ${cfg.category}` : ''}</div>
@@ -101,13 +102,13 @@ export class BuildingInfoPanel {
   /** At-a-glance facts: instances, hero slots, unlock requirements. */
   _statChips(cfg) {
     const chips = [];
-    if (cfg.maxInstances > 1) chips.push(`<span class="binfo-chip">🏗️ Up to ${cfg.maxInstances}</span>`);
-    if (cfg.heroCapacity > 0) chips.push(`<span class="binfo-chip">🦸 ${cfg.heroCapacity} hero${cfg.heroCapacity > 1 ? 's' : ''}</span>`);
+    if (cfg.maxInstances > 1) chips.push(`<span class="binfo-chip">${icon('hammer')} Up to ${cfg.maxInstances}</span>`);
+    if (cfg.heroCapacity > 0) chips.push(`<span class="binfo-chip">${icon('crown')} ${cfg.heroCapacity} hero${cfg.heroCapacity > 1 ? 's' : ''}</span>`);
     if (cfg.requires && typeof cfg.requires === 'object') {
       const req = Object.entries(cfg.requires)
         .map(([id, lv]) => `${BUILDINGS_CONFIG[id]?.name ?? id} Lv.${lv}`)
         .join(' · ');
-      if (req) chips.push(`<span class="binfo-chip binfo-chip--req">🔓 ${req}</span>`);
+      if (req) chips.push(`<span class="binfo-chip binfo-chip--req">${icon('lock')} ${req}</span>`);
     }
     return chips.join('');
   }

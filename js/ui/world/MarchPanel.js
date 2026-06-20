@@ -3,6 +3,8 @@
  * Top-right list of active marches with phase + progress. One UI surface;
  * read-only. Refreshed by WorldMapUI on march events and a 1s ticker.
  */
+import { icon } from '../icons.js';
+
 const PHASE_LABEL = { outbound: 'Marching', acting: 'On site', returning: 'Returning' };
 
 export class MarchPanel {
@@ -33,7 +35,7 @@ export class MarchPanel {
     const { pct, eta } = this._progress(m, now);
     const fillCls = m.type === 'attack' ? 'wm-bar__fill wm-bar__fill--attack' : 'wm-bar__fill';
     return `<div class="wm-item">
-      <div class="wm-item__top"><span>${m.type === 'attack' ? '⚔️' : '🪣'} ${name}</span>
+      <div class="wm-item__top"><span>${m.type === 'attack' ? icon('sword') : icon('gather')} ${name}</span>
         <span class="wm-item__phase">${PHASE_LABEL[m.phase] ?? m.phase}</span></div>
       <div class="wm-bar"><div class="${fillCls}" style="width:${Math.round(pct * 100)}%"></div></div>
       ${eta != null ? `<div class="wm-item__phase">${this._fmt(eta)}</div>` : ''}

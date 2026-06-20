@@ -12,13 +12,14 @@
 import { eventBus } from '../../core/EventBus.js';
 import { UNITS_CONFIG, BUILDINGS_CONFIG, UNIT_TIER_REQUIREMENTS } from '../../entities/GAME_DATA.js';
 import { RES_META, fmt } from '../uiUtils.js';
+import { icon, iconFromEmoji } from '../icons.js';
 
 /** Trainer buildings, in pager order. */
 const MILITARY_BUILDINGS = [
-  { id: 'infantryhall',  label: 'Infantry Hall',  icon: '🗡️' },
-  { id: 'archeryrange',  label: 'Archery Range',  icon: '🏹' },
-  { id: 'cavalrystable', label: 'Cavalry Stable', icon: '🐴' },
-  { id: 'siegeworkshop', label: 'Siege Workshop', icon: '💥' },
+  { id: 'infantryhall',  label: 'Infantry Hall',  icon: 'sword' },
+  { id: 'archeryrange',  label: 'Archery Range',  icon: 'bow' },
+  { id: 'cavalrystable', label: 'Cavalry Stable', icon: 'sword' },
+  { id: 'siegeworkshop', label: 'Siege Workshop', icon: 'lightning' },
 ];
 
 export class MilitaryUI {
@@ -164,7 +165,7 @@ export class MilitaryUI {
     if (!cfg || level === 0 || !unitType) {
       return `
         <div class="tm-header">
-          <div class="tm-title"><span class="tm-title-icon">${cfg?.icon ?? '🏗️'}</span>
+          <div class="tm-title"><span class="tm-title-icon">${cfg ? icon(cfg.icon) : icon('hammer')}</span>
             <div><div class="tm-title-name">${cfg?.name ?? 'Training'}</div></div>
           </div>
           <button class="modal-close tm-close" aria-label="Close">✕</button>
@@ -188,7 +189,7 @@ export class MilitaryUI {
       if (!ti) return '';
       const sel = t === this._selectedTier;
       return `<button class="tm-tier${sel ? ' tm-tier--active' : ''}${ti.locked ? ' tm-tier--locked' : ''}" data-tier="${t}">
-        <span class="tm-tier-hex">${ti.locked ? '🔒' : `T${t}`}</span>
+        <span class="tm-tier-hex">${ti.locked ? icon('lock') : `T${t}`}</span>
         <span class="tm-tier-count">${ti.count > 0 ? fmt(ti.count) : '0'}</span>
       </button>`;
     }).join('');
@@ -200,14 +201,14 @@ export class MilitaryUI {
     const detail = (() => {
       if (!ti || !tc) return '';
       if (ti.locked) {
-        return `<div class="tm-locked">🔒 ${ti.lockReason}</div>`;
+        return `<div class="tm-locked">${icon('lock')} ${ti.lockReason}</div>`;
       }
       const st = tc.stats ?? {};
       const statsHtml = `
-        <div class="tm-stat"><span>❤️ HP</span><b>${fmt(st.hp ?? 0)}</b></div>
-        <div class="tm-stat"><span>⚔️ ATK</span><b>${fmt(st.attack ?? 0)}</b></div>
-        <div class="tm-stat"><span>🛡️ DEF</span><b>${fmt(st.defense ?? 0)}</b></div>
-        <div class="tm-stat"><span>💨 SPD</span><b>${st.speed ?? '—'}</b></div>`;
+        <div class="tm-stat"><span>${icon('heart', 'icon--danger')} HP</span><b>${fmt(st.hp ?? 0)}</b></div>
+        <div class="tm-stat"><span>${icon('sword')} ATK</span><b>${fmt(st.attack ?? 0)}</b></div>
+        <div class="tm-stat"><span>${icon('shield')} DEF</span><b>${fmt(st.defense ?? 0)}</b></div>
+        <div class="tm-stat"><span>${icon('lightning')} SPD</span><b>${st.speed ?? '—'}</b></div>`;
       const costHtml = Object.entries(tc.cost ?? {}).map(([res, amt]) =>
         `<span class="cost-chip ${(snap[res]?.amount ?? 0) >= amt ? 'affordable' : 'unaffordable'}" data-res="${res}" data-amt="${amt}">${RES_META[res]?.icon ?? '?'} ${fmt(amt)}</span>`
       ).join('');
@@ -252,7 +253,7 @@ export class MilitaryUI {
       <div class="tm-header">
         ${pager}
         <div class="tm-title">
-          <span class="tm-title-icon">${cfg.icon}</span>
+          <span class="tm-title-icon">${icon(cfg.icon)}</span>
           <div>
             <div class="tm-title-name">${cfg.name}</div>
             <div class="tm-title-sub">Lv.${level} · ${queueDepth}/${curSlots} slot${curSlots !== 1 ? 's' : ''} · ${curBatch}/batch · max T${curTier}${speedPct ? ` · ⚡-${speedPct}%` : ''}</div>
@@ -280,7 +281,7 @@ export class MilitaryUI {
     const secsLeft = Math.max(0, Math.ceil((active.endsAt - Date.now()) / 1000));
     return `
       <div class="tm-queue-active" data-timer-start="${active.startedAt ?? Date.now()}" data-timer-end="${active.endsAt}">
-        <span class="tm-queue-icon">${active.icon ?? '⚔️'}</span>
+        <span class="tm-queue-icon">${iconFromEmoji(active.icon ?? '') || icon('sword')}</span>
         <div class="tm-queue-body">
           <div class="tm-queue-name">${active.name} <span class="tm-queue-count">×${active.count}</span>${pending ? ` <span class="tm-queue-pending">+${pending} queued</span>` : ''}</div>
           <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
@@ -444,7 +445,7 @@ export class MilitaryUI {
       picker.innerHTML = `
         <div class="speedup-picker-empty">
           <span>No speedups available.</span>
-          <button class="btn btn-xs btn-primary speedup-goto-shop">🛒 Buy from Shop</button>
+          <button class="btn btn-xs btn-primary speedup-goto-shop">Buy from Shop</button>
         </div>`;
       picker.querySelector('.speedup-goto-shop')?.addEventListener('click', () => {
         picker.remove();
@@ -469,7 +470,7 @@ export class MilitaryUI {
           <span class="speedup-option-icon">${i.icon}</span>
           <span class="speedup-option-label">${label}${i.target === 'any' ? ' <em style="opacity:.55;font-style:normal">(Universal)</em>' : ''}</span>
           <span class="speedup-option-qty">×${i.quantity}</span>
-          ${willComplete ? '<span class="speedup-rec-badge">⭐ Best</span>' : ''}`;
+          ${willComplete ? '<span class="speedup-rec-badge">Best</span>' : ''}`;
         btn.addEventListener('click', () => {
           eventBus.emit('ui:click');
           const r = inventory.useItem(i.id, { queueType });

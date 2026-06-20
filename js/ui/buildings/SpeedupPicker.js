@@ -9,6 +9,7 @@
  * time. Visual style lives in css/components/inventory.css (`.speedup-picker`).
  */
 import { eventBus } from '../../core/EventBus.js';
+import { icon } from '../icons.js';
 
 let _close = null;   // close fn of the currently-open picker, if any
 
@@ -39,7 +40,7 @@ export function openSpeedupPicker({ anchorRect, queueType, secsLeft, inventory, 
       <div class="speedup-picker-title">⏩ Speed Up</div>
       <div class="speedup-picker-empty">
         <span>No speedups available.</span>
-        <button class="btn btn-xs btn-primary speedup-goto-shop">🛒 Buy from Shop</button>
+        <button class="btn btn-xs btn-primary speedup-goto-shop">Buy from Shop</button>
       </div>`;
     picker.querySelector('.speedup-goto-shop')?.addEventListener('click', () => {
       close();
@@ -61,7 +62,7 @@ export function openSpeedupPicker({ anchorRect, queueType, secsLeft, inventory, 
             <span class="speedup-option-icon">${item.icon}</span>
             <span class="speedup-option-label">${label}${typeTag}</span>
             <span class="speedup-option-qty">×${item.quantity}</span>
-            ${isRec ? '<span class="speedup-rec-badge">⭐ Best</span>' : ''}
+            ${isRec ? '<span class="speedup-rec-badge">Best</span>' : ''}
           </button>`;
       }).join('')}`;
     picker.querySelectorAll('.speedup-option').forEach(btn => {

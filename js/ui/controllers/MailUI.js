@@ -7,16 +7,17 @@
  */
 import { eventBus } from '../../core/EventBus.js';
 import { RES_META, fmt, openModal, closeModal } from '../uiUtils.js';
+import { icon, iconFromEmoji } from '../icons.js';
 
 const PAGE_SIZE = 20;
 
 const CATEGORIES = {
-  all:      { label: 'All',      icon: '📬' },
-  system:   { label: 'System',   icon: '📢' },
-  rewards:  { label: 'Rewards',  icon: '🎁' },
-  events:   { label: 'Events',   icon: '⚔️'  },
-  archived: { label: 'Archived', icon: '🗂️'  },
-  trash:    { label: 'Trash',    icon: '🗑️'  },
+  all:      { label: 'All',      icon: icon('envelope') },
+  system:   { label: 'System',   icon: icon('warning') },
+  rewards:  { label: 'Rewards',  icon: icon('gift') },
+  events:   { label: 'Events',   icon: icon('sword') },
+  archived: { label: 'Archived', icon: icon('archive') },
+  trash:    { label: 'Trash',    icon: icon('trash') },
 };
 
 const READ_FILTERS = [
@@ -136,7 +137,7 @@ export class MailUI {
 
       <!-- ── LEFT: category sidebar ──────────────────────────────────────── -->
       <nav class="mail-cat-sidebar">
-        <div class="mail-cat-title">📬 Mail</div>
+        <div class="mail-cat-title">${icon('envelope')} Mail</div>
         <div class="mail-cat-list">
           ${Object.entries(CATEGORIES).map(([key, meta]) => {
             const unread = this._unreadForCat(all, key);
@@ -154,7 +155,7 @@ export class MailUI {
       <div class="mail-list-panel">
         <div class="mail-list-toolbar">
           <div class="mail-search-wrap" style="flex:1">
-            <span class="mail-search-icon">🔍</span>
+            <span class="mail-search-icon">${icon('search', 'icon--muted')}</span>
             <input class="mail-search-input" id="mail-search" type="text"
               placeholder="Search messages…"
               value="${this._search.replace(/"/g, '&quot;')}" />
@@ -170,7 +171,7 @@ export class MailUI {
         <div class="mail-list" id="mail-list">
           ${pageMsgs.length === 0
             ? `<div class="mail-empty-list">
-                <div class="mail-empty-icon">📭</div>
+                <div class="mail-empty-icon">${icon('envelope', 'icon--muted')}</div>
                 <p>${
                   this._search             ? 'No results found.'      :
                   this._category === 'trash'    ? 'Trash is empty.'        :
@@ -185,7 +186,7 @@ export class MailUI {
                   <div class="mail-row ${m.isRead ? '' : 'mail-row--unread'} ${isOpen ? 'mail-row--active' : ''}"
                        data-id="${m.id}">
                     <span class="mail-unread-dot ${m.isRead ? 'mail-unread-dot--read' : ''}"></span>
-                    <span class="mail-row-icon">${m.icon}</span>
+                    <span class="mail-row-icon">${iconFromEmoji(m.icon ?? '') || icon('envelope')}</span>
                     <div class="mail-row-info">
                       <div class="mail-row-subject">${m.subject}</div>
                       <div class="mail-row-sender">${_senderLabel(m.type)}</div>
@@ -193,7 +194,7 @@ export class MailUI {
                     <div class="mail-row-meta">
                       <span class="mail-row-time">${_relativeDate(m.timestamp)}</span>
                       ${m.isImportant ? '<span class="mail-row-star" title="Important">★</span>' : ''}
-                      ${hasReward     ? '<span class="mail-row-reward" title="Unclaimed rewards">💰</span>' : ''}
+                      ${hasReward     ? `<span class="mail-row-reward" title="Unclaimed rewards">${icon('gift')}</span>` : ''}
                     </div>
                   </div>`;
               }).join('')
@@ -215,7 +216,7 @@ export class MailUI {
       <div class="mail-body-panel" id="mail-reader">
         ${openMsg ? this._renderReader(openMsg) : `
           <div class="mail-reader-empty">
-            <div class="mail-reader-empty-icon">📬</div>
+            <div class="mail-reader-empty-icon">${icon('envelope')}</div>
             <p>Select a message to read it</p>
           </div>`}
       </div>`;
@@ -227,7 +228,7 @@ export class MailUI {
     const rewardHtml = msg.attachments
       ? Object.entries(msg.attachments)
           .filter(([k]) => k !== 'xp')
-          .map(([r, v]) => `<div class="battle-reward-chip">${RES_META[r]?.icon ?? '✨'} +${fmt(v)} ${RES_META[r]?.label ?? r}</div>`)
+          .map(([r, v]) => `<div class="battle-reward-chip">${RES_META[r]?.icon ?? ''} +${fmt(v)} ${RES_META[r]?.label ?? r}</div>`)
           .join('')
       : '';
 
@@ -235,21 +236,21 @@ export class MailUI {
     const isArchived = !!msg.isArchived;
 
     const actions = isTrash
-      ? `<button class="btn btn-ghost"          id="reader-restore"  data-id="${msg.id}">📤 Restore</button>
-         <button class="btn btn-danger-outline" id="reader-perm-del" data-id="${msg.id}">🗑 Delete Forever</button>`
+      ? `<button class="btn btn-ghost"          id="reader-restore"  data-id="${msg.id}">Restore</button>
+         <button class="btn btn-danger-outline" id="reader-perm-del" data-id="${msg.id}">${icon('trash')} Delete Forever</button>`
       : `<button class="btn btn-ghost" id="reader-read-toggle" data-id="${msg.id}">
-           ${msg.isRead ? '✉️ Mark Unread' : '✔ Mark Read'}
+           ${msg.isRead ? `${icon('envelope')} Mark Unread` : '✔ Mark Read'}
          </button>
          <button class="btn btn-ghost" id="reader-star" data-id="${msg.id}" title="Toggle Important">
            ${msg.isImportant ? '★ Unstar' : '☆ Star'}
          </button>
          ${isArchived
-           ? `<button class="btn btn-ghost"          id="reader-unarchive" data-id="${msg.id}">📤 Unarchive</button>`
-           : `<button class="btn btn-ghost"          id="reader-archive"   data-id="${msg.id}">🗂 Archive</button>`
+           ? `<button class="btn btn-ghost"          id="reader-unarchive" data-id="${msg.id}">Unarchive</button>`
+           : `<button class="btn btn-ghost"          id="reader-archive"   data-id="${msg.id}">${icon('archive')} Archive</button>`
          }
-         <button class="btn btn-danger-outline" id="reader-trash" data-id="${msg.id}">🗑 Delete</button>
+         <button class="btn btn-danger-outline" id="reader-trash" data-id="${msg.id}">${icon('trash')} Delete</button>
          ${msg.attachments && !msg.rewardsClaimed
-           ? `<button class="btn btn-gold" id="reader-claim" data-id="${msg.id}">💰 Collect</button>`
+           ? `<button class="btn btn-gold" id="reader-claim" data-id="${msg.id}">${icon('gift')} Collect</button>`
            : ''}`;
 
     return `
@@ -269,7 +270,7 @@ export class MailUI {
       <div class="mail-reader-rewards">
         <div class="modal-section-title">Attached Rewards</div>
         <div class="battle-rewards" style="justify-content:flex-start">${rewardHtml}</div>
-        ${msg.rewardsClaimed ? `<p class="mail-claimed-note">✅ Already collected.</p>` : ''}
+        ${msg.rewardsClaimed ? `<p class="mail-claimed-note">${icon('check', 'icon--success')} Already collected.</p>` : ''}
       </div>` : ''}
 
       <div class="mail-reader-actions">${actions}</div>`;

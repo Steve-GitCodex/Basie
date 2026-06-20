@@ -8,12 +8,8 @@
  *   ui:openEvents   → opens the active event detail modal directly
  */
 import { eventBus }               from '../../core/EventBus.js';
-import { openModal, closeModal, fmt } from '../uiUtils.js';
-
-const RES_ICONS = {
-  wood: '🪵', stone: '🪨', iron: '⚙️', food: '🌾',
-  water: '💧', diamond: '💎', money: '🪙',
-};
+import { openModal, closeModal, fmt, RES_META } from '../uiUtils.js';
+import { icon, iconFromEmoji } from '../icons.js';
 
 /** Format milliseconds remaining as "Xh Ym" or "Xm Ys". */
 function fmtRemaining(ms) {
@@ -57,7 +53,7 @@ export class EventsUI {
     if (!activeEvent && events.every(e => e.startTs === null)) {
       container.innerHTML = `
         <div class="card" style="text-align:center;padding:var(--space-6);color:var(--clr-text-secondary)">
-          <div style="font-size:2rem;margin-bottom:var(--space-3)">📅</div>
+          <div style="font-size:2rem;margin-bottom:var(--space-3)">${icon('clock', 'icon--xl')}</div>
           <div style="font-weight:600;margin-bottom:var(--space-2)">No Events Running</div>
           <div style="font-size:var(--text-sm)">Check back later for limited-time events with bonus rewards!</div>
         </div>`;
@@ -80,7 +76,7 @@ export class EventsUI {
   _renderEventCard(event) {
     const effectsHtml = Object.entries(event.effects)
       .map(([res, mult]) =>
-        `<span class="event-effect-tag">${RES_ICONS[res] ?? ''} ${res} ×${mult}</span>`
+        `<span class="event-effect-tag">${RES_META[res]?.icon ?? '' ?? ''} ${res} ×${mult}</span>`
       ).join('');
 
     const objectivesHtml = event.objectives.map(obj => {
@@ -96,21 +92,21 @@ export class EventsUI {
     }).join('');
 
     const rewardHtml = Object.entries(event.reward)
-      .map(([res, amt]) => `<span class="reward-pill">${RES_ICONS[res] ?? ''} +${fmt(amt)}</span>`)
+      .map(([res, amt]) => `<span class="reward-pill">${RES_META[res]?.icon ?? '' ?? ''} +${fmt(amt)}</span>`)
       .join('');
 
     const status = event.isActive
-      ? `<span class="event-status-live">🔴 LIVE · ${fmtRemaining(event.timeRemainingMs)} left</span>`
+      ? `<span class="event-status-live">${icon('fire', 'icon--danger')} LIVE · ${fmtRemaining(event.timeRemainingMs)} left</span>`
       : (event.startTs === null
-        ? `<span class="event-status-inactive">⏳ Not scheduled</span>`
-        : `<span class="event-status-upcoming">📅 Upcoming</span>`);
+        ? `<span class="event-status-inactive">${icon('clock')} Not scheduled</span>`
+        : `<span class="event-status-upcoming">${icon('clock', 'icon--gold')} Upcoming</span>`);
 
     const cardClass = event.isActive ? 'card event-card event-card--active' : 'card event-card event-card--inactive';
 
     return `
       <div class="${cardClass}" id="event-card-${event.id}">
         <div class="event-card-header">
-          <span class="event-card-icon">${event.icon}</span>
+          <span class="event-card-icon">${iconFromEmoji(event.icon)}</span>
           <div class="event-card-titleblock">
             <div class="event-card-name">${event.name}</div>
             ${status}
@@ -125,7 +121,7 @@ export class EventsUI {
           ${event.canClaim
             ? `<button class="btn btn-sm btn-primary btn-event-claim" data-id="${event.id}">Claim Reward</button>`
             : event.claimed
-              ? `<button class="btn btn-sm btn-ghost" disabled>✅ Claimed</button>`
+              ? `<button class="btn btn-sm btn-ghost" disabled>${icon('check')} Claimed</button>`
               : ''}
         </div>
       </div>`;
@@ -144,12 +140,12 @@ export class EventsUI {
       return;
     }
     const effectsText = Object.entries(ev.effects)
-      .map(([res, mult]) => `${RES_ICONS[res] ?? res} ×${mult}`)
+      .map(([res, mult]) => `${RES_META[res]?.icon ?? '' ?? res} ×${mult}`)
       .join('  ');
     banner.classList.remove('hidden');
     banner.innerHTML = `
       <button class="events-banner-inner" id="events-banner-btn" title="Click to view event details">
-        <span class="events-banner-icon">${ev.icon}</span>
+        <span class="events-banner-icon">${iconFromEmoji(ev.icon)}</span>
         <span class="events-banner-name">${ev.name}</span>
         <span class="events-banner-effects">${effectsText}</span>
         <span class="events-banner-timer">⏱ ${fmtRemaining(ev.timeRemainingMs)}</span>
@@ -165,7 +161,7 @@ export class EventsUI {
   showEventModal(event) {
     const effectsHtml = Object.entries(event.effects)
       .map(([res, mult]) =>
-        `<div class="offline-reward-row"><span>${RES_ICONS[res] ?? ''} ${res.charAt(0).toUpperCase() + res.slice(1)}</span><span style="color:var(--clr-gold)">×${mult}</span></div>`
+        `<div class="offline-reward-row"><span>${RES_META[res]?.icon ?? '' ?? ''} ${res.charAt(0).toUpperCase() + res.slice(1)}</span><span style="color:var(--clr-gold)">×${mult}</span></div>`
       ).join('');
 
     const objectivesHtml = event.objectives.map(obj => {
@@ -184,13 +180,13 @@ export class EventsUI {
 
     const rewardHtml = Object.entries(event.reward)
       .map(([res, amt]) =>
-        `<div class="offline-reward-row"><span>${RES_ICONS[res] ?? ''} ${res.charAt(0).toUpperCase() + res.slice(1)}</span><span style="color:var(--clr-success)">+${fmt(amt)}</span></div>`
+        `<div class="offline-reward-row"><span>${RES_META[res]?.icon ?? '' ?? ''} ${res.charAt(0).toUpperCase() + res.slice(1)}</span><span style="color:var(--clr-success)">+${fmt(amt)}</span></div>`
       ).join('');
 
     const html = `
       <div class="modal-inner">
         <div class="modal-top">
-          <div class="modal-icon">${event.icon}</div>
+          <div class="modal-icon">${iconFromEmoji(event.icon)}</div>
           <div class="modal-title-block">
             <div class="modal-title">${event.name}</div>
             <div class="modal-subtitle">${event.isActive ? `⏱ ${fmtRemaining(event.timeRemainingMs)} remaining` : 'Event not currently active'}</div>
@@ -221,9 +217,9 @@ export class EventsUI {
 
         <div class="modal-actions">
           ${event.canClaim
-            ? `<button class="btn btn-primary" id="btn-event-modal-claim" data-id="${event.id}">🎁 Claim Reward</button>`
+            ? `<button class="btn btn-primary" id="btn-event-modal-claim" data-id="${event.id}">${icon('gift')} Claim Reward</button>`
             : event.claimed
-              ? `<button class="btn btn-ghost" disabled>✅ Reward Claimed</button>`
+              ? `<button class="btn btn-ghost" disabled>${icon('check')} Reward Claimed</button>`
               : `<button class="btn btn-ghost" disabled>${event.objectives.length > 0 ? 'Complete Objectives to Claim' : 'Active — No objectives'}</button>`
           }
           <button class="btn btn-ghost modal-close">Close</button>
