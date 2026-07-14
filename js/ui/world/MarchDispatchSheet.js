@@ -34,11 +34,14 @@ export class MarchDispatchSheet {
     });
   }
 
-  /** @param {object} poi @param {'gather'|'attack'} type @param {Array} squads */
+  /** @param {object} poi @param {'gather'|'attack'|'scout'} type @param {Array} squads */
   open(poi, type, squads) {
     if (!this._el) return;
     this._poi = poi; this._type = type; this._squadId = null;
-    this._title.textContent = `${type === 'gather' ? 'Gather at' : 'Attack'} ${poi.name}`;
+    const verb = type === 'gather' ? 'Gather at'
+      : type === 'scout' ? (poi.type === 'outpost' ? 'Capture' : 'Explore')
+      : 'Attack';
+    this._title.textContent = `${verb} ${poi.name}`;
     this._renderSquads(squads);
     this._etaEl.textContent = squads.length ? 'Select a squad.' : 'No available squads — train units or recall a march.';
     this._goBtn.disabled = true;

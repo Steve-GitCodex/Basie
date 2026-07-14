@@ -318,12 +318,16 @@ export class WorldRenderer {
   _drawMarker(poi) {
     const s = this._camera.worldToScreen(poi.x, poi.y);
     if (s.x < -40 || s.x > this._cssW + 40 || s.y < -40 || s.y > this._cssH + 40) return; // cull
+    if (!this._wm.isDiscovered(poi.id)) { this._drawFogMarker(s); return; } // fog of war
     const ctx = this._ctx;
     const sel = this._selected === poi.id;
     const hov = this._hovered?.id === poi.id;
     const faction = WORLD_MAP.factions[this._wm.getRegion(poi.regionId)?.factionId];
     const ownedRegion = this._wm.isPlayerOwned(poi.regionId);
-    const ring = poi.type === 'city' ? '#54d6ff' : (ownedRegion ? '#3ad17a' : (faction?.color ?? '#aaa'));
+    const heldOutpost = poi.type === 'outpost' && this._wm.isPlayerOutpost(poi.id);
+    const ring = poi.type === 'city' ? '#54d6ff'
+      : heldOutpost ? '#3ad17a'
+      : (ownedRegion ? '#3ad17a' : (faction?.color ?? '#aaa'));
 
     // disc
     ctx.beginPath();
@@ -365,6 +369,26 @@ export class WorldRenderer {
     ctx.textBaseline = 'alphabetic';
   }
 
+  /** Fogged POI: a muted disc with a "?" — there's something here, but unexplored. */
+  _drawFogMarker(s) {
+    const ctx = this._ctx;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, MARKER_R - 2, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(8,16,12,0.55)';
+    ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([3, 3]);
+    ctx.strokeStyle = 'rgba(150,165,160,0.5)';
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = '15px Outfit, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(190,200,195,0.7)';
+    ctx.fillText('?', s.x, s.y + 1);
+    ctx.textBaseline = 'alphabetic';
+  }
+
   _drawLevelBadge(s, level, color) {
     const ctx = this._ctx;
     const bx = s.x - MARKER_R - 1, by = s.y - MARKER_R - 1, r = 9;
@@ -401,6 +425,31 @@ export class WorldRenderer {
         ctx.fillStyle = '#9bf3c0';
         ctx.fillText('✓', s.x + MARKER_R - 2, s.y - MARKER_R + 4);
       }
+    } else if (poi.type === 'ruin') {
+      if (!this._wm.isScoutAvailable(poi.id)) { // looted (one-time)
+        ctx.font = '12px Outfit, sans-serif';
+        ctx.fillStyle = '#cbb89a';
+        ctx.fillText('✓', s.x + MARKER_R - 2, s.y - MARKER_R + 4);
+      }
+    } else if (poi.type === 'outpost') {
+      if (this._wm.isPlayerOutpost(poi.id)) { // captured / held
+        ctx.font = '12px Outfit, sans-serif';
+        ctx.fillStyle = '#9bf3c0';
+        ctx.fillText('🚩', s.x + MARKER_R - 2, s.y - MARKER_R + 4);
+      }
+    } else if (poi.type === 'world_boss') {
+      if (this._wm.isBossOpen(poi.id)) { // window open — pulsing alert ring
+        const pulse = 0.45 + 0.35 * Math.sin(Date.now() / 240);
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, MARKER_R + 4, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255,90,90,${pulse})`;
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+      } else { // lairing
+        ctx.font = '11px Outfit, sans-serif';
+        ctx.fillStyle = 'rgba(200,180,180,0.8)';
+        ctx.fillText('💤', s.x + MARKER_R - 2, s.y - MARKER_R + 4);
+      }
     }
   }
 
@@ -425,7 +474,8 @@ export class WorldRenderer {
         const sp = this._camera.worldToScreen(wp.x, wp.y);
         i === 0 ? ctx.moveTo(sp.x, sp.y) : ctx.lineTo(sp.x, sp.y);
       }
-      ctx.strokeStyle = m.type === 'attack' ? 'rgba(255,120,90,0.55)' : 'rgba(120,210,255,0.55)';
+      ctx.strokeStyle = m.type === 'attack' ? 'rgba(255,120,90,0.55)'
+        : m.type === 'scout' ? 'rgba(255,211,78,0.55)' : 'rgba(120,210,255,0.55)';
       ctx.lineWidth = 2;
       ctx.setLineDash([6, 6]);
       ctx.stroke();
@@ -436,7 +486,7 @@ export class WorldRenderer {
       const sp = this._camera.worldToScreen(wp.x, wp.y);
       ctx.beginPath();
       ctx.arc(sp.x, sp.y, 6, 0, Math.PI * 2);
-      ctx.fillStyle = m.type === 'attack' ? '#ff6b5a' : '#6bd4ff';
+      ctx.fillStyle = m.type === 'attack' ? '#ff6b5a' : m.type === 'scout' ? '#ffd34e' : '#6bd4ff';
       ctx.fill();
       ctx.strokeStyle = 'rgba(0,0,0,0.6)';
       ctx.lineWidth = 1.5;

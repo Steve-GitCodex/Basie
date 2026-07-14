@@ -65,6 +65,9 @@ export class WorldMapUI {
     eventBus.on('march:returning', refresh);
     eventBus.on('march:completed', (m) => { this._announceComplete(m); refresh(); this._refreshOpenPanel(); });
     eventBus.on('world:poiChanged', () => { this._renderer?.syncState(); this._refreshOpenPanel(); });
+    // Capture is announced on march arrival (_announceArrival); here we only re-sync
+    // the map + open panel so the new ownership/boon shows immediately.
+    eventBus.on('world:outpostCaptured', () => { this._renderer?.syncState(); this._refreshOpenPanel(); });
     eventBus.on('world:regionCaptured', (d) => {
       this._notify?.show?.('success', '🚩 Region captured', this._wm.getRegion(d.regionId)?.name ?? '');
       this._renderer?.syncState();
@@ -94,7 +97,13 @@ export class WorldMapUI {
     else this._renderer.start();
     this._renderer.syncState();
     this._renderMarchPanel();
-    this._ticker = setInterval(() => { if (this._active) this._renderMarchPanel(); }, 1000);
+    this._ticker = setInterval(() => {
+      if (!this._active) return;
+      this._renderMarchPanel();
+      this._renderer?.syncState(); // tick boss windows / fog / pulses
+      const sel = this._selectedPoiId && this._wm.getPOI(this._selectedPoiId);
+      if (sel && sel.type === 'world_boss') this._refreshOpenPanel(); // live window countdown
+    }, 1000);
   }
 
   _onLeave() {
@@ -152,6 +161,9 @@ export class WorldMapUI {
       poi,
       region: this._wm.getRegion(poi.regionId),
       owned: this._wm.isPlayerOwned(poi.regionId),
+      outpostOwned: poi.type === 'outpost' ? this._wm.isPlayerOutpost(poi.id) : false,
+      discovered: this._wm.isDiscovered(poi.id),
+      bossInfo: poi.type === 'world_boss' ? this._wm.bossInfo(poi.id) : null,
       state: this._wm.getPOIState(poi.id),
       marchType: marchTypeForPOI(poi),
       slotsFree: this._mm.slotsFree(),
@@ -170,12 +182,26 @@ export class WorldMapUI {
   _renderMarchPanel() { this._marchPanel.render(this._mm.activeMarches()); }
 
   _announceArrival(m) {
-    if (m.outcome === 'victory') this._notify?.show?.('success', '⚔️ Victory', this._wm.getPOI(m.targetPoiId)?.name ?? '');
-    else if (m.outcome === 'defeat') this._notify?.show?.('warning', '💀 Defeat', this._wm.getPOI(m.targetPoiId)?.name ?? '');
+    const name = this._wm.getPOI(m.targetPoiId)?.name ?? '';
+    if (m.outcome === 'victory') this._notify?.show?.('success', '⚔️ Victory', name);
+    else if (m.outcome === 'boss_victory') this._notify?.show?.('success', '🐲 Boss slain', name);
+    else if (m.outcome === 'defeat') this._notify?.show?.('warning', '💀 Defeat', name);
+    else if (m.outcome === 'explored') this._notify?.show?.('success', '🗿 Ruin explored', name);
+    else if (m.outcome === 'captured') this._notify?.show?.('success', '🚩 Outpost captured', name);
+    else if (m.outcome === 'closed') this._notify?.show?.('warning', '⏳ Window closed', `${name} — the boss had retreated`);
   }
 
   _announceComplete(m) {
-    const got = Object.entries(m.payload ?? {}).map(([k, v]) => `${v} ${k}`).join(', ');
-    if (got) this._notify?.show?.('success', '🎁 Army returned', got);
+    const parts = Object.entries(m.payload ?? {}).map(([k, v]) => `${v} ${k}`);
+    for (const it of m.grants?.items ?? []) parts.push(`${it.qty ?? 1}× ${it.itemId}`);
+    if (m.grants?.buff) parts.push(this._buffText(m.grants.buff));
+    if (parts.length) this._notify?.show?.('success', '🎁 Army returned', parts.join(', '));
+  }
+
+  _buffText(buff) {
+    const pct = Math.round((buff.pct ?? 0) * 100);
+    if (buff.flavor === 'economic') return `+${pct}% ${buff.resource} buff`;
+    if (buff.flavor === 'military') return `+${pct}% troop attack buff`;
+    return `+${pct}% march speed buff`;
   }
 }

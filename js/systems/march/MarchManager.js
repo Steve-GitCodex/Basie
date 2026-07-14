@@ -16,13 +16,14 @@ import { resolveArrival } from './marchResolver.js';
 import { logisticSpeedMult } from '../world/regionBuffs.js';
 
 export class MarchManager {
-  constructor(unitManager, combatManager, resourceManager, worldMapManager, buildingManager) {
+  constructor(unitManager, combatManager, resourceManager, worldMapManager, buildingManager, inventoryManager) {
     this.name = 'march';
     this._um = unitManager;
     this._cm = combatManager;
     this._rm = resourceManager;
     this._wm = worldMapManager;
     this._bm = buildingManager;
+    this._inv = inventoryManager;
     this._marches = [];
     this._idSeq = 1;
   }
@@ -67,7 +68,7 @@ export class MarchManager {
 
   // ── Dispatch ────────────────────────────────────────────────────────────────
   /**
-   * @param {{ type:'gather'|'attack', targetPoiId:string, squadId:string }} req
+   * @param {{ type:'gather'|'attack'|'scout', targetPoiId:string, squadId:string }} req
    * @returns {{ success:boolean, reason?:string, marchId?:number }}
    */
   dispatch({ type, targetPoiId, squadId }) {
@@ -78,6 +79,7 @@ export class MarchManager {
       slotFree: this.slotsFree() > 0,
       squadBusy: this.isSquadMarching(squadId) || (this._um.isSquadDeployed?.(squadId) ?? false),
       hostileAvailable: poi ? this._wm.isHostileAvailable(poi.id) : false,
+      scoutAvailable: poi ? this._wm.isScoutAvailable(poi.id) : false,
       regionLocked: poi ? !this._wm.isRegionUnlocked(poi.regionId) : false,
     });
     if (!check.ok) return { success: false, reason: check.reason };
@@ -104,6 +106,7 @@ export class MarchManager {
       tripMs: trip,
       loadCap: loadCapacity(squad),
       payload: {},
+      grants: null,
       outcome: null,
     };
     this._marches.push(march);
@@ -122,6 +125,7 @@ export class MarchManager {
         const poi = this._wm.getPOI(m.targetPoiId);
         const res = resolveArrival(m, poi, { worldMapManager: this._wm, combatManager: this._cm });
         m.payload = res.payload ?? {};
+        m.grants = res.grants ?? null;
         m.outcome = res.outcome;
         m.phase = 'acting';
         m.actUntil = now + (res.dwellMs ?? 0);
@@ -131,7 +135,7 @@ export class MarchManager {
         m.returnAt = now + m.tripMs;
         eventBus.emit('march:returning', this._summary(m));
       } else if (m.phase === 'returning' && now >= m.returnAt) {
-        if (m.payload && Object.keys(m.payload).length) this._rm.add(m.payload);
+        this._creditMarch(m);
         this._um.setSquadDeployed?.(m.squadId, false);
         eventBus.emit('march:completed', this._summary(m));
         done.push(m.id);
@@ -157,6 +161,7 @@ export class MarchManager {
         const poi = this._wm.getPOI(m.targetPoiId);
         const res = resolveArrival(m, poi, { worldMapManager: this._wm, combatManager: this._cm });
         m.payload  = res.payload ?? {};
+        m.grants   = res.grants ?? null;
         m.outcome  = res.outcome;
         m.phase    = 'acting';
         m.actUntil = m.arriveAt + (res.dwellMs ?? 0); // cascade from arriveAt, not real-now
@@ -172,7 +177,7 @@ export class MarchManager {
 
       // Returning → done
       if (m.phase === 'returning' && m.returnAt <= nowMs) {
-        if (m.payload && Object.keys(m.payload).length) this._rm.add(m.payload);
+        this._creditMarch(m);
         this._um.setSquadDeployed?.(m.squadId, false);
         eventBus.emit('march:completed', this._summary(m));
         done.push(m.id);
@@ -182,11 +187,20 @@ export class MarchManager {
     if (done.length) this._marches = this._marches.filter(m => !done.includes(m.id));
   }
 
+  /** Realise a returned army's haul: resources, items, and timed buffs. */
+  _creditMarch(m) {
+    if (m.payload && Object.keys(m.payload).length) this._rm.add(m.payload);
+    const g = m.grants;
+    if (!g) return;
+    for (const it of g.items ?? []) this._inv?.addItem?.(it.itemId, it.qty ?? 1);
+    if (g.buff) this._wm.grantTimedBuff?.(g.buff);
+  }
+
   _summary(m) {
     return {
       id: m.id, type: m.type, squadId: m.squadId, targetPoiId: m.targetPoiId,
       phase: m.phase, arriveAt: m.arriveAt, actUntil: m.actUntil, returnAt: m.returnAt,
-      outcome: m.outcome, payload: m.payload,
+      outcome: m.outcome, payload: m.payload, grants: m.grants,
     };
   }
 

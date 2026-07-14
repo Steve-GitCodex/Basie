@@ -60,6 +60,7 @@
 .world-panel__actions button:disabled { opacity: 0.45; cursor: not-allowed; }
 .world-panel__actions .wp-attack { border-color: rgba(255, 110, 90, 0.5); }
 .world-panel__actions .wp-gather { border-color: rgba(120, 210, 255, 0.5); }
+.world-panel__actions .wp-scout  { border-color: rgba(255, 211, 78, 0.5); }
 
 /* ── March dispatch sheet ─────────────────────────────────────────────────── */
 .world-sheet {

@@ -25,10 +25,23 @@
  * Column x-edges: 0 · 1300 · 2300 · 3600   Row y-edges: 0 · 800 · 1800 · 2600
  *   (centre cell 1300..2300 × 800..1800 = 1000×1000 square)
  *
- * POI types: 'city' | 'resource_node' | 'camp' | 'stronghold'
+ * POI types: 'city' | 'resource_node' | 'camp' | 'stronghold' | 'ruin' | 'outpost' | 'world_boss'
  *   resource_node: { resource, gatherRate (per s), capacity, regenPerSec }
  *   camp / stronghold: { monsterId → MONSTERS_CONFIG }, camp also { respawnMs };
  *                    stronghold also { capturesRegion }
+ *   ruin: scout→expedition (one-time loot). { expeditionMs, garrison?:monsterId,
+ *         reward } where reward is one of:
+ *           { kind:'buff', flavor, resource?, pct, durationMs }  (timed world buff)
+ *           { kind:'item', itemId, qty }                          (→ InventoryManager)
+ *           { kind:'resource', resource, amount }                 (carried home)
+ *   outpost: scout→capture, persistent. { subtype:'outpost'|'shrine'|'watchtower',
+ *         garrison?:monsterId, boon:{ flavor, resource?, pct }, revealRadius?,
+ *         startOwner? }. While player-held the boon stays active (folded into
+ *         activeBuffs); watchtowers also clear fog within revealRadius (Step 4).
+ *   world_boss: attack, windowed. { monsterId, window:{ everyMs, openMs },
+ *         lootTable:[{ kind:'item'|'resource', …, weight }] }. Only attackable while
+ *         its window is open; one kill per window; drops a weighted rare reward.
+ *         Windows derive from the clock (no stored timers).
  *
  * Region fields:
  *   rect — { x0,y0,x1,y1 } tessellating cell (renderer warps+insets it).
@@ -131,20 +144,37 @@ export const WORLD_MAP = {
     { id: 'home_city', type: 'city',          regionId: 'home_vale',    name: 'Your City',  icon: '🏰', x: 650,  y: 2200 },
     { id: 'rn_oak',    type: 'resource_node', regionId: 'home_vale',    name: 'Oak Forest', icon: '🌲', x: 430,  y: 2010, level: 1, resource: 'wood',  gatherRate: 6, capacity: 1200, regenPerSec: 2.0 },
     { id: 'rn_well',   type: 'resource_node', regionId: 'home_vale',    name: 'Spring Well',icon: '💧', x: 880,  y: 2390, level: 1, resource: 'water', gatherRate: 5, capacity: 1000, regenPerSec: 1.6 },
+    { id: 'ruin_vale', type: 'ruin',          regionId: 'home_vale',    name: 'Sunken Shrine', icon: '🗿', x: 300, y: 2440, level: 1, expeditionMs: 30_000,
+      reward: { kind: 'buff', flavor: 'logistic', pct: 0.15, durationMs: 600_000 } },
+    { id: 'op_relay',  type: 'outpost',       regionId: 'home_vale',    name: 'Crossroads Relay', icon: '⛺', x: 1080, y: 1960, level: 1, subtype: 'outpost',
+      boon: { flavor: 'logistic', pct: 0.10 } },
 
     // ── West Warrens (goblins, iron) ─────────────────────────────────────────
     { id: 'sh_west',   type: 'stronghold',    regionId: 'west_warrens', name: 'Warren Gate',icon: '🏯', x: 650,  y: 1130, level: 3, monsterId: 'orc_warband',  capturesRegion: 'west_warrens' },
     { id: 'rn_iron',   type: 'resource_node', regionId: 'west_warrens', name: 'Iron Vein',  icon: '⛏️', x: 440,  y: 1430, level: 2, resource: 'iron',  gatherRate: 4, capacity: 800,  regenPerSec: 1.2 },
     { id: 'camp_west', type: 'camp',          regionId: 'west_warrens', name: 'Goblin Camp',icon: '👺', x: 880,  y: 1430, level: 2, monsterId: 'goblin_camp',  respawnMs: 1_800_000 },
+    { id: 'ruin_warren', type: 'ruin',        regionId: 'west_warrens', name: 'Old Warren Vault', icon: '🗿', x: 300, y: 980, level: 3, expeditionMs: 45_000, garrison: 'goblin_camp',
+      reward: { kind: 'item', itemId: 'scroll_rare', qty: 1 } },
+    { id: 'op_shrine', type: 'outpost',       regionId: 'west_warrens', name: 'Warden Shrine', icon: '⛩️', x: 1080, y: 1180, level: 3, subtype: 'shrine', garrison: 'goblin_camp',
+      boon: { flavor: 'military', pct: 0.08 } },
 
     // ── Red Lowlands (bandits, food) ─────────────────────────────────────────
     { id: 'sh_red',    type: 'stronghold',    regionId: 'red_lowlands', name: 'Reaver Fort',icon: '🏰', x: 1800, y: 2060, level: 3, monsterId: 'troll_bridge', capturesRegion: 'red_lowlands' },
     { id: 'rn_grain',  type: 'resource_node', regionId: 'red_lowlands', name: 'Grain Fields',icon:'🌾', x: 1600, y: 2380, level: 2, resource: 'food',  gatherRate: 5, capacity: 1000, regenPerSec: 1.6 },
     { id: 'camp_red',  type: 'camp',          regionId: 'red_lowlands', name: 'Bandit Hideout',icon:'🗡️',x: 2020, y: 2360, level: 2, monsterId: 'bandit_camp',  respawnMs: 1_800_000 },
+    { id: 'wb_roc',    type: 'world_boss',    regionId: 'red_lowlands', name: 'The Bonecrusher', icon: '🐲', x: 2180, y: 1980, level: 8, monsterId: 'frost_giant',
+      window: { everyMs: 180_000, openMs: 90_000 },
+      lootTable: [
+        { kind: 'item',     itemId: 'scroll_rare',   qty: 1,   weight: 3 },
+        { kind: 'resource', resource: 'money',       amount: 500, weight: 5 },
+        { kind: 'item',     itemId: 'scroll_common', qty: 2,   weight: 2 },
+      ] },
 
     // ── Mistwood (goblins, wood) ─────────────────────────────────────────────
     { id: 'sh_mist',   type: 'stronghold',    regionId: 'mistwood',     name: 'Haunted Keep',icon:'🏯', x: 650,  y: 300,  level: 5, monsterId: 'undead_legion', capturesRegion: 'mistwood' },
     { id: 'rn_timber', type: 'resource_node', regionId: 'mistwood',     name: 'Timberfall', icon: '🪵', x: 900,  y: 560,  level: 3, resource: 'wood',  gatherRate: 6, capacity: 1200, regenPerSec: 2.0 },
+    { id: 'op_tower',  type: 'outpost',       regionId: 'mistwood',     name: 'Mistwood Watchtower', icon: '🗼', x: 1100, y: 300, level: 4, subtype: 'watchtower', garrison: 'goblin_camp',
+      boon: { flavor: 'logistic', pct: 0.05 }, revealRadius: 760 },
 
     // ── Frost Hold (bandits, water) ──────────────────────────────────────────
     { id: 'sh_frost',  type: 'stronghold',    regionId: 'frost_hold',   name: 'Frost Hold', icon: '🏰', x: 2950, y: 2060, level: 5, monsterId: 'frost_giant',  capturesRegion: 'frost_hold' },

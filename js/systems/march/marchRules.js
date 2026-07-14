@@ -7,9 +7,12 @@ const MARCH_TYPE_FOR = {
   resource_node: 'gather',
   camp: 'attack',
   stronghold: 'attack',
+  world_boss: 'attack',
+  ruin: 'scout',
+  outpost: 'scout',
 };
 
-/** Which march type a POI accepts ('gather' | 'attack' | null). */
+/** Which march type a POI accepts ('gather' | 'attack' | 'scout' | null). */
 export function marchTypeForPOI(poi) {
   return poi ? (MARCH_TYPE_FOR[poi.type] ?? null) : null;
 }
@@ -22,9 +25,10 @@ export function marchTypeForPOI(poi) {
  * @param {boolean} p.slotFree   a march slot is available
  * @param {boolean} p.squadBusy  the squad is already out on a march
  * @param {boolean} [p.hostileAvailable] camp/stronghold not waiting to respawn
+ * @param {boolean} [p.scoutAvailable]   ruin/outpost still has something to do (not looted)
  * @param {boolean} [p.regionLocked] the target POI's region is not yet unlocked
  */
-export function canDispatch({ type, poi, squad, slotFree, squadBusy, hostileAvailable = true, regionLocked = false }) {
+export function canDispatch({ type, poi, squad, slotFree, squadBusy, hostileAvailable = true, scoutAvailable = true, regionLocked = false }) {
   if (!poi)            return { ok: false, reason: 'No target selected.' };
   if (regionLocked)    return { ok: false, reason: 'Region locked — capture the regions leading to it first.' };
   if (!squad || !(squad.units?.length)) return { ok: false, reason: 'Squad is empty.' };
@@ -37,6 +41,9 @@ export function canDispatch({ type, poi, squad, slotFree, squadBusy, hostileAvai
 
   if (expected === 'attack' && !hostileAvailable) {
     return { ok: false, reason: 'Already cleared — it will return later.' };
+  }
+  if (expected === 'scout' && !scoutAvailable) {
+    return { ok: false, reason: 'Already explored — nothing left here.' };
   }
   return { ok: true, reason: null };
 }

@@ -80,7 +80,7 @@ const storyManager = new StoryManager();
 const tutorialManager = new TutorialManager(userManager);
 const eventManager = new EventManager(resourceManager, mailManager, inventoryManager, userManager);
 const worldMapManager = new WorldMapManager();
-const marchManager    = new MarchManager(unitManager, combatManager, resourceManager, worldMapManager, buildingManager);
+const marchManager    = new MarchManager(unitManager, combatManager, resourceManager, worldMapManager, buildingManager, inventoryManager);
 
 // Wire InventoryManager into MailManager so mail attachment claims go to inventory
 mailManager.setInventoryManager(inventoryManager);
