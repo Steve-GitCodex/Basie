@@ -32,8 +32,8 @@
 
 ## Next steps (session ended 2026-07-15 — resume here)
 
-1. **Commit** the fast-follows + wiki/tooling work on `Working_Branch` (a month of
-   uncommitted work; suggest two commits: fast-follows code / wiki+tooling).
+1. ~~Commit~~ — done by Steve (2026-07-15). Note: **Steve always commits himself**;
+   sessions leave the tree commit-ready and say so, never commit.
 2. **Fix the two serious audit bugs** while the world/march code is fresh: the
    removed-POI march crash and the never-wired economic buffs (roadmap → Hardening →
    findings).
