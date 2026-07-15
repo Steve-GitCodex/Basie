@@ -7,6 +7,7 @@ import { eventBus } from '../core/EventBus.js';
 import { DIFFICULTY_MODIFIERS } from '../entities/GAME_DATA.js';
 import { TUTORIAL_STEPS } from './TutorialManager.js';
 import { BUILDINGS_CONFIG } from '../entities/data/buildings.js';
+import { economicBonus } from './world/regionBuffs.js';
 
 export class ResourceManager {
   constructor() {
@@ -37,6 +38,7 @@ export class ResourceManager {
     this._techBonuses = {};
     this._heroManager = null;
     this._buildingManager = null;
+    this._worldMapManager = null;
     this._lastActiveBuildings = [];
     /** Population is a pseudo-resource — not spent/earned like others. */
     this._population = { current: 0, cap: 0 };
@@ -74,6 +76,18 @@ export class ResourceManager {
    */
   setBuildingManager(bm) {
     this._buildingManager = bm;
+  }
+
+  /**
+   * Wire WorldMapManager after construction (for economic region buffs).
+   * Captured "economic" regions/outposts/timed buffs raise base production of
+   * their resource; re-run rates whenever the active buff set changes.
+   * @param {import('./world/WorldMapManager.js').WorldMapManager} wm
+   */
+  setWorldMapManager(wm) {
+    this._worldMapManager = wm;
+    eventBus.on('world:buffsChanged',   () => this._reapplyRates());
+    eventBus.on('world:regionCaptured', () => this._reapplyRates());
   }
 
   /**
@@ -152,6 +166,15 @@ export class ResourceManager {
     if (this._techBonuses.woodBonus)  this._resources.wood.perSec  *= (1 + this._techBonuses.woodBonus);
     if (this._techBonuses.stoneBonus) this._resources.stone.perSec *= (1 + this._techBonuses.stoneBonus);
     if (this._techBonuses.waterBonus) this._resources.water.perSec *= (1 + this._techBonuses.waterBonus);
+
+    // Apply economic region buffs (captured territory raises base production of its resource)
+    if (this._worldMapManager) {
+      const buffs = this._worldMapManager.activeBuffs();
+      for (const key of Object.keys(this._resources)) {
+        const bonus = economicBonus(buffs, key);
+        if (bonus > 0) this._resources[key].perSec *= (1 + bonus);
+      }
+    }
 
     // Apply HQ-level production bonus (all resources)
     if (this._buildingManager) {

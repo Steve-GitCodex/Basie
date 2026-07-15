@@ -234,6 +234,7 @@ export class WorldMapManager {
     this._regionOwner[regionId] = 'player';
     const region = this._regionById.get(regionId);
     eventBus.emit('world:regionCaptured', { regionId, buff: region.buff ?? null });
+    eventBus.emit('world:buffsChanged', {});
   }
 
   // ── Persistence ─────────────────────────────────────────────────────────────

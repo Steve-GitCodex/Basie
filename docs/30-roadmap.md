@@ -49,24 +49,32 @@ sprite generation.
   here, fix the load-bearing ones before the reskin builds on top.
 
   **Findings so far (world/march code review, 2026-07-15):**
-  - [ ] **Crash:** an in-flight march whose target POI is removed by a map edit
-    dereferences `poi.id`/`poi.resource` in `marchResolver._gather` on arrival →
-    TypeError inside the engine tick. World state is reconciled against map edits;
-    `MarchManager.deserialize()` is not — drop (and refund/return) marches whose
-    `targetPoiId` no longer exists.
-  - [ ] **Dead feature:** economic region buffs never reach base production —
-    `ResourceManager` has no `activeBuffs()`/`world:regionCaptured` wiring (the MVP
-    spec promised it). Players capture an "economic" region and see no effect.
+  - [x] **Crash:** an in-flight march whose target POI is removed dereferenced
+    `poi.id`/`poi.resource` in `marchResolver._gather` on arrival → TypeError inside
+    the engine tick. **Fixed** (2026-07-15) with a null-POI guard at the top of
+    `resolveArrival` — aborts to a `lost_target` outcome (empty haul, squad returns and
+    frees its slot). Chosen over the deserialize-drop suggestion because the guard also
+    covers runtime removal, not just load. Verified: all three march types return
+    cleanly on a null POI.
+  - [x] **Dead feature:** economic region buffs never reached base production. **Fixed**
+    (2026-07-15): `ResourceManager.setWorldMapManager()` injects the world ref and
+    subscribes to `world:buffsChanged`/`world:regionCaptured`; `recalculateRates()` now
+    multiplies each resource by `1 + economicBonus(activeBuffs(), key)`. `captureRegion`
+    now also emits `world:buffsChanged`; load re-runs rates after world state restores.
+    Verified: capturing `west_warrens` raised iron production 100 → 110 (+10%).
   - [ ] **No-op math:** the gather economic bonus in `marchResolver._gather` is clamped
     back to `loadCap`, which the node extraction already filled — the bonus only pays
     out on nearly-empty nodes. Either raise the clamp or apply the bonus mint-side.
-  - [ ] **Design drift:** all buff flavors apply globally; the design says in-region
-    only. Decide (global is simpler and arguably fine) and align docs/UI copy.
+  - [x] **Design drift:** all buff flavors apply globally; the design said in-region
+    only. **Decided** (2026-07-15): global is the model of record (matches the flat
+    `activeBuffs()` list and the existing gather/military/logistic treatment). Base
+    economic buffs now apply globally too; align UI copy when the buff-stacking UI lands.
   - [ ] **Future trap:** `CombatManager.resolveMarchBattle` ignores `milMult < 1`
     (`milMult > 1` guard) — silently breaks the first debuff (Phase 4 AI).
-  - [ ] **Unused event:** `world:buffsChanged` fires (outpost capture, timed buffs,
-    expiry) but nothing listens — buff-dependent UI can go stale until another event
-    repaints it.
+  - [~] **Unused event:** `world:buffsChanged` fires (outpost capture, region capture,
+    timed buffs, expiry) — `ResourceManager` now listens (production reapply). No
+    buff-dependent *UI* listener yet, so buff panels can still go stale until another
+    event repaints them.
   - Verified sound, for the record: clock-derived boss windows; deploy-lock
     runtime-only + re-asserted on load + excluded from campaign attacks; offline march
     catch-up (cascading absolute timestamps); `worldState` seed/reconcile;

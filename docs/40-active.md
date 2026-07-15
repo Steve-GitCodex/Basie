@@ -5,13 +5,31 @@
 
 ## Current state (2026-07-15)
 
-- Branch: `Working_Branch`. **Uncommitted:** the Phase 2 fast-follows implementation
-  (scout marches, ruins, outposts/shrines/watchtowers, world bosses, fog-of-war —
-  `js/systems/world/worldBoss.js` is new) plus this wiki setup. Needs a commit.
+- Branch: `Working_Branch`. **Uncommitted:** the two world/march audit-bug fixes
+  (below) — tree is commit-ready.
 - Phase 1 (UI redesign) and Phase 2 (world map MVP + fast-follows) are **done** —
   see `docs/30-roadmap.md`.
 - Current direction: **grit reskin** (`docs/10-design/grit-reskin.md`) — art/feel pass
   before Phase 4 AI. Recommended first phase: A1 grim grading (zero asset risk).
+
+### Landed this session (2026-07-15) — two audit bugs fixed
+
+1. **March crash on removed POI** — `resolveArrival` (marchResolver.js) now guards a
+   null POI at the top, aborting to a `lost_target` outcome (empty haul, squad returns).
+   Covers runtime removal + load. Verified: gather/attack/scout all return cleanly on
+   null POI (no TypeError).
+2. **Economic region buffs → base production** (was a dead feature). Wiring:
+   `ResourceManager.setWorldMapManager()` (main.js:83) + subscriptions to
+   `world:buffsChanged`/`world:regionCaptured`; `recalculateRates()` applies
+   `1 + economicBonus(activeBuffs(), key)` per resource. `WorldMapManager.captureRegion`
+   now also emits `world:buffsChanged`; `applyGameState` emits it after world load so
+   rates reflect restored regions. Decision: buffs apply **globally** (model of record).
+   Verified: capturing `west_warrens` raised iron 100 → 110 (+10%) via the real event
+   path. Boot smoke test clean (no page/console errors).
+   - Verification harness: puppeteer/playwright installed in
+     `C:\Users\Steve\AppData\Local\Temp\claude\basie-verify\`; probe scripts in this
+     session's scratchpad (`buff-probe.mjs`, `boot-smoke.mjs`) — headless console tests,
+     no UI clicking. `window.game` exposes `resources`/`worldMap`/`eventBus` for probes.
 
 ## Known issues / debt
 
@@ -32,13 +50,13 @@
 
 ## Next steps (session ended 2026-07-15 — resume here)
 
-1. ~~Commit~~ — done by Steve (2026-07-15). Note: **Steve always commits himself**;
-   sessions leave the tree commit-ready and say so, never commit.
-2. **Fix the two serious audit bugs** while the world/march code is fresh: the
-   removed-POI march crash and the never-wired economic buffs (roadmap → Hardening →
-   findings).
-3. **Split `CityRenderer.js`** (`cityInput`/`cityAgents`/`cityAmbient`), then start
+1. ~~Fix the two serious audit bugs~~ — **done this session** (see above). Tree is
+   commit-ready; **Steve commits himself**, sessions never commit.
+2. **Split `CityRenderer.js`** (`cityInput`/`cityAgents`/`cityAmbient`), then start
    grit Phase A1 (grim grade + function plaques).
+3. Remaining world/march audit findings (lower severity, roadmap → Hardening): gather
+   economic-bonus no-op clamp, `resolveMarchBattle` `milMult < 1` debuff trap, and a
+   buff-dependent *UI* listener for `world:buffsChanged`.
 4. Queue the comment-cleanup session (low-cost model; `node scripts/check-comments.mjs`
    lists 17 violations).
 

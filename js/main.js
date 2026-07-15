@@ -80,6 +80,7 @@ const storyManager = new StoryManager();
 const tutorialManager = new TutorialManager(userManager);
 const eventManager = new EventManager(resourceManager, mailManager, inventoryManager, userManager);
 const worldMapManager = new WorldMapManager();
+resourceManager.setWorldMapManager(worldMapManager);
 const marchManager    = new MarchManager(unitManager, combatManager, resourceManager, worldMapManager, buildingManager, inventoryManager);
 
 // Wire InventoryManager into MailManager so mail attachment claims go to inventory
@@ -184,6 +185,9 @@ function applyGameState(state) {
   eventManager.deserialize(state.events);
   if (state.worldMap) worldMapManager.deserialize(state.worldMap);
   if (state.march)    marchManager.deserialize(state.march);
+  // World state loads after buildings, so re-run production rates now that any
+  // captured economic regions/outposts are restored (ResourceManager listens).
+  eventBus.emit('world:buffsChanged', {});
 }
 
 // =============================================

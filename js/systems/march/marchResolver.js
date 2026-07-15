@@ -18,6 +18,10 @@ import { rollLoot } from '../world/worldBoss.js';
 const ATTACK_DWELL_MS = 1500;
 
 export function resolveArrival(march, poi, ctx) {
+  // Target may have been removed (map edit / node depletion cull) while the army
+  // was in transit. Abort cleanly — the squad turns around empty rather than
+  // dereferencing a null POI inside the engine tick.
+  if (!poi) return { outcome: 'lost_target', payload: {}, dwellMs: 0 };
   if (march.type === 'gather') return _gather(march, poi, ctx);
   if (march.type === 'attack') return _attack(march, poi, ctx);
   if (march.type === 'scout')  return _scout(march, poi, ctx);
