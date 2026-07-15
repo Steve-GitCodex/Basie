@@ -681,10 +681,10 @@
   width: 7px; height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
-  background: var(--clr-success, #4caf72);
+  background: var(--clr-success, #7ab143);
 }
 .bc-pip-building {
-  background: var(--clr-primary, #7c83ff);
+  background: var(--clr-primary, #f49325);
   animation: bcPipPulse 1.4s ease-in-out infinite;
 }
 @keyframes bcPipPulse {
@@ -710,7 +710,7 @@
   font-size: var(--text-xs, 0.7rem);
   color: var(--clr-text-muted, #888);
   font-style: italic;
-  border-left: 2px solid var(--clr-primary, #7c83ff);
+  border-left: 2px solid var(--clr-primary, #f49325);
   padding-left: var(--space-2, 0.5rem);
   margin: var(--space-2, 0.5rem) 0;
   line-height: 1.5;
@@ -748,8 +748,8 @@
 
 .quests-tab-btn.active {
   background: rgba(var(--clr-primary-rgb, 100, 120, 255), 0.15);
-  border-color: var(--clr-primary, #7c83ff);
-  color: var(--clr-primary, #7c83ff);
+  border-color: var(--clr-primary, #f49325);
+  color: var(--clr-primary, #f49325);
   font-weight: 600;
 }
 
@@ -758,8 +758,8 @@
 .tech-card.researching { border-color: var(--clr-info); animation: techPulse 2s ease-in-out infinite; }
 
 @keyframes techPulse {
-  0%, 100% { box-shadow: 0 0 8px hsla(200,80%,58%,0.2); }
-  50%       { box-shadow: 0 0 20px hsla(200,80%,58%,0.5); }
+  0%, 100% { box-shadow: 0 0 8px hsla(32,80%,58%,0.2); }
+  50%       { box-shadow: 0 0 20px hsla(32,80%,58%,0.5); }
 }
 
 /* Monster card */
@@ -1165,7 +1165,7 @@
 .stationed-bonus {
   font-size: 10px;
   font-weight: 700;
-  color: var(--clr-success, #4caf50);
+  color: var(--clr-success, #7ab143);
   background: rgba(76, 175, 80, 0.12);
   padding: 1px 6px;
   border-radius: var(--radius-sm);
@@ -1187,7 +1187,7 @@
   width: 100%;
   background: rgba(76, 175, 80, 0.08);
   border: 1px dashed rgba(76, 175, 80, 0.4);
-  color: var(--clr-success, #4caf50);
+  color: var(--clr-success, #7ab143);
   border-radius: var(--radius-md);
   padding: 5px 10px;
   font-size: var(--text-xs);
@@ -1763,7 +1763,7 @@
 }
 
 .pass-chest-claimed {
-  border-color: #4caf50;
+  border-color: #7ab143;
   opacity: 0.55;
 }
 
@@ -1806,7 +1806,7 @@
   top: -4px;
   right: -4px;
   font-size: 0.55rem;
-  background: #4caf50;
+  background: #7ab143;
   color: #fff;
   border-radius: 50%;
   width: 12px;

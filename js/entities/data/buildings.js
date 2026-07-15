@@ -5,7 +5,7 @@
 
 export const BUILDINGS_CONFIG = {
   townhall: {
-    id: 'townhall', name: 'Headquarters (HQ)', icon: '🏛️',
+    id: 'townhall', name: 'Headquarters (HQ)', shortName: 'HQ', icon: '🏛️',
     description: 'The heart of your base. Upgrade to unlock new buildings, increase all caps, and lead a larger population.',
     maxLevel: 10,
     baseCost: { wood: 500, stone: 300 },

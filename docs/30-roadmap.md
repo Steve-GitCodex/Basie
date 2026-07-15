@@ -13,7 +13,7 @@ Deep design lives in `docs/10-design/`; the session handoff is `docs/40-active.m
 |---|---|---|
 | **1** | UI redesign — iso city, blueprint + placements, floating-dock nav, build queue sidebar, HUD restyle, SVG icon system | [x] done |
 | **2** | World map + marches — MVP (gather/attack, regions, Rally Point) **and** fast-follows (scout, ruins, outposts, world bosses, fog) | [x] implemented (uncommitted as of 2026-07-15); hardening open |
-| **Reskin** | Grit reskin (art direction, tile-grid world, juice) — `docs/10-design/grit-reskin.md`, ADR 0008 | [~] planned, next up (start A1) |
+| **Reskin** | Grit reskin (art direction, tile-grid world, juice) — `docs/10-design/grit-reskin.md`, ADR 0008 | [~] in progress (A1+A2 done 2026-07-15; next B1) |
 | **3** | **Arena** — PvP + alliance co-op boss fights + ranks; eventually replaces campaign combat | [ ] blocked on Phase 7 |
 | **4** | AI opponents (`AIManager`) — factions grow with the player, re-capture regions (ADR 0005 seeds this) | [ ] after reskin |
 | **5** | Map events & objectives | [ ] |
@@ -26,7 +26,7 @@ Sequencing per `docs/10-design/grit-reskin.md` — each phase ≈ one session, i
 shippable: A1 grim grade → A2 UI theme → B1 grid data → B2 grid renderer → C1 sound →
 A4 fiction pass → C2/C3 juice → A3 sprites + B3 terrain art (user-in-the-loop last).
 
-- [ ] A1 · [ ] A2 · [ ] B1 · [ ] B2 · [ ] C1 · [ ] A4 · [ ] C2 · [ ] C3 · [ ] A3 · [ ] B3
+- [x] A1 · [x] A2 · [ ] B1 · [ ] B2 · [ ] C1 · [ ] A4 · [ ] C2 · [ ] C3 · [ ] A3 · [ ] B3
 
 **A3 is now bundled with the base-view projection swap** (ADR 0009): diamond iso →
 square-grid ¾ view (`gridMath.js` replaces `isoMath.js`), new square-tile sprite
@@ -83,10 +83,15 @@ sprite generation.
   **Base-view findings (code review, 2026-07-15)** — the best-crafted corner of the
   codebase (proper dirty-flag rendering, culling, depth-interleaved agents, reactive-UI
   discipline in `BuildingsUI`), but:
-  - [ ] **Split `CityRenderer.js`** (1026 lines — over the 400-line rule): extract
-    `cityInput.js` (pointer/gestures), `cityAgents.js` (drone + walkers),
-    `cityAmbient.js` (day/night + backdrop). Do **before** grit A1 so `cityGrade.js`
-    lands next to clean siblings and reskin diffs stay small.
+  - [x] **Split `CityRenderer.js`** (2026-07-15): extracted `cityInput.js`
+    (pointer/gestures, 137 ln), `cityAgents.js` (drone + walkers, 146 ln),
+    `cityAmbient.js` (day/night + backdrop, 89 ln) as collaborator classes holding a
+    back-ref to the renderer (which stays the owner of `ctx`/`camera`/`slots`). Picking
+    + hover stay on the renderer (they share draw geometry); CityInput dispatches to
+    them. CityRenderer 1123 → **818 ln** — still over 400: the residual is the slot/
+    building/plot/badge drawing, deliberately left for ADR 0009's projection swap to
+    rewrite (a `cityDraw.js` extraction now would collide with that). Verified: boots,
+    renders, hover/zoom/pan/tap clean; tutorial spotlight still pins to the proxy tile.
   - [ ] **City ground-layer chunk cache** — the ambient loop repaints the whole scene
     at ~30fps while the base view is open (battery/mobile ceiling). The ground never
     changes per frame; render it into cached offscreen chunks like B2's world terrain

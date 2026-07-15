@@ -51,7 +51,7 @@
 .story-chapter-arc {
   display: inline-block;
   background: rgba(var(--clr-primary-rgb, 100, 120, 255), 0.2);
-  color: var(--clr-primary, #7c83ff);
+  color: var(--clr-primary, #f49325);
   border: 1px solid rgba(var(--clr-primary-rgb, 100, 120, 255), 0.35);
   border-radius: var(--radius-full, 999px);
   font-size: var(--text-xs, 0.7rem);
@@ -189,7 +189,7 @@
 
 .chapter-log-arc {
   font-size: var(--text-xs, 0.7rem);
-  color: var(--clr-primary, #7c83ff);
+  color: var(--clr-primary, #f49325);
   font-weight: 600;
   text-transform: uppercase;
 }

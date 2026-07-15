@@ -106,8 +106,8 @@
 .inv-tab:hover:not(:disabled) { background: rgba(255,255,255,0.1); color: var(--text-primary, #e8e8e8); }
 .inv-tab:disabled { opacity: 0.4; cursor: default; }
 .inv-tab--active {
-  background: var(--clr-tier-rare-muted, hsl(200,60%,16%));
-  border-color: var(--clr-tier-rare, hsl(200,100%,60%));
+  background: var(--clr-tier-rare-muted, hsl(32,60%,16%));
+  border-color: var(--clr-tier-rare, hsl(32,100%,60%));
   color: var(--text-primary, #e8e8e8);
 }
 .inv-tab__count {
@@ -143,7 +143,7 @@
 }
 .inv-tile:hover { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(0,0,0,0.4); }
 .inv-tile--common    { border-color: var(--clr-tier-common, #888);     background: var(--clr-tier-common-muted, hsl(220,10%,18%)); }
-.inv-tile--rare      { border-color: var(--clr-tier-rare, #36b5ff);    background: var(--clr-tier-rare-muted, hsl(200,60%,16%)); }
+.inv-tile--rare      { border-color: var(--clr-tier-rare, hsl(38,85%,58%));    background: var(--clr-tier-rare-muted, hsl(32,60%,16%)); }
 .inv-tile--legendary { border-color: var(--clr-tier-legendary, #e6a32a); background: var(--clr-tier-legendary-muted, hsl(43,60%,18%)); }
 .inv-tile--common:hover    { box-shadow: 0 0 14px var(--clr-tier-common-glow); }
 .inv-tile--rare:hover      { box-shadow: 0 0 14px var(--clr-tier-rare-glow); }

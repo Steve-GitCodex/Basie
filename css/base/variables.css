@@ -1,54 +1,54 @@
 :root {
   /* =========================================
-   * COLOR PALETTE — Sci-Fi Dark
+   * COLOR PALETTE — Military Salvage (grit reskin A2)
    * ========================================= */
 
-  /* Backgrounds */
-  --clr-bg-base:       hsl(220, 30%, 5%);
-  --clr-bg-surface:    hsl(220, 25%, 8%);
-  --clr-bg-elevated:   hsl(220, 22%, 11%);
-  --clr-bg-panel:      hsl(220, 20%, 14%);
-  --clr-bg-hover:      hsl(220, 20%, 17%);
-  --clr-bg-active:     hsl(200, 30%, 16%);
+  /* Backgrounds — warm gunmetal ladder (was cool 220-hue) */
+  --clr-bg-base:       hsl(30, 10%, 5%);
+  --clr-bg-surface:    hsl(30, 9%, 8%);
+  --clr-bg-elevated:   hsl(30, 8%, 11%);
+  --clr-bg-panel:      hsl(30, 8%, 14%);
+  --clr-bg-hover:      hsl(30, 9%, 18%);
+  --clr-bg-active:     hsl(32, 35%, 16%);
 
   /* Borders */
-  --clr-border:        hsl(220, 18%, 18%);
-  --clr-border-light:  hsl(220, 16%, 26%);
-  --clr-border-glow:   hsl(200, 100%, 50%);
+  --clr-border:        hsl(30, 10%, 18%);
+  --clr-border-light:  hsl(30, 10%, 27%);
+  --clr-border-glow:   hsl(32, 90%, 55%);
 
-  /* Brand / Accent — electric blue */
-  --clr-primary:       hsl(200, 100%, 50%);
-  --clr-primary-light: hsl(200, 100%, 68%);
-  --clr-primary-dark:  hsl(200, 100%, 36%);
-  --clr-primary-muted: hsl(200, 60%, 18%);
+  /* Brand / Accent — signal-orange amber */
+  --clr-primary:       hsl(32, 90%, 55%);
+  --clr-primary-light: hsl(34, 95%, 68%);
+  --clr-primary-dark:  hsl(30, 88%, 40%);
+  --clr-primary-muted: hsl(32, 55%, 18%);
 
-  /* Secondary — neon green */
-  --clr-gold:          hsl(150, 100%, 50%);
-  --clr-gold-light:    hsl(150, 100%, 65%);
-  --clr-gold-muted:    hsl(150, 60%, 15%);
+  /* Secondary — olive-drab military green */
+  --clr-gold:          hsl(80, 45%, 45%);
+  --clr-gold-light:    hsl(80, 52%, 60%);
+  --clr-gold-muted:    hsl(80, 35%, 15%);
 
-  /* Resource colors — remapped to sci-fi energy types */
+  /* Resource colors — physical resource identities (kept diegetic) */
   --clr-res-wood:      hsl(28, 70%, 52%);
-  --clr-res-stone:     hsl(210, 15%, 65%);
-  --clr-res-food:      hsl(140, 60%, 48%);
+  --clr-res-stone:     hsl(30, 10%, 62%);
+  --clr-res-food:      hsl(90, 45%, 47%);
   --clr-res-iron:      hsl(0, 0%, 62%);
-  --clr-res-water:     hsl(205, 75%, 55%);
+  --clr-res-water:     hsl(200, 40%, 58%);
   --clr-res-money:     hsl(43, 90%, 55%);
-  --clr-res-diamond:   hsl(200, 100%, 68%);
+  --clr-res-diamond:   hsl(34, 95%, 68%);
   --clr-res-cafeteria: hsl(35, 85%, 58%);
-  --clr-res-mana:      hsl(200, 100%, 50%);
+  --clr-res-mana:      hsl(32, 90%, 55%);
 
   /* Semantic colors */
-  --clr-success:       hsl(150, 100%, 45%);
-  --clr-warning:       hsl(38, 90%, 55%);
+  --clr-success:       hsl(90, 45%, 48%);
+  --clr-warning:       hsl(48, 95%, 52%);
   --clr-danger:        hsl(0, 85%, 58%);
-  --clr-info:          hsl(200, 100%, 60%);
+  --clr-info:          hsl(200, 40%, 60%);
 
-  /* Text */
-  --clr-text-primary:  hsl(210, 30%, 94%);
-  --clr-text-secondary:hsl(210, 15%, 62%);
-  --clr-text-muted:    hsl(210, 12%, 40%);
-  --clr-text-inverse:  hsl(220, 30%, 5%);
+  /* Text — warm neutral (was cool 210-hue) */
+  --clr-text-primary:  hsl(35, 15%, 93%);
+  --clr-text-secondary:hsl(35, 10%, 62%);
+  --clr-text-muted:    hsl(35, 8%, 42%);
+  --clr-text-inverse:  hsl(30, 10%, 5%);
 
   /* =========================================
    * TYPOGRAPHY
@@ -98,25 +98,25 @@
   --shadow-sm:       0 1px 3px hsla(0,0%,0%,0.5);
   --shadow-md:       0 4px 12px hsla(0,0%,0%,0.6);
   --shadow-lg:       0 8px 24px hsla(0,0%,0%,0.7);
-  --shadow-primary:  0 0 16px hsla(200,100%,50%,0.4);
-  --shadow-gold:     0 0 16px hsla(150,100%,50%,0.35);
-  --glow-primary:    0 0 24px hsla(200,100%,50%,0.6);
-  --glow-gold:       0 0 24px hsla(150,100%,50%,0.55);
+  --shadow-primary:  0 0 16px hsla(32,90%,55%,0.4);
+  --shadow-gold:     0 0 16px hsla(80,45%,45%,0.4);
+  --glow-primary:    0 0 24px hsla(32,90%,55%,0.55);
+  --glow-gold:       0 0 24px hsla(80,45%,45%,0.5);
 
   /* =========================================
    * HERO TIER COLORS
    * ========================================= */
-  --clr-tier-common:          hsl(220, 10%, 60%);
-  --clr-tier-common-muted:    hsl(220, 10%, 18%);
-  --clr-tier-common-glow:     hsla(220, 10%, 60%, 0.2);
+  --clr-tier-common:          hsl(210, 8%, 60%);
+  --clr-tier-common-muted:    hsl(210, 8%, 18%);
+  --clr-tier-common-glow:     hsla(210, 8%, 60%, 0.2);
 
-  --clr-tier-rare:            hsl(200, 100%, 60%);
-  --clr-tier-rare-muted:      hsl(200, 60%, 16%);
-  --clr-tier-rare-glow:       hsla(200, 100%, 60%, 0.3);
+  --clr-tier-rare:            hsl(38, 85%, 58%);
+  --clr-tier-rare-muted:      hsl(38, 55%, 16%);
+  --clr-tier-rare-glow:       hsla(38, 85%, 58%, 0.3);
 
-  --clr-tier-legendary:       hsl(43, 90%, 55%);
-  --clr-tier-legendary-muted: hsl(43, 60%, 18%);
-  --clr-tier-legendary-glow:  hsla(43, 90%, 55%, 0.35);
+  --clr-tier-legendary:       hsl(18, 88%, 55%);
+  --clr-tier-legendary-muted: hsl(18, 60%, 18%);
+  --clr-tier-legendary-glow:  hsla(18, 88%, 55%, 0.35);
 
   /* =========================================
    * TRANSITIONS

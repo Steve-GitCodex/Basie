@@ -81,7 +81,7 @@ export class TileTooltip {
     if (btn) {
       const isBuilt = b.level > 0;
       const { btnText, btnCls, btnDisabled } = this._upgradeButtonState(b, isBuilt, b.effectiveLevel + 1);
-      if (btn.textContent !== btnText) btn.textContent = btnText;
+      if (btn.innerHTML !== btnText) btn.innerHTML = btnText;
       btn.disabled = btnDisabled;
       btn.classList.toggle('btn-primary', btnCls === 'btn-primary');
       btn.classList.toggle('btn-ghost',   btnCls === 'btn-ghost');
@@ -119,7 +119,7 @@ export class TileTooltip {
 
     const { btnText, btnCls, btnDisabled } = this._upgradeButtonState(b, isBuilt, nextLv);
 
-    const timeHint = !b.isMaxLevel && !b.isActivelyBuilding && b.nextLevelBuildTime
+    const timeHint = b.requirementsMet && !b.isMaxLevel && !b.isActivelyBuilding && b.nextLevelBuildTime
       ? `<span class="tt-time-hint">⏱ ${fmt(b.nextLevelBuildTime)}s</span>` : '';
 
     // "Open its system" button (Barracks → Manage Squads, etc.) — only when built.

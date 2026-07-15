@@ -33,7 +33,7 @@
   z-index: 160;
   pointer-events: all;
   background: var(--clr-surface-raised, #1e1e2e);
-  border: 2px solid var(--clr-primary, #7c83ff);
+  border: 2px solid var(--clr-primary, #f49325);
   border-radius: var(--radius-lg, 16px);
   padding: var(--space-4, 1rem) var(--space-5, 1.25rem);
   box-shadow:
@@ -62,7 +62,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--clr-primary, #7c83ff);
+  color: var(--clr-primary, #f49325);
 }
 
 .tutorial-step-dots { display: flex; gap: 4px; }
@@ -76,11 +76,11 @@
 }
 
 .tutorial-step-dot.active {
-  background: var(--clr-primary, #7c83ff);
+  background: var(--clr-primary, #f49325);
   box-shadow: 0 0 6px rgba(124, 131, 255, 0.6);
 }
 
-.tutorial-step-dot.done { background: var(--clr-success, #00b894); }
+.tutorial-step-dot.done { background: var(--clr-success, #7ab143); }
 
 /* ─── Title & instruction ─── */
 .tutorial-title {

@@ -9,6 +9,12 @@
  */
 import { BUILDINGS_CONFIG } from '../../entities/GAME_DATA.js';
 
+/** Compact building name for prerequisite labels (e.g. "HQ" not "Headquarters (HQ)"). */
+function reqName(bId) {
+  const cfg = BUILDINGS_CONFIG[bId];
+  return cfg?.shortName ?? cfg?.name ?? bId;
+}
+
 /** Cost of a level scaled geometrically from the base cost. */
 function scaleCost(baseCost, multiplier, currentLevel) {
   const out = {};
@@ -27,7 +33,7 @@ function checkRequirements(requires, ctx) {
         return { met: false, reason: `Requires Population ≥ ${minLevel}` };
       }
     } else if (ctx.getLevelOf(bId) < minLevel) {
-      const name = BUILDINGS_CONFIG[bId]?.name ?? bId;
+      const name = reqName(bId);
       return { met: false, reason: `Requires ${name} Lv.${minLevel}` };
     }
   }
@@ -49,7 +55,7 @@ function collectMissing(requires, ctx) {
         missing.push(`Requires Population ≥ ${minLevel} (current: ${Math.floor(pop.current)})`);
       }
     } else if (ctx.getLevelOf(bId) < minLevel) {
-      const name = BUILDINGS_CONFIG[bId]?.name ?? bId;
+      const name = reqName(bId);
       missing.push(`Requires ${name} Lv.${minLevel}`);
     }
   }

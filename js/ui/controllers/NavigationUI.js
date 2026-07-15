@@ -168,13 +168,27 @@ export class NavigationUI {
         lockedCard.classList.remove('hidden');
       }
     }
+    // A locked sub-tab skips the ui:viewChanged emit above, so refresh the flip
+    // button here too — otherwise its label/lock state lags the active view.
+    this._updateFlipButton();
+  }
+
+  /**
+   * Flip destination. On a map view, toggle to the other map view; from any other
+   * view (a group/standalone tab like Economy) return to the current map view so
+   * there's always a path back to Base — even while World is still HQ-locked.
+   */
+  _flipTarget() {
+    const onMap = this._activeView === 'base' || this._activeView === 'world';
+    if (!onMap) return this._primaryView;
+    return this._primaryView === 'base' ? 'world' : 'base';
   }
 
   /** Wire the single Base⇄World flip button (replaces the two map tabs). */
   _bindFlip() {
     document.getElementById('nav-flip')?.addEventListener('click', () => {
       eventBus.emit('ui:click');
-      const target = this._primaryView === 'base' ? 'world' : 'base';
+      const target = this._flipTarget();
       if (target === 'world' && !this._isTabUnlocked('world')) {
         this._showLockedTooltip(document.getElementById('nav-flip'), this._getTabLockReason('world'));
         return;
@@ -185,7 +199,7 @@ export class NavigationUI {
 
   /** Reflect the flip button's destination (where tapping it will take you). */
   _updateFlipButton() {
-    const target = this._primaryView === 'base' ? 'world' : 'base';
+    const target = this._flipTarget();
     const icon  = document.getElementById('flip-icon');
     const label = document.getElementById('flip-label');
     if (icon)  icon.className = `nav-icon nav-icon--${target}`;

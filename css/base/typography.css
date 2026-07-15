@@ -6,8 +6,8 @@ body {
   background-color: var(--clr-bg-base);
   /* Subtle sci-fi grid lines on the page background */
   background-image:
-    linear-gradient(hsla(200,100%,50%,0.03) 1px, transparent 1px),
-    linear-gradient(90deg, hsla(200,100%,50%,0.03) 1px, transparent 1px);
+    linear-gradient(hsla(32,100%,50%,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, hsla(32,100%,50%,0.03) 1px, transparent 1px);
   background-size: 32px 32px;
 }
 

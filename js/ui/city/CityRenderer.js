@@ -26,15 +26,12 @@ import {
 } from "./isoMath.js";
 import { CityCamera } from "./CityCamera.js";
 import { CityAssets } from "./cityAssets.js";
-import {
-  allGroundCells,
-  allProps,
-  dronePath,
-  roadGraph,
-} from "./cityLayout.js";
+import { allGroundCells, allProps } from "./cityLayout.js";
+import { CityInput } from "./cityInput.js";
+import { CityAgents } from "./cityAgents.js";
+import { CityAmbient } from "./cityAmbient.js";
+import { CityGrade } from "./cityGrade.js";
 
-const TAP_SLOP_PX = 6;
-const TAP_MAX_MS = 500;
 const LABEL_MIN_ZOOM = 0.65;
 // Buildings are seated so their base diamond rests on the tile's top surface:
 // the footprint is fit to the plot width (sprites are authored at 99 or 132 px
@@ -45,11 +42,6 @@ const BUILDING_FIT = 1.0;
 const HEADROOM = 2; // px above the diamond covered by a building sprite (proxy/hit rect)
 const SPEEDUP_BADGE_R  = 11; // world-px radius of the ⏩ speed-up badge over a building
 const SPEEDUP_BADGE_DY = 30; // world-px the badge centre sits above the tile centre
-const DAY_CYCLE_MS = 8 * 60 * 1000; // full day/night loop
-const MAX_NIGHT = 0.32; // peak darkness alpha
-const DRONE_SPEED = 1.1; // tiles per second
-const WALKER_SPEED = 0.45; // tiles per second
-const WALKER_COUNT = 3;
 const HOME_ZOOM = 1.0;
 
 // Viewport culling margins (world px). Generous on top so tall building
@@ -97,8 +89,11 @@ export class CityRenderer {
     });
     this._groundCells = allGroundCells();
     this._props = allProps();
-    this._dronePath = dronePath();
-    this._roadGraph = roadGraph();
+
+    this._input = new CityInput(this);
+    this._agents = new CityAgents(this);
+    this._ambient = new CityAmbient(this, CULL_OBJECT);
+    this._grade = new CityGrade(this._assets);
 
     this._slots = []; // plot scene records, painter-sorted
     this._slotAt = new Map(); // "col,row" → slot
@@ -112,11 +107,7 @@ export class CityRenderer {
     this._proxyDirty = true;
     this._lastAmbient = 0;
     this._renderedEmitAt = 0;
-    this._droneT = 0;
-    this._walkers = [];
     this._lastTs = 0;
-    this._pointers = new Map();
-    this._drag = null;
   }
 
   async init() {
@@ -127,13 +118,14 @@ export class CityRenderer {
     this._ctx = this._canvas.getContext("2d");
     this._dpr = Math.min(2, window.devicePixelRatio || 1);
 
-    this._bindInput();
-    this._spawnWalkers();
+    this._input.bind();
+    this._agents.spawn();
     this._ro = new ResizeObserver(() => this._resize());
     this._ro.observe(this._host);
     this._loadEl?.classList.remove("hidden");
 
     await this._assets.load();
+    await this._grade.load();
     this.ready = true;
     this._loadEl?.classList.add("hidden");
 
@@ -298,122 +290,8 @@ export class CityRenderer {
   }
 
   // ───────────────────────────────────────────
-  // Input (pan / pinch / wheel / hover / tap)
+  // Scene picking + hover (driven by CityInput)
   // ───────────────────────────────────────────
-
-  _bindInput() {
-    const cv = this._canvas;
-
-    cv.addEventListener("pointerdown", (e) => {
-      cv.setPointerCapture(e.pointerId);
-      this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (this._pointers.size === 1) {
-        this._drag = {
-          x: e.clientX,
-          y: e.clientY,
-          startX: e.clientX,
-          startY: e.clientY,
-          t: performance.now(),
-          moved: false,
-        };
-      }
-    });
-
-    cv.addEventListener("pointermove", (e) => {
-      const p = this._pointers.get(e.pointerId);
-      if (!p) {
-        this._updateHover(e);
-        return;
-      }
-      const prev = { ...p };
-      p.x = e.clientX;
-      p.y = e.clientY;
-
-      if (this._pointers.size === 2) {
-        // Pinch: zoom around midpoint + pan by midpoint delta
-        const pts = [...this._pointers.values()];
-        const other = pts.find((q) => q !== p) ?? pts[0];
-        const dPrev = Math.hypot(prev.x - other.x, prev.y - other.y);
-        const dNow = Math.hypot(p.x - other.x, p.y - other.y);
-        const rect = cv.getBoundingClientRect();
-        const mid = {
-          x: (p.x + other.x) / 2 - rect.left,
-          y: (p.y + other.y) / 2 - rect.top,
-        };
-        if (dPrev > 0) this._camera.zoomAt(mid.x, mid.y, dNow / dPrev);
-        this._camera.panBy((p.x - prev.x) / 2, (p.y - prev.y) / 2);
-        if (this._drag) this._drag.moved = true;
-      } else if (this._drag) {
-        const dx = e.clientX - this._drag.x;
-        const dy = e.clientY - this._drag.y;
-        this._drag.x = e.clientX;
-        this._drag.y = e.clientY;
-        if (
-          Math.hypot(
-            e.clientX - this._drag.startX,
-            e.clientY - this._drag.startY,
-          ) > TAP_SLOP_PX
-        ) {
-          this._drag.moved = true;
-          cv.style.cursor = "grabbing";
-          this._setHover(null);
-        }
-        if (this._drag.moved) this._camera.panBy(dx, dy);
-      }
-    });
-
-    const endPointer = (e) => {
-      const wasDrag = this._drag;
-      this._pointers.delete(e.pointerId);
-      if (this._pointers.size > 0) return;
-      cv.style.cursor = "grab";
-      this._drag = null;
-      if (
-        wasDrag &&
-        !wasDrag.moved &&
-        performance.now() - wasDrag.t < TAP_MAX_MS
-      ) {
-        // The ⏩ speed-up badge sits above a constructing building and wins the tap.
-        const badge = this._speedupBadgeAtClient(e.clientX, e.clientY);
-        if (badge) {
-          this._onSpeedupClick(badge.buildingId, badge.instanceIndex, this._speedupBadgeRect(badge));
-          return;
-        }
-        const slot = this._slotAtClient(e.clientX, e.clientY);
-        if (!slot) this._onEmptyClick();
-        else if (slot.empty) this._onPlotClick(slot.plotId, slot.zone);
-        else this._onTileClick(slot.buildingId, slot.instanceIndex);
-      }
-    };
-    cv.addEventListener("pointerup", endPointer);
-    cv.addEventListener("pointercancel", endPointer);
-    cv.addEventListener("pointerleave", () => {
-      if (!this._drag) this._setHover(null);
-    });
-
-    cv.addEventListener(
-      "wheel",
-      (e) => {
-        e.preventDefault();
-        const rect = cv.getBoundingClientRect();
-        this._camera.zoomAt(
-          e.clientX - rect.left,
-          e.clientY - rect.top,
-          e.deltaY < 0 ? 1.1 : 0.9,
-        );
-      },
-      { passive: false },
-    );
-
-    // Double-tap empty ground re-centers on HQ
-    let lastTap = 0;
-    cv.addEventListener("pointerup", (e) => {
-      const now = performance.now();
-      if (now - lastTap < 350 && !this._slotAtClient(e.clientX, e.clientY))
-        this.home();
-      lastTap = now;
-    });
-  }
 
   _slotAtClient(clientX, clientY) {
     const rect = this._canvas.getBoundingClientRect();
@@ -506,10 +384,7 @@ export class CityRenderer {
     const dt = Math.max(0, Math.min(0.1, (ts - this._lastTs) / 1000));
     this._lastTs = ts;
 
-    const droneLen = this._dronePath.length - 1;
-    this._droneT =
-      (((this._droneT + dt * DRONE_SPEED) % droneLen) + droneLen) % droneLen;
-    this._updateWalkers(dt);
+    this._agents.update(dt);
 
     // Ambient animation (drone, walkers, tint, construction) redraws at
     // ~30fps; camera/state changes redraw immediately.
@@ -528,7 +403,7 @@ export class CityRenderer {
     const z = cam.zoom * this._dpr;
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    this._fillBackdrop(ctx);
+    this._ambient.fillBackdrop();
     ctx.setTransform(z, 0, 0, z, cam.x * this._dpr, cam.y * this._dpr);
     ctx.imageSmoothingEnabled = true;
 
@@ -538,7 +413,7 @@ export class CityRenderer {
     for (const cell of this._groundCells) {
       const c = tileToWorld(cell.col, cell.row);
       if (!this._inView(c, CULL_GROUND, view)) continue;
-      const img = this._assets.ground(cell.key);
+      const img = this._grade.ground(cell.key);
       if (img) {
         ctx.drawImage(
           img,
@@ -557,9 +432,9 @@ export class CityRenderer {
     if (this._hovered) this._drawHighlight(this._hovered);
 
     // 3 — objects: plots/buildings + props (painter-sorted), agents interleaved
-    const droneDepth = this._dronePos().col + this._dronePos().row;
+    const droneDepth = this._agents.droneDepth;
     let droneDrawn = false;
-    const walkersToDraw = [...this._walkers].sort(
+    const walkersToDraw = [...this._agents.walkers].sort(
       (a, b) => a.x + a.y - (b.x + b.y),
     );
     let wi = 0;
@@ -568,10 +443,10 @@ export class CityRenderer {
         wi < walkersToDraw.length &&
         walkersToDraw[wi].x + walkersToDraw[wi].y <= item.depth
       ) {
-        this._drawWalker(walkersToDraw[wi++], now);
+        this._agents.drawWalker(walkersToDraw[wi++], now);
       }
       if (!droneDrawn && item.depth > droneDepth) {
-        this._drawDrone(now);
+        this._agents.drawDrone(now);
         droneDrawn = true;
       }
       const o = item.slot ?? item.prop;
@@ -580,8 +455,8 @@ export class CityRenderer {
       else this._drawProp(item.prop);
     }
     while (wi < walkersToDraw.length)
-      this._drawWalker(walkersToDraw[wi++], now);
-    if (!droneDrawn) this._drawDrone(now);
+      this._agents.drawWalker(walkersToDraw[wi++], now);
+    if (!droneDrawn) this._agents.drawDrone(now);
 
     // 4 — overlays: progress bars + level badges (always on top of sprites)
     for (const slot of this._slots) {
@@ -600,26 +475,10 @@ export class CityRenderer {
     }
 
     // 5 — day/night ambient tint + window lights
-    this._drawAmbient(now);
-  }
+    this._ambient.drawNight(now);
 
-  /**
-   * Ambient backdrop behind the terrain. With the searchlight pan clamp the frame
-   * can extend a little past the island at the extremes; a soft twilight gradient
-   * makes that read as sky/water rather than an empty void. Cached per canvas height.
-   */
-  _fillBackdrop(ctx) {
-    const w = this._canvas.width, h = this._canvas.height;
-    if (!this._backdrop || this._backdropH !== h) {
-      const g = ctx.createLinearGradient(0, 0, 0, h);
-      g.addColorStop(0,   'hsl(212, 42%, 15%)');
-      g.addColorStop(0.5, 'hsl(214, 36%, 10%)');
-      g.addColorStop(1,   'hsl(217, 32%, 6%)');
-      this._backdrop  = g;
-      this._backdropH = h;
-    }
-    ctx.fillStyle = this._backdrop;
-    ctx.fillRect(0, 0, w, h);
+    // 6 — grim-grade atmosphere: vignette + cold wash + horizon haze
+    this._grade.drawOverlay(ctx, this._canvas.width, this._canvas.height);
   }
 
   /** A dark rounded pill with the building name — used for the hovered tile. */
@@ -650,7 +509,7 @@ export class CityRenderer {
       return;
     }
 
-    const img = this._assets.building(slot.buildingId);
+    const img = this._grade.building(slot.buildingId);
     const drawBuilding = (image, alpha = 1) => {
       const ctx = this._ctx;
       // Fit the footprint to the plot, then seat the base diamond's bottom vertex
@@ -690,13 +549,18 @@ export class CityRenderer {
     }
 
     if (slot.level === 0 && slot.isBuilding) {
-      // First construction — hologram ghost of the finished building
       drawBuilding(img, 0.35 + 0.15 * Math.sin(now / 300));
       this._drawBlueprintOutline(c);
       return;
     }
 
     drawBuilding(img);
+    this._grade.drawPlaque(
+      this._ctx,
+      slot.buildingId,
+      c.x + TILE_W / 4,
+      c.y + TILE_H / 4,
+    );
 
     if (this._camera.zoom >= LABEL_MIN_ZOOM && slot.name) {
       this._drawText(
@@ -748,7 +612,7 @@ export class CityRenderer {
   }
 
   _drawProp(prop) {
-    const img = this._assets.ground(prop.kind);
+    const img = this._grade.ground(prop.kind);
     if (!img) return;
     const c = tileToWorld(prop.col, prop.row);
     this._ctx.drawImage(
@@ -910,164 +774,6 @@ export class CityRenderer {
     ctx.fillStyle = color;
     this._diamondPath(c);
     ctx.fill();
-    ctx.restore();
-  }
-
-  // ───────────────────────────────────────────
-  // Ambiance: drone + walkers + day/night cycle
-  // ───────────────────────────────────────────
-
-  _dronePos() {
-    const i = Math.floor(this._droneT);
-    const f = this._droneT - i;
-    const a = this._dronePath[i];
-    const b = this._dronePath[Math.min(i + 1, this._dronePath.length - 1)];
-    return {
-      col: a.col + (b.col - a.col) * f,
-      row: a.row + (b.row - a.row) * f,
-    };
-  }
-
-  _drawDrone(now) {
-    const p = this._dronePos();
-    const w = tileToWorld(p.col, p.row);
-    const bob = Math.sin(now / 400) * 3;
-    const ctx = this._ctx;
-    ctx.save();
-    // ground shadow
-    ctx.fillStyle = "rgba(0,0,0,0.3)";
-    ctx.beginPath();
-    ctx.ellipse(w.x, w.y, 10, 4, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // glowing body
-    const y = w.y - 34 + bob;
-    ctx.fillStyle = "rgba(140, 225, 255, 0.95)";
-    ctx.beginPath();
-    ctx.ellipse(w.x, y, 8, 3.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "rgba(255, 90, 90, 0.9)";
-    ctx.beginPath();
-    ctx.arc(w.x + 6, y - 1, 1.4, 0, Math.PI * 2);
-    ctx.fill();
-    // light cone
-    const g = ctx.createLinearGradient(w.x, y, w.x, w.y);
-    g.addColorStop(0, "rgba(140,225,255,0.25)");
-    g.addColorStop(1, "rgba(140,225,255,0)");
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.moveTo(w.x - 4, y);
-    ctx.lineTo(w.x + 4, y);
-    ctx.lineTo(w.x + 12, w.y);
-    ctx.lineTo(w.x - 12, w.y);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-  }
-
-  /** Ambient pedestrians/carts wandering the road graph. */
-  _spawnWalkers() {
-    const cells = [...this._roadGraph.keys()];
-    if (!cells.length) return;
-    for (let i = 0; i < WALKER_COUNT; i++) {
-      const key = cells[(i * 13) % cells.length];
-      const [c, r] = key.split(",").map(Number);
-      this._walkers.push({
-        x: c,
-        y: r, // fractional tile coords
-        from: { col: c, row: r },
-        to: this._nextRoadCell({ col: c, row: r }, null),
-        t: 0,
-        hue: 180 + i * 60,
-      });
-    }
-  }
-
-  _nextRoadCell(cell, prev) {
-    const n = this._roadGraph.get(`${cell.col},${cell.row}`) ?? [];
-    if (!n.length) return cell;
-    const options = n.filter(
-      (o) => !prev || o.col !== prev.col || o.row !== prev.row,
-    );
-    const pick = (options.length ? options : n)[
-      Math.floor(Math.random() * (options.length || n.length))
-    ];
-    return pick;
-  }
-
-  _updateWalkers(dt) {
-    for (const w of this._walkers) {
-      if (!w.to) continue;
-      w.t += dt * WALKER_SPEED;
-      if (w.t >= 1) {
-        const prev = w.from;
-        w.from = w.to;
-        w.to = this._nextRoadCell(w.from, prev);
-        w.t = 0;
-      }
-      w.x = w.from.col + (w.to.col - w.from.col) * w.t;
-      w.y = w.from.row + (w.to.row - w.from.row) * w.t;
-    }
-  }
-
-  _drawWalker(w, now) {
-    const p = tileToWorld(w.x, w.y);
-    const ctx = this._ctx;
-    ctx.save();
-    ctx.fillStyle = "rgba(0,0,0,0.25)";
-    ctx.beginPath();
-    ctx.ellipse(p.x, p.y + 2, 4, 1.8, 0, 0, Math.PI * 2);
-    ctx.fill();
-    const bob = Math.abs(Math.sin(now / 180 + w.hue)) * 1.5;
-    ctx.fillStyle = `hsla(${w.hue}, 70%, 70%, 0.95)`;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y - 5 - bob, 2.6, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = `hsla(${w.hue}, 50%, 45%, 0.95)`;
-    ctx.fillRect(p.x - 2, p.y - 4 - bob, 4, 5);
-    ctx.restore();
-  }
-
-  _nightAmount(now) {
-    const t = ((now % DAY_CYCLE_MS) / DAY_CYCLE_MS) * Math.PI * 2;
-    return Math.max(0, Math.sin(t)) * MAX_NIGHT;
-  }
-
-  _drawAmbient(now) {
-    const night = this._nightAmount(Date.now());
-    if (night < 0.02) return;
-    const ctx = this._ctx;
-
-    // window lights on built buildings (additive, twinkling)
-    ctx.save();
-    ctx.globalCompositeOperation = "lighter";
-    const view = this._viewWorldRect();
-    for (const slot of this._slots) {
-      if (slot.level <= 0) continue;
-      const c = tileToWorld(slot.col, slot.row);
-      if (!this._inView(c, CULL_OBJECT, view)) continue;
-      const seed = slot.col * 7 + slot.row * 13;
-      for (let i = 0; i < 3; i++) {
-        const tw = 0.5 + 0.5 * Math.sin(now / 700 + seed + i * 2.4);
-        ctx.fillStyle = `rgba(255, 200, 110, ${(0.25 + 0.3 * tw) * (night / MAX_NIGHT)})`;
-        ctx.beginPath();
-        ctx.arc(
-          c.x - 24 + i * 22 + ((seed + i) % 7),
-          c.y - 18 - ((seed * (i + 1)) % 16),
-          2.2,
-          0,
-          Math.PI * 2,
-        );
-        ctx.fill();
-      }
-    }
-    ctx.restore();
-
-    // midnight-blue multiply veil over everything
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.globalCompositeOperation = "multiply";
-    ctx.fillStyle = `rgba(60, 80, 140, ${night})`;
-    ctx.fillRect(0, 0, this._canvas.width, this._canvas.height);
     ctx.restore();
   }
 

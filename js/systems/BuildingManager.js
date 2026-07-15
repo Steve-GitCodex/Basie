@@ -288,7 +288,7 @@ export class BuildingManager {
       if (cond) {
         for (const [bId, minLv] of Object.entries(cond)) {
           if (this.getLevelOf(bId) < minLv) {
-            const name = BUILDINGS_CONFIG[bId]?.name ?? bId;
+            const name = BUILDINGS_CONFIG[bId]?.shortName ?? BUILDINGS_CONFIG[bId]?.name ?? bId;
             missing.push(`Requires ${name} Lv.${minLv}`);
           }
         }

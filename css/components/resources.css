@@ -6,7 +6,7 @@
   align-items: center;
   gap: var(--space-1);
   padding: 3px var(--space-2);
-  background: hsla(200, 30%, 8%, 0.8);
+  background: hsla(32, 30%, 8%, 0.8);
   border: 1px solid var(--clr-border);
   border-radius: var(--radius-full);
   min-width: 100px;
@@ -17,7 +17,7 @@
 
 .resource-chip:hover {
   border-color: var(--clr-primary-muted);
-  background: hsla(200, 40%, 10%, 0.9);
+  background: hsla(32, 40%, 10%, 0.9);
 }
 
 .resource-chip:hover {

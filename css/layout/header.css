@@ -5,7 +5,7 @@
   height: var(--header-height);
   background: hsla(220, 30%, 5%, 0.95);
   border-bottom: 1px solid var(--clr-border);
-  box-shadow: 0 1px 0 0 hsla(200,100%,50%,0.12);
+  box-shadow: 0 1px 0 0 hsla(32,100%,50%,0.12);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   display: flex;

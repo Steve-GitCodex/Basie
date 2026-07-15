@@ -29,7 +29,7 @@
   bottom: calc(var(--bottom-nav-height) + var(--space-3));
   transform: translateX(-50%) translateY(8px);
   width: min(440px, calc(100% - var(--space-4) * 2));
-  background: hsl(215, 30%, 11%);
+  background: hsl(30, 30%, 11%);
   border: 1px solid var(--clr-border);
   border-radius: var(--radius-lg);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
@@ -54,9 +54,9 @@
 .world-panel__actions { display: flex; gap: var(--space-2); }
 .world-panel__actions button {
   flex: 1; padding: 10px; border-radius: var(--radius-md); border: 1px solid var(--clr-border);
-  background: hsl(215, 32%, 16%); color: var(--clr-text-primary); font-weight: 600; cursor: pointer;
+  background: hsl(30, 32%, 16%); color: var(--clr-text-primary); font-weight: 600; cursor: pointer;
 }
-.world-panel__actions button:hover:not(:disabled) { background: hsl(205, 60%, 28%); }
+.world-panel__actions button:hover:not(:disabled) { background: hsl(32, 60%, 28%); }
 .world-panel__actions button:disabled { opacity: 0.45; cursor: not-allowed; }
 .world-panel__actions .wp-attack { border-color: rgba(255, 110, 90, 0.5); }
 .world-panel__actions .wp-gather { border-color: rgba(120, 210, 255, 0.5); }
@@ -69,7 +69,7 @@
   bottom: calc(var(--bottom-nav-height) + var(--space-3));
   transform: translateX(-50%);
   width: min(460px, calc(100% - var(--space-4) * 2));
-  background: hsl(215, 30%, 12%);
+  background: hsl(30, 30%, 12%);
   border: 1px solid var(--clr-border);
   border-radius: var(--radius-lg);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
@@ -83,16 +83,16 @@
 .ms-squad {
   display: flex; align-items: center; gap: var(--space-2); padding: 8px 10px;
   border: 1px solid var(--clr-border); border-radius: var(--radius-md);
-  background: hsl(215, 28%, 15%); cursor: pointer;
+  background: hsl(30, 28%, 15%); cursor: pointer;
 }
-.ms-squad.selected { border-color: var(--clr-accent, #54d6ff); background: hsl(205, 50%, 22%); }
+.ms-squad.selected { border-color: var(--clr-primary); background: hsl(32, 50%, 22%); }
 .ms-squad.disabled { opacity: 0.4; cursor: not-allowed; }
 .ms-squad__name { font-weight: 600; }
 .ms-squad__count { margin-left: auto; font-size: var(--text-xs); color: var(--clr-text-muted); }
 .world-sheet__eta { font-size: var(--text-xs); color: var(--clr-text-muted); margin-bottom: var(--space-3); }
 .world-sheet__go {
   width: 100%; padding: 11px; border: none; border-radius: var(--radius-md);
-  background: hsl(150, 55%, 38%); color: #fff; font-weight: 700; cursor: pointer;
+  background: hsl(80, 55%, 38%); color: #fff; font-weight: 700; cursor: pointer;
 }
 .world-sheet__go:disabled { opacity: 0.5; cursor: not-allowed; }
 

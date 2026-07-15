@@ -332,8 +332,8 @@ export class UIManager {
 
     const spawnCard = (label, i) => {
       const card = document.createElement('div');
-      card.className   = 'reward-float-card';
-      card.textContent = label;
+      card.className = 'reward-float-card';
+      card.innerHTML = label;
       card.style.left  = `${baseX}px`;
       // Stagger each card so multiple items don't overlap
       card.style.top   = `${baseY + i * 38}px`;

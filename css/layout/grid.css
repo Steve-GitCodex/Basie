@@ -129,7 +129,7 @@
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(ellipse 80% 60% at 50% -10%, hsla(200,100%,20%,0.5), transparent),
+    radial-gradient(ellipse 80% 60% at 50% -10%, hsla(32,100%,20%,0.5), transparent),
     var(--clr-bg-base);
   z-index: var(--z-modal);
 }

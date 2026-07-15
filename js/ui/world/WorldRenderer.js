@@ -12,6 +12,7 @@
 import { WORLD_MAP } from '../../entities/GAME_DATA.js';
 import { WorldCamera } from './WorldCamera.js';
 import { hitTestPOI, arcPoint } from './worldProjection.js';
+import { WORLD_BACKDROP, LAND_BASE, grime } from './worldGrade.js';
 
 const TAP_SLOP_PX = 6;
 const TAP_MAX_MS = 500;
@@ -173,7 +174,7 @@ export class WorldRenderer {
   _draw(now) {
     const ctx = this._ctx, cam = this._camera, z = cam.zoom * this._dpr;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = '#0e1f17'; // deep map sea/void backdrop
+    ctx.fillStyle = WORLD_BACKDROP; // ash/mud void backdrop
     ctx.fillRect(0, 0, this._canvas.width, this._canvas.height);
 
     // World-space layers
@@ -204,15 +205,15 @@ export class WorldRenderer {
     const owned = this._wm.isPlayerOwned(r.id);
     const ruin = !!r.isCommandCenter;
     const faction = WORLD_MAP.factions[r.factionId];
-    const color = owned ? '#3ad17a' : (ruin ? '#9aa0a8' : (faction?.color ?? '#888'));
+    const color = grime(owned ? '#3ad17a' : (ruin ? '#9aa0a8' : (faction?.color ?? '#888')));
     const locked = !owned && !this._wm.isRegionUnlocked(r.id);
 
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
 
-    // solid land body: a warm land base, then a faction-coloured tint
+    // solid land body: a mud/ash land base, then a faction-grime tint
     this._traceRegion(ctx, r);
-    ctx.fillStyle = '#222c26';
+    ctx.fillStyle = LAND_BASE;
     ctx.fill();
     this._traceRegion(ctx, r);
     ctx.fillStyle = this._alpha(color, owned ? 0.30 : 0.20);
@@ -222,7 +223,7 @@ export class WorldRenderer {
     // sitting inside it (matte, not neon).
     this._traceRegion(ctx, r);
     ctx.lineWidth = ruin ? 13 : 11;
-    ctx.strokeStyle = `rgba(9,13,11,${locked ? 0.7 : 0.92})`;
+    ctx.strokeStyle = `rgba(12,11,9,${locked ? 0.7 : 0.92})`;
     ctx.stroke();
     this._traceRegion(ctx, r);
     ctx.lineWidth = ruin ? 4 : 3;
@@ -241,7 +242,7 @@ export class WorldRenderer {
     // locked overlay dims the tile + adds a lock glyph
     if (locked) {
       this._traceRegion(ctx, r);
-      ctx.fillStyle = 'rgba(6,12,10,0.45)';
+      ctx.fillStyle = 'rgba(10,9,7,0.45)';
       ctx.fill();
     }
 

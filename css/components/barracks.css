@@ -827,11 +827,11 @@
 }
 .btn-rename-confirm {
   border-color: rgba(76,175,80,0.4);
-  color: #4caf50;
+  color: #7ab143;
 }
 .btn-rename-confirm:hover {
   background: rgba(76,175,80,0.12);
-  border-color: #4caf50;
+  border-color: #7ab143;
 }
 .btn-rename-cancel {
   border-color: rgba(255,255,255,0.1);
@@ -2749,7 +2749,7 @@
   border-color: rgba(59,130,246,0.2);
   border-style: dashed;
 }
-.barracks-slot--available .slot-num { color: #60a5fa; }
+.barracks-slot--available .slot-num { color: var(--clr-primary); }
 
 .barracks-slot--empty {
   background: rgba(255,159,10,0.05);
@@ -3156,7 +3156,7 @@
   overflow-y: auto;
   padding-bottom: var(--space-4);
   background: linear-gradient(180deg, hsla(214, 36%, 12%, 0.99), hsla(218, 46%, 7%, 1));
-  border: 1px solid hsla(200, 50%, 45%, 0.3);
+  border: 1px solid hsla(32, 50%, 45%, 0.3);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   box-shadow: 0 -12px 40px hsla(220, 70%, 2%, 0.7);
   animation: sheetUp var(--transition-spring) both;
