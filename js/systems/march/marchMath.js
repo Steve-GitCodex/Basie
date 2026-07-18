@@ -7,7 +7,10 @@
  * speed bonus and any logistic region buffs.
  */
 
-export const BASE_SPEED_PX = 80;     // px/sec at unit-speed 1.0, no bonuses
+// px/sec at unit-speed 1.0, no bonuses. Scaled with the grid world (~3.4× larger
+// than the old 3600×2600 field) to hold march times steady.
+// @see docs/20-decisions/0011-grid-world-geometry.md
+export const BASE_SPEED_PX = 265;
 export const CARRY_PER_UNIT = 25;    // gather load capacity per unit in the squad
 export const MIN_DWELL_MS = 2000;
 export const MAX_DWELL_MS = 15000;

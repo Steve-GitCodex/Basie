@@ -3,16 +3,131 @@
 > Most-updated file in the repo. Every session that changes code updates this file
 > (what landed, known issues, exact next steps). See the session protocol in `CLAUDE.md`.
 
-## Current state (2026-07-15)
+## Current state (2026-07-16)
 
-- Branch: `Working_Branch`. **Uncommitted:** the two world/march audit-bug fixes, the
-  `CityRenderer.js` split, and grit reskin Phases A1 + A2 (below) — tree is commit-ready.
+- Branch: `Working_Branch`. Everything through A1+A2 is **committed** (`6273669`,
+  `4d05cf0`). **Uncommitted:** grit reskin Phase B1 + B2 + the new test suite (below) —
+  tree is commit-ready.
 - Phase 1 (UI redesign) and Phase 2 (world map MVP + fast-follows) are **done** —
   see `docs/30-roadmap.md`.
 - Current direction: **grit reskin** (`docs/10-design/grit-reskin.md`) — art/feel pass
-  before Phase 4 AI. A1 + A2 landed; next phase: B1 grid data model.
+  before Phase 4 AI. A1 + A2 + B1 + B2 landed; next phase: C1 sound (but see "next
+  steps" — B3 terrain art has a case for jumping the queue now that B2 has shipped
+  the grid in placeholder flat colour).
+- **The repo has tests now** (ADR 0012). `npm test` before you hand off; fix a bug →
+  add a regression test in the matching `tests/unit/*.test.js`. Contract:
+  `tests/README.md`.
 
-### Landed this session (2026-07-15, later session)
+### Landed this session (2026-07-16, latest)
+
+3. **Grit reskin Phase B2 — grid renderer** (ADR 0013). The world map finally *looks*
+   like a tile grid; B1's data is now on screen.
+   - New `js/ui/world/gridLayer.js` (226 ln) — owns the terrain pass: cells, faction
+     tint, per-cell fog, cell + sector seams. Rasterises 16×16-cell chunks into 512×512
+     offscreen canvases (`TEX_CELL` 32), LRU-capped at 24, blitted with
+     `imageSmoothingEnabled = false`. **Nearest-neighbour is exact here** because every
+     cell is a uniform block, so one cached scale stays crisp from zoom 0.075 to 1.6 with
+     no per-zoom re-raster. Below `LOD_ZOOM` (0.22) chunks flat-fill instead.
+   - `WorldRenderer` **504 → 426 ln**: `_drawTerrain`/`_drawRegions`/`_drawRegionTile` and
+     the whole organic warp field (`_warpX`/`_warpY`/`_outline`/`_traceRegion`) are gone,
+     replaced by `this._grid.draw()` + a slim `_drawRegionLabels()`. `syncState()` now
+     also calls `gridLayer.invalidate()`. The command-ruin "ready to assault" pulse became
+     a sector-rect stroke.
+   - **No new save state** — fog is a pure function of `isRegionUnlocked` + reveal circles
+     from player-held `revealRadius` outposts (the same sources `revealArea` uses).
+   - Tuning found by eye from screenshots, not guessed: the tint carries **two alphas**
+     (0.14/0.11 over terrain so it doesn't drown the cells; 0.34/0.26 at flat LOD where
+     it's the only territory signal), terrain colours were spread across a real **value**
+     range (hue-only variation vanished under the tint), and region labels render at
+     **constant screen size** with no zoom gate — they'd disappeared exactly when zoomed
+     out, which is when you need them.
+   - `POI_PICK_RADIUS` 42 → 50 (half a cell). `HOME_ZOOM` left at 0.7 — verified it frames
+     ~18 cells across, which reads right; the plan's "retune it" turned out unnecessary.
+   - **Verified:** 60fps during a drag sweep (16.7ms median, **16.8ms p95**), headless
+     1280×800, zero page errors. Screenshots at home/zoomed-out/max zoom: terrain variety
+     reads, cells crisp at max zoom, capture recolours correctly.
+     `npm test` 138/138; both smoke scripts pass; `check-comments` clean.
+   - **Tests grown:** `tests/unit/gridLayer.test.js` (10 tests — chunk geometry, LOD
+     threshold, and the **chunk⊂sector invariant** ADR 0013 leans on: tint/fog resolve once
+     per chunk, valid only while `SECTOR.cells % CHUNK_CELLS === 0`). Plus 3 `world-smoke`
+     checks. Both were break-tested (deliberately broke `invalidate()` → red → reverted).
+   - **Two things the break-test caught, worth knowing:** (a) a whole-canvas hash is a
+     **flaky** metric here — boss/ruin markers pulse on their own timers, so it self-drifts
+     and false-passes; the check asserts on owned-tint *hue* instead. (b) the zoomed-out
+     flat-LOD path **bypasses the chunk cache entirely**, so a cache bug is invisible there
+     — the smoke test pans at default zoom on purpose. A future grid test that zooms out to
+     "see more" would silently stop testing the cache.
+
+### Landed this session (2026-07-16, later)
+
+2. **Persistent test suite** (ADR 0012) — the first tests in the repo. Additive by
+   contract: it only ever grows, so a bug fixed once stays fixed instead of being
+   re-probed from a scratchpad every session.
+   - **Tier 1 — `npm test`**: 128 `node:test` unit tests, zero dependencies, in
+     `tests/unit/` (one file per source module). Covers `gameData` (blueprint zone
+     capacity — the `_ensurePlacements` gotcha — requirement refs, resource keys, POI
+     id uniqueness/bounds), `worldState` (seed/reconcile round-trips, the ADR 0002
+     gotcha; incl. filler POIs surviving a pre-B1 save), `marchResolver` (**null-POI →
+     `lost_target` regression** for the fixed crash, all gather/attack/scout/boss
+     outcomes), `marchMath`, `marchRules`, `regionBuffs` (**economic stacking
+     regression** for the buff-wiring fix), `gridGen` (determinism, sector containment,
+     no id collisions — B1's probes made permanent), `buildingRules` (incl. the "HQ"
+     `shortName`), `eventBus` (on/emit/off/once, listener error isolation).
+   - **Tier 2 — `node tests/browser/{boot,world}-smoke.mjs`**: committed Playwright
+     scripts over a shared `harness.mjs` that codifies what was re-derived every
+     session (http-server invocation, guest→sandbox flow, overlay dismissers,
+     `pageerror` capture). Playwright resolves from **outside** the repo via
+     `BASIE_PW_ROOT` — no heavy deps land here. Both exit non-zero on failure.
+   - New root `package.json` — minimal, exists for `"type": "module"` so game ES
+     modules import in Node. **Browsers ignore it; verified the game still boots.**
+   - **No game source changed** — every module in scope was importable as-is; no
+     testability seam was needed.
+   - **Verified:** `npm test` 128/128 green; deliberately broke one assertion → exit 1,
+     reverted → exit 0. Both smoke scripts pass against a live server with **zero page
+     errors**; deliberately failed a check → exit 1, reverted → exit 0.
+     `check-comments` clean.
+   - **Deviation from the plan:** `node --test tests/unit/` (the directory form the
+     plan specified) fails on Node 26 — it tries to load the directory as a module.
+     The `test` script uses the glob form `node --test "tests/unit/**/*.test.js"`.
+
+### Landed this session (2026-07-16, earlier)
+
+1. **Grit reskin Phase B1 — grid data model + generator** (ADR 0011). Data only, no
+   renderer work.
+   - New `js/entities/data/worldGrid.js` — geometry owner: `GRID` (96×96 cells @ 100px
+     = 9600×9600 world, ~7× the old area), 3×3 `SECTOR_OF` layout (32×32 cells per
+     region, same 9 region ids), `CURATED_CELLS` (all 26 curated POIs as cell coords),
+     cell↔px helpers.
+   - New `js/entities/data/gridGen.js` — deterministic hash/value-noise `fbm`;
+     `terrainAt(cx,cy)` → 6 terrain types (measured spread: wasteland 35%, cracked 31%,
+     forest 15%, rubble 10%, water 6%, ridge 4%); `generateFillerPois()` → 99 filler
+     nodes/camps, ids `gen_<region>_<n>`, spaced off curated POIs and off water/ridge.
+   - `worldMap.js` reworked: authors regions/factions/curated POIs; `bounds`, `home`,
+     region `rect`/`center`, POI `x,y` now **derived from cells** at the bottom of the
+     file. Every downstream px consumer (WorldRenderer, WorldCamera, MarchManager)
+     unchanged. Regions gained a `tier` field (1 home → 6 ruin) for filler level scaling.
+   - **Generator lives in `entities/data/`, not `systems/world/` as the design doc said**
+     — `WORLD_MAP` is composed at data-module load, so data would have had to import from
+     systems. Recorded in ADR 0011; design doc annotated.
+   - **`worldState.js` needed no changes** — its seed/reconcile is already id-driven, so
+     filler POIs flow through automatically. The design doc expected a change here; it
+     was wrong.
+   - Px-coupled constants scaled to hold behavior: `BASE_SPEED_PX` 80 → **265**
+     (march times land within ±7% of pre-B1); Mistwood watchtower `revealRadius`
+     760 → **2000**.
+   - **Verified** (probes in this session's scratchpad `b1/`, harness notes below):
+     headless module probe — 26 curated POIs all land in their own region sector, filler
+     8–14 per region, byte-identical output across two generator runs, no id collisions,
+     no filler on water/ridge, home_vale camp-free. Save probe against the **real**
+     `worldState.js` with a simulated pre-B1 save — node depletion, camp respawn timers,
+     looted ruin, boss window, and region/outpost ownership all survive; 99 filler POIs
+     seed fresh; no orphaned entries. Live browser boot (Play as Guest) — 125 POIs,
+     9 regions, home at derived (1650, 8050), **zero page/console errors**.
+   - **Not verified:** a real dispatched march. A fresh guest save has no squads, so
+     `previewMarch` couldn't be driven live — the distance/time math was checked in the
+     probe only. Worth exercising once a save with squads exists.
+
+### Landed earlier (2026-07-15, later session)
 
 7. **Grit reskin Phase A2 — UI theme shift (military-salvage).** Retheme is CSS-only.
    - `css/base/variables.css`: rewrote the palette — backgrounds cool-220 → warm
@@ -115,6 +230,18 @@
 
 ## Known issues / debt
 
+- **`WorldRenderer.js` is 426 ln** — B2 took it 504 → 426 by extracting the tile engine,
+  but it's still over the ~400 ceiling. The residual is POI-marker drawing (marker, level
+  badge, state sub-badge, fog marker); `worldMarkers.js` is the obvious next extraction,
+  and A4/B3 both touch marker art — do it there rather than as a standalone pass.
+- **Playwright lives in a temp dir** — `C:\Users\Steve\AppData\Local\Temp\claude\basie-verify\`.
+  `tests/browser/harness.mjs` resolves it from there (override with `BASIE_PW_ROOT`).
+  Expect to re-run `npm install playwright` there after a temp cleanup; tier 1
+  (`npm test`) is unaffected.
+- **Scratchpad module probes are obsolete** — the old copy-to-scratchpad-with-
+  `{"type":"module"}` trick is superseded by the root `package.json` + `tests/unit/`.
+  Write a real test that imports the module instead; never copy game logic into a probe.
+
 - **Most systems are bugged / roughly built** (owner's assessment, 2026-07-15). Feature
   checkmarks in the roadmap mean "implemented", not "verified". A systems bug audit is
   queued in `docs/30-roadmap.md` (Hardening) — treat existing manager behavior with
@@ -130,24 +257,43 @@
 - `docs/` wiki is new (2026-07-15); design pages were back-filled from shipped specs —
   correct them in place if they drift from code.
 
-## Next steps (session ended 2026-07-15 — resume here)
+## Next steps (session ended 2026-07-16 — resume here)
 
-1. ~~Fix the two serious audit bugs~~ — **done this session** (see above). Tree is
-   commit-ready; **Steve commits himself**, sessions never commit.
-2. ~~Split `CityRenderer.js`~~ — **done this session**. New siblings `cityInput.js` /
-   `cityAgents.js` / `cityAmbient.js` (collaborator classes, back-ref to renderer).
-   CityRenderer 1123 → 818 ln; residual drawing left for ADR 0009's projection swap.
-3. ~~Grit reskin Phase A1 + A2~~ — **both done this session** (see above). Next reskin
-   phase: **B1 grid data model** (`docs/10-design/grit-reskin.md` § B1 — new
-   `worldGrid.js` + `gridGen.js`, no rendering yet; watch the `worldState.js`
-   seed/reconcile gotcha for the new POI id set). Steve should eyeball A1+A2 in the
-   browser and flag tuning: A1 (plaque position/size, vignette strength, dusk warmth),
-   A2 (amber saturation, warm-neutral text contrast, the deferred gacha rarity ladder).
+0. **Use the suite.** `npm test` is the cheap gate — run it before and after any change
+   to march/world/data/building-rules logic, and add cases as you go (contract:
+   `tests/README.md`). B2's geometry split worked out as hoped: the pure math went to
+   `tests/unit/gridLayer.test.js` and only the pixel behaviour needed `world-smoke.mjs`.
+   Worth adding when someone's in the area: SaveManager round-trip, march dispatch
+   end-to-end (needs a save with squads — the gap B1 left), combat resolution.
+
+1. **Steve: eyeball B2 in the browser** — this is the call to make before picking the
+   next phase. The grid renders and reads correctly, but it is **flat-colour placeholder**
+   (that's B2's remit; B3 brings the texture atlas). Judge whether the map now looks
+   *plausible* or *programmer-art*: the design doc's own warning is "don't let B3 slip
+   long after B2". One-line tunables if it needs it: `TERRAIN_COLOR` (the six cell
+   colours), the tint alphas, and the per-cell jitter strength — all at the top of
+   `js/ui/world/gridLayer.js`. Also still pending: B1 filler density (8–14/sector,
+   `FILLER_MIN_SPACING` 3 — the map now has 99 extra POIs), A1 tuning (plaque
+   position/size, vignette, dusk warmth) and A2 (amber saturation, text contrast, the
+   deferred gacha rarity ladder).
+2. **Next reskin phase — sequencing needs a decision, not a default.** The plan says C1
+   sound next, with B3 art last. Reasonable case for pulling **B3 forward**: B2 just
+   shipped the map in placeholder flat colour, B3 is the cheapest AI-art win in the
+   project, and it's the phase that makes the grid actually *sell*. Against: B3 needs
+   user-in-the-loop art generation; C1 is a self-contained session with assets already
+   in the repo. **Steve's call** (see (1) — decide it by looking at the map).
+   If B3: note ADR 0013 — the fixed-texture-scale chunk cache is crisp only because
+   cells are flat uniform fills. A real atlas breaks that assumption and needs either a
+   zoom-bucketed cache or a native-resolution texture. Plan for it up front; don't
+   discover it mid-phase.
+3. Balance items B1 created (roadmap → Hardening): 99 filler nodes change gather supply;
+   `dragon_spire`/`command_ruin` filler is unguarded (neutral → no faction enemy pool);
+   `BASE_SPEED_PX` 265 preserves old times rather than being tuned for the new map.
 4. Remaining world/march audit findings (lower severity, roadmap → Hardening): gather
    economic-bonus no-op clamp, `resolveMarchBattle` `milMult < 1` debuff trap, and a
    buff-dependent *UI* listener for `world:buffsChanged`.
 5. Queue the comment-cleanup session (low-cost model; `node scripts/check-comments.mjs`
-   lists 17 violations).
+   lists 16 violations — none in the B1 files).
 
 ## State of decisions (don't re-litigate)
 

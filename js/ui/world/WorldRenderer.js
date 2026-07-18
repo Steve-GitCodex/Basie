@@ -4,19 +4,21 @@
  * reads WorldMapManager + MarchManager snapshots, never mutates state; intents
  * flow out through the callbacks supplied by WorldMapUI.
  *
- * Layers: terrain → region territories (organic polygon fill + glow rim + label)
- * → POI markers (icon + faction ring + level badge + state) → march arcs →
- * hover/selection highlight. Terrain/regions render in world space; markers and
- * arcs render in screen space so icons stay legible at every zoom.
+ * Layers: tile grid (delegated to GridLayer — terrain, faction tint, fog, seams)
+ * → region labels → POI markers (icon + faction ring + level badge + state) →
+ * march arcs → hover/selection highlight. The grid and labels render in world
+ * space; markers and arcs render in screen space so icons stay legible at every
+ * zoom.
  */
 import { WORLD_MAP } from '../../entities/GAME_DATA.js';
 import { WorldCamera } from './WorldCamera.js';
+import { GridLayer } from './gridLayer.js';
 import { hitTestPOI, arcPoint } from './worldProjection.js';
-import { WORLD_BACKDROP, LAND_BASE, grime } from './worldGrade.js';
+import { WORLD_BACKDROP, grime } from './worldGrade.js';
 
 const TAP_SLOP_PX = 6;
 const TAP_MAX_MS = 500;
-const POI_PICK_RADIUS = 42;   // world px
+const POI_PICK_RADIUS = 50;   // world px — half a 100px grid cell
 const MARKER_R = 16;          // screen px
 const HOME_ZOOM = 0.7;
 
@@ -31,6 +33,7 @@ export class WorldRenderer {
 
     this.ready = false;
     this._camera = new WorldCamera(() => { this._dirty = true; });
+    this._grid = new GridLayer(opts.wm);
     this._pois = WORLD_MAP.pois;
     this._regions = WORLD_MAP.regions;
     this._selected = null;
@@ -71,7 +74,7 @@ export class WorldRenderer {
   stop() { this._running = false; cancelAnimationFrame(this._raf); }
 
   setSelected(poiId) { this._selected = poiId; this._dirty = true; }
-  syncState() { this._dirty = true; }
+  syncState() { this._grid.invalidate(); this._dirty = true; }
 
   /** Frame the home city. */
   home() { this._camera.centerOn(WORLD_MAP.home.x, WORLD_MAP.home.y, HOME_ZOOM); }
@@ -179,8 +182,8 @@ export class WorldRenderer {
 
     // World-space layers
     ctx.setTransform(z, 0, 0, z, cam.x * this._dpr, cam.y * this._dpr);
-    this._drawTerrain();
-    this._drawRegions();
+    this._grid.draw(ctx, cam);
+    this._drawRegionLabels();
 
     // Screen-space overlays (markers, arcs, labels)
     ctx.setTransform(this._dpr, 0, 0, this._dpr, 0, 0);
@@ -188,132 +191,50 @@ export class WorldRenderer {
     for (const poi of this._pois) this._drawMarker(poi);
   }
 
-  _drawTerrain() {
-    // No bounded "playfield" rectangle — that read as an outer box around the
-    // tiles. The backdrop sea (painted in _draw) extends seamlessly; each region
-    // tile is its own inked land mass floating on it, gutters are open sea.
-    // (intentionally empty)
+  _drawRegionLabels() {
+    for (const r of this._regions) this._drawRegionLabel(r);
   }
 
-  _drawRegions() {
-    const ctx = this._ctx;
-    for (const r of this._regions) this._drawRegionTile(r);
-  }
-
-  _drawRegionTile(r) {
+  _drawRegionLabel(r) {
     const ctx = this._ctx;
     const owned = this._wm.isPlayerOwned(r.id);
     const ruin = !!r.isCommandCenter;
     const faction = WORLD_MAP.factions[r.factionId];
     const color = grime(owned ? '#3ad17a' : (ruin ? '#9aa0a8' : (faction?.color ?? '#888')));
     const locked = !owned && !this._wm.isRegionUnlocked(r.id);
-
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
-
-    // solid land body: a mud/ash land base, then a faction-grime tint
-    this._traceRegion(ctx, r);
-    ctx.fillStyle = LAND_BASE;
-    ctx.fill();
-    this._traceRegion(ctx, r);
-    ctx.fillStyle = this._alpha(color, owned ? 0.30 : 0.20);
-    ctx.fill();
-
-    // hand-drawn map border: a thick dark ink outline, then a thinner faction line
-    // sitting inside it (matte, not neon).
-    this._traceRegion(ctx, r);
-    ctx.lineWidth = ruin ? 13 : 11;
-    ctx.strokeStyle = `rgba(12,11,9,${locked ? 0.7 : 0.92})`;
-    ctx.stroke();
-    this._traceRegion(ctx, r);
-    ctx.lineWidth = ruin ? 4 : 3;
-    ctx.strokeStyle = this._alpha(color, locked ? 0.45 : (owned ? 0.95 : 0.8));
-    ctx.stroke();
-
-    // ruin "ready to assault" pulse (unlocked but still unowned)
-    if (ruin && !owned && !locked) {
-      const pulse = 0.3 + 0.4 * Math.sin(Date.now() / 380);
-      this._traceRegion(ctx, r);
-      ctx.lineWidth = 4;
-      ctx.strokeStyle = this._alpha('#ffd34e', pulse);
-      ctx.stroke();
-    }
-
-    // locked overlay dims the tile + adds a lock glyph
-    if (locked) {
-      this._traceRegion(ctx, r);
-      ctx.fillStyle = 'rgba(10,9,7,0.45)';
-      ctx.fill();
-    }
-
-    // label at the centroid
     const c = this._centroid(r);
+    const scale = 1 / this._camera.zoom; // constant screen size at every zoom
+
+    ctx.save();
+    ctx.translate(c.x, c.y);
+    ctx.scale(scale, scale);
     ctx.textAlign = 'center';
+
+    if (ruin && !owned && !locked) { // "ready to assault" pulse around the sector
+      const pulse = 0.3 + 0.4 * Math.sin(Date.now() / 380);
+      const half = (r.rect.x1 - r.rect.x0) / 2 / scale;
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = this._alpha('#ffd34e', pulse);
+      ctx.strokeRect(-half + 8, -half + 8, half * 2 - 16, half * 2 - 16);
+    }
     if (locked) {
       ctx.font = '30px Outfit, sans-serif';
       ctx.fillStyle = 'rgba(255,255,255,0.55)';
-      ctx.fillText('🔒', c.x, c.y - 22);
+      ctx.fillText('🔒', 0, -22);
     }
-    ctx.fillStyle = this._alpha(color, locked ? 0.7 : 0.95);
     ctx.font = `700 ${ruin ? 30 : 28}px Outfit, sans-serif`;
-    ctx.fillText(`${r.name}${owned ? '  ✓' : ''}`, c.x, c.y);
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = 'rgba(10,9,7,0.8)';
+    ctx.strokeText(`${r.name}${owned ? '  ✓' : ''}`, 0, 0);
+    ctx.fillStyle = this._alpha(color, locked ? 0.7 : 0.95);
+    ctx.fillText(`${r.name}${owned ? '  ✓' : ''}`, 0, 0);
+    ctx.restore();
   }
 
   _centroid(r) {
     const c = r.rect;
     if (!c) return { x: r.center.x, y: r.center.y };
     return { x: (c.x0 + c.x1) / 2, y: (c.y0 + c.y1) / 2 };
-  }
-
-  /** Trace a region's hand-drawn outline as a closed polyline (round joins soften
-   *  it). The points already carry the organic warp + seam inset, and seams stay
-   *  matched because the warp is a continuous field shared by both neighbours. */
-  _traceRegion(ctx, r) {
-    const pts = this._outline(r);
-    ctx.beginPath();
-    if (!pts) { ctx.arc(r.center.x, r.center.y, r.radius ?? 400, 0, Math.PI * 2); return; }
-    ctx.moveTo(pts[0][0], pts[0][1]);
-    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
-    ctx.closePath();
-  }
-
-  // A continuous warp field applied to ALL tiles so a border shared by two cells
-  // gets the same displacement from both sides → tiles stay tessellated while their
-  // straight cell edges read as organic hand-drawn curves.
-  _warpX(x, y) { return 30 * Math.sin(0.0034 * y + 1.3) + 16 * Math.sin(0.0072 * x + 0.6); }
-  _warpY(x, y) { return 30 * Math.sin(0.0031 * x + 2.1) + 16 * Math.sin(0.0067 * y + 1.9); }
-
-  /** Build a region tile outline from its `rect`: subdivide the perimeter, warp each
-   *  sample by the shared field, then inset toward the centroid so a thin seam shows
-   *  between neighbours. Cached per region id (stable across frames). */
-  _outline(r) {
-    const c = r.rect;
-    if (!c) return null;
-    this._outlineCache ??= new Map();
-    const hit = this._outlineCache.get(r.id);
-    if (hit) return hit;
-
-    const STEP = 90;   // perimeter sample spacing (world px)
-    const SEAM = 11;   // radial inset → ~2·SEAM thin seam between neighbours
-    const cx = (c.x0 + c.x1) / 2, cy = (c.y0 + c.y1) / 2;
-    const raw = [];
-    const edge = (x0, y0, x1, y1) => {
-      const n = Math.max(1, Math.round(Math.hypot(x1 - x0, y1 - y0) / STEP));
-      for (let i = 0; i < n; i++) { const t = i / n; raw.push([x0 + (x1 - x0) * t, y0 + (y1 - y0) * t]); }
-    };
-    edge(c.x0, c.y0, c.x1, c.y0); // top
-    edge(c.x1, c.y0, c.x1, c.y1); // right
-    edge(c.x1, c.y1, c.x0, c.y1); // bottom
-    edge(c.x0, c.y1, c.x0, c.y0); // left
-
-    const out = raw.map(([x, y]) => {
-      const wx = x + this._warpX(x, y);
-      const wy = y + this._warpY(x, y);
-      const dx = cx - wx, dy = cy - wy, d = Math.hypot(dx, dy) || 1;
-      return [wx + (dx / d) * SEAM, wy + (dy / d) * SEAM];
-    });
-    this._outlineCache.set(r.id, out);
-    return out;
   }
 
   _drawMarker(poi) {

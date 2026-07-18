@@ -161,7 +161,14 @@ on cells, fog over the unknown, marches crawling across it. **Keep the entire ma
 state machine** (`MarchManager`, `WorldMapManager`, resolver, buffs, fog sets) — this is a
 data + renderer replacement, not a systems rewrite.
 
-### Phase B1 — Grid data model + generator  *(1 session, no rendering yet)*
+### Phase B1 — Grid data model + generator  *(DONE 2026-07-16 — ADR 0011)*
+
+> **As built** (differs from the plan below in two places): the generator lives in
+> `js/entities/data/gridGen.js`, **not** `js/systems/world/` — `WORLD_MAP` must be
+> composed at data-module load, and data must not import from systems (ADR 0011).
+> And `worldState.js` needed **no changes**: its seed/reconcile is already id-driven, so
+> filler POIs flow through automatically. Shipped: 96×96 @ 100px, 9 sectors of 32×32,
+> 26 curated + 99 filler POIs, `BASE_SPEED_PX` 80→265 to hold march times.
 
 - New module `js/entities/data/worldGrid.js` (data) + `js/systems/world/gridGen.js`
   (deterministic generator):
@@ -189,7 +196,17 @@ data + renderer replacement, not a systems rewrite.
   determinism across two generator runs, load an old save and confirm region owners and
   curated-POI state survive.
 
-### Phase B2 — Grid renderer  *(1–2 sessions)*
+### Phase B2 — Grid renderer  *(DONE 2026-07-16 — ADR 0013)*
+
+> **As built** (differs from the plan below in two places): `invalidate()` drops the
+> **whole** chunk cache rather than the per-chunk invalidation specified here — only
+> viewport chunks are ever rebuilt, so targeting is bookkeeping with no payoff. And
+> `HOME_ZOOM` was **not** retuned (0.7 frames ~18 cells across, which reads right);
+> only `POI_PICK_RADIUS` moved, 42 → 50 (half a cell). Shipped: `gridLayer.js` (226 ln),
+> 16×16-cell chunks at a fixed 512×512 texture scale blitted with smoothing off,
+> flat-fill LOD below zoom 0.22, per-cell fog with no new save state.
+> **Note for B3:** the fixed-texture-scale cache is only crisp because cells are flat
+> uniform fills. A real terrain atlas invalidates that — see ADR 0013.
 
 Replace the organic-region terrain layer in `WorldRenderer` with the tile grid. Keep the
 POI-marker, march-arc, and input layers as-is (they're screen-space and coordinate-based).

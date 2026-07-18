@@ -13,7 +13,7 @@ Deep design lives in `docs/10-design/`; the session handoff is `docs/40-active.m
 |---|---|---|
 | **1** | UI redesign — iso city, blueprint + placements, floating-dock nav, build queue sidebar, HUD restyle, SVG icon system | [x] done |
 | **2** | World map + marches — MVP (gather/attack, regions, Rally Point) **and** fast-follows (scout, ruins, outposts, world bosses, fog) | [x] implemented (uncommitted as of 2026-07-15); hardening open |
-| **Reskin** | Grit reskin (art direction, tile-grid world, juice) — `docs/10-design/grit-reskin.md`, ADR 0008 | [~] in progress (A1+A2 done 2026-07-15; next B1) |
+| **Reskin** | Grit reskin (art direction, tile-grid world, juice) — `docs/10-design/grit-reskin.md`, ADR 0008 | [~] in progress (A1+A2 done 2026-07-15, B1+B2 done 2026-07-16; next C1) |
 | **3** | **Arena** — PvP + alliance co-op boss fights + ranks; eventually replaces campaign combat | [ ] blocked on Phase 7 |
 | **4** | AI opponents (`AIManager`) — factions grow with the player, re-capture regions (ADR 0005 seeds this) | [ ] after reskin |
 | **5** | Map events & objectives | [ ] |
@@ -26,7 +26,22 @@ Sequencing per `docs/10-design/grit-reskin.md` — each phase ≈ one session, i
 shippable: A1 grim grade → A2 UI theme → B1 grid data → B2 grid renderer → C1 sound →
 A4 fiction pass → C2/C3 juice → A3 sprites + B3 terrain art (user-in-the-loop last).
 
-- [x] A1 · [x] A2 · [ ] B1 · [ ] B2 · [ ] C1 · [ ] A4 · [ ] C2 · [ ] C3 · [ ] A3 · [ ] B3
+- [x] A1 · [x] A2 · [x] B1 · [x] B2 · [ ] C1 · [ ] A4 · [ ] C2 · [ ] C3 · [ ] A3 · [ ] B3
+
+**B2 landed 2026-07-16** (ADR 0013): `js/ui/world/gridLayer.js` (226 ln) renders the cell
+grid into 16×16-cell offscreen chunks (512×512 texture, nearest-neighbour blit → crisp at
+any zoom), flat-fills chunks below zoom 0.22, and derives per-cell fog from existing
+region/outpost state — **no new save state**. `WorldRenderer` 504 → 426 ln; the organic
+warp/outline code is deleted. 60fps verified during a pan sweep. The map now reads as a
+tile grid, in flat-colour placeholder — **B3's terrain atlas should follow close behind**
+(it also breaks the fixed-texture-scale assumption; see ADR 0013).
+
+**B1 landed 2026-07-16** (ADR 0011): 96×96 cells @ 100px = 9600×9600 world, 9 sectors of
+32×32 cells. `worldGrid.js` owns geometry (cells → derived px), `gridGen.js` generates
+terrain + 99 filler POIs from a fixed seed. Region/POI ids untouched; old saves verified
+intact. `BASE_SPEED_PX` 80→265 holds march times steady. **No renderer work yet** — the
+map still draws the warped organic region polygons over the new (larger) rects; B2
+replaces that terrain layer with the chunked grid.
 
 **A3 is now bundled with the base-view projection swap** (ADR 0009): diamond iso →
 square-grid ¾ view (`gridMath.js` replaces `isoMath.js`), new square-tile sprite
@@ -44,6 +59,17 @@ sprite generation.
 
 ## Hardening & housekeeping
 
+- [x] **Test suite** (2026-07-16, ADR 0012) — two tiers, additive by contract
+  (`tests/README.md`): `npm test` runs 128 `node:test` unit tests across 9 files
+  (data invariants, worldState seed/reconcile, march resolver/math/rules, region
+  buffs, grid determinism, building rules, EventBus); `node tests/browser/*-smoke.mjs`
+  drives a real guest-sandbox boot via Playwright resolved from outside the repo.
+  No game source changed. **Every bug fix from here on lands with a regression test.**
+  Not yet covered: SaveManager round-trip, tutorial contract, march dispatch
+  end-to-end, combat resolution.
+  Grown by B2 (2026-07-16): 138 unit tests (`gridLayer` chunk geometry/LOD, incl. the
+  chunk⊂sector invariant ADR 0013 depends on) + 3 `world-smoke` checks (terrain variety,
+  owned-tint recolor through the *cached* path).
 - [ ] **Systems bug audit** — most managers are bugged / roughly built (owner's
   assessment). Sweep system by system (browser + Playwright harness), file findings
   here, fix the load-bearing ones before the reskin builds on top.
@@ -109,6 +135,10 @@ sprite generation.
   save/reload round-trip of every new field, camera reach, no console errors.
 - [ ] **Phase 2 balance pass** — march times vs speed, gather rates vs base economy,
   per-tile difficulty ramp (L3 → L10 ruin), buff percentages + ruin capstone.
+  Added by B1 (ADR 0011): 99 generated filler nodes/camps materially change gather
+  supply — retune rates against the base economy; `dragon_spire` + `command_ruin` are
+  neutral so their filler is resource-nodes-only (reads unguarded for endgame tiles);
+  `BASE_SPEED_PX` 265 was set to preserve old march times, not tuned for the new map.
 - [ ] Decide campaign-combat retirement timing (interim: marches run parallel to the
   menu campaign until the Arena).
 
