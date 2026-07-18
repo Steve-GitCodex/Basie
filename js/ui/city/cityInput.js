@@ -102,7 +102,7 @@ export class CityInput {
         const slot = r._slotAtClient(e.clientX, e.clientY);
         if (!slot) r._onEmptyClick();
         else if (slot.empty) r._onPlotClick(slot.plotId, slot.zone);
-        else r._onTileClick(slot.buildingId, slot.instanceIndex);
+        else { r.popTile(slot); r._onTileClick(slot.buildingId, slot.instanceIndex); }
       }
     };
     cv.addEventListener("pointerup", endPointer);

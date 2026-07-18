@@ -61,7 +61,7 @@ export class WorldMapUI {
     // Reactive re-renders
     const refresh = () => { this._renderer?.syncState(); this._renderMarchPanel(); };
     eventBus.on('march:dispatched', refresh);
-    eventBus.on('march:arrived', (m) => { this._announceArrival(m); refresh(); this._refreshOpenPanel(); });
+    eventBus.on('march:arrived', (m) => { this._announceArrival(m); this._impactFor(m); refresh(); this._refreshOpenPanel(); });
     eventBus.on('march:returning', refresh);
     eventBus.on('march:completed', (m) => { this._announceComplete(m); refresh(); this._refreshOpenPanel(); });
     eventBus.on('world:poiChanged', () => { this._renderer?.syncState(); this._refreshOpenPanel(); });
@@ -70,9 +70,18 @@ export class WorldMapUI {
     eventBus.on('world:outpostCaptured', () => { this._renderer?.syncState(); this._refreshOpenPanel(); });
     eventBus.on('world:regionCaptured', (d) => {
       this._notify?.show?.('success', '🚩 Region captured', this._wm.getRegion(d.regionId)?.name ?? '');
+      this._renderer?.rippleRegion(d.regionId);
       this._renderer?.syncState();
       this._renderLegend();
     });
+  }
+
+  _impactFor(m) {
+    if (!m?.targetPoiId) return;
+    if (m.outcome === 'defeat') this._renderer?.impactAt(m.targetPoiId, 'defeat');
+    else if (['victory', 'boss_victory', 'captured', 'explored'].includes(m.outcome)) {
+      this._renderer?.impactAt(m.targetPoiId, 'victory');
+    }
   }
 
   /** Territory legend: "My Territory" + each enemy faction (✓ when fully cleared). */

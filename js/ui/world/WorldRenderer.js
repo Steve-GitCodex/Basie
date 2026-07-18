@@ -15,12 +15,14 @@ import { WorldCamera } from './WorldCamera.js';
 import { GridLayer } from './gridLayer.js';
 import { hitTestPOI, arcPoint } from './worldProjection.js';
 import { WORLD_BACKDROP, grime } from './worldGrade.js';
+import { ParticleField } from '../fx/particles.js';
 
 const TAP_SLOP_PX = 6;
 const TAP_MAX_MS = 500;
 const POI_PICK_RADIUS = 50;   // world px — half a 100px grid cell
 const MARKER_R = 16;          // screen px
 const HOME_ZOOM = 0.7;
+const AMBIENT_MS = 33;        // ash haze redraw cadence (~30fps)
 
 export class WorldRenderer {
   constructor(opts) {
@@ -39,12 +41,16 @@ export class WorldRenderer {
     this._selected = null;
     this._hovered = null;
 
+    this._ash = new ParticleField(140);   // screen-space ambient haze
+    this._fx = new ParticleField(220);    // world-space bursts/ripples
+
     this._raf = 0;
     this._running = false;
     this._dirty = true;
     this._pointers = new Map();
     this._drag = null;
     this._lastTs = 0;
+    this._lastAmbient = 0;
   }
 
   init() {
@@ -75,6 +81,27 @@ export class WorldRenderer {
 
   setSelected(poiId) { this._selected = poiId; this._dirty = true; }
   syncState() { this._grid.invalidate(); this._dirty = true; }
+
+  /** Spark burst at a POI — battle resolution feedback (kind: 'victory'|'defeat'). */
+  impactAt(poiId, kind = 'victory') {
+    const p = this._pois.find(p => p.id === poiId);
+    if (!p) return;
+    this._fx.burst(p.x, p.y, {
+      count: kind === 'defeat' ? 10 : 16,
+      speed: kind === 'defeat' ? 90 : 130,
+      color: kind === 'defeat' ? '#9aa0a8' : '#ffb14e',
+    });
+    this._dirty = true;
+  }
+
+  /** Expanding shockwave over a captured region's centre. */
+  rippleRegion(regionId) {
+    const r = this._regions.find(r => r.id === regionId);
+    if (!r) return;
+    const c = this._centroid(r);
+    this._fx.ripple(c.x, c.y, { size: 20, grow: 900, life: 1.4, width: 12, color: 'rgba(120,255,170,0.9)' });
+    this._dirty = true;
+  }
 
   /** Frame the home city. */
   home() { this._camera.centerOn(WORLD_MAP.home.x, WORLD_MAP.home.y, HOME_ZOOM); }
@@ -167,9 +194,21 @@ export class WorldRenderer {
 
   _frame(ts) {
     if (!this.ready) return;
+    const dt = Math.max(0, Math.min(0.1, (ts - this._lastTs) / 1000));
+    this._lastTs = ts;
+
+    this._ash.haze(dt, {
+      w: this._cssW, h: this._cssH, rate: 3, speed: 5, wind: 7, life: 9,
+      size: 1.6, color: 'rgba(180,170,150,1)', alpha: 0.32,
+    });
+    this._ash.update(dt);
+    this._fx.update(dt);
+
     const hasMarches = this._mm.activeMarches().length > 0;
-    // redraw on change, or continuously while marches animate
-    if (!this._dirty && !hasMarches) return;
+    const hasFx = this._fx.count > 0;
+    const ambientDue = ts - this._lastAmbient > AMBIENT_MS;
+    if (!this._dirty && !hasMarches && !hasFx && !ambientDue) return;
+    if (ambientDue) this._lastAmbient = ts;
     this._dirty = false;
     this._draw(ts);
   }
@@ -184,11 +223,13 @@ export class WorldRenderer {
     ctx.setTransform(z, 0, 0, z, cam.x * this._dpr, cam.y * this._dpr);
     this._grid.draw(ctx, cam);
     this._drawRegionLabels();
+    this._fx.draw(ctx);
 
-    // Screen-space overlays (markers, arcs, labels)
+    // Screen-space overlays (markers, arcs, labels, ambient haze)
     ctx.setTransform(this._dpr, 0, 0, this._dpr, 0, 0);
     this._drawMarchArcs(now);
     for (const poi of this._pois) this._drawMarker(poi);
+    this._ash.draw(ctx);
   }
 
   _drawRegionLabels() {
@@ -396,24 +437,60 @@ export class WorldRenderer {
         const sp = this._camera.worldToScreen(wp.x, wp.y);
         i === 0 ? ctx.moveTo(sp.x, sp.y) : ctx.lineTo(sp.x, sp.y);
       }
-      ctx.strokeStyle = m.type === 'attack' ? 'rgba(255,120,90,0.55)'
-        : m.type === 'scout' ? 'rgba(255,211,78,0.55)' : 'rgba(120,210,255,0.55)';
+      const tint = m.type === 'attack' ? '255,120,90' : m.type === 'scout' ? '255,211,78' : '120,210,255';
+      ctx.strokeStyle = `rgba(${tint},0.55)`;
       ctx.lineWidth = 2;
       ctx.setLineDash([6, 6]);
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // army token at the current position along the arc
+      // fading trail behind the mover, pointing back toward its origin
+      const back = m.phase === 'returning' ? 1 : -1;
+      for (let k = 1; k <= 4; k++) {
+        const tp = this._clamp01(pos + back * k * 0.03);
+        const wpk = arcPoint(home.x, home.y, poi.x, poi.y, tp);
+        const spk = this._camera.worldToScreen(wpk.x, wpk.y);
+        ctx.beginPath();
+        ctx.arc(spk.x, spk.y, 5 - k * 0.7, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${tint},${0.32 - k * 0.06})`;
+        ctx.fill();
+      }
+
+      // convoy token at the current position along the arc
       const wp = arcPoint(home.x, home.y, poi.x, poi.y, pos);
       const sp = this._camera.worldToScreen(wp.x, wp.y);
+      const solid = m.type === 'attack' ? '#ff6b5a' : m.type === 'scout' ? '#ffd34e' : '#6bd4ff';
       ctx.beginPath();
       ctx.arc(sp.x, sp.y, 6, 0, Math.PI * 2);
-      ctx.fillStyle = m.type === 'attack' ? '#ff6b5a' : m.type === 'scout' ? '#ffd34e' : '#6bd4ff';
+      ctx.fillStyle = solid;
       ctx.fill();
       ctx.strokeStyle = 'rgba(0,0,0,0.6)';
       ctx.lineWidth = 1.5;
       ctx.stroke();
+
+      this._drawMarchEta(m, ts, sp, solid);
     }
+  }
+
+  _drawMarchEta(m, ts, sp, color) {
+    const remainMs = m.phase === 'outbound' ? m.arriveAt - ts
+      : m.phase === 'acting' ? m.actUntil - ts
+      : m.returnAt - ts;
+    if (!(remainMs > 0)) return;
+    const secs = Math.ceil(remainMs / 1000);
+    const label = m.phase === 'acting'
+      ? '⚔'
+      : `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+    const ctx = this._ctx;
+    ctx.font = '700 10px Outfit, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    const tw = ctx.measureText(label).width;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(sp.x - tw / 2 - 3, sp.y - 20, tw + 6, 13);
+    ctx.fillStyle = color;
+    ctx.fillText(label, sp.x, sp.y - 8);
+    ctx.textBaseline = 'alphabetic';
   }
 
   _clamp01(v) { return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0; }

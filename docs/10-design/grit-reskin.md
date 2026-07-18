@@ -277,7 +277,16 @@ The repo already contains Kenney sample packs under `assets/audio/` that nothing
 - **Verify**: settings toggle mutes everything; no audio-context errors before first user
   gesture (resume-on-interaction already handled — keep it).
 
-### Phase C2 — Canvas juice  *(1–2 sessions)*
+### Phase C2 — Canvas juice  *(DONE 2026-07-18 — ADR 0018)*
+
+> **As built:** shipped the shared `js/ui/fx/particles.js` (`ParticleField` — pooled,
+> space-agnostic, pure `update`), wired into both renderers via two fields each
+> (screen-space haze + world-space fx). Landed: ambient ash/dust (both views), chimney
+> smoke on producing buildings + construction dust (city), impact burst + capture ripple
+> (world, triggered from `march:arrived`/`world:regionCaptured` in WorldMapUI), convoy
+> movers with a fading trail + ETA pill, and a building tap-pop. **Deferred to a C2
+> follow-up:** battle-toast screen flash + camera nudge, and building light-flicker
+> overlays. No new save state; the world view now redraws at ~30fps while open.
 
 - Shared `js/ui/fx/particles.js` (one lightweight pooled particle module, used by both
   canvases): drifting ash/dust motes (ambient, both views), chimney smoke wisps on

@@ -31,6 +31,7 @@ import { CityInput } from "./cityInput.js";
 import { CityAgents } from "./cityAgents.js";
 import { CityAmbient } from "./cityAmbient.js";
 import { CityGrade } from "./cityGrade.js";
+import { ParticleField } from "../fx/particles.js";
 
 const LABEL_MIN_ZOOM = 0.65;
 // Buildings are seated so their base diamond rests on the tile's top surface:
@@ -94,6 +95,14 @@ export class CityRenderer {
     this._agents = new CityAgents(this);
     this._ambient = new CityAmbient(this, CULL_OBJECT);
     this._grade = new CityGrade(this._assets);
+
+    this._dust = new ParticleField(120);  // screen-space ambient motes
+    this._fx = new ParticleField(180);    // world-space smoke / construction dust
+    this._pops = new Map();               // plotId → tap-pop start ts
+    this._smokeAcc = 0;
+    this._buildAcc = 0;
+    this._smokers = [];                   // built production slots (chimney smoke)
+    this._builders = [];                  // slots under construction (dust)
 
     this._slots = []; // plot scene records, painter-sorted
     this._slotAt = new Map(); // "col,row" → slot
@@ -192,6 +201,9 @@ export class CityRenderer {
       ...this._slots.map((s) => ({ depth: s.col + s.row, slot: s })),
       ...this._props.map((p) => ({ depth: p.col + p.row, prop: p })),
     ].sort((a, b) => a.depth - b.depth);
+
+    this._smokers = this._slots.filter((s) => s.zone === "production" && s.level > 0);
+    this._builders = this._slots.filter((s) => s.isBuilding);
 
     this._dirty = true;
     this._proxyDirty = true;
@@ -385,8 +397,9 @@ export class CityRenderer {
     this._lastTs = ts;
 
     this._agents.update(dt);
+    this._updateFx(dt);
 
-    // Ambient animation (drone, walkers, tint, construction) redraws at
+    // Ambient animation (drone, walkers, tint, particles) redraws at
     // ~30fps; camera/state changes redraw immediately.
     const ambientDue = ts - this._lastAmbient > 33;
     if (!this._dirty && !ambientDue) return;
@@ -395,6 +408,49 @@ export class CityRenderer {
 
     this._draw(ts);
     if (this._proxyDirty) this._syncProxies(ts);
+  }
+
+  _updateFx(dt) {
+    this._dust.haze(dt, {
+      w: this._cssW, h: this._cssH, rate: 2.5, speed: 4, wind: 5, life: 8,
+      size: 1.3, color: "rgba(200,190,168,1)", alpha: 0.28,
+    });
+    this._smokeAcc += dt * 0.8 * this._smokers.length;
+    while (this._smokeAcc >= 1) {
+      this._smokeAcc -= 1;
+      const s = this._smokers[(Math.random() * this._smokers.length) | 0];
+      const c = tileToWorld(s.col, s.row);
+      this._fx.puff(c.x + TILE_W * 0.12, c.y - TILE_H * 0.75, {
+        rise: 16, spread: 5, size: 3.2, life: 2.4, grow: 7,
+        color: "rgba(66,62,56,1)", alpha: 0.34,
+      });
+    }
+    this._buildAcc += dt * 2 * this._builders.length;
+    while (this._buildAcc >= 1) {
+      this._buildAcc -= 1;
+      const s = this._builders[(Math.random() * this._builders.length) | 0];
+      const c = tileToWorld(s.col, s.row);
+      this._fx.puff(c.x, c.y + TILE_H * 0.2, {
+        rise: 9, spread: 12, jitter: TILE_W * 0.5, size: 2.4, life: 1.1, grow: 4,
+        color: "rgba(150,138,116,1)", alpha: 0.3,
+      });
+    }
+    this._fx.update(dt);
+  }
+
+  /** Trigger the tap "pop" grow on a built building slot. */
+  popTile(slot) {
+    if (!slot || slot.empty || (slot.level <= 0 && !slot.isBuilding)) return;
+    this._pops.set(slot.plotId, performance.now());
+    this._dirty = true;
+  }
+
+  _popScale(plotId, now) {
+    const start = this._pops.get(plotId);
+    if (start == null) return 1;
+    const e = (now - start) / 260;
+    if (e >= 1) { this._pops.delete(plotId); return 1; }
+    return 1 + 0.13 * Math.sin(Math.PI * e);
   }
 
   _draw(now) {
@@ -474,11 +530,18 @@ export class CityRenderer {
       this._drawNamePill(hv.name.toUpperCase(), c.x, c.y + TILE_H / 2 + 12);
     }
 
-    // 5 — day/night ambient tint + window lights
+    // 5 — world-space particle fx (chimney smoke, construction dust)
+    this._fx.draw(ctx);
+
+    // 6 — day/night ambient tint + window lights
     this._ambient.drawNight(now);
 
-    // 6 — grim-grade atmosphere: vignette + cold wash + horizon haze
+    // 7 — grim-grade atmosphere: vignette + cold wash + horizon haze
     this._grade.drawOverlay(ctx, this._canvas.width, this._canvas.height);
+
+    // 8 — screen-space ambient dust motes, on top of everything
+    ctx.setTransform(this._dpr, 0, 0, this._dpr, 0, 0);
+    this._dust.draw(ctx);
   }
 
   /** A dark rounded pill with the building name — used for the hovered tile. */
@@ -510,12 +573,13 @@ export class CityRenderer {
     }
 
     const img = this._grade.building(slot.buildingId);
+    const pop = this._popScale(slot.plotId, now);
     const drawBuilding = (image, alpha = 1) => {
       const ctx = this._ctx;
       // Fit the footprint to the plot, then seat the base diamond's bottom vertex
       // on the tile's bottom corner (c.y + TILE_H/2) so the building stands on the
       // ground's top face instead of floating inset above it.
-      const s = (TILE_W / image.width) * BUILDING_FIT;
+      const s = (TILE_W / image.width) * BUILDING_FIT * pop;
       if (alpha !== 1) ctx.globalAlpha = alpha;
       ctx.drawImage(
         image,

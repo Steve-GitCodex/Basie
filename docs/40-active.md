@@ -6,19 +6,48 @@
 ## Current state (2026-07-18)
 
 - Branch: `Working_Branch`. Everything through the concurrent build workers is
-  **committed** (`5876f3b`). **Uncommitted:** grit reskin Phase A4 fiction pass (below)
-  + its regression test — tree is commit-ready.
+  **committed** (`5876f3b`). **Uncommitted:** grit reskin Phase A4 fiction pass + **Phase
+  C2 canvas juice** (both below) + their regression tests — tree is commit-ready.
 - Phase 1 (UI redesign) and Phase 2 (world map MVP + fast-follows) are **done** —
   see `docs/30-roadmap.md`.
 - Current direction: **grit reskin** (`docs/10-design/grit-reskin.md`) — art/feel pass
-  before Phase 4 AI. A1 + A2 + B1 + B2 + C1 sound + **A4 fiction pass** landed. **Next
-  phase = C2 canvas juice** (particles/convoy movers — the bigger feel win) or **B3
-  terrain atlas** (map-selling AI art). See Next steps.
+  before Phase 4 AI. A1 + A2 + B1 + B2 + C1 sound + A4 fiction + **C2 canvas juice**
+  landed. **Next phase = C3 UI/DOM juice** (resource fly-outs, tick-ups, sheet
+  transitions) or **B3 terrain atlas** (map-selling AI art). See Next steps.
 - **The repo has tests now** (ADR 0012). `npm test` before you hand off; fix a bug →
   add a regression test in the matching `tests/unit/*.test.js`. Contract:
   `tests/README.md`.
 
 ### Landed this session (2026-07-18, latest)
+
+10. **Grit reskin Phase C2 — canvas juice** (ADR 0018). Shared pooled particle system
+    lands feel-motion on both canvases; no gameplay/state change.
+    - New `js/ui/fx/particles.js` — `ParticleField`: pooled, **space-agnostic** (draws
+      under whatever ctx transform is active), pure `update(dt)` (integrate → drag → reap
+      by in-place compaction, unit-testable in Node). Shapes `dot`/`spark`/`ring`; emitter
+      helpers `haze`/`burst`/`ripple`/`puff`. Each renderer keeps **two** fields — a
+      screen-space one (ambient) + a world-space one (anchored fx).
+    - `WorldRenderer` — `_ash` + `_fx`; `_frame` updates both every frame and redraws on
+      dirty/marches/live-fx/~30fps ambient tick. Public `impactAt(poiId, kind)` +
+      `rippleRegion(regionId)`; **WorldMapUI** fires them from `march:arrived`
+      (victory→amber burst, defeat→grey) and `world:regionCaptured` (green ripple at region
+      centroid). `_drawMarchArcs` now draws a fading 4-dot trail behind the mover + an ETA
+      pill (`m:ss`, `⚔` while acting) from the phase's absolute timestamp.
+    - `CityRenderer` — `_dust` + `_fx`; `syncState` precomputes `_smokers` (built
+      production slots) + `_builders` (constructing); `_updateFx` trickles dust, dark
+      chimney smoke, and construction dust (all count-paced). `popTile()` (from `cityInput`
+      on a building tap) → `_popScale` gives a ≤13% bottom-anchored sprite pop over 260ms.
+    - **No new save state** (fx are transient, like fog/boss windows). Pool caps bound
+      draw cost. Ripple/impact take **ids not display names** — a fiction name silently
+      no-ops (ADR 0002/0017 rule).
+    - **Deferred (C2 follow-up, TODO):** battle-toast screen flash + camera nudge; building
+      2-frame light-flicker overlays. Lower value, touch toast/overlay wiring.
+    - **Verified:** new `tests/unit/particles.test.js` (8 tests — pool cap, integration,
+      reaping/compaction, fade envelopes, emitter counts; `npm test` **174/174**). boot/
+      world/dev browser smokes all pass, **zero page errors**. Headless `?dev` eyeball
+      (scratchpad `c2-shot.mjs`): convoy mover + live ETA pill drawn on a dispatched gather
+      march, green capture ripple expands over Home Refuge, terrain/ash render; farm built
+      to Lv.1 to exercise the smoker path. `check-comments` clean in all edited/new files.
 
 9. **Grit reskin Phase A4 — fiction pass** (ADR 0017). Post-apocalypse re-fiction of the
    fantasy strings — **display strings only, never ids** (ids are save keys). No systems
@@ -409,15 +438,16 @@
    `tests/README.md`). Worth adding when someone's in the area: SaveManager round-trip,
    march dispatch end-to-end (needs a save with squads), combat resolution.
 
-1. **A4 fiction pass is DONE** (2026-07-18, ADR 0017 — see the "Landed this session" entry
-   above). Two remaining fiction TODOs, both deliberately deferred: (a) the **hero cast** —
-   `heroes.js` + hero-card/fragment strings in `economy.js` (Arch Sorceress/arcane skills,
-   Lord Arcturus) — fold into the Hero recruitment redesign (skill display names are
-   id-coupled); (b) **unit tier names** (`units.js` — Paladin/Crusader/Templar/Archon), a
-   future light pass. **Next reskin phase = C2 canvas juice** (particles/convoy movers, the
-   bigger feel win, 1–2 sessions) or **B3 terrain atlas** (map-selling AI art; note
+1. **C2 canvas juice is DONE** (2026-07-18, ADR 0018 — see the "Landed this session" entry
+   above). **Next reskin phase = C3 UI/DOM juice** (resource fly-out from event origin to
+   the HUD chip + number tick-up — must patch in place, `reactive-ui-no-tick-rebuild` is
+   binding; standardize sheet/modal `--transition-spring`; universal `:active` button scale
+   + the C1 click sample; 1 session) or **B3 terrain atlas** (map-selling AI art; note
    ADR 0013 — a real atlas breaks the fixed-texture-scale chunk cache, plan a
-   zoom-bucketed/native-res cache up front).
+   zoom-bucketed/native-res cache up front). Two **C2 follow-ups** deferred: battle-toast
+   screen flash + camera nudge, and building light-flicker overlays. Two **A4 fiction**
+   TODOs still deferred: hero cast (`heroes.js` + `economy.js`, fold into Hero redesign)
+   and unit tier names (`units.js`).
 
 2. **Optional sound follow-ups (C1 is done/signed-off, only if asked):** add variants to
    `coin`/`dropLeather` (single-clip repeats on rapid collects); the deferred A2 gacha
