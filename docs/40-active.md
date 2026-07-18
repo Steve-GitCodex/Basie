@@ -5,21 +5,51 @@
 
 ## Current state (2026-07-18)
 
-- Branch: `Working_Branch`. Everything through A1+A2 is **committed** (`6273669`,
-  `4d05cf0`). **Uncommitted:** grit reskin Phase B1 + B2 + C1 + the test suite + the
-  `?dev` session flag (below) — tree is commit-ready.
+- Branch: `Working_Branch`. Everything through the concurrent build workers is
+  **committed** (`5876f3b`). **Uncommitted:** grit reskin Phase A4 fiction pass (below)
+  + its regression test — tree is commit-ready.
 - Phase 1 (UI redesign) and Phase 2 (world map MVP + fast-follows) are **done** —
   see `docs/30-roadmap.md`.
 - Current direction: **grit reskin** (`docs/10-design/grit-reskin.md`) — art/feel pass
-  before Phase 4 AI. A1 + A2 + B1 + B2 + **C1 sound** landed (C1 sound map tuned by ear
-  and signed off). **Next phase = A4 fiction pass** (post-apoc renaming — display strings
-  only, never ids); see Next steps for the ready-to-start brief. C2 juice / B3 art are the
-  alternatives.
+  before Phase 4 AI. A1 + A2 + B1 + B2 + C1 sound + **A4 fiction pass** landed. **Next
+  phase = C2 canvas juice** (particles/convoy movers — the bigger feel win) or **B3
+  terrain atlas** (map-selling AI art). See Next steps.
 - **The repo has tests now** (ADR 0012). `npm test` before you hand off; fix a bug →
   add a regression test in the matching `tests/unit/*.test.js`. Contract:
   `tests/README.md`.
 
 ### Landed this session (2026-07-18, latest)
+
+9. **Grit reskin Phase A4 — fiction pass** (ADR 0017). Post-apocalypse re-fiction of the
+   fantasy strings — **display strings only, never ids** (ids are save keys). No systems
+   or geometry changed.
+   - `worldMap.js` — factions (Goblin Clans → Scavenger Packs/SCAV, Bandit Coalition →
+     Red Talon Raiders, Wildlands → The Free Wastes), region names (Mistwood → Ashwood,
+     Goblin Crest → Vulture Ridge, Dragon Spire → Behemoth Spire, Home Vale → Home
+     Refuge), curated POI names + icons (Dragon's Lair → Behemoth Nest 🦂, Haunted Keep →
+     Irradiated Depot ☢️, Warden Shrine → Warden Bunker 📡, watchtower → Radar Mast 📡,
+     Goblin Camp → Scav Camp 🪓, castle/pagoda fort emoji → 🏭/🚧). Every id, factionId,
+     monsterId, capturesRegion, regionId, and numeric field byte-identical.
+   - `combat.js` — `MONSTERS_CONFIG` + `CAMPAIGNS_CONFIG` names/icons/descriptions/wave
+     names (goblin_camp → "Scav Warband", undead_legion → "Ghoul Horde" ☣️, demon_gates →
+     "Meltdown Site" ☢️, dragon_lair → "Behemoth Nest", chaos_titan → "The Colossus",
+     etc.). All ids/monsterId/campaignStage/requires/stats untouched.
+   - `buildings.js` — `magictower` only: Magic Tower → **Comms Tower** 📡, description +
+     effectLabel de-magicked. Id `magictower` stays (save key + nav-view key). Every
+     other building name was already genre-neutral.
+   - `story.js` — light re-fiction of all 6 chapters (keep/empire/arcane → outpost/
+     settlement/power-grid; Steward → Quartermaster, Scholar → Engineer). Ids/questIds/
+     buildingIds/triggers/rewards preserved.
+   - **Deferred to a later light pass (TODO, ADR 0017):** the **hero cast** (`heroes.js`
+     + hero-card/fragment strings in `economy.js` — Arch Sorceress/arcane skills, Lord
+     Arcturus) is left for the Hero recruitment redesign (skill names are id-coupled;
+     re-fiction it there to avoid double churn); **unit tier names** (`units.js` —
+     Paladin/Crusader/Templar/Archon) are borderline and out of A4 scope.
+   - **Verified:** new regression test `gameData.test.js` → "save-key ids are unchanged
+     by fiction passes" freezes region/faction/curated-POI/monster id sets (`npm test`
+     **166/166**). boot/world/dev browser smokes all pass, **zero page errors**;
+     world-smoke's id-driven seed/reconcile + region-ownership checks confirm no id was
+     orphaned. `check-comments` clean in the edited files.
 
 8. **Multi-instance buildings are now numbered where you look at them.** Bug: upgrade
    prereqs read "Upgrade House 1 first" but every House/Barracks/etc. showed the same
@@ -379,26 +409,15 @@
    `tests/README.md`). Worth adding when someone's in the area: SaveManager round-trip,
    march dispatch end-to-end (needs a save with squads), combat resolution.
 
-1. **Next reskin phase = A4 fiction pass** (Steve's call after C1 landed; the B2 map was
-   judged good enough that B3 art can wait). A4 is fully self-contained — **display strings
-   only, never ids** (ids are save keys; loading an existing save must show all owned
-   regions/outposts/looted ruins intact = proof no id was touched). Spec: `grit-reskin.md`
-   § A4. Scope:
-   - `js/entities/data/worldMap.js` — region/POI/faction `name`, `tag`, `icon` (Goblin
-     Clans → "Scavenger Packs", Dragon's Lair → "Behemoth Nest", shrine/watchtower → relay
-     bunker/radar mast…). WorldRenderer draws `poi.icon` — check the draw path before
-     swapping emoji for SVG glyphs.
-   - `MONSTERS_CONFIG` display names (goblin_camp → "Scav Warband"; **id stays**
-     `goblin_camp`).
-   - Building display names in building data (Magic Tower → "Comms Tower" etc.).
-   - Hero/story/quest strings: **light pass, not a rewrite** — fix the hardest fantasy
-     clashes, TODO-list the rest (story text is large).
-   - **Verify:** load a pre-existing save; confirm owned regions/outposts/looted ruins
-     survive. Add a `worldState`/data test asserting ids are unchanged if practical.
-   - Alternatives if priorities shift: **C2 canvas juice** (particles/convoy movers, the
-     bigger feel win, 1–2 sessions) or **B3 terrain atlas** (map-selling AI art; note
-     ADR 0013 — a real atlas breaks the fixed-texture-scale chunk cache, plan a
-     zoom-bucketed/native-res cache up front).
+1. **A4 fiction pass is DONE** (2026-07-18, ADR 0017 — see the "Landed this session" entry
+   above). Two remaining fiction TODOs, both deliberately deferred: (a) the **hero cast** —
+   `heroes.js` + hero-card/fragment strings in `economy.js` (Arch Sorceress/arcane skills,
+   Lord Arcturus) — fold into the Hero recruitment redesign (skill display names are
+   id-coupled); (b) **unit tier names** (`units.js` — Paladin/Crusader/Templar/Archon), a
+   future light pass. **Next reskin phase = C2 canvas juice** (particles/convoy movers, the
+   bigger feel win, 1–2 sessions) or **B3 terrain atlas** (map-selling AI art; note
+   ADR 0013 — a real atlas breaks the fixed-texture-scale chunk cache, plan a
+   zoom-bucketed/native-res cache up front).
 
 2. **Optional sound follow-ups (C1 is done/signed-off, only if asked):** add variants to
    `coin`/`dropLeather` (single-clip repeats on rapid collects); the deferred A2 gacha

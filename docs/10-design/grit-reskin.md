@@ -134,7 +134,14 @@ full-repaint ceiling). Do the `CityRenderer` split (roadmap: `cityInput`/`cityAg
 - **Verify**: fallback diamond still renders for any missing sprite; grayscale locked
   variant regenerates from the new art.
 
-### Phase A4 — Fiction/copy pass  *(1 session)*
+### Phase A4 — Fiction/copy pass  *(DONE 2026-07-18 — ADR 0017)*
+
+> **As built:** `worldMap.js` (factions/regions/curated-POI names + grit emoji glyphs,
+> kept as emoji not SVG — SVG markers stay B3), `combat.js` (`MONSTERS_CONFIG` +
+> `CAMPAIGNS_CONFIG`), `buildings.js` (`magictower` → Comms Tower only; other names were
+> already genre-neutral), and a light re-fiction of all 6 `story.js` chapters. **Deferred
+> (TODO, ADR 0017):** hero cast (`heroes.js` + hero-card strings in `economy.js`) → folded
+> into the Hero redesign; unit tier names (`units.js`). Frozen-id regression test added.
 
 The world is currently fantasy (goblins, dragons, shrines). Re-fiction to post-apocalypse
 **names only — never ids** (ids are save keys, see ground truth).

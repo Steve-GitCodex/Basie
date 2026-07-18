@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   BUILDINGS_CONFIG, CATEGORY_ZONE, CITY_BLUEPRINT,
-  plotsInZone, plotById, WORLD_MAP,
+  plotsInZone, plotById, WORLD_MAP, MONSTERS_CONFIG,
 } from '../../js/entities/GAME_DATA.js';
 
 const RESOURCE_KEYS = new Set(['wood', 'stone', 'iron', 'food', 'water', 'money']);
@@ -119,4 +119,31 @@ test('strongholds that capture a region reference a real region', () => {
     if (!poi.capturesRegion) continue;
     assert.ok(regionIds.has(poi.capturesRegion), `POI '${poi.id}' captures unknown region`);
   }
+});
+
+// Save-key ids are frozen: display strings may be re-fictioned (grit reskin A4)
+// but renaming an id orphans save state. @see docs/20-decisions/0017-a4-fiction-pass.md
+test('save-key ids are unchanged by fiction passes', () => {
+  const ids = obj => Object.keys(obj).sort();
+  assert.deepEqual(
+    WORLD_MAP.regions.map(r => r.id).sort(),
+    ['command_ruin', 'dragon_spire', 'ember_reach', 'frost_hold', 'goblin_crest',
+     'home_vale', 'mistwood', 'red_lowlands', 'west_warrens'],
+  );
+  assert.deepEqual(
+    ids(WORLD_MAP.factions),
+    ['bandits', 'goblins', 'neutral'],
+  );
+  assert.deepEqual(
+    WORLD_MAP.pois.filter(p => !p.id.startsWith('gen_')).map(p => p.id).sort(),
+    ['camp_red', 'camp_west', 'home_city', 'op_relay', 'op_shrine', 'op_tower',
+     'rn_crest', 'rn_grain', 'rn_hunt', 'rn_ice', 'rn_iron', 'rn_oak', 'rn_ore',
+     'rn_timber', 'rn_well', 'ruin_vale', 'ruin_warren', 'sh_crest', 'sh_dragon',
+     'sh_ember', 'sh_frost', 'sh_mist', 'sh_red', 'sh_ruin', 'sh_west', 'wb_roc'],
+  );
+  assert.deepEqual(
+    ids(MONSTERS_CONFIG),
+    ['bandit_camp', 'chaos_titan', 'corrupted_arena', 'demon_gates', 'dragon_lair',
+     'frost_giant', 'goblin_camp', 'orc_warband', 'troll_bridge', 'undead_legion'],
+  );
 });

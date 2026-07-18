@@ -60,15 +60,15 @@ import { generateFillerPois } from './gridGen.js';
 
 const WORLD_DEF = {
   factions: {
-    neutral: { id: 'neutral', name: 'Wildlands',         tag: 'WILD', color: '#8a93a0', enemyTypes: [] },
-    goblins: { id: 'goblins', name: 'Goblin Clans',      tag: 'GOB',  color: '#b7d645', enemyTypes: ['goblin_camp', 'orc_warband', 'undead_legion', 'demon_gates'] },
-    bandits: { id: 'bandits', name: 'Bandit Coalition',  tag: 'RED',  color: '#e05a3d', enemyTypes: ['bandit_camp', 'troll_bridge', 'frost_giant', 'demon_gates'] },
+    neutral: { id: 'neutral', name: 'The Free Wastes',    tag: 'FREE', color: '#8a93a0', enemyTypes: [] },
+    goblins: { id: 'goblins', name: 'Scavenger Packs',    tag: 'SCAV', color: '#b7d645', enemyTypes: ['goblin_camp', 'orc_warband', 'undead_legion', 'demon_gates'] },
+    bandits: { id: 'bandits', name: 'Red Talon Raiders',  tag: 'RED',  color: '#e05a3d', enemyTypes: ['bandit_camp', 'troll_bridge', 'frost_giant', 'demon_gates'] },
   },
 
   regions: [
     // ── BL: player home (owned) ──────────────────────────────────────────────
     {
-      id: 'home_vale', name: 'Home Vale', factionId: 'neutral', startOwner: 'player', tier: 1,
+      id: 'home_vale', name: 'Home Refuge', factionId: 'neutral', startOwner: 'player', tier: 1,
       strongholdId: null, buff: null, requires: null,
     },
     // ── ML: first goblin tile (iron) ─────────────────────────────────────────
@@ -87,7 +87,7 @@ const WORLD_DEF = {
     },
     // ── TL: goblin mid (wood) ────────────────────────────────────────────────
     {
-      id: 'mistwood', name: 'Mistwood', factionId: 'goblins', startOwner: 'goblins', tier: 3,
+      id: 'mistwood', name: 'Ashwood', factionId: 'goblins', startOwner: 'goblins', tier: 3,
       strongholdId: 'sh_mist',
       buff: { flavor: 'economic', resource: 'wood', pct: 0.10 },
       requires: { region: 'west_warrens' },
@@ -101,7 +101,7 @@ const WORLD_DEF = {
     },
     // ── TC: goblin hard, touches ruin (military) ─────────────────────────────
     {
-      id: 'goblin_crest', name: 'Goblin Crest', factionId: 'goblins', startOwner: 'goblins', tier: 4,
+      id: 'goblin_crest', name: 'Vulture Ridge', factionId: 'goblins', startOwner: 'goblins', tier: 4,
       strongholdId: 'sh_crest',
       buff: { flavor: 'military', pct: 0.10 },
       requires: { region: 'mistwood' },
@@ -115,7 +115,7 @@ const WORLD_DEF = {
     },
     // ── TR: hardest outer, contested wildlands (military) ────────────────────
     {
-      id: 'dragon_spire', name: 'Dragon Spire', factionId: 'neutral', startOwner: 'neutral', tier: 5,
+      id: 'dragon_spire', name: 'Behemoth Spire', factionId: 'neutral', startOwner: 'neutral', tier: 5,
       strongholdId: 'sh_dragon',
       buff: { flavor: 'military', pct: 0.15 },
       requires: { region: 'goblin_crest' },
@@ -131,29 +131,29 @@ const WORLD_DEF = {
   ],
 
   pois: [
-    // ── Home Vale (player, safe gather grounds) ──────────────────────────────
-    { id: 'home_city', type: 'city',          regionId: 'home_vale',    name: 'Your City',  icon: '🏰' },
-    { id: 'rn_oak',    type: 'resource_node', regionId: 'home_vale',    name: 'Oak Forest', icon: '🌲', level: 1, resource: 'wood',  gatherRate: 6, capacity: 1200, regenPerSec: 2.0 },
-    { id: 'rn_well',   type: 'resource_node', regionId: 'home_vale',    name: 'Spring Well',icon: '💧', level: 1, resource: 'water', gatherRate: 5, capacity: 1000, regenPerSec: 1.6 },
-    { id: 'ruin_vale', type: 'ruin',          regionId: 'home_vale',    name: 'Sunken Shrine', icon: '🗿', level: 1, expeditionMs: 30_000,
+    // ── Home Refuge (player, safe salvage grounds) ───────────────────────────
+    { id: 'home_city', type: 'city',          regionId: 'home_vale',    name: 'Your Outpost',  icon: '🏙️' },
+    { id: 'rn_oak',    type: 'resource_node', regionId: 'home_vale',    name: 'Deadwood Grove', icon: '🌲', level: 1, resource: 'wood',  gatherRate: 6, capacity: 1200, regenPerSec: 2.0 },
+    { id: 'rn_well',   type: 'resource_node', regionId: 'home_vale',    name: 'Purified Spring',icon: '💧', level: 1, resource: 'water', gatherRate: 5, capacity: 1000, regenPerSec: 1.6 },
+    { id: 'ruin_vale', type: 'ruin',          regionId: 'home_vale',    name: 'Sunken Bunker', icon: '🗿', level: 1, expeditionMs: 30_000,
       reward: { kind: 'buff', flavor: 'logistic', pct: 0.15, durationMs: 600_000 } },
     { id: 'op_relay',  type: 'outpost',       regionId: 'home_vale',    name: 'Crossroads Relay', icon: '⛺', level: 1, subtype: 'outpost',
       boon: { flavor: 'logistic', pct: 0.10 } },
 
-    // ── West Warrens (goblins, iron) ─────────────────────────────────────────
-    { id: 'sh_west',   type: 'stronghold',    regionId: 'west_warrens', name: 'Warren Gate',icon: '🏯', level: 3, monsterId: 'orc_warband',  capturesRegion: 'west_warrens' },
+    // ── West Warrens (scavengers, iron) ──────────────────────────────────────
+    { id: 'sh_west',   type: 'stronghold',    regionId: 'west_warrens', name: 'Warren Gate',icon: '🚧', level: 3, monsterId: 'orc_warband',  capturesRegion: 'west_warrens' },
     { id: 'rn_iron',   type: 'resource_node', regionId: 'west_warrens', name: 'Iron Vein',  icon: '⛏️', level: 2, resource: 'iron',  gatherRate: 4, capacity: 800,  regenPerSec: 1.2 },
-    { id: 'camp_west', type: 'camp',          regionId: 'west_warrens', name: 'Goblin Camp',icon: '👺', level: 2, monsterId: 'goblin_camp',  respawnMs: 1_800_000 },
+    { id: 'camp_west', type: 'camp',          regionId: 'west_warrens', name: 'Scav Camp',  icon: '🪓', level: 2, monsterId: 'goblin_camp',  respawnMs: 1_800_000 },
     { id: 'ruin_warren', type: 'ruin',        regionId: 'west_warrens', name: 'Old Warren Vault', icon: '🗿', level: 3, expeditionMs: 45_000, garrison: 'goblin_camp',
       reward: { kind: 'item', itemId: 'scroll_rare', qty: 1 } },
-    { id: 'op_shrine', type: 'outpost',       regionId: 'west_warrens', name: 'Warden Shrine', icon: '⛩️', level: 3, subtype: 'shrine', garrison: 'goblin_camp',
+    { id: 'op_shrine', type: 'outpost',       regionId: 'west_warrens', name: 'Warden Bunker', icon: '📡', level: 3, subtype: 'shrine', garrison: 'goblin_camp',
       boon: { flavor: 'military', pct: 0.08 } },
 
-    // ── Red Lowlands (bandits, food) ─────────────────────────────────────────
-    { id: 'sh_red',    type: 'stronghold',    regionId: 'red_lowlands', name: 'Reaver Fort',icon: '🏰', level: 3, monsterId: 'troll_bridge', capturesRegion: 'red_lowlands' },
+    // ── Red Lowlands (raiders, food) ─────────────────────────────────────────
+    { id: 'sh_red',    type: 'stronghold',    regionId: 'red_lowlands', name: 'Reaver Fort',icon: '🏭', level: 3, monsterId: 'troll_bridge', capturesRegion: 'red_lowlands' },
     { id: 'rn_grain',  type: 'resource_node', regionId: 'red_lowlands', name: 'Grain Fields',icon:'🌾', level: 2, resource: 'food',  gatherRate: 5, capacity: 1000, regenPerSec: 1.6 },
-    { id: 'camp_red',  type: 'camp',          regionId: 'red_lowlands', name: 'Bandit Hideout',icon:'🗡️', level: 2, monsterId: 'bandit_camp',  respawnMs: 1_800_000 },
-    { id: 'wb_roc',    type: 'world_boss',    regionId: 'red_lowlands', name: 'The Bonecrusher', icon: '🐲', level: 8, monsterId: 'frost_giant',
+    { id: 'camp_red',  type: 'camp',          regionId: 'red_lowlands', name: 'Raider Hideout',icon:'🗡️', level: 2, monsterId: 'bandit_camp',  respawnMs: 1_800_000 },
+    { id: 'wb_roc',    type: 'world_boss',    regionId: 'red_lowlands', name: 'The Bonecrusher', icon: '☠️', level: 8, monsterId: 'frost_giant',
       window: { everyMs: 180_000, openMs: 90_000 },
       lootTable: [
         { kind: 'item',     itemId: 'scroll_rare',   qty: 1,   weight: 3 },
@@ -161,26 +161,26 @@ const WORLD_DEF = {
         { kind: 'item',     itemId: 'scroll_common', qty: 2,   weight: 2 },
       ] },
 
-    // ── Mistwood (goblins, wood) ─────────────────────────────────────────────
-    { id: 'sh_mist',   type: 'stronghold',    regionId: 'mistwood',     name: 'Haunted Keep',icon:'🏯', level: 5, monsterId: 'undead_legion', capturesRegion: 'mistwood' },
+    // ── Ashwood (scavengers, wood) ───────────────────────────────────────────
+    { id: 'sh_mist',   type: 'stronghold',    regionId: 'mistwood',     name: 'Irradiated Depot',icon:'☢️', level: 5, monsterId: 'undead_legion', capturesRegion: 'mistwood' },
     { id: 'rn_timber', type: 'resource_node', regionId: 'mistwood',     name: 'Timberfall', icon: '🪵', level: 3, resource: 'wood',  gatherRate: 6, capacity: 1200, regenPerSec: 2.0 },
-    { id: 'op_tower',  type: 'outpost',       regionId: 'mistwood',     name: 'Mistwood Watchtower', icon: '🗼', level: 4, subtype: 'watchtower', garrison: 'goblin_camp',
+    { id: 'op_tower',  type: 'outpost',       regionId: 'mistwood',     name: 'Ashwood Radar Mast', icon: '📡', level: 4, subtype: 'watchtower', garrison: 'goblin_camp',
       boon: { flavor: 'logistic', pct: 0.05 }, revealRadius: 2000 },
 
-    // ── Frost Hold (bandits, water) ──────────────────────────────────────────
-    { id: 'sh_frost',  type: 'stronghold',    regionId: 'frost_hold',   name: 'Frost Hold', icon: '🏰', level: 5, monsterId: 'frost_giant',  capturesRegion: 'frost_hold' },
+    // ── Frost Hold (raiders, water) ──────────────────────────────────────────
+    { id: 'sh_frost',  type: 'stronghold',    regionId: 'frost_hold',   name: 'Frost Hold', icon: '🏭', level: 5, monsterId: 'frost_giant',  capturesRegion: 'frost_hold' },
     { id: 'rn_ice',    type: 'resource_node', regionId: 'frost_hold',   name: 'Salt Flats', icon: '🧂', level: 3, resource: 'water', gatherRate: 6, capacity: 1100, regenPerSec: 1.8 },
 
-    // ── Goblin Crest (goblins, touches ruin) ─────────────────────────────────
-    { id: 'sh_crest',  type: 'stronghold',    regionId: 'goblin_crest', name: 'Crest Citadel',icon:'🏯', level: 6, monsterId: 'demon_gates',  capturesRegion: 'goblin_crest' },
+    // ── Vulture Ridge (scavengers, touches ruin) ─────────────────────────────
+    { id: 'sh_crest',  type: 'stronghold',    regionId: 'goblin_crest', name: 'Vulture Citadel',icon:'🏭', level: 6, monsterId: 'demon_gates',  capturesRegion: 'goblin_crest' },
     { id: 'rn_crest',  type: 'resource_node', regionId: 'goblin_crest', name: 'Sulfur Pits', icon: '⛏️', level: 4, resource: 'iron',  gatherRate: 5, capacity: 900,  regenPerSec: 1.4 },
 
-    // ── Ember Reach (bandits, touches ruin) ──────────────────────────────────
-    { id: 'sh_ember',  type: 'stronghold',    regionId: 'ember_reach',  name: 'Ember Bastion',icon:'🏰', level: 6, monsterId: 'demon_gates',  capturesRegion: 'ember_reach' },
+    // ── Ember Reach (raiders, touches ruin) ──────────────────────────────────
+    { id: 'sh_ember',  type: 'stronghold',    regionId: 'ember_reach',  name: 'Ember Bastion',icon:'🏭', level: 6, monsterId: 'demon_gates',  capturesRegion: 'ember_reach' },
     { id: 'rn_ore',    type: 'resource_node', regionId: 'ember_reach',  name: 'Stone Ridge', icon: '🪨', level: 4, resource: 'stone', gatherRate: 5, capacity: 1000, regenPerSec: 1.6 },
 
-    // ── Dragon Spire (neutral elite, hardest outer) ──────────────────────────
-    { id: 'sh_dragon', type: 'stronghold',    regionId: 'dragon_spire', name: "Dragon's Lair",icon:'🐉', level: 7, monsterId: 'dragon_lair',  capturesRegion: 'dragon_spire' },
+    // ── Behemoth Spire (neutral elite, hardest outer) ────────────────────────
+    { id: 'sh_dragon', type: 'stronghold',    regionId: 'dragon_spire', name: 'Behemoth Nest',icon:'🦂', level: 7, monsterId: 'dragon_lair',  capturesRegion: 'dragon_spire' },
     { id: 'rn_hunt',   type: 'resource_node', regionId: 'dragon_spire', name: 'Hunting Grounds',icon:'🍖', level: 5, resource: 'food',  gatherRate: 6, capacity: 1200, regenPerSec: 2.0 },
 
     // ── Command Ruin (centre, end-game) ──────────────────────────────────────
