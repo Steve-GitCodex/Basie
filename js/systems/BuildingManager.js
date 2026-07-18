@@ -6,8 +6,10 @@
  * copies (instances), each with its own level. Instances are unlocked by
  * conditions defined in BUILDINGS_CONFIG.instanceSlots[].
  *
- * Queue design:
- *  - `_buildQueue` is an ordered array of queue items; index 0 is always the active build.
+ * Queue design (ADR 0016):
+ *  - `_buildQueue` is an ordered array of queue items; an item is ACTIVE while its
+ *    `endsAt` is set. Up to `_getMaxBuildSlots()` items run concurrently, plus a
+ *    waiting buffer; worker assignment lives in the pure `buildQueue` helpers.
  *  - Each item tracks its own timer (startedAt / endsAt) for serialization safety.
  *  - `_buildings` stores Map<id, [{instanceId, level}]> — only completed levels.
  *  - Resources are spent at queue time, refunded on cancel.
@@ -18,6 +20,7 @@ import {
   CATEGORY_ZONE, plotById, plotsInZone,
 } from '../entities/GAME_DATA.js';
 import { buildingRules } from './building/buildingRules.js';
+import { buildQueue } from './building/buildQueue.js';
 import { buildingEconomy } from './building/buildingEconomy.js';
 import { headquarters } from './building/headquarters.js';
 import { CafeteriaService } from './building/CafeteriaService.js';
@@ -111,59 +114,48 @@ export class BuildingManager {
   // ─────────────────────────────────────────────
 
   update(dt) {
-    // ── Build queue tick ────────────────────────────────────────────
-    const active = this._buildQueue[0];
-    // Sandbox mode: advance the timer 100× faster by subtracting 99/100 of the
-    // elapsed time from endsAt each tick (real dt still passes, so total = 100×).
-    if (active?.endsAt && this._gameMode === 'sandbox') {
-      active.endsAt -= dt * 99 * 1000;
-    }
-    if (active?.endsAt && Date.now() >= active.endsAt) {
-      const { buildingId, instanceIndex, pendingLevel } = active;
-
-      // Remove from queue FIRST so that any event handler calling getBuildQueue()
-      // sees the correct post-completion state (avoids stuck-at-0s display).
-      this._buildQueue.shift();
-      if (this._buildQueue.length > 0) {
-        const next  = this._buildQueue[0];
-        const nowMs = Date.now();
-        next.startedAt = nowMs;
-        next.endsAt    = nowMs + next.buildTimeSec * 1000;
+    if (this._gameMode === 'sandbox') {
+      for (const active of buildQueue.activeItems(this._buildQueue)) {
+        active.endsAt -= dt * 99 * 1000;
       }
-
-      // Apply the completed level
-      const instances = this._buildings.get(buildingId);
-      if (instances) {
-        if (!instances[instanceIndex]) {
-          instances[instanceIndex] = { instanceId: `${buildingId}_${instanceIndex}`, level: 0 };
-        }
-        instances[instanceIndex].level = pendingLevel;
-      }
-
-      this._recalculateAllCaps();
-      this._notifyRates();
-
-      // Emit after queue is already updated so listeners see correct state
-      eventBus.emit('building:completed', { id: buildingId, instanceIndex, building: { id: buildingId, level: pendingLevel } });
-      eventBus.emit('building:queueUpdated', this.getBuildQueue());
     }
+    this._catchup(Date.now());
 
     // ── Cafeteria feeding: auto-restock + drain → shortfall → population ──
     this._cafeteria.update(dt);
   }
 
   /**
-   * Mathematical offline catchup — completes any queue items whose `endsAt` falls
-   * within the offline window, cascading each completion to start the next item.
-   * O(queue_depth), not O(ticks).
-   * @param {number} _elapsedSec - unused (timestamps are absolute)
+   * Mathematical offline catchup — completes any queue items due within the
+   * offline window and refills freed workers. O(queue_depth), not O(ticks).
+   * @param {number} elapsedSec - offline duration, for the cafeteria drain sim
    * @param {number} nowMs - effective 'now' for the offline window
    */
-  applyOffline(_elapsedSec, nowMs) {
-    while (this._buildQueue.length > 0 && (this._buildQueue[0].endsAt ?? Infinity) <= nowMs) {
-      const item = this._buildQueue.shift();
-      const { buildingId, instanceIndex, pendingLevel } = item;
+  applyOffline(elapsedSec, nowMs) {
+    this._catchup(nowMs);
 
+    // Cafeteria drain + population growth/shrinkage for the offline window.
+    // Runs after queue completions so any cafeteria/house upgrades are already applied.
+    this._cafeteria.applyOffline(elapsedSec);
+  }
+
+  /**
+   * Complete every active item due by `nowMs`, refilling freed workers as each
+   * finishes (cascaded items start retroactively at the completion time), then
+   * fill any idle workers at `nowMs`. Emits one `building:queueUpdated` for the
+   * whole batch so offline bursts don't spam saves.
+   * @private
+   */
+  _catchup(nowMs) {
+    const maxSlots = this._getMaxBuildSlots();
+    let changed = false;
+
+    let done;
+    while ((done = buildQueue.earliestDue(this._buildQueue, nowMs))) {
+      const idx = this._buildQueue.indexOf(done);
+      this._buildQueue.splice(idx, 1);
+
+      const { buildingId, instanceIndex, pendingLevel } = done;
       const instances = this._buildings.get(buildingId);
       if (instances) {
         if (!instances[instanceIndex]) {
@@ -172,22 +164,17 @@ export class BuildingManager {
         instances[instanceIndex].level = pendingLevel;
       }
 
-      // Cascade: start the next item from this item's completion time
-      if (this._buildQueue.length > 0) {
-        const next = this._buildQueue[0];
-        next.startedAt = item.endsAt;
-        next.endsAt    = item.endsAt + next.buildTimeSec * 1000;
-      }
-
       this._recalculateAllCaps();
       this._notifyRates();
       eventBus.emit('building:completed', { id: buildingId, instanceIndex, building: { id: buildingId, level: pendingLevel } });
-      eventBus.emit('building:queueUpdated', this.getBuildQueue());
+      buildQueue.fill(this._buildQueue, maxSlots, done.endsAt);
+      changed = true;
     }
 
-    // Cafeteria drain + population growth/shrinkage for the offline window.
-    // Runs after queue completions so any cafeteria/house upgrades are already applied.
-    this._cafeteria.applyOffline(elapsedSec);
+    const started = buildQueue.fill(this._buildQueue, maxSlots, nowMs);
+    if (changed || started.length > 0) {
+      eventBus.emit('building:queueUpdated', this.getBuildQueue());
+    }
   }
 
   // ─────────────────────────────────────────────
@@ -244,7 +231,7 @@ export class BuildingManager {
     const effectiveLevel = completedLevel + queuedCount;
 
     if (effectiveLevel >= cfg.maxLevel) {
-      return { ok: false, reason: `${cfg.name} #${instanceIndex + 1} is already at max level.` };
+      return { ok: false, reason: `${cfg.name} ${instanceIndex + 1} is already at max level.` };
     }
 
     // Instance ordering: slot N cannot exceed the level of slot N-1
@@ -256,7 +243,7 @@ export class BuildingManager {
       ).length;
       const prevEffective = prevCompleted + prevQueued;
       if (effectiveLevel + 1 > prevEffective) {
-        return { ok: false, reason: `Upgrade ${cfg.name} #${instanceIndex} to Lv.${effectiveLevel + 1} first.` };
+        return { ok: false, reason: `Upgrade ${cfg.name} ${instanceIndex} to Lv.${effectiveLevel + 1} first.` };
       }
     }
 
@@ -318,7 +305,7 @@ export class BuildingManager {
       ).length;
       const prevEffective = prevCompleted + prevQueued;
       if (effectiveLevel + 1 > prevEffective) {
-        missing.push(`${cfg.name} #${instanceIndex} must reach Lv.${effectiveLevel + 1} first`);
+        missing.push(`${cfg.name} ${instanceIndex} must reach Lv.${effectiveLevel + 1} first`);
       }
     }
 
@@ -351,14 +338,15 @@ export class BuildingManager {
     const effectiveLevel = completedLevel + queuedCount;
 
     if (effectiveLevel >= cfg.maxLevel) {
-      return { success: false, reason: `${cfg.name} #${instanceIndex + 1} is already at max level.` };
+      return { success: false, reason: `${cfg.name} ${instanceIndex + 1} is already at max level.` };
     }
 
     const maxSlots = this._getMaxBuildSlots();
-    if (this._buildQueue.length >= maxSlots) {
+    const capacity = buildQueue.capacity(maxSlots);
+    if (this._buildQueue.length >= capacity) {
       return {
         success: false,
-        reason: `Build queue is full (${this._buildQueue.length}/${maxSlots}). Build a Construction Hall to unlock more slots.`,
+        reason: `Build queue is full (${this._buildQueue.length}/${capacity}). Build a Construction Hall to unlock more worker slots.`,
       };
     }
 
@@ -388,10 +376,12 @@ export class BuildingManager {
       instArr[instanceIndex] = { instanceId: `${buildingId}_${instanceIndex}`, level: 0 };
     }
 
-    const isFirst = this._buildQueue.length === 0;
-    const nowMs   = Date.now();
+    const instanceId    = instArr[instanceIndex].instanceId;
+    const nowMs         = Date.now();
+    const workerFree    = buildQueue.activeItems(this._buildQueue).length < maxSlots;
+    const instanceClear = !this._buildQueue.some(q => q.instanceId === instanceId);
 
-    if (isFirst && buildTimeSec === 0) {
+    if (buildTimeSec === 0 && workerFree && instanceClear) {
       instArr[instanceIndex].level = pendingLevel;
       this._recalculateAllCaps();
       eventBus.emit('building:completed', { id: buildingId, instanceIndex, building: { id: buildingId, level: pendingLevel } });
@@ -400,18 +390,18 @@ export class BuildingManager {
       return { success: true };
     }
 
-    const queueItem = {
+    this._buildQueue.push({
       buildingId,
       instanceIndex,
-      instanceId:   instArr[instanceIndex].instanceId,
+      instanceId,
       pendingLevel,
       buildTimeSec,
       cost,
-      startedAt: isFirst ? nowMs : null,
-      endsAt:    isFirst ? nowMs + buildTimeSec * 1000 : null,
-    };
+      startedAt: null,
+      endsAt:    null,
+    });
+    buildQueue.fill(this._buildQueue, maxSlots, nowMs);
 
-    this._buildQueue.push(queueItem);
     eventBus.emit('building:started',      { id: buildingId, instanceIndex, cost, level: pendingLevel });
     eventBus.emit('building:queueUpdated', this.getBuildQueue());
     return { success: true };
@@ -424,13 +414,7 @@ export class BuildingManager {
 
     this._rm.add(item.cost);
     this._buildQueue.splice(queueIndex, 1);
-
-    if (queueIndex === 0 && this._buildQueue.length > 0) {
-      const next  = this._buildQueue[0];
-      const nowMs = Date.now();
-      next.startedAt = nowMs;
-      next.endsAt    = nowMs + next.buildTimeSec * 1000;
-    }
+    buildQueue.fill(this._buildQueue, this._getMaxBuildSlots(), Date.now());
 
     eventBus.emit('building:queueUpdated', this.getBuildQueue());
     return { success: true };
@@ -484,12 +468,21 @@ export class BuildingManager {
   }
 
   getBuildQueue() {
-    return this._buildQueue.map((item, idx) => ({
+    const rows = this._buildQueue.map((item, idx) => ({
       ...item,
       queuePosition: idx,
-      isActive:      idx === 0,
+      isActive:      item.endsAt != null,
+      waitingPosition: null,
       cfg:           BUILDINGS_CONFIG[item.buildingId],
     }));
+    rows.sort((a, b) => {
+      if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
+      if (a.isActive) return a.endsAt - b.endsAt;
+      return a.queuePosition - b.queuePosition;
+    });
+    let waiting = 0;
+    for (const row of rows) if (!row.isActive) row.waitingPosition = waiting++;
+    return rows;
   }
 
   /**
@@ -497,11 +490,10 @@ export class BuildingManager {
    * Primary data source for BuildingsUI.
    */
   getBuildingTypesWithInstances() {
-    const activeItem = this._buildQueue[0] ?? null;
-
     return Object.values(BUILDINGS_CONFIG).map(cfg => {
       const instances     = this._buildings.get(cfg.id) ?? [];
       const unlockedCount = this._getUnlockedInstanceCount(cfg);
+      const multiInstance = (cfg.instanceSlots?.length ?? 1) > 1;
 
       const instanceData = [];
       for (let idx = 0; idx < unlockedCount; idx++) {
@@ -512,10 +504,8 @@ export class BuildingManager {
         );
         const queuedCount    = queuedForInst.length;
         const effectiveLevel = completedLevel + queuedCount;
-        const isActivelyBuilding = (
-          activeItem?.buildingId === cfg.id && activeItem?.instanceIndex === idx
-        );
-        const activeForInst = isActivelyBuilding ? activeItem : null;
+        const activeForInst  = queuedForInst.find(q => q.endsAt != null) ?? null;
+        const isActivelyBuilding = activeForInst != null;
         const nextCost    = buildingRules.scaleCost(cfg.baseCost, cfg.costMultiplier, effectiveLevel);
         const reqCheck    = buildingRules.checkRequirements(cfg.requires, this._rulesCtx);
         const lvlReqCheck = buildingRules.checkRequirements(cfg.levelRequirements?.[effectiveLevel + 1], this._rulesCtx);
@@ -527,7 +517,6 @@ export class BuildingManager {
           ...buildingRules.collectMissing(cfg.levelRequirements?.[effectiveLevel + 1], this._rulesCtx),
         ];
 
-        // Next level build time (raw, before tech reductions) — for UI display
         const rawNextBuildTime = effectiveLevel < cfg.maxLevel
           ? cfg.buildTime * (effectiveLevel === 0 ? 1 : effectiveLevel + 1)
           : null;
@@ -546,6 +535,7 @@ export class BuildingManager {
           ...cfg,
           instanceId:    inst.instanceId ?? `${cfg.id}_${idx}`,
           instanceIndex: idx,
+          displayName:   multiInstance ? `${cfg.name} ${idx + 1}` : cfg.name,
           level:         completedLevel,
           effectiveLevel,
           cost:               nextCost,
@@ -590,11 +580,11 @@ export class BuildingManager {
   }
 
   getActiveBuildings() {
-    const result   = [];
-    const activeId = this._buildQueue[0]?.buildingId;
+    const result    = [];
+    const activeIds = new Set(buildQueue.activeItems(this._buildQueue).map(q => q.buildingId));
     for (const [id, instances] of this._buildings) {
       for (const inst of instances) {
-        if ((inst.level ?? 0) > 0 || id === activeId) result.push({ id, ...inst });
+        if ((inst.level ?? 0) > 0 || activeIds.has(id)) result.push({ id, ...inst });
       }
     }
     return result;
@@ -665,13 +655,17 @@ export class BuildingManager {
   }
 
   /**
-   * Reduce the active build timer by `seconds` seconds.
+   * Reduce an active build timer by `seconds` seconds. Targets the item matching
+   * `instanceId`, or the earliest-ending active build when omitted.
    * If seconds >= 999999, the build completes instantly.
    * @param {number} seconds
+   * @param {string|null} [instanceId]
    * @returns {{ success: boolean, remaining?: number, reason?: string }}
    */
-  reduceActiveTimer(seconds) {
-    const active = this._buildQueue[0];
+  reduceActiveTimer(seconds, instanceId = null) {
+    const active = instanceId
+      ? this._buildQueue.find(q => q.endsAt != null && q.instanceId === instanceId)
+      : buildQueue.earliestActive(this._buildQueue);
     if (!active?.endsAt) return { success: false, reason: 'No active build in progress.' };
     const now    = Date.now();
     if (active.endsAt <= now) return { success: false, reason: 'Build already complete.' };
@@ -1001,33 +995,12 @@ export class BuildingManager {
       }
     }
 
-    // Immediately apply any queue items whose timer already expired while the
-    // game was closed (catches completions that happened < 5s before the page
-    // was last saved, which the offline-progress sim would otherwise skip).
-    const nowMs = Date.now();
-    while (this._buildQueue.length > 0) {
-      const head = this._buildQueue[0];
-      if (!head.endsAt || head.endsAt > nowMs) break;
-
-      this._buildQueue.shift();
-      const { buildingId, instanceIndex, pendingLevel } = head;
-      const instances = this._buildings.get(buildingId);
-      if (instances) {
-        if (!instances[instanceIndex]) {
-          instances[instanceIndex] = { instanceId: `${buildingId}_${instanceIndex}`, level: 0 };
-        }
-        instances[instanceIndex].level = pendingLevel;
-      }
-      // Assign timer to the next item if it doesn't have one yet
-      if (this._buildQueue.length > 0 && !this._buildQueue[0].endsAt) {
-        const next = this._buildQueue[0];
-        next.startedAt = nowMs;
-        next.endsAt    = nowMs + next.buildTimeSec * 1000;
-      }
-    }
-
     this._recalculateAllCaps();
     this._notifyRates();
+
+    // Drain items that expired while closed and stamp timers on up to N workers
+    // (migrates legacy saves that only timed the head item).
+    this._catchup(Date.now());
   }
 
   // ─────────────────────────────────────────────

@@ -53,6 +53,10 @@ export class SettingsUI {
             <button class="btn btn-sm btn-ghost" id="btn-toggle-sfx">${s.sfxEnabled ? 'On' : 'Off'}</button>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-2) 0">
+            <span>Ambient Sound</span>
+            <button class="btn btn-sm btn-ghost" id="btn-toggle-ambient">${s.ambientEnabled ? 'On' : 'Off'}</button>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-2) 0">
             <span>Animations</span>
             <button class="btn btn-sm btn-ghost" id="btn-toggle-anim">${s.animationsEnabled ? 'On' : 'Off'}</button>
           </div>
@@ -102,6 +106,11 @@ export class SettingsUI {
       eventBus.emit('ui:click');
       this._s.settings.toggle('sfxEnabled');
       e.target.textContent = this._s.settings.getSettings().sfxEnabled ? 'On' : 'Off';
+    });
+    document.getElementById('btn-toggle-ambient')?.addEventListener('click', e => {
+      eventBus.emit('ui:click');
+      this._s.settings.toggle('ambientEnabled');
+      e.target.textContent = this._s.settings.getSettings().ambientEnabled ? 'On' : 'Off';
     });
     document.getElementById('btn-toggle-anim')?.addEventListener('click', e => {
       eventBus.emit('ui:click');

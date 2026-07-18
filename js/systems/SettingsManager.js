@@ -9,6 +9,7 @@ const SETTINGS_KEY = 'basie_settings';
 
 const DEFAULT_SETTINGS = {
   sfxEnabled: true,
+  ambientEnabled: true,
   animationsEnabled: true,
   autoSave: true,
   theme: 'dark', // Currently only dark supported

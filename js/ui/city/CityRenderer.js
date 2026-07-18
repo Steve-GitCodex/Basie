@@ -174,7 +174,7 @@ export class CityRenderer {
         // assigned-instance fields (null when empty)
         buildingId: data ? data.type.id : null,
         instanceIndex: data ? data.inst.instanceIndex : null,
-        name: data ? data.type.name : null,
+        name: data ? (data.inst.displayName ?? data.type.name) : null,
         level: data ? data.inst.level : 0,
         isBuilding: data ? data.inst.isActivelyBuilding : false,
         startedAt: data ? data.inst.startedAt : null,
@@ -537,7 +537,7 @@ export class CityRenderer {
           c.x,
           c.y + TILE_H / 2 + 11,
           8,
-          "rgba(140,200,240,0.65)",
+          "rgba(240,180,90,0.8)",
         );
       }
       return;

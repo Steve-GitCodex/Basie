@@ -632,6 +632,8 @@ function launchGame(authScreen, gameShell, externalState = null) {
     events:     eventManager,
     worldMap:   worldMapManager,
     march:      marchManager,
+    sound:      soundManager,
+    settings:   settingsManager,
     eventBus,   // exposed for debugging/automation (watch/emit EventBus traffic)
   };
 

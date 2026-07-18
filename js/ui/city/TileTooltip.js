@@ -145,7 +145,7 @@ export class TileTooltip {
       <div class="tt-header">
         <div class="tt-sprite" style="background-image:url('${spriteUrl}')"></div>
         <div class="tt-title-block">
-          <div class="tt-name">${b.name}</div>
+          <div class="tt-name">${b.displayName ?? b.name}</div>
           <div class="tt-level">${isBuilt ? `Lv. ${b.level} / ${b.maxLevel}` : 'Not built'}</div>
         </div>
       </div>

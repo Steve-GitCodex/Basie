@@ -194,7 +194,7 @@ export class InventoryManager {
    * @param {{ heroId?: string, queueType?: string }} [opts]
    * @returns {{ success: boolean, reason?: string }}
    */
-  useItem(itemId, { heroId, queueType } = {}) {
+  useItem(itemId, { heroId, queueType, targetInstanceId } = {}) {
     const cfg = INVENTORY_ITEMS[itemId];
     if (!cfg) return { success: false, reason: 'Unknown item.' };
     if (!this.hasItem(itemId)) return { success: false, reason: `You don't have ${cfg.name}.` };
@@ -256,7 +256,7 @@ export class InventoryManager {
       let result;
       if (target === 'building') {
         if (!this._bm) return { success: false, reason: 'Building system not available.' };
-        result = this._bm.reduceActiveTimer(skipSec);
+        result = this._bm.reduceActiveTimer(skipSec, targetInstanceId ?? null);
       } else if (target === 'training') {
         if (!this._um) return { success: false, reason: 'Training system not available.' };
         result = this._um.reduceActiveTrainTimer(skipSec);

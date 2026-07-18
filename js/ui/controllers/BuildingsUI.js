@@ -240,10 +240,11 @@ export class BuildingsUI {
     const secsLeft = active?.endsAt ? Math.max(0, Math.ceil((active.endsAt - Date.now()) / 1000)) : 0;
     openSpeedupPicker({
       anchorRect,
-      queueType:     'building',
+      queueType:        'building',
       secsLeft,
-      inventory:     this._s.inventory,
-      notifications: this._s.notifications,
+      targetInstanceId: active?.instanceId ?? null,
+      inventory:        this._s.inventory,
+      notifications:    this._s.notifications,
     });
   }
 }

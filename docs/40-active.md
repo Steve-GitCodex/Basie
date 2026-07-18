@@ -6,19 +6,101 @@
 ## Current state (2026-07-18)
 
 - Branch: `Working_Branch`. Everything through A1+A2 is **committed** (`6273669`,
-  `4d05cf0`). **Uncommitted:** grit reskin Phase B1 + B2 + the new test suite + the
+  `4d05cf0`). **Uncommitted:** grit reskin Phase B1 + B2 + C1 + the test suite + the
   `?dev` session flag (below) — tree is commit-ready.
 - Phase 1 (UI redesign) and Phase 2 (world map MVP + fast-follows) are **done** —
   see `docs/30-roadmap.md`.
 - Current direction: **grit reskin** (`docs/10-design/grit-reskin.md`) — art/feel pass
-  before Phase 4 AI. A1 + A2 + B1 + B2 landed; next phase: C1 sound (but see "next
-  steps" — B3 terrain art has a case for jumping the queue now that B2 has shipped
-  the grid in placeholder flat colour).
+  before Phase 4 AI. A1 + A2 + B1 + B2 + **C1 sound** landed (C1 sound map tuned by ear
+  and signed off). **Next phase = A4 fiction pass** (post-apoc renaming — display strings
+  only, never ids); see Next steps for the ready-to-start brief. C2 juice / B3 art are the
+  alternatives.
 - **The repo has tests now** (ADR 0012). `npm test` before you hand off; fix a bug →
   add a regression test in the matching `tests/unit/*.test.js`. Contract:
   `tests/README.md`.
 
-### Landed this session (2026-07-18)
+### Landed this session (2026-07-18, latest)
+
+8. **Multi-instance buildings are now numbered where you look at them.** Bug: upgrade
+   prereqs read "Upgrade House 1 first" but every House/Barracks/etc. showed the same
+   bare "House" label on the map and in the click-tooltip, so you couldn't tell which
+   physical copy was 1. `getBuildingTypesWithInstances()` now stamps a `displayName`
+   (`<name> <idx+1>` when `instanceSlots.length > 1`, plain name otherwise) on each
+   instance; consumed by the CityRenderer on-map label + hover pill, the TileTooltip
+   header, and the BuildQueueSidebar rows. BuildingCards numbers via its own `instLabel`
+   pill (same `totalSlots > 1` rule). Numbering is 1-based, matching the requirement
+   strings in `BuildingManager` — the `#` was dropped from those too, so everything
+   reads "House 1 / House 2" (no hash). The type-level BuildingInfoPanel stays unnumbered
+   (per-type, not per-instance). Also: **unbuilt (planned) on-map labels recolored** from
+   the old bluish `rgba(140,200,240,.65)` to warm amber `rgba(240,180,90,.8)` so a
+   surveyed-but-unbuilt plot reads distinctly from a built one (built stays light-blue).
+   Regression test in `tests/unit/buildingManager.test.js` (npm test 165/165).
+
+7. **Concurrent build workers** (ADR 0016). The build queue was one-at-a-time
+   (`_buildQueue[0]` = sole active); the Construction Hall's extra slots only added
+   waiting depth, so unlocks never sped up the clock. Now every unlocked slot is a
+   concurrent worker over one shared FIFO queue, +2 waiting buffer (capacity =
+   workers + 2).
+   - New pure module `js/systems/building/buildQueue.js` — worker-pool helpers
+     (`fill`/`nextStartable`/`earliestDue`/`earliestActive`/`capacity`); active = item
+     with `endsAt` set; same-instance items never run in parallel (upgrades stay serial);
+     a freed worker skips ahead to the first startable item.
+   - `BuildingManager`: single `_catchup(nowMs)` replaces the three head-drain loops
+     (tick/offline/deserialize); `build()`/`cancelBuild()` push-then-`fill`; `getBuildQueue()`
+     returns actives-first (+ `waitingPosition`); per-instance active detection in
+     `getBuildingTypesWithInstances()`/`getActiveBuildings()`; `reduceActiveTimer(sec,
+     instanceId?)` targets a specific active. Legacy saves fan out to N workers on load.
+     Drive-by fix: `applyOffline` `elapsedSec` ReferenceError.
+   - UI: sidebar renders multiple active rows with independent speed-up/cancel; speed-up
+     threads `targetInstanceId` through SpeedupPicker → `InventoryManager.useItem` →
+     `reduceActiveTimer`. Header shows `active/workers · N waiting`.
+   - Tests: `tests/unit/buildQueue.test.js` (7) + `tests/unit/buildingManager.test.js` (13).
+
+6. **Sandbox spend is now free** (`ResourceManager`). Bug: with `?dev` (sandbox mode) the
+   boot flood topped resources once, but every build after that *depleted* the stockpile
+   normally — you'd wait for production to refill like a real playthrough. Now
+   `canAfford()` returns `true` and `spend()` deducts nothing in sandbox mode, so dev
+   builds are truly unconstrained (matches the existing sandbox 10× `add()` / 100× build
+   speed). Campaign/survival unchanged. New regression test
+   `tests/unit/resourceManager.test.js` (2 tests, `npm test` 144/144). Also trimmed two
+   pre-existing narrative comments in `ResourceManager.js` (comment-lint).
+
+5. **Grit reskin Phase C1 — real sound** (ADR 0015). The Kenney `.ogg` packs under
+   `assets/audio/` finally play; nothing did before.
+   - New `js/systems/sound/sampleLibrary.js` — `MANIFEST` (preset key → files), lazy
+     `fetch`+`decodeAudioData`, random-variant pick, per-category volume
+     (`ui`/`combat`/`reward`/`fanfare`/`voice`). `tryPlay(key)` plays a decoded buffer and
+     returns `true`, else kicks off the async load and returns `false`.
+   - New `js/systems/sound/ambientBed.js` — procedural brown-noise wind bed (lowpass +
+     slow-LFO swell), idempotent start/stop with fades. World view only.
+   - `SoundManager` unchanged in shape (163 → ~200 ln): every tone preset is now
+     `if (this._sample(key)) return; <existing tone>` — **sample-first, tone fallback,
+     zero regression**. It owns the ambient lifecycle (subscribes `ui:viewChanged` +
+     `settings:changed`; bed runs only on `world` view with `sfxEnabled && ambientEnabled`).
+     `click`/`switch` warmed at construction. New event wires: `combat:started`/
+     `combat:marchResolved` → impact, `march:dispatched` → voice bark (no tone fallback),
+     `march:completed` → mission-complete voice.
+   - `SettingsManager` gains `ambientEnabled` (default true) + a toggle in `SettingsUI`.
+     `window.game` now exposes `sound` + `settings` for probes.
+   - **Tests grown:** `tests/unit/sampleLibrary.test.js` (4 tests — manifest file paths
+     `.ogg`/known-dir, every category has an in-range volume, no dup variants). `npm test`
+     **142/142**. Both browser smoke scripts still pass (zero page errors — sound modules
+     load, ambient starts on world-nav without throwing).
+   - **Verified** (scratchpad `c1-sound-probe.mjs`): headless Chromium decodes the OGG
+     samples (5 click variants + 2 victory voice variants), ambient bed runs on the world
+     view and stops on both the `ambientEnabled` toggle and leaving the view; AudioContext
+     resumes on gesture; no page errors. **`.ogg` decode is Chromium-native.**
+   - **Note:** a manifest path that is well-formed but points at a *missing* file is only
+     caught at runtime (drops to tone). Keep `MANIFEST` in sync with `assets/audio/`.
+   - **Tuned by ear (Steve, 2026-07-18):** the chiptune sets (`jingles_NES`/`jingles_HIT`)
+     were rejected on listening and are no longer wired anywhere. Final map in ADR 0015:
+     build/train = metal clunk, research = its own bright synth chime, quest/march-return =
+     "mission completed" voice, achievement = heavy bell toll, reward collect (mail /
+     inventory / market / march haul) = leather-pouch pickup. Steve signed off: "everything
+     sounds better now." One open caveat: `coin`/`dropLeather` is single-variant (repeats
+     on rapid collects) — add variants if it grates.
+
+### Landed this session (2026-07-18, earlier)
 
 4. **`?dev` session flag** (ADR 0014) — kills the from-scratch tax on eyeballing gated
    views. `http://localhost:8000/?dev` boots straight to an unlocked world map: no auth
@@ -290,37 +372,44 @@
   Hardening. No code changed. Structure verdict: three-tier architecture is sound —
   this is about where numbers live, not moving modules.
 
-## Next steps (session ended 2026-07-16 — resume here)
+## Next steps (session ended 2026-07-18 — resume here)
 
 0. **Use the suite.** `npm test` is the cheap gate — run it before and after any change
    to march/world/data/building-rules logic, and add cases as you go (contract:
-   `tests/README.md`). B2's geometry split worked out as hoped: the pure math went to
-   `tests/unit/gridLayer.test.js` and only the pixel behaviour needed `world-smoke.mjs`.
-   Worth adding when someone's in the area: SaveManager round-trip, march dispatch
-   end-to-end (needs a save with squads — the gap B1 left), combat resolution.
+   `tests/README.md`). Worth adding when someone's in the area: SaveManager round-trip,
+   march dispatch end-to-end (needs a save with squads), combat resolution.
 
-1. **Steve: eyeball B2 in the browser** — this is the call to make before picking the
-   next phase. **Fastest path: `run.bat` then open `http://localhost:8000/?dev`** — it
-   boots straight onto the unlocked world map (ADR 0014), no tutorial/build grind.
-   The grid renders and reads correctly, but it is **flat-colour placeholder**
-   (that's B2's remit; B3 brings the texture atlas). Judge whether the map now looks
-   *plausible* or *programmer-art*: the design doc's own warning is "don't let B3 slip
-   long after B2". One-line tunables if it needs it: `TERRAIN_COLOR` (the six cell
-   colours), the tint alphas, and the per-cell jitter strength — all at the top of
-   `js/ui/world/gridLayer.js`. Also still pending: B1 filler density (8–14/sector,
-   `FILLER_MIN_SPACING` 3 — the map now has 99 extra POIs), A1 tuning (plaque
-   position/size, vignette, dusk warmth) and A2 (amber saturation, text contrast, the
-   deferred gacha rarity ladder).
-2. **Next reskin phase — sequencing needs a decision, not a default.** The plan says C1
-   sound next, with B3 art last. Reasonable case for pulling **B3 forward**: B2 just
-   shipped the map in placeholder flat colour, B3 is the cheapest AI-art win in the
-   project, and it's the phase that makes the grid actually *sell*. Against: B3 needs
-   user-in-the-loop art generation; C1 is a self-contained session with assets already
-   in the repo. **Steve's call** (see (1) — decide it by looking at the map).
-   If B3: note ADR 0013 — the fixed-texture-scale chunk cache is crisp only because
-   cells are flat uniform fills. A real atlas breaks that assumption and needs either a
-   zoom-bucketed cache or a native-resolution texture. Plan for it up front; don't
-   discover it mid-phase.
+1. **Next reskin phase = A4 fiction pass** (Steve's call after C1 landed; the B2 map was
+   judged good enough that B3 art can wait). A4 is fully self-contained — **display strings
+   only, never ids** (ids are save keys; loading an existing save must show all owned
+   regions/outposts/looted ruins intact = proof no id was touched). Spec: `grit-reskin.md`
+   § A4. Scope:
+   - `js/entities/data/worldMap.js` — region/POI/faction `name`, `tag`, `icon` (Goblin
+     Clans → "Scavenger Packs", Dragon's Lair → "Behemoth Nest", shrine/watchtower → relay
+     bunker/radar mast…). WorldRenderer draws `poi.icon` — check the draw path before
+     swapping emoji for SVG glyphs.
+   - `MONSTERS_CONFIG` display names (goblin_camp → "Scav Warband"; **id stays**
+     `goblin_camp`).
+   - Building display names in building data (Magic Tower → "Comms Tower" etc.).
+   - Hero/story/quest strings: **light pass, not a rewrite** — fix the hardest fantasy
+     clashes, TODO-list the rest (story text is large).
+   - **Verify:** load a pre-existing save; confirm owned regions/outposts/looted ruins
+     survive. Add a `worldState`/data test asserting ids are unchanged if practical.
+   - Alternatives if priorities shift: **C2 canvas juice** (particles/convoy movers, the
+     bigger feel win, 1–2 sessions) or **B3 terrain atlas** (map-selling AI art; note
+     ADR 0013 — a real atlas breaks the fixed-texture-scale chunk cache, plan a
+     zoom-bucketed/native-res cache up front).
+
+2. **Optional sound follow-ups (C1 is done/signed-off, only if asked):** add variants to
+   `coin`/`dropLeather` (single-clip repeats on rapid collects); the deferred A2 gacha
+   rarity ladder; A1/A2 by-eye tuning (plaque size, vignette, amber saturation).
+3. Balance items B1 created (roadmap → Hardening): 99 filler nodes change gather supply;
+   `dragon_spire`/`command_ruin` filler is unguarded (neutral → no faction enemy pool);
+   `BASE_SPEED_PX` 265 preserves old times rather than being tuned for the new map.
+4. Remaining world/march audit findings (lower severity, roadmap → Hardening): gather
+   economic-bonus no-op clamp, `resolveMarchBattle` `milMult < 1` debuff trap, and a
+   buff-dependent *UI* listener for `world:buffsChanged`.
+5. Queue the comment-cleanup session (low-cost model; `node scripts/check-comments.mjs`).
 3. Balance items B1 created (roadmap → Hardening): 99 filler nodes change gather supply;
    `dragon_spire`/`command_ruin` filler is unguarded (neutral → no faction enemy pool);
    `BASE_SPEED_PX` 265 preserves old times rather than being tuned for the new map.

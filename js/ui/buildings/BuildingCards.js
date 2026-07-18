@@ -277,7 +277,7 @@ export class BuildingCards {
     })() : '';
 
     const instLabel = (showInstanceLabel && b.instanceIndex >= 0)
-      ? ` <span class="instance-label">#${b.instanceIndex + 1}</span>` : '';
+      ? ` <span class="instance-label">${b.instanceIndex + 1}</span>` : '';
 
     const displayLevel = b.effectiveLevel > b.level
       ? `Lv.${b.level}<span style="color:var(--clr-gold);font-size:10px;margin-left:2px">+${b.effectiveLevel - b.level}</span>`
@@ -456,7 +456,7 @@ export class BuildingCards {
       <div class="card-header" style="opacity:0.45">
         <div class="card-icon">${iconFromEmoji(bType.icon ?? '')}</div>
         <div style="flex:1;min-width:0">
-          <div class="card-title">${bType.name} <span class="instance-label">#${slot.instanceIndex + 1}</span></div>
+          <div class="card-title">${bType.name} <span class="instance-label">${slot.instanceIndex + 1}</span></div>
           <div class="card-subtitle">Additional slot</div>
         </div>
       </div>

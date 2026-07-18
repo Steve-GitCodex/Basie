@@ -24,7 +24,7 @@ export function closeSpeedupPicker() { _close?.(); }
  *   onClose?: () => void
  * }} opts
  */
-export function openSpeedupPicker({ anchorRect, queueType, secsLeft, inventory, notifications, onClose }) {
+export function openSpeedupPicker({ anchorRect, queueType, secsLeft, inventory, notifications, onClose, targetInstanceId = null }) {
   closeSpeedupPicker();
   if (!inventory || !anchorRect) return;
 
@@ -69,7 +69,7 @@ export function openSpeedupPicker({ anchorRect, queueType, secsLeft, inventory, 
       btn.addEventListener('click', () => {
         const itemId = btn.dataset.item;
         close();
-        const r = inventory.useItem(itemId, { queueType });
+        const r = inventory.useItem(itemId, { queueType, targetInstanceId });
         if (!r.success) {
           notifications?.show('warning', 'Cannot Speed Up', r.reason);
         } else {

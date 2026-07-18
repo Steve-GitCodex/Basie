@@ -13,13 +13,7 @@ export class ResourceManager {
   constructor() {
     this.name = 'ResourceManager';
     
-    // Calculate starting resources dynamically based on tutorial requirements.
-    // This ensures the tutorial chain is always completable, even if tutorial steps
-    // or building costs change. Automatically recalculates on each new game.
     const tutorialCosts = this._calculateTutorialRequirements();
-    
-    // Calculate starting caps dynamically from HQ Lv1 storageCap (BUILDINGS_CONFIG).
-    // This ensures caps always reflect the building definitions and never get out of sync.
     const startingCaps = this._calculateStartingCaps();
     
     // Base defaults with safety fallbacks — never go below these minimums
@@ -239,6 +233,7 @@ export class ResourceManager {
    * @returns {boolean}
    */
   canAfford(cost) {
+    if (this._gameMode === 'sandbox') return true;
     for (const [key, amount] of Object.entries(cost)) {
       if ((this._resources[key]?.amount ?? 0) < amount) return false;
     }
@@ -265,6 +260,11 @@ export class ResourceManager {
    * @returns {boolean}
    */
   spend(cost) {
+    if (this._gameMode === 'sandbox') {
+      eventBus.emit('resources:spent', cost);
+      this._uiDirty = true;
+      return true;
+    }
     if (!this.canAfford(cost)) return false;
     for (const [key, amount] of Object.entries(cost)) {
       this._resources[key].amount -= amount;

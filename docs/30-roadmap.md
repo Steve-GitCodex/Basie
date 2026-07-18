@@ -13,7 +13,7 @@ Deep design lives in `docs/10-design/`; the session handoff is `docs/40-active.m
 |---|---|---|
 | **1** | UI redesign — iso city, blueprint + placements, floating-dock nav, build queue sidebar, HUD restyle, SVG icon system | [x] done |
 | **2** | World map + marches — MVP (gather/attack, regions, Rally Point) **and** fast-follows (scout, ruins, outposts, world bosses, fog) | [x] implemented (uncommitted as of 2026-07-15); hardening open |
-| **Reskin** | Grit reskin (art direction, tile-grid world, juice) — `docs/10-design/grit-reskin.md`, ADR 0008 | [~] in progress (A1+A2 done 2026-07-15, B1+B2 done 2026-07-16; next C1) |
+| **Reskin** | Grit reskin (art direction, tile-grid world, juice) — `docs/10-design/grit-reskin.md`, ADR 0008 | [~] in progress (A1+A2 done 2026-07-15, B1+B2 done 2026-07-16, C1 done 2026-07-18; next A4 or C2) |
 | **3** | **Arena** — PvP + alliance co-op boss fights + ranks; eventually replaces campaign combat | [ ] blocked on Phase 7 |
 | **4** | AI opponents (`AIManager`) — factions grow with the player, re-capture regions (ADR 0005 seeds this) | [ ] after reskin |
 | **5** | Map events & objectives | [ ] |
@@ -26,7 +26,13 @@ Sequencing per `docs/10-design/grit-reskin.md` — each phase ≈ one session, i
 shippable: A1 grim grade → A2 UI theme → B1 grid data → B2 grid renderer → C1 sound →
 A4 fiction pass → C2/C3 juice → A3 sprites + B3 terrain art (user-in-the-loop last).
 
-- [x] A1 · [x] A2 · [x] B1 · [x] B2 · [ ] C1 · [ ] A4 · [ ] C2 · [ ] C3 · [ ] A3 · [ ] B3
+- [x] A1 · [x] A2 · [x] B1 · [x] B2 · [x] C1 · [ ] A4 · [ ] C2 · [ ] C3 · [ ] A3 · [ ] B3
+
+**C1 landed 2026-07-18** (ADR 0015): sample playback with a procedural-tone fallback. New
+`js/systems/sound/{sampleLibrary,ambientBed}.js`; `SoundManager` presets try a decoded
+Kenney `.ogg` sample first and fall back to the original tone if the buffer isn't loaded
+yet (zero regression). Procedural wind bed on the world view, gated by a new
+`ambientEnabled` setting. Verified headless: OGG decode + ambient toggling.
 
 **B2 landed 2026-07-16** (ADR 0013): `js/ui/world/gridLayer.js` (226 ln) renders the cell
 grid into 16×16-cell offscreen chunks (512×512 texture, nearest-neighbour blit → crisp at
@@ -75,6 +81,12 @@ sprite generation.
   the real build/train APIs to sandbox HQ Lv.3 + Rally Point + a march-ready squad).
   Ephemeral: never persisted, so the real save is untouched. Covered by
   `tests/browser/dev-smoke.mjs`. Removes the from-scratch tax on eyeballing gated views.
+- [x] **Concurrent build workers** (2026-07-18, ADR 0016) — build queue went from
+  one-at-a-time to N concurrent workers over a shared FIFO queue (workers =
+  `getMaxBuildSlots()`, +2 waiting buffer). New `js/systems/building/buildQueue.js`
+  pool helpers; unified `BuildingManager._catchup`; same-instance upgrades stay serial;
+  legacy saves fan out on load. Fixes the `applyOffline` `elapsedSec` ReferenceError.
+  Tests: `buildQueue.test.js` (7) + `buildingManager.test.js` (13).
 - [ ] **Systems bug audit** — most managers are bugged / roughly built (owner's
   assessment). Sweep system by system (browser + Playwright harness), file findings
   here, fix the load-bearing ones before the reskin builds on top.

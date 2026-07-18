@@ -1,17 +1,24 @@
 /**
  * SoundManager.js
- * Procedural audio using the Web Audio API.
- * No external files needed — all sounds are synthetically generated tones.
- * Respects the sfxEnabled setting from SettingsManager.
+ * Sample playback with a procedural-tone fallback. Each preset tries a sample
+ * from SampleLibrary first; if its buffer isn't loaded yet it plays the original
+ * Web Audio tone, so audio never regresses while samples stream in.
+ * Respects sfxEnabled (all sound) and ambientEnabled (world-view bed).
  */
 import { eventBus } from '../core/EventBus.js';
+import { SampleLibrary } from './sound/sampleLibrary.js';
+import { AmbientBed } from './sound/ambientBed.js';
 
 export class SoundManager {
   constructor(settingsManager) {
     this.name = 'SoundManager';
     this._settings = settingsManager;
     this._ctx = null;
+    this._view = null;
     this._initContext();
+    this._samples = new SampleLibrary(this._ctx);
+    this._ambient = new AmbientBed(this._ctx, () => this._ambientAllowed());
+    this._samples.warm(['click', 'switch']);
     this._registerEvents();
   }
 
@@ -27,22 +34,22 @@ export class SoundManager {
     return this._ctx && this._settings.getSettings().sfxEnabled;
   }
 
-  /**
-   * Play a procedurally generated tone.
-   * @param {number} frequency Hz
-   * @param {number} duration seconds
-   * @param {string} type OscillatorType: 'sine'|'square'|'sawtooth'|'triangle'
-   * @param {number} volume 0–1
-   * @param {number} [delay=0] seconds before playing
-   */
+  _ambientAllowed() {
+    const s = this._settings.getSettings();
+    return this._ctx && s.sfxEnabled && s.ambientEnabled;
+  }
+
+  _sample(key) {
+    return this._isEnabled() && this._samples.tryPlay(key);
+  }
+
   _playTone(frequency, duration, type = 'sine', volume = 0.2, delay = 0) {
     if (!this._isEnabled()) return;
     try {
-      // Resume context on first user interaction
       if (this._ctx.state === 'suspended') this._ctx.resume();
 
-      const osc   = this._ctx.createOscillator();
-      const gain  = this._ctx.createGain();
+      const osc  = this._ctx.createOscillator();
+      const gain = this._ctx.createGain();
 
       osc.connect(gain);
       gain.connect(this._ctx.destination);
@@ -51,7 +58,6 @@ export class SoundManager {
       osc.frequency.setValueAtTime(frequency, this._ctx.currentTime + delay);
 
       gain.gain.setValueAtTime(volume, this._ctx.currentTime + delay);
-      // Fade out to avoid clicking
       gain.gain.exponentialRampToValueAtTime(0.001, this._ctx.currentTime + delay + duration);
 
       osc.start(this._ctx.currentTime + delay);
@@ -60,84 +66,100 @@ export class SoundManager {
   }
 
   // =============================================
-  // SOUND PRESETS
+  // SOUND PRESETS (sample-first, tone fallback)
   // =============================================
 
-  /** Short UI click feedback */
   click() {
+    if (this._sample('click')) return;
     this._playTone(880, 0.06, 'sine', 0.12);
   }
 
-  /** Positive confirmation: build started, quest progress */
   confirm() {
+    if (this._sample('switch')) return;
     this._playTone(660, 0.08, 'triangle', 0.15);
     this._playTone(880, 0.1, 'triangle', 0.15, 0.08);
   }
 
-  /** Building or research complete */
   complete() {
+    if (this._sample('complete')) return;
     this._playTone(523, 0.1, 'triangle', 0.18);
     this._playTone(659, 0.1, 'triangle', 0.18, 0.10);
     this._playTone(784, 0.15, 'triangle', 0.20, 0.20);
   }
 
-  /** Victory fanfare */
   victory() {
+    if (this._sample('victory')) return;
     const notes = [523, 659, 784, 1047];
     notes.forEach((freq, i) => this._playTone(freq, 0.18, 'triangle', 0.22, i * 0.14));
   }
 
-  /** Defeat stinger */
   defeat() {
+    if (this._sample('defeat')) return;
     this._playTone(440, 0.15, 'sawtooth', 0.15);
     this._playTone(330, 0.2,  'sawtooth', 0.15, 0.15);
     this._playTone(220, 0.3,  'sawtooth', 0.12, 0.30);
   }
 
-  /** Warning / cannot afford / error */
   error() {
     this._playTone(200, 0.08, 'square', 0.15);
     this._playTone(180, 0.1,  'square', 0.12, 0.10);
   }
 
-  /** Reward / gold collect */
   coin() {
+    if (this._sample('coin')) return;
     this._playTone(1200, 0.05, 'sine', 0.15);
     this._playTone(1600, 0.07, 'sine', 0.18, 0.05);
   }
 
-  /** Level up */
   levelUp() {
+    if (this._sample('levelUp')) return;
     const notes = [523, 659, 784, 1047, 1319];
     notes.forEach((freq, i) => this._playTone(freq, 0.15, 'triangle', 0.20, i * 0.10));
   }
 
-  /** Combat hit impact */
   hit() {
+    if (this._sample('impact')) return;
     this._playTone(180, 0.06, 'sawtooth', 0.18);
   }
 
-  /** Achievement unlocked — ascending 5-note arpeggio, triangle wave */
   achievement() {
-    const notes = [523, 659, 784, 1047, 1319]; // C5 E5 G5 C6 E6
+    if (this._sample('achievement')) return;
+    const notes = [523, 659, 784, 1047, 1319];
     notes.forEach((freq, i) => this._playTone(freq, 0.12, 'triangle', 0.18, i * 0.10));
   }
 
-  /** Combat wave start — low sine thud ~120 Hz */
   battle() {
+    if (this._sample('battle')) return;
     this._playTone(120, 0.15, 'sine', 0.20);
   }
 
-  /** Heal pulse — ascending minor third, sine */
   heal() {
     this._playTone(440, 0.12, 'sine', 0.15);
     this._playTone(523, 0.14, 'sine', 0.15, 0.10);
   }
 
-  /** Short two-tone reward chime — plays on item/resource grant. */
   playChime() {
+    if (this._sample('coin')) return;
     this._playTone(880,  0.08, 'sine', 0.18);
     this._playTone(1100, 0.12, 'sine', 0.18, 0.08);
+  }
+
+  /** Research complete — bright "tech online" chime, distinct from construction. */
+  research() {
+    this._playTone(784, 0.09, 'triangle', 0.16);
+    this._playTone(1047, 0.11, 'triangle', 0.16, 0.09);
+    this._playTone(1319, 0.14, 'sine', 0.14, 0.19);
+  }
+
+  /** March dispatch bark — voice only, no tone fallback (silence is fine). */
+  dispatch() {
+    this._sample('dispatch');
+  }
+
+  /** March returned successfully. */
+  missionComplete() {
+    if (this._sample('missionComplete')) return;
+    this.victory();
   }
 
   // =============================================
@@ -149,18 +171,33 @@ export class SoundManager {
     eventBus.on('unit:trained',                () => this.complete());
     eventBus.on('combat:victory',              () => this.victory());
     eventBus.on('combat:defeat',               () => this.defeat());
-    eventBus.on('quest:completed',             () => { this.victory(); });
-    eventBus.on('tech:researched',             () => this.complete());
+    eventBus.on('combat:started',              () => this.battle());
+    eventBus.on('combat:marchResolved',        () => this.hit());
+    eventBus.on('quest:completed',             () => this.missionComplete());
+    eventBus.on('tech:researched',             () => this.research());
     eventBus.on('user:levelUp',                () => this.levelUp());
     eventBus.on('resources:added',             () => this.coin());
     eventBus.on('ui:click',                    () => this.click());
     eventBus.on('ui:error',                    () => this.error());
-    // New event wires
     eventBus.on('achievement:unlocked',        () => this.achievement());
     eventBus.on('hero:recruited',              () => this.confirm());
     eventBus.on('market:traded',               () => this.coin());
     eventBus.on('building:cafeteria:shortfall',({ severity } = {}) => severity === 'info' ? this.confirm() : this.error());
     eventBus.on('combat:wave:start',           () => this.battle());
+    eventBus.on('march:dispatched',            () => this.dispatch());
+    eventBus.on('march:completed',             () => this.missionComplete());
+    eventBus.on('ui:viewChanged',              (v) => this._onViewChanged(v));
+    eventBus.on('settings:changed',            () => this._syncAmbient());
+  }
+
+  _onViewChanged(view) {
+    this._view = view;
+    this._syncAmbient();
+  }
+
+  _syncAmbient() {
+    if (this._view === 'world' && this._ambientAllowed()) this._ambient.start();
+    else this._ambient.stop();
   }
 
   update(dt) { /* No tick needed */ }

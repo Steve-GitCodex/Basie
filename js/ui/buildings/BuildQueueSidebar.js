@@ -50,9 +50,15 @@ export class BuildQueueSidebar {
     const section = document.createElement('div');
     section.className = 'aq-section';
 
+    const activeCount  = queue.filter(q => q.isActive).length;
+    const waitingCount = queue.length - activeCount;
+    const countText    = waitingCount > 0
+      ? `${activeCount}/${maxSlots} · ${waitingCount} waiting`
+      : `${activeCount}/${maxSlots}`;
+
     const header = document.createElement('div');
     header.className = 'aq-section-header aq-section-header--build';
-    header.innerHTML = `<span class="aq-section-icon">${icon('hammer')}</span><span class="aq-section-title">BUILD</span><span class="aq-section-count">${queue.length}/${maxSlots}</span>`;
+    header.innerHTML = `<span class="aq-section-icon">${icon('hammer')}</span><span class="aq-section-title">BUILD</span><span class="aq-section-count">${countText}</span>`;
     section.appendChild(header);
 
     const items = document.createElement('div');
@@ -61,6 +67,9 @@ export class BuildQueueSidebar {
     // Active + queued items
     for (const queueItem of queue) {
       const cfg = queueItem.cfg ?? {};
+      const name = (cfg.instanceSlots?.length ?? 1) > 1
+        ? `${cfg.name ?? queueItem.buildingId} ${(queueItem.instanceIndex ?? 0) + 1}`
+        : (cfg.name ?? queueItem.buildingId);
       const el  = document.createElement('div');
 
       if (queueItem.isActive) {
@@ -73,7 +82,7 @@ export class BuildQueueSidebar {
           <div class="aq-slot-row">
             <span class="aq-slot-icon">${iconFromEmoji(cfg.icon ?? '') || icon('hammer')}</span>
             <div class="aq-slot-info">
-              <div class="aq-slot-name">${cfg.name ?? queueItem.buildingId}</div>
+              <div class="aq-slot-name">${name}</div>
               <div class="aq-slot-sub">→ Lv.${queueItem.pendingLevel}</div>
             </div>
             <div class="aq-slot-actions">
@@ -87,16 +96,17 @@ export class BuildQueueSidebar {
             </div>
             <div class="progress-bar"><div class="progress-fill progress-fill-primary" style="width:${pct}%"></div></div>
           </div>`;
+        const activePos = queueItem.queuePosition;
         el.querySelector('.aq-cancel-btn')?.addEventListener('click', e => {
           e.stopPropagation();
           eventBus.emit('ui:click');
-          const r = bm.cancelBuild(0);
+          const r = bm.cancelBuild(activePos);
           if (!r.success) this._notifications?.show('warning', 'Cannot Cancel', r.reason);
         });
         el.querySelector('.aq-speed-btn')?.addEventListener('click', e => {
           e.stopPropagation();
           eventBus.emit('ui:click');
-          this._openSpeedupPicker(el, 'building', secsLeft);
+          this._openSpeedupPicker(el, 'building', secsLeft, queueItem.instanceId);
         });
       } else {
         el.className = 'aq-slot aq-slot--queued';
@@ -104,8 +114,8 @@ export class BuildQueueSidebar {
           <div class="aq-slot-row">
             <span class="aq-slot-icon">${iconFromEmoji(cfg.icon ?? '') || icon('hammer')}</span>
             <div class="aq-slot-info">
-              <div class="aq-slot-name">${cfg.name ?? queueItem.buildingId}</div>
-              <div class="aq-slot-sub">→ Lv.${queueItem.pendingLevel} · #${queueItem.queuePosition + 1}</div>
+              <div class="aq-slot-name">${name}</div>
+              <div class="aq-slot-sub">→ Lv.${queueItem.pendingLevel} · #${(queueItem.waitingPosition ?? 0) + 1}</div>
             </div>
             <button class="aq-cancel-btn" title="Cancel &amp; refund">✕</button>
           </div>`;
@@ -312,10 +322,10 @@ export class BuildQueueSidebar {
     return section;
   }
 
-  _openSpeedupPicker(anchorEl, queueType, secsLeft) {
+  _openSpeedupPicker(anchorEl, queueType, secsLeft, targetInstanceId = null) {
     openSpeedupPicker({
       anchorRect:    anchorEl.getBoundingClientRect(),
-      queueType, secsLeft,
+      queueType, secsLeft, targetInstanceId,
       inventory:     this._inventory,
       notifications: this._notifications,
     });

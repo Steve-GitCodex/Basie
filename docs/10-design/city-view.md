@@ -62,3 +62,7 @@ tutorials silently. The Train step spotlights the Infantry Hall tile.
 `#bq-sidebar` — fixed-right collapsible panel (`BuildingsUI._renderSidebar()`) showing
 build/research/training queue items. Auto-opens on activity (auto-closes after 10s;
 manual toggle cancels). Toggle: `#bq-toggle`.
+
+The build section runs **concurrent workers** (ADR 0016): up to `getMaxBuildSlots()`
+builds are active at once with their own progress bar and speed-up, drawn from one shared
+FIFO queue (capacity = workers + 2 waiting). Header shows `active/workers · N waiting`.
