@@ -63,6 +63,9 @@ overlays that eat clicks (story dialog, tutorial blocker, `#modal-overlay`,
   managers are wired, and zero page errors.
 - `world-smoke.mjs` — flips to the world view (via `ui:navigateTo`, which skips the
   Rally Point unlock gate), asserts regions/POIs resolve and the map painted.
+- `dev-smoke.mjs` — boots `?dev` (ADR 0014) and asserts the preset lands in sandbox
+  at HQ Lv.3 with the Rally Point built and a march-ready squad, on the world map,
+  without touching a pre-seeded real save.
 
 Both exit non-zero on failure, so a session can gate on them.
 

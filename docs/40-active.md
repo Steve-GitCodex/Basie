@@ -3,11 +3,11 @@
 > Most-updated file in the repo. Every session that changes code updates this file
 > (what landed, known issues, exact next steps). See the session protocol in `CLAUDE.md`.
 
-## Current state (2026-07-16)
+## Current state (2026-07-18)
 
 - Branch: `Working_Branch`. Everything through A1+A2 is **committed** (`6273669`,
-  `4d05cf0`). **Uncommitted:** grit reskin Phase B1 + B2 + the new test suite (below) —
-  tree is commit-ready.
+  `4d05cf0`). **Uncommitted:** grit reskin Phase B1 + B2 + the new test suite + the
+  `?dev` session flag (below) — tree is commit-ready.
 - Phase 1 (UI redesign) and Phase 2 (world map MVP + fast-follows) are **done** —
   see `docs/30-roadmap.md`.
 - Current direction: **grit reskin** (`docs/10-design/grit-reskin.md`) — art/feel pass
@@ -17,6 +17,29 @@
 - **The repo has tests now** (ADR 0012). `npm test` before you hand off; fix a bug →
   add a regression test in the matching `tests/unit/*.test.js`. Contract:
   `tests/README.md`.
+
+### Landed this session (2026-07-18)
+
+4. **`?dev` session flag** (ADR 0014) — kills the from-scratch tax on eyeballing gated
+   views. `http://localhost:8000/?dev` boots straight to an unlocked world map: no auth
+   click-through, no tutorial, no new-game modal.
+   - New `js/core/devSession.js` (~75 ln). Drives the **real** manager APIs: sandbox
+     mode → `completeTutorial()` → `buildingManager.build()` raises HQ to Lv.3 + builds
+     Rally Point (unlocks the World tab) + Barracks + Infantry Hall → trains infantry and
+     forms a squad → `ui:navigateTo` `world`. Sandbox queues are drained synchronously via
+     the managers' own `update(dt)` loop; resources floored through public `setCap`/`add`.
+     No hand-crafted save, no internal poking — so it can't drift from the serialize format.
+   - `main.js` gates on `isDevSession()`: launches as guest, forces `savedState = null`,
+     and **skips all persistence** (autosave, `beforeunload`, queue/purchase save hooks) —
+     a dev session never reads or overwrites `basie_game_state`, so the real save survives.
+   - **Closes the march-test gap** B1 flagged: a fresh guest save had no squads, so march
+     dispatch couldn't be driven live. `?dev` now boots with a 4-unit squad in place.
+   - **Verified** (`tests/browser/dev-smoke.mjs`, committed): lands in sandbox at HQ Lv.3
+     with Rally Point + a march-ready squad on the world map, a pre-seeded real save intact,
+     zero page errors. `npm test` 138/138; `boot-smoke` still green (normal boot unregressed);
+     `check-comments` clean in the new files (16 pre-existing violations untouched).
+   - The military step is best-effort (wrapped) — if the train/squad model shifts, `?dev`
+     still boots to the unlocked map, which is the primary goal.
 
 ### Landed this session (2026-07-16, latest)
 
@@ -257,6 +280,16 @@
 - `docs/` wiki is new (2026-07-15); design pages were back-filled from shipped specs —
   correct them in place if they drift from code.
 
+### Landed 2026-07-18 (docs only)
+
+- **Data consolidation plan** — audited hardcoded tunables across systems (combat
+  formula coefficients, march speed/carry/dwell with no data home, MarketManager's
+  entire trade table, population/cafeteria constants, starting grants, two divergent
+  XP curves off the same base 500, 6 duplicated constants). Wrote the six-phase
+  pure-move migration plan: `docs/data-consolidation-plan.md`; roadmap entry under
+  Hardening. No code changed. Structure verdict: three-tier architecture is sound —
+  this is about where numbers live, not moving modules.
+
 ## Next steps (session ended 2026-07-16 — resume here)
 
 0. **Use the suite.** `npm test` is the cheap gate — run it before and after any change
@@ -267,7 +300,9 @@
    end-to-end (needs a save with squads — the gap B1 left), combat resolution.
 
 1. **Steve: eyeball B2 in the browser** — this is the call to make before picking the
-   next phase. The grid renders and reads correctly, but it is **flat-colour placeholder**
+   next phase. **Fastest path: `run.bat` then open `http://localhost:8000/?dev`** — it
+   boots straight onto the unlocked world map (ADR 0014), no tutorial/build grind.
+   The grid renders and reads correctly, but it is **flat-colour placeholder**
    (that's B2's remit; B3 brings the texture atlas). Judge whether the map now looks
    *plausible* or *programmer-art*: the design doc's own warning is "don't let B3 slip
    long after B2". One-line tunables if it needs it: `TERRAIN_COLOR` (the six cell

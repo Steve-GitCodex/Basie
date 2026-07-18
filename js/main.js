@@ -35,6 +35,9 @@ import { UIManager }           from './ui/UIManager.js';
 import { TimerService }        from './ui/TimerService.js';
 import { TooltipService }      from './ui/TooltipService.js';
 import { FirebaseDataManager, IS_CONFIGURED } from './core/FirebaseDataManager.js';
+import { isDevSession, runDevSession } from './core/devSession.js';
+
+const DEV = isDevSession();
 
 // =============================================
 // INSTANTIATE SYSTEMS
@@ -338,6 +341,13 @@ function initAuthScreen() {
   const authError  = document.getElementById('auth-error');
   const authForm   = document.getElementById('auth-form');
 
+  if (DEV) {
+    userManager.setGuest(true);
+    userManager.setUsername('Dev Commander');
+    launchGame(authScreen, gameShell);
+    return;
+  }
+
   const hasAccount = IS_CONFIGURED && !!localStorage.getItem('basie_has_account');
 
   guestBtn?.addEventListener('click', () => {
@@ -398,7 +408,7 @@ function initAuthScreen() {
 // LAUNCH
 // =============================================
 function launchGame(authScreen, gameShell, externalState = null) {
-  const savedState    = externalState ?? saveManager.load();
+  const savedState    = DEV ? null : (externalState ?? saveManager.load());
   const lastTimestamp = savedState?.lastSavedTimestamp ?? null;
 
   applyGameState(savedState);
@@ -546,12 +556,14 @@ function launchGame(authScreen, gameShell, externalState = null) {
     setTimeout(sendWelcomeMail, 1000);
   }
 
-  saveManager.startAutosave(getGameState);
-
-  // Save immediately whenever the build queue changes so items aren't lost on refresh
-  eventBus.on('building:queueUpdated', () => saveManager.save(getGameState()));
-  // Trigger save immediately after any shop purchase
-  eventBus.on('game:purchaseComplete', () => saveManager.save(getGameState()));
+  // A dev session is ephemeral — never persist it so the real localStorage save survives.
+  if (!DEV) {
+    saveManager.startAutosave(getGameState);
+    // Save immediately whenever the build queue changes so items aren't lost on refresh
+    eventBus.on('building:queueUpdated', () => saveManager.save(getGameState()));
+    // Trigger save immediately after any shop purchase
+    eventBus.on('game:purchaseComplete', () => saveManager.save(getGameState()));
+  }
   
   // Wire automation purchases to BuildingManager
   eventBus.on('automation:purchased', (data) => {
@@ -566,7 +578,7 @@ function launchGame(authScreen, gameShell, externalState = null) {
     if (slotType === 'research') techManager.grantShopResearchSlot();
   });
   
-  window.addEventListener('beforeunload', () => saveManager.save(getGameState()));
+  if (!DEV) window.addEventListener('beforeunload', () => saveManager.save(getGameState()));
 
   new TimerService().init();
   new TooltipService().init();
@@ -574,6 +586,12 @@ function launchGame(authScreen, gameShell, externalState = null) {
   // On first launch (no save), show the new-game setup modal, then start.
   // On subsequent launches, start immediately.
   const startEngine = () => {
+    if (DEV) {
+      engine.start();
+      runDevSession({ engine, userManager, resourceManager, buildingManager, unitManager, eventBus, logManager });
+      return;
+    }
+
     // Daily login check — fires once per calendar day, after any setup modal is done
     const loginResult = userManager.checkDailyLogin();
     const canShowLoginModal = loginResult && userManager.profile.hasCompletedTutorial;
@@ -597,7 +615,7 @@ function launchGame(authScreen, gameShell, externalState = null) {
     }
   };
 
-  if (!savedState) {
+  if (!savedState && !DEV) {
     _showNewGameSetupModal(startEngine);
   } else {
     startEngine();

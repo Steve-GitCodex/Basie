@@ -70,6 +70,11 @@ sprite generation.
   Grown by B2 (2026-07-16): 138 unit tests (`gridLayer` chunk geometry/LOD, incl. the
   chunk⊂sector invariant ADR 0013 depends on) + 3 `world-smoke` checks (terrain variety,
   owned-tint recolor through the *cached* path).
+- [x] **`?dev` session flag** (2026-07-18, ADR 0014) — `http://localhost:8000/?dev`
+  boots straight to an unlocked world map (skips auth/tutorial/new-game modal; drives
+  the real build/train APIs to sandbox HQ Lv.3 + Rally Point + a march-ready squad).
+  Ephemeral: never persisted, so the real save is untouched. Covered by
+  `tests/browser/dev-smoke.mjs`. Removes the from-scratch tax on eyeballing gated views.
 - [ ] **Systems bug audit** — most managers are bugged / roughly built (owner's
   assessment). Sweep system by system (browser + Playwright harness), file findings
   here, fix the load-bearing ones before the reskin builds on top.
@@ -125,6 +130,12 @@ sprite generation.
   - [ ] **No-reservation placement model** — confirmed as the base view's biggest
     structural debt (seeded-ghost plots force the anti-teleport guard and couple the
     tutorial to seeded tiles); already bundled below under cross-cutting reworks.
+- [ ] **Data consolidation** — hardcoded tunables (combat formula coefficients, march
+  speed/carry/dwell, market trade table + inflation, population/cafeteria constants,
+  starting grants, XP curves, 6 duplicated constants) live in managers instead of
+  `js/entities/data/`. Six-phase pure-move plan, ordered by tuning churn:
+  `docs/data-consolidation-plan.md` (2026-07-18 audit). One phase per session, behind
+  `npm test`; Phase 1 (new `data/marches.js`) also lands the convention ADR.
 - [ ] **Comment cleanup** *(suited to a lower-cost model)* — run
   `node scripts/check-comments.mjs`; delete narration comments and dead tracker refs
   (P#/B#/"Group N"); move real rationale into `docs/` / ADRs with `@see` pointers.
