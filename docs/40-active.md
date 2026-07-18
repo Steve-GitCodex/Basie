@@ -5,20 +5,64 @@
 
 ## Current state (2026-07-18)
 
-- Branch: `Working_Branch`. Everything through the concurrent build workers is
-  **committed** (`5876f3b`). **Uncommitted:** grit reskin Phase A4 fiction pass + **Phase
-  C2 canvas juice** (both below) + their regression tests — tree is commit-ready.
+- Branch: `Working_Branch`. Everything through C2 canvas juice is **committed** (`927b6f3`).
+  **Uncommitted:** grit reskin **Phase C3 — DOM/UI juice** (below) + its regression test —
+  tree is commit-ready.
 - Phase 1 (UI redesign) and Phase 2 (world map MVP + fast-follows) are **done** —
   see `docs/30-roadmap.md`.
 - Current direction: **grit reskin** (`docs/10-design/grit-reskin.md`) — art/feel pass
-  before Phase 4 AI. A1 + A2 + B1 + B2 + C1 sound + A4 fiction + **C2 canvas juice**
-  landed. **Next phase = C3 UI/DOM juice** (resource fly-outs, tick-ups, sheet
-  transitions) or **B3 terrain atlas** (map-selling AI art). See Next steps.
+  before Phase 4 AI. A1 + A2 + B1 + B2 + C1 sound + A4 fiction + C2 canvas juice + **C3
+  DOM juice** landed. **Only the two art phases remain: A3 sprites + B3 terrain atlas**
+  (both user-in-the-loop). The code-only reskin work is done.
 - **The repo has tests now** (ADR 0012). `npm test` before you hand off; fix a bug →
   add a regression test in the matching `tests/unit/*.test.js`. Contract:
   `tests/README.md`.
 
 ### Landed this session (2026-07-18, latest)
+
+12. **Grit reskin Phase C3 — DOM/UI juice** (ADR 0019). Presentation only, no gameplay,
+    no new save state, no new manager.
+    - New `js/ui/fx/numberTicker.js` — pure `tickTo(el, target, format)`; per-element
+      `WeakMap` state retargets a running count-up instead of stacking; ~320ms ease-out;
+      formats `Math.round(val)` per frame (keeps `fmt`'s K/M rounding clean); first call
+      per element sets instantly (no count-from-zero on boot). Wired into
+      `NavigationUI._renderResources` — only the value ticks; cap/rate stay instant.
+      Passive income now visibly counts up (retargets every 2Hz `resources:tick`).
+    - New `js/ui/fx/resourceFlyout.js` (`ResourceFlyout`, instantiated once by UIManager) —
+      on `resources:added` (fires only on discrete `add()` rewards, never passive ticks)
+      flies a `.res-fly` coin (reuses the masked `.res-icon--{key}` art) from mid-screen
+      into `#res-{key}`, then pulses the chip with the existing `tick-flash`. Pooled cap
+      (24 live), skips when `document.hidden`. **Origin is mid-screen, not the true event
+      source** — `resources:added` carries only `{key: amount}` (ADR 0019).
+    - Sheets get `--transition-spring`: `.world-panel` (PoiDetailPanel) spring transform;
+      `.world-sheet` (MarchDispatchSheet) + `.bp-sheet` (BuildablesPanel) are
+      `display:none`-toggled so they get an entrance keyframe (`sheetRise`/`bpSheetRise`)
+      that restarts on display. Toasts were already spring.
+    - Universal button feel: `.btn:active:not(:disabled){scale(0.95)}` + one capture-phase
+      `document` click listener (`UIManager._installButtonSfx`) that emits `ui:click` for
+      any button. ~200 callsites already emit it manually → `SoundManager.click()` now
+      **coalesces** (drops calls within 60ms) so there's exactly one click sound. Global
+      `prefers-reduced-motion` guard added to `reset.css`; ticker/flyout also short-circuit
+      on it in JS.
+    - **Verified:** new `tests/unit/numberTicker.test.js` (5 tests, rAF/performance stubbed
+      — instant first set, non-finite passthrough, animate-to-target, integer mid-frames,
+      same-value settle; `npm test` **182/182**). boot/world/dev browser smokes all pass,
+      **zero page errors**. Headless `?dev` probe (scratchpad `c3-probe.mjs`): reward coins
+      spawn + reap, the money chip climbs 500→5000, and a mid-flight sample (2049) proves
+      the tick-up is animated not instant. `check-comments` clean in all new/edited files
+      (flagged violations are all pre-existing, in the queued cleanup task).
+
+11. **Simultaneous-event feedback serialized (audio + UI).** When several events
+    completed on the same tick (e.g. `quest:completed` + a milestone), overlapping
+    `voice`-category clips garbled into a "merged voice," and toasts stacked 3-up.
+    - **Audio:** `SampleLibrary` now runs the `voice` category through a single-channel
+      **queue** (`_voiceQueue`, cap `VOICE_QUEUE_MAX = 3`) that drains one clip at a time,
+      each scheduled by `setTimeout(clipDuration + 0.12s gap)`. Non-voice categories still
+      stack. Regression tests in `tests/unit/sampleLibrary.test.js`.
+    - **UI:** `NotificationManager` `MAX_VISIBLE` `3 → 1` — the existing `_queue`/`_flush`
+      now reveals toasts strictly one at a time. Covered by the boot smoke tier
+      (DOM-bound). Backlog note: at `TOAST_DURATION_MS = 4000` a big burst takes a while
+      to drain; tune the duration if it feels slow.
 
 10. **Grit reskin Phase C2 — canvas juice** (ADR 0018). Shared pooled particle system
     lands feel-motion on both canvases; no gameplay/state change.
@@ -438,16 +482,18 @@
    `tests/README.md`). Worth adding when someone's in the area: SaveManager round-trip,
    march dispatch end-to-end (needs a save with squads), combat resolution.
 
-1. **C2 canvas juice is DONE** (2026-07-18, ADR 0018 — see the "Landed this session" entry
-   above). **Next reskin phase = C3 UI/DOM juice** (resource fly-out from event origin to
-   the HUD chip + number tick-up — must patch in place, `reactive-ui-no-tick-rebuild` is
-   binding; standardize sheet/modal `--transition-spring`; universal `:active` button scale
-   + the C1 click sample; 1 session) or **B3 terrain atlas** (map-selling AI art; note
-   ADR 0013 — a real atlas breaks the fixed-texture-scale chunk cache, plan a
-   zoom-bucketed/native-res cache up front). Two **C2 follow-ups** deferred: battle-toast
-   screen flash + camera nudge, and building light-flicker overlays. Two **A4 fiction**
-   TODOs still deferred: hero cast (`heroes.js` + `economy.js`, fold into Hero redesign)
-   and unit tier names (`units.js`).
+1. **C3 DOM juice is DONE** (2026-07-18, ADR 0019 — entry above). **All code-only reskin
+   phases are now complete** (A1/A2/B1/B2/C1/A4/C2/C3). The only reskin work left is the two
+   **user-in-the-loop art phases**, both needing generated assets Steve approves:
+   **B3 terrain atlas** (map-selling AI art; do before A3 — note ADR 0013, a real atlas
+   breaks the fixed-texture-scale chunk cache, so plan a zoom-bucketed/native-res cache up
+   front) and **A3 building sprites + base projection swap** (ADR 0009/0010 — bundles the
+   diamond-iso retirement; CC0 3D render-to-sprite). With the code juice done, the natural
+   non-art alternative is to start the **Hardening** track (systems bug audit / Phase 2
+   verification+balance / data consolidation Phase 1). Deferred follow-ups still open:
+   two **C2** (battle-toast screen flash + camera nudge, building light-flicker overlays)
+   and two **A4 fiction** (hero cast `heroes.js`+`economy.js` → fold into Hero redesign,
+   unit tier names `units.js`).
 
 2. **Optional sound follow-ups (C1 is done/signed-off, only if asked):** add variants to
    `coin`/`dropLeather` (single-clip repeats on rapid collects); the deferred A2 gacha

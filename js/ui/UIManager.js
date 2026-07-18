@@ -34,6 +34,7 @@ import { MilitaryUI }   from './controllers/MilitaryUI.js';
 import { ChallengesUI } from './controllers/ChallengesUI.js';
 import { EventsUI }     from './controllers/EventsUI.js';
 import { WorldMapUI }   from './controllers/WorldMapUI.js';
+import { ResourceFlyout } from './fx/resourceFlyout.js';
 import { RES_META, openModal, closeModal } from './uiUtils.js';
 import { icon, iconFromEmoji } from './icons.js';
 import { INVENTORY_ITEMS } from '../entities/GAME_DATA.js';
@@ -204,6 +205,8 @@ export class UIManager {
     this._challenges.init();
     this._events.init();
     this._world.init();
+    this._flyout = new ResourceFlyout();
+    this._installButtonSfx();
     eventBus.on('story:chapter_triggered', chapter => this._showStoryModal(chapter));
 
     // ── Tutorial overlay ────────────────────────────────────────────────
@@ -280,6 +283,19 @@ export class UIManager {
   // ─────────────────────────────────────────────
   // Group 4 animation helpers
   // ─────────────────────────────────────────────
+
+  /**
+   * Universal button click sample. Fires ui:click for any button press that a
+   * callsite didn't already voice; SoundManager.click() coalesces the duplicate
+   * when both fire within the same event.
+   */
+  _installButtonSfx() {
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest?.('button, .btn, [role="button"]');
+      if (!btn || btn.disabled) return;
+      eventBus.emit('ui:click');
+    }, true);
+  }
 
   /** Briefly flash a card element with the cardFlash CSS animation. */
   _flashCard(el) {

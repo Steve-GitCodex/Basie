@@ -15,6 +15,7 @@ export class SoundManager {
     this._settings = settingsManager;
     this._ctx = null;
     this._view = null;
+    this._lastClick = 0;
     this._initContext();
     this._samples = new SampleLibrary(this._ctx);
     this._ambient = new AmbientBed(this._ctx, () => this._ambientAllowed());
@@ -70,6 +71,9 @@ export class SoundManager {
   // =============================================
 
   click() {
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    if (now - this._lastClick < 60) return;
+    this._lastClick = now;
     if (this._sample('click')) return;
     this._playTone(880, 0.06, 'sine', 0.12);
   }

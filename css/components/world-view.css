@@ -35,7 +35,7 @@
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
   padding: var(--space-4);
   opacity: 1;
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  transition: opacity var(--transition-base), transform var(--transition-spring);
   z-index: 5;
 }
 .world-panel.hidden { opacity: 0; transform: translateX(-50%) translateY(24px); pointer-events: none; }
@@ -75,8 +75,14 @@
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
   padding: var(--space-4);
   z-index: 6;
+  animation: sheetRise var(--transition-spring) both;
 }
 .world-sheet.hidden { display: none; }
+
+@keyframes sheetRise {
+  from { opacity: 0; transform: translateX(-50%) translateY(30px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
 .world-sheet__head { display: flex; align-items: center; }
 .world-sheet__head h3 { margin: 0; font-size: var(--text-md); }
 .world-sheet__squads { display: flex; flex-direction: column; gap: var(--space-2); margin: var(--space-3) 0; max-height: 220px; overflow-y: auto; }

@@ -23,10 +23,16 @@ export const MANIFEST = {
   dispatch:        { cat: 'voice',   files: ['voice/war_go_go_go.ogg', 'voice/female_war_go_go_go.ogg', 'voice/war_target_engaged.ogg', 'voice/female_war_target_engaged.ogg', 'voice/war_watch_my_back.ogg'] },
 };
 
+const VOICE_GAP = 0.12;
+const VOICE_QUEUE_MAX = 3;
+
 export class SampleLibrary {
   constructor(ctx) {
     this._ctx = ctx;
     this._buffers = new Map();
+    this._voiceQueue = [];
+    this._voicePlaying = false;
+    this._voiceTimer = null;
   }
 
   warm(keys) {
@@ -44,8 +50,31 @@ export class SampleLibrary {
     if (buffers === undefined) { this._load(key, entry); return false; }
     if (!buffers.length) return false;
     const buf = buffers[(Math.random() * buffers.length) | 0];
+    if (entry.cat === 'voice') {
+      this._enqueueVoice(buf);
+      return true;
+    }
     this._playBuffer(buf, CATEGORY_VOLUME[entry.cat] ?? 0.5);
     return true;
+  }
+
+  _enqueueVoice(buf) {
+    if (this._voiceQueue.length >= VOICE_QUEUE_MAX) return;
+    this._voiceQueue.push(buf);
+    this._drainVoice();
+  }
+
+  _drainVoice() {
+    if (this._voicePlaying) return;
+    const buf = this._voiceQueue.shift();
+    if (!buf) return;
+    this._voicePlaying = true;
+    this._playBuffer(buf, CATEGORY_VOLUME.voice);
+    const ms = ((buf.duration || 0) + VOICE_GAP) * 1000;
+    this._voiceTimer = setTimeout(() => {
+      this._voicePlaying = false;
+      this._drainVoice();
+    }, ms);
   }
 
   async _load(key, entry) {

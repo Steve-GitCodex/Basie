@@ -8,6 +8,7 @@
  */
 import { eventBus } from '../../core/EventBus.js';
 import { RES_META, fmt } from '../uiUtils.js';
+import { tickTo } from '../fx/numberTicker.js';
 import { VIP_TIERS, TAB_UNLOCK_CONDITIONS, TAB_GROUPS, BUILDING_TAB_MAP, HQ_UNLOCK_TABLE, BUILDINGS_CONFIG, UNITS_CONFIG } from '../../entities/GAME_DATA.js';
 import { icon } from '../icons.js';
 
@@ -598,7 +599,7 @@ export class NavigationUI {
       const valEl  = document.getElementById(`v-${key}`);
       const rateEl = document.getElementById(`r-${key}`);
       const capEl  = document.getElementById(`c-${key}`);
-      if (valEl)  valEl.textContent  = fmt(res.amount);
+      if (valEl)  tickTo(valEl, res.amount, fmt);
       if (rateEl) rateEl.textContent = res.perSec > 0 ? `+${res.perSec.toFixed(1)}/s` : '';
       if (capEl && res.cap !== Infinity) capEl.textContent = `/ ${fmt(res.cap)}`;
       // Capacity fill-bar (HUD v2): drive the chip's ::after width via --fill.

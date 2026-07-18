@@ -81,6 +81,20 @@
   100% { color: var(--clr-text-primary); transform: scale(1); }
 }
 
+/* Reward coin flying into its HUD chip (C3 DOM juice) */
+.res-fly {
+  position: fixed;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  pointer-events: none;
+  z-index: var(--z-toast, 900);
+  opacity: 0.95;
+  transition: transform 0.62s cubic-bezier(0.5, 0, 0.35, 1), opacity 0.62s ease-in;
+  will-change: transform, opacity;
+}
+.res-fly::before { width: 16px; height: 16px; }
+
 /* Resource chip color variants */
 #res-wood:hover      { border-color: var(--clr-res-wood); }
 #res-stone:hover     { border-color: var(--clr-res-stone); }

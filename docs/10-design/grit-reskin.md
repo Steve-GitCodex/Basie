@@ -301,7 +301,17 @@ The repo already contains Kenney sample packs under `assets/audio/` that nothing
 - Screen feedback: brief flash + tiny camera nudge on battle victory/defeat toast (keep
   amplitude small; respect reduced-motion if trivially available).
 
-### Phase C3 — DOM/UI juice  *(1 session)*
+### Phase C3 — DOM/UI juice  *(DONE 2026-07-18 — ADR 0019)*
+
+> **As built:** `js/ui/fx/numberTicker.js` (per-element retargeting count-up, ~320ms)
+> wired into `NavigationUI._renderResources`; `js/ui/fx/resourceFlyout.js` flies a reward
+> coin into `#res-{key}` on `resources:added` then pulses the chip. Sheets get
+> `--transition-spring` (PoiDetailPanel transform; MarchDispatchSheet/BuildablesPanel
+> entrance keyframes since they're `display:none`-toggled). Universal `.btn:active` scale +
+> a capture-phase `ui:click` for every button, deduped by a 60ms coalesce in
+> `SoundManager.click()`. Global `prefers-reduced-motion` guard. **Toasts were already
+> spring** (`toastIn var(--transition-spring)`). **Fly-out origin is mid-screen, not the
+> true event source** — `resources:added` carries only `{key: amount}` (ADR 0019).
 
 - Resource fly-out: on `resources:added` from a march return or collection, animate a
   small icon from the event's screen origin to the matching HUD `.resource-chip`, then

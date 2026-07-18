@@ -464,6 +464,11 @@
   border: 1px solid hsla(32, 50%, 45%, 0.3);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   box-shadow: 0 -12px 40px hsla(220, 70%, 2%, 0.7);
+  animation: bpSheetRise var(--transition-spring) both;
+}
+@keyframes bpSheetRise {
+  from { opacity: 0; transform: translateY(40px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 .bp-head {
   display: flex; align-items: center; justify-content: space-between;

@@ -24,6 +24,8 @@
   pointer-events: none;
 }
 
+.btn:active:not(:disabled) { transform: scale(0.95); }
+
 /* Primary */
 .btn-primary {
   background: linear-gradient(135deg, var(--clr-primary), var(--clr-primary-dark));

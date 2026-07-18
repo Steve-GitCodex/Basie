@@ -1,12 +1,12 @@
 /**
  * NotificationManager.js
  * Listens to the EventBus and spawns "toast" pop-up notifications.
- * Handles queuing (max 3 visible), hover-pause of dismiss timers, and CSS animation.
+ * Handles queuing (one toast shown at a time), hover-pause of dismiss timers, and CSS animation.
  */
 import { eventBus } from '../core/EventBus.js';
 
 const TOAST_DURATION_MS = 4000;
-const MAX_VISIBLE       = 3;
+const MAX_VISIBLE       = 1;
 const ICONS = {
   success: '✅',
   warning: '⚠️',
