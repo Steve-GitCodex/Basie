@@ -299,3 +299,53 @@ test('extra actives above a lowered worker count run to completion', () => {
   assert.equal(activeCount(bm), 2);
   assert.equal(bm.getMaxBuildSlots(), 1);
 });
+
+test('moving a building away drops its adjacency bonus, moving back restores it', () => {
+  const rates = [];
+  const rm = stubRM();
+  rm.recalculateRates = (active) => rates.push(active);
+  const bm = new BuildingManager(rm);
+  bm._buildings.set('farm', [{ instanceId: 'farm_0', level: 1 }]);
+  bm._buildings.set('mine', [{ instanceId: 'mine_0', level: 1 }]);
+  bm.getPlacementRects();
+  bm._recalcAdjacency();
+
+  const home = bm.positionOf('mine_0');
+  assert.ok(bm.getAdjacency('farm_0').bonus > 0, 'packer seats production side by side');
+
+  const farm = bm.rectOf('farm_0');
+  const isFar = (cx, cy) => Math.abs(cx - farm.cx) > 6 || Math.abs(cy - farm.cy) > 6;
+  let moved = false;
+  for (let cy = 0; cy < 32 && !moved; cy++) {
+    for (let cx = 0; cx < 44 && !moved; cx++) {
+      if (!isFar(cx, cy) || !bm.rectFree(cx, cy, 3, 3, 'mine_0')) continue;
+      moved = bm.moveBuilding('mine_0', cx, cy).success;
+    }
+  }
+  assert.equal(moved, true, 'found a distant free cell');
+  assert.equal(bm.getAdjacency('farm_0').bonus, 0);
+
+  assert.equal(bm.moveBuilding('mine_0', home.cx, home.cy).success, true);
+  assert.ok(bm.getAdjacency('farm_0').bonus > 0);
+  assert.ok(rates.at(-1).length > 0, 'each recompute pushes fresh rates');
+});
+
+test('an unbuilt instance earns no adjacency bonus', () => {
+  const bm = makeManager(1);
+  bm.getPlacementRects();
+  assert.equal(bm.getAdjacency('farm_0').bonus, 0);
+});
+
+test('adjacency is never serialized — it re-derives on load', () => {
+  const bm = makeManager(1);
+  bm._buildings.set('farm', [{ instanceId: 'farm_0', level: 1 }]);
+  bm._buildings.set('mine', [{ instanceId: 'mine_0', level: 1 }]);
+  bm.getPlacementRects();
+  bm._recalcAdjacency();
+  const saved = bm.serialize();
+  assert.equal('adjacency' in saved, false);
+
+  const bm2 = makeManager(1);
+  bm2.deserialize(saved);
+  assert.equal(bm2.getAdjacency('farm_0').bonus, bm.getAdjacency('farm_0').bonus);
+});

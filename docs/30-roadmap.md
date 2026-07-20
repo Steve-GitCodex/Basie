@@ -229,7 +229,11 @@ model retires entirely (interim anti-teleport guard dies with it).
   per-cell city ground (`cityGround.js`, earth/cracked/ash/road/rubble + debris scatter).
   `cityBlueprint.js` + `cityLayout.js` retired. Camera re-homes on base re-entry until
   the player pans.
-- [ ] **Phase C** — adjacency bonuses + migration bonus toast; balance pass.
+- [x] **Phase C** (2026-07-20) — adjacency bonuses (`adjacency.js`, pure, derived
+  never serialized): same-category clustering + 5 curated pairs → production output,
+  military cluster → training speed; migration "bonus discovered" toast; tooltip
+  `🔗 +N% neighbours` line. **Balance pass still open** — adjacency couples to rubble
+  pacing (ADR 0022 amendment).
 
 ## Backlog / nice-to-haves
 

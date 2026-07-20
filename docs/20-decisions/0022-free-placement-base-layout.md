@@ -44,6 +44,25 @@ level's sprite carries its own anchor, so per-level centring is automatic. Sprit
 — replacing an earlier check that compared the draw anchor against the same function
 that produced it (a tautology).
 
+## Amendment (2026-07-20) — Phase C adjacency shipped
+
+`js/systems/building/adjacency.js` is pure over the placement rects: two footprints
+are neighbours when the gap on both axes is ≤ 2 cells (one tile — a connector road
+may pass between). Same-category neighbours (production/military/population) grant
++5% each capped at +20%; five curated pairs (Fed Quarters, Irrigation, Timber Yard,
+Ore Depot, Muster Ground) grant +6–8% capped at +15%; total capped at +30%.
+
+Production instances spend their bonus as output (`buildingEconomy.computeActiveRates`
+via `_economyCtx.getAdjacencyBonus`); military instances pool theirs into a
+training-time cut (mean bonus, capped 25%) applied at UnitManager's single
+`_trainMultiplier()`. Recomputed on build-complete, move, and load — **never
+serialized**; a legacy load emits `building:adjacencyDiscovered` once so a base the
+packer clustered on migration announces its bonus instead of changing silently.
+
+**Open balance risk (Steve, 2026-07-20 — treated as level design, not code):**
+adjacency creates pressure to re-optimise layouts, which interacts with rubble
+pacing — more cleared space means more clustering freedom. Tune the two together.
+
 ## Consequences
 
 - `cityBlueprint.js` retires with the plot model; district tints stay as backdrop

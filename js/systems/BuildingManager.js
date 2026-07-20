@@ -26,6 +26,7 @@ import { CafeteriaService } from './building/CafeteriaService.js';
 import { PlacementStore } from './building/placementStore.js';
 import { SectorState } from './building/sectorState.js';
 import { packAll, findPlacement, footprintOf, buildingIdOf, skeletonOffenderMoves } from './building/cityPacker.js';
+import { computeAdjacency, trainTimeMultiplier, productionBonusTotal } from './building/adjacency.js';
 import { SECTORS, SECTOR_BY_ID } from '../entities/data/citySectors.js';
 
 /**
@@ -53,7 +54,11 @@ export class BuildingManager {
     this._economyCtx = {
       getPopulation:   ()    => this._rm.getPopulation(),
       getBuildingHero: (iid) => this._hm?.getBuildingHero(iid) ?? null,
+      getAdjacencyBonus: (iid) => this.getAdjacency(iid).bonus,
     };
+
+    /** Layout adjacency bonuses (ADR 0022 Phase C) — derived from placement, never serialized. */
+    this._adjacency = new Map();
 
     /** Free-placement positions on the cell grid (ADR 0022) — instanceId → {cx,cy,w,h}. */
     this._placement = new PlacementStore();
@@ -183,7 +188,7 @@ export class BuildingManager {
       }
 
       this._recalculateAllCaps();
-      this._notifyRates();
+      this._recalcAdjacency();
       eventBus.emit('building:completed', { id: buildingId, instanceIndex, building: { id: buildingId, level: pendingLevel } });
       buildQueue.fill(this._buildQueue, maxSlots, done.endsAt);
       changed = true;
@@ -403,7 +408,7 @@ export class BuildingManager {
       instArr[instanceIndex].level = pendingLevel;
       this._recalculateAllCaps();
       eventBus.emit('building:completed', { id: buildingId, instanceIndex, building: { id: buildingId, level: pendingLevel } });
-      this._notifyRates();
+      this._recalcAdjacency();
       eventBus.emit('building:started', { id: buildingId, instanceIndex, cost, level: pendingLevel });
       return { success: true };
     }
@@ -764,6 +769,29 @@ export class BuildingManager {
            this._placement.rectFree(cx, cy, w, h, exceptId);
   }
 
+  // ── Layout adjacency (pure math in building/adjacency.js — ADR 0022, Phase C) ──
+
+  /** Recompute from the current layout; only BUILT instances count. Emits on change. */
+  _recalcAdjacency({ silent = false } = {}) {
+    const built = this._placement.rects().filter(r => this.getInstanceLevelOf(r.instanceId) > 0);
+    const before = productionBonusTotal(this._adjacency);
+    this._adjacency = computeAdjacency(built);
+    this._notifyRates();
+    if (!silent) {
+      eventBus.emit('building:adjacencyChanged', {
+        gained: productionBonusTotal(this._adjacency) - before,
+      });
+    }
+  }
+
+  /** @returns {{bonus:number, cluster:number, sameCount:number, pairs:{withId:string,label:string,bonus:number}[]}} */
+  getAdjacency(instanceId) {
+    return this._adjacency.get(instanceId) ?? { bonus: 0, cluster: 0, sameCount: 0, pairs: [] };
+  }
+
+  /** Training-time multiplier granted by clustered military buildings (1 = none). */
+  getTrainTimeMultiplier() { return trainTimeMultiplier(this._adjacency); }
+
   // ── Rubble-sector expansion (delegates to SectorState — ADR 0022, Phase B) ──
   getSectors() { return this._sectors.catalog(this.getHQLevel(), c => this._rm.canAfford(c)); }
   isCellCleared(cx, cy) { return this._sectors.isCellCleared(cx, cy); }
@@ -861,6 +889,7 @@ export class BuildingManager {
       return { success: false, reason: 'That spot is blocked or still under rubble.' };
     }
     this._placement.move(instanceId, cx, cy);
+    this._recalcAdjacency();
     eventBus.emit('building:relocated', { instanceId, cx, cy });
     return { success: true };
   }
@@ -953,6 +982,15 @@ export class BuildingManager {
     // relocate offenders to the nearest free cleared cell via the packer.
     for (const m of skeletonOffenderMoves(this._placement.rects(), this._isRectCleared))
       this._placement.move(m.instanceId, m.cx, m.cy);
+
+    // Adjacency is derived, never saved. Migrated bases land pre-clustered (packer
+    // category bias), so a legacy load wakes up already earning — announced once.
+    this._recalcAdjacency({ silent: true });
+    if (data.placements === undefined && productionBonusTotal(this._adjacency) > 0) {
+      eventBus.emit('building:adjacencyDiscovered', {
+        total: productionBonusTotal(this._adjacency),
+      });
+    }
 
     this._buildQueue = (data.buildQueue ?? []).map(item => ({
       instanceIndex: 0,

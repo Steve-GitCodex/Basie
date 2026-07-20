@@ -729,6 +729,18 @@
   word-break: break-word;
 }
 
+.tt-adjacency {
+  font-size: var(--text-xs);
+  color: var(--clr-success, #5fb85f);
+  margin-bottom: var(--space-2);
+  line-height: 1.4;
+  font-family: var(--font-body);
+}
+
+.tt-adjacency-tags {
+  color: var(--clr-text-secondary);
+}
+
 .tt-costs {
   display: flex;
   flex-wrap: wrap;

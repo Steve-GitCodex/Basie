@@ -21,6 +21,38 @@
   add a regression test in the matching `tests/unit/*.test.js`. Contract:
   `tests/README.md`.
 
+### Landed this session (2026-07-20)
+
+25. **Base layout rework Phase C — adjacency bonuses (layout is now gameplay)**
+    (ADR 0022 amendment). Closes the rework; A/B/C all shipped.
+    - **`js/systems/building/adjacency.js`** (new, pure, 110 ln): neighbour test =
+      rect gap ≤ 2 cells on both axes (one tile, so a connector road still fits
+      between). Same-category clustering +5% each (cap +20%) for
+      production/military/population; 5 curated pairs (house↔cafeteria,
+      farm↔well, lumbermill↔workshop, mine↔storehouse, barracks↔rallypoint)
+      +6–8% (cap +15%); total cap +30%.
+    - **Production** spends the bonus as output — `buildingEconomy.computeActiveRates`
+      reads `ctx.getAdjacencyBonus(instanceId)`. **Military** pools it into a
+      training-time cut (mean, cap 25%) at UnitManager's new `_trainMultiplier()`
+      (folded with the VIP cut at all 5 call sites — no other change there).
+    - **Derived, never serialized.** `BuildingManager._recalcAdjacency()` runs on
+      build-complete (both paths), move, and load. Legacy loads emit
+      `building:adjacencyDiscovered` → BuildingsUI toast ("your layout grants +X%"),
+      so a base the packer clustered on migration announces the gift.
+    - **UI:** TileTooltip shows a `🔗 +N% neighbours` line with pair labels
+      (`.tt-adjacency` in `sidebar.css`).
+    - **Also, Steve's request:** rubble sector panel now opens **on tap only** —
+      hover surfaces it only while that sector is actively clearing.
+    - **Verified:** `npm test` **253/253** (+13 — adjacency.test.js ×10, three
+      BuildingManager integration tests incl. move-away-drops-bonus and
+      not-serialized-re-derives). All six browser smokes PASS (boot, world, dev,
+      tutorial, sector, align). `check-comments` clean on every touched file.
+    - **Open balance risk (Steve's call: level design, not code):** adjacency creates
+      pressure to re-optimise layouts, which couples to rubble pacing — more cleared
+      space = more clustering freedom. Tune the two together in the balance pass.
+    - **Debt unchanged:** `BuildingManager.js` (~1084 ln) and `CityRenderer.js`
+      (886 ln) over the ~400 ceiling; Phase C kept its logic in the pure sibling.
+
 ### Landed this session (2026-07-19, later)
 
 24. **Per-sprite ground-anchor system — buildings now sit CENTRED on their plots**

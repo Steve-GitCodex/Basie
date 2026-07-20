@@ -36,6 +36,11 @@ export class UnitManager {
     eventBus.on('game:modeChanged', ({ mode }) => { this._gameMode = mode; });
   }
 
+  /** @private VIP train-time cut folded with the military-cluster adjacency cut (ADR 0022 Phase C). */
+  _trainMultiplier() {
+    return this._vipTrainMultiplier * (this._bm.getTrainTimeMultiplier?.() ?? 1);
+  }
+
   // ── Tier key helpers ───────────────────────────────────────────────────────
   /** @private Returns the tier key for reserve/queue maps. */
   _tierKey(unitId, tier) { return `${unitId}_t${tier}`; }
@@ -95,7 +100,7 @@ export class UnitManager {
           const durSec = next.type === 'upgrade'
             ? (nxtTierCfg?.upgradeTime ?? Math.ceil((nxtTierCfg?.trainTime ?? 10) * 0.35))
             : (nxtTierCfg?.trainTime ?? 10);
-          const trainMs = durSec * 1000 * next.count * this._vipTrainMultiplier * nxtTimeMultiplier;
+          const trainMs = durSec * 1000 * next.count * this._trainMultiplier() * nxtTimeMultiplier;
           next.startedAt = now;
           next.endsAt = now + trainMs;
         }
@@ -128,7 +133,7 @@ export class UnitManager {
     const durSec     = item.type === 'upgrade'
       ? (tierCfg?.upgradeTime ?? Math.ceil((tierCfg?.trainTime ?? 10) * 0.35))
       : (tierCfg?.trainTime ?? 10);
-    return durSec * 1000 * item.count * this._vipTrainMultiplier * timeMult;
+    return durSec * 1000 * item.count * this._trainMultiplier() * timeMult;
   }
 
   /**
@@ -282,7 +287,7 @@ export class UnitManager {
 
     // B1: apply building-level speed bonus
     const timeMultiplier = slotEntry?.trainTimeMultiplier ?? 1;
-    const trainMs   = (tierCfg.trainTime ?? 10) * 1000 * count * this._vipTrainMultiplier * timeMultiplier;
+    const trainMs   = (tierCfg.trainTime ?? 10) * 1000 * count * this._trainMultiplier() * timeMultiplier;
     const isFirst   = buildingQueue.length === 0;
     const now       = Date.now();
 
@@ -374,7 +379,7 @@ export class UnitManager {
     const upgSlotIdx    = upgBldgCfg?.trainingSlots ? Math.min(upgBldgLevel - 1, upgBldgCfg.trainingSlots.length - 1) : -1;
     const upgSlotEntry  = upgSlotIdx >= 0 ? upgBldgCfg.trainingSlots[upgSlotIdx] : null;
     const upgTimeMultiplier = upgSlotEntry?.trainTimeMultiplier ?? 1;
-    const trainMs  = upgradeTimeSec * 1000 * count * this._vipTrainMultiplier * upgTimeMultiplier;
+    const trainMs  = upgradeTimeSec * 1000 * count * this._trainMultiplier() * upgTimeMultiplier;
     const isFirst  = upgBuildingQueue.length === 0;
     const now      = Date.now();
 
@@ -432,7 +437,7 @@ export class UnitManager {
         ? (nxtTierCfg?.upgradeTime ?? Math.ceil((nxtTierCfg?.trainTime ?? 10) * 0.35))
         : (nxtTierCfg?.trainTime ?? 10);
       next.startedAt = Date.now();
-      next.endsAt = next.startedAt + (cxlDurSec * 1000 * next.count * this._vipTrainMultiplier * cxlTimeMultiplier);
+      next.endsAt = next.startedAt + (cxlDurSec * 1000 * next.count * this._trainMultiplier() * cxlTimeMultiplier);
     }
 
     if (queue.length === 0) {

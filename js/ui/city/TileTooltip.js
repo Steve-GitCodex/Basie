@@ -139,6 +139,12 @@ export class TileTooltip {
     const relocateBtn = canRelocate
       ? `<button class="btn btn-sm btn-ghost tt-relocate-btn">Move</button>` : '';
 
+    const adj = isBuilt ? this._bm.getAdjacency?.(_instId) : null;
+    const adjHtml = adj?.bonus > 0
+      ? `<div class="tt-adjacency">🔗 +${Math.round(adj.bonus * 100)}% neighbours${
+          adj.pairs.length ? ` <span class="tt-adjacency-tags">${[...new Set(adj.pairs.map(p => p.label))].join(' · ')}</span>` : ''
+        }</div>` : '';
+
     tt.innerHTML = `
       ${detailsBtn}
       <div class="tt-header">
@@ -149,6 +155,7 @@ export class TileTooltip {
         </div>
       </div>
       ${b.effectLabel ? `<div class="tt-effect">${b.effectLabel}</div>` : ''}
+      ${adjHtml}
       ${progressHtml}
       <div class="tt-costs">${costHtml}</div>
       <div class="tt-actions">

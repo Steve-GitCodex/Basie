@@ -76,7 +76,7 @@ function computeStorageCaps(buildings, techBonuses = {}) {
  * Build the list of active production effects (with bank pop-scaling and
  * stationed-hero bonuses) consumed by ResourceManager.recalculateRates().
  * @param {Map<string, {instanceId:string, level:number}[]>} buildings
- * @param {{ getPopulation():{current:number,cap:number}, getBuildingHero(instanceId:string):({heroId:string,level:number}|null) }} ctx
+ * @param {{ getPopulation():{current:number,cap:number}, getBuildingHero(instanceId:string):({heroId:string,level:number}|null), getAdjacencyBonus?:(instanceId:string)=>number }} ctx
  * @returns {{ effects: Object, level: number }[]}
  */
 function computeActiveRates(buildings, ctx) {
@@ -110,6 +110,13 @@ function computeActiveRates(buildings, ctx) {
             scaledEffects[res] = val * multiplier;
           }
         }
+      }
+
+      const adjacency = ctx.getAdjacencyBonus?.(inst.instanceId) ?? 0;
+      if (adjacency > 0) {
+        const boosted = {};
+        for (const [res, val] of Object.entries(scaledEffects)) boosted[res] = val * (1 + adjacency);
+        scaledEffects = boosted;
       }
 
       active.push({ effects: scaledEffects, level: inst.level });

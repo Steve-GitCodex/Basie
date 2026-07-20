@@ -92,10 +92,12 @@ export class BuildingsUI {
           eventBus.emit('ui:click');
           if (rect) this._tooltip.showSector(sectorId, rect, { pinned: true });
         },
-        // Hover a rubble/clearing sector → transient panel (countdown ticks in place);
-        // never steals a pinned tooltip.
+        // Hover only surfaces a sector that is actively clearing (countdown ticks in
+        // place); idle rubble reveals its panel on tap alone. Never steals a pinned one.
         onSectorHover: (sectorId, rect) => {
-          if (rect && !this._tooltip.isSectorPinned()) this._tooltip.showSector(sectorId, rect, { pinned: false });
+          if (!rect || this._tooltip.isSectorPinned()) return;
+          if (!this._s.bm.getSectors?.().find(s => s.id === sectorId)?.clearing) return;
+          this._tooltip.showSector(sectorId, rect, { pinned: false });
         },
         onSectorLeave: () => {
           if (!this._tooltip.isSectorPinned()) this._tooltip.hide();
@@ -132,6 +134,12 @@ export class BuildingsUI {
       if (!instanceId) return;
       eventBus.emit('ui:navigateTo', 'base');
       this._city?.enterGhostMode(instanceId);
+    }));
+
+    // A migrated base wakes up already clustered — tell the player why output jumped.
+    this._unsubs.push(eventBus.on('building:adjacencyDiscovered', ({ total } = {}) => {
+      this._s.notifications?.show('success', 'Layout Bonus',
+        `Your base layout grants +${Math.round((total ?? 0) * 100)}% total production from neighbouring buildings.`);
     }));
 
     // Rubble-sector clear intent + state changes (ADR 0022, Phase B).
