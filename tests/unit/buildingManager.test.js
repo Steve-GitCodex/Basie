@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import { eventBus } from '../../js/core/EventBus.js';
 import { BuildingManager } from '../../js/systems/BuildingManager.js';
+import { SKELETON, rectHitsSkeleton } from '../../js/entities/GAME_DATA.js';
 
 function stubRM() {
   return {
@@ -172,6 +173,120 @@ test('multi-instance types get a #N displayName so copies are distinguishable', 
 
   const townhall = bm.getBuildingTypesWithInstances().find(t => t.id === 'townhall');
   assert.equal(townhall.instances[0].displayName, townhall.name);
+});
+
+test('legacy plot-id placements are dropped and the packer re-places every instance', () => {
+  const bm = makeManager(1);
+  bm.deserialize({
+    buildings: {
+      townhall: [{ instanceId: 'townhall_0', level: 5 }],
+      farm:     [{ instanceId: 'farm_0', level: 3 }],
+      barracks: [{ instanceId: 'barracks_0', level: 2 }],
+    },
+    // Old save shape: instanceId → plotId string (must be dropped, not crash).
+    placements: { townhall_0: 'civic_hq', farm_0: 'prod_01', barracks_0: 'mil_01' },
+  });
+  // No data loss on levels.
+  assert.equal(bm.getLevelOf('townhall'), 5);
+  assert.equal(bm.getLevelOf('farm'), 3);
+  assert.equal(bm.getLevelOf('barracks'), 2);
+  // Every unlocked instance got a cell position; HQ is centered.
+  const rects = bm.getPlacementRects();
+  assert.ok(rects.every(r => Number.isInteger(r.cx) && Number.isInteger(r.cy)));
+  assert.ok(bm.positionOf('townhall_0'));
+  assert.ok(bm.positionOf('farm_0'));
+  // No two footprints overlap.
+  for (let i = 0; i < rects.length; i++)
+    for (let j = i + 1; j < rects.length; j++) {
+      const a = rects[i], b = rects[j];
+      const overlap = a.cx < b.cx + b.w && b.cx < a.cx + a.w && a.cy < b.cy + b.h && b.cy < a.cy + a.h;
+      assert.ok(!overlap, `${a.instanceId} overlaps ${b.instanceId}`);
+    }
+});
+
+test('after load, NO placement rect (built, queued, or unbuilt) sits on the skeleton', () => {
+  const [sx, sy] = [...SKELETON][Math.floor(SKELETON.size / 2)].split(',').map(Number);
+  const bm = makeManager(1);
+  bm.deserialize({
+    buildings: {
+      townhall: [{ instanceId: 'townhall_0', level: 3 }],
+      barracks: [{ instanceId: 'barracks_0', level: 2 }],
+      farm:     [{ instanceId: 'farm_0', level: 0 }], // unbuilt slot
+    },
+    // A legacy save dropped a built barracks straight onto a skeleton cell.
+    placements: {
+      townhall_0: { cx: 20, cy: 14 },
+      barracks_0: { cx: sx, cy: sy },
+    },
+    sectors: { cleared: [], clearing: {} },
+  });
+  const rects = bm.getPlacementRects();
+  for (const r of rects)
+    assert.ok(!rectHitsSkeleton(r.cx, r.cy, r.w, r.h),
+      `${r.instanceId} (${r.cx},${r.cy}) still overlaps the road skeleton`);
+});
+
+test('valid {cx,cy} placements survive a serialize → deserialize round-trip', () => {
+  const bm = makeManager(1);
+  bm.getPlacementRects();                 // force initial pack
+  bm._sectors.markCleared('sector_1_0');  // open cleared ground to move into
+  const moved = bm.moveBuilding('farm_0', 12, 2);
+  assert.ok(moved.success);
+  const saved = bm.serialize();
+  assert.deepEqual(saved.placements.farm_0, { cx: 12, cy: 2 });
+
+  const bm2 = makeManager(1);
+  bm2.deserialize(saved);
+  assert.deepEqual(bm2.positionOf('farm_0'), { cx: 12, cy: 2 });
+});
+
+test('legacy save grandfathers rubble sectors under existing buildings', () => {
+  const bm = makeManager(1);
+  bm.deserialize({
+    buildings: {
+      townhall: [{ instanceId: 'townhall_0', level: 5 }],
+      farm:     [{ instanceId: 'farm_0', level: 3 }],
+    },
+    // Phase-A shape: valid {cx,cy} placements, no `sectors` key. farm sits in a
+    // corner rubble sector — deserialize must clear it, not strand the building.
+    placements: { townhall_0: { cx: 20, cy: 14 }, farm_0: { cx: 0, cy: 0 } },
+  });
+  assert.deepEqual(bm.positionOf('farm_0'), { cx: 0, cy: 0 });
+  assert.ok(bm.isCellCleared(0, 0), 'rubble under the farm was auto-cleared');
+});
+
+test('clearSector gates on HQ, spends, and completes on a sandbox tick', () => {
+  const bm = makeManager(1);
+  bm._buildings.set('townhall', [{ instanceId: 'townhall_0', level: 5 }]);
+  bm._gameMode = 'sandbox';
+  assert.equal(bm.getSectors().find(s => s.id === 'sector_1_0').cleared, false);
+  assert.ok(bm.clearSector('sector_1_0').success);
+  bm.update(0.016);
+  assert.ok(bm.isCellCleared(12, 2), 'sector_1_0 cell is now cleared');
+});
+
+test('roads and ground are never serialized; sectors are', () => {
+  const saved = makeManager(1).serialize();
+  assert.ok(!('roads' in saved) && !('roadCells' in saved) && !('ground' in saved));
+  assert.ok('sectors' in saved);
+});
+
+test('cleared sectors survive a serialize → deserialize round-trip', () => {
+  const bm = makeManager(1);
+  bm._sectors.markCleared('sector_1_0');
+  const bm2 = makeManager(1);
+  bm2.deserialize(bm.serialize());
+  assert.ok(bm2.getSectors().find(s => s.id === 'sector_1_0').cleared);
+});
+
+test('HQ is anchored; moveBuilding rejects it and blocked targets', () => {
+  const bm = makeManager(1);
+  bm.getPlacementRects();
+  assert.equal(bm.isMovable('townhall_0'), false);
+  assert.equal(bm.moveBuilding('townhall_0', 0, 0).success, false);
+  // Move a building onto the HQ footprint → blocked.
+  const hq = bm.positionOf('townhall_0');
+  assert.equal(bm.moveBuilding('farm_0', hq.cx, hq.cy).success, false);
 });
 
 test('extra actives above a lowered worker count run to completion', () => {

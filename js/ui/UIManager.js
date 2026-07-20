@@ -625,8 +625,17 @@ export class UIManager {
     // Switch the building sub-tab if needed
     if (step.buildingFocus) eventBus.emit('buildings:focusBuilding', step.buildingFocus);
 
-    // 250 ms gives the view switch + BuildingsUI re-render time to complete
-    setTimeout(() => this._applySpotlight(step), 250);
+    // The spotlight target may not be in the DOM yet (canvas proxy tiles appear
+    // only after CityRenderer finishes asset load) — retry until it shows up,
+    // re-applying so the nav-pulse fallback upgrades to the ring.
+    clearTimeout(this._spotTimer);
+    const attempt = (n) => {
+      if (this._tutStep !== step) return;
+      this._applySpotlight(step);
+      const missing = step.highlightSelector && !document.querySelector(step.highlightSelector);
+      if (missing && n < 40) this._spotTimer = setTimeout(() => attempt(n + 1), 300);
+    };
+    this._spotTimer = setTimeout(() => attempt(0), 250);
   }
 
   /**
@@ -717,6 +726,7 @@ export class UIManager {
   /** Remove tutorial spotlight ring, blockers, and tooltip. */
   _hideTutorial() {
     this._tutStep = null;
+    clearTimeout(this._spotTimer);
     document.getElementById('tutorial-tooltip')?.classList.add('hidden');
     document.getElementById('tut-spotlight-ring')?.classList.add('hidden');
     ['tut-block-top','tut-block-bottom','tut-block-left','tut-block-right']

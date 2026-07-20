@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  BUILDINGS_CONFIG, CATEGORY_ZONE, CITY_BLUEPRINT,
-  plotsInZone, plotById, WORLD_MAP, MONSTERS_CONFIG,
+  BUILDINGS_CONFIG, CATEGORY_ZONE,
+  BUILD_RECT, inBounds, WORLD_MAP, MONSTERS_CONFIG,
 } from '../../js/entities/GAME_DATA.js';
 
 const RESOURCE_KEYS = new Set(['wood', 'stone', 'iron', 'food', 'water', 'money']);
@@ -16,18 +16,23 @@ test('every building category maps to a blueprint zone', () => {
   }
 });
 
-test('each zone has more plots than total instances of that zone', () => {
-  const needed = {};
+test('every building declares a footprint that fits the buildable rect', () => {
   for (const b of buildings) {
-    const zone = CATEGORY_ZONE[b.category];
-    needed[zone] = (needed[zone] ?? 0) + (b.maxInstances ?? 1);
+    assert.ok(Array.isArray(b.footprint) && b.footprint.length === 2, `${b.id} footprint shape`);
+    const [w, h] = b.footprint;
+    assert.ok(w > 0 && h > 0, `${b.id} footprint positive`);
+    assert.ok(inBounds(0, 0, w, h), `${b.id} footprint ${w}x${h} exceeds ${BUILD_RECT.w}x${BUILD_RECT.h}`);
   }
-  for (const [zone, count] of Object.entries(needed)) {
-    assert.ok(
-      plotsInZone(zone).length > count,
-      `zone '${zone}' has ${plotsInZone(zone).length} plots for ${count} instances`,
-    );
+});
+
+test('total footprint area fits inside the buildable rect with slack', () => {
+  let cells = 0;
+  for (const b of buildings) {
+    const [w, h] = b.footprint;
+    cells += w * h * (b.maxInstances ?? b.instanceSlots?.length ?? 1);
   }
+  assert.ok(cells < BUILD_RECT.w * BUILD_RECT.h * 0.75,
+    `packed footprints (${cells} cells) leave too little room in ${BUILD_RECT.w * BUILD_RECT.h}`);
 });
 
 test('building requirement refs point at real building ids', () => {
@@ -69,17 +74,6 @@ test('townhall storage caps cover every level and every resource', () => {
   for (const key of Object.keys(storageCap)) {
     assert.ok(RESOURCE_KEYS.has(key), `storageCap has unknown resource '${key}'`);
     assert.equal(storageCap[key].length, maxLevel + 1, `storageCap.${key} length`);
-  }
-});
-
-test('blueprint plot ids are unique and sit inside the grid', () => {
-  const seen = new Set();
-  for (const plot of CITY_BLUEPRINT.plots) {
-    assert.ok(!seen.has(plot.id), `duplicate plot id '${plot.id}'`);
-    seen.add(plot.id);
-    assert.ok(plot.col >= 0 && plot.col < CITY_BLUEPRINT.cols, `${plot.id} col out of grid`);
-    assert.ok(plot.row >= 0 && plot.row < CITY_BLUEPRINT.rows, `${plot.id} row out of grid`);
-    assert.equal(plotById(plot.id), plot);
   }
 });
 

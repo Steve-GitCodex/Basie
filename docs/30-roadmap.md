@@ -13,7 +13,7 @@ Deep design lives in `docs/10-design/`; the session handoff is `docs/40-active.m
 |---|---|---|
 | **1** | UI redesign — iso city, blueprint + placements, floating-dock nav, build queue sidebar, HUD restyle, SVG icon system | [x] done |
 | **2** | World map + marches — MVP (gather/attack, regions, Rally Point) **and** fast-follows (scout, ruins, outposts, world bosses, fog) | [x] implemented (uncommitted as of 2026-07-15); hardening open |
-| **Reskin** | Grit reskin (art direction, tile-grid world, juice) — `docs/10-design/grit-reskin.md`, ADR 0008 | [~] in progress (A1+A2 done 2026-07-15, B1+B2 done 2026-07-16, C1+A4+C2+C3 done 2026-07-18; only A3+B3 art phases left) |
+| **Reskin** | Grit reskin (art direction, tile-grid world, juice) — `docs/10-design/grit-reskin.md`, ADR 0008 | [~] in progress (A1+A2 done 2026-07-15, B1+B2 done 2026-07-16, C1+A4+C2+C3 done 2026-07-18; A3 Session 1 done 2026-07-18 — five core grit buildings; A3 rest + B3 left) |
 | **3** | **Arena** — PvP + alliance co-op boss fights + ranks; eventually replaces campaign combat | [ ] blocked on Phase 7 |
 | **4** | AI opponents (`AIManager`) — factions grow with the player, re-capture regions (ADR 0005 seeds this) | [ ] after reskin |
 | **5** | Map events & objectives | [ ] |
@@ -26,7 +26,18 @@ Sequencing per `docs/10-design/grit-reskin.md` — each phase ≈ one session, i
 shippable: A1 grim grade → A2 UI theme → B1 grid data → B2 grid renderer → C1 sound →
 A4 fiction pass → C2/C3 juice → A3 sprites + B3 terrain art (user-in-the-loop last).
 
-- [x] A1 · [x] A2 · [x] B1 · [x] B2 · [x] C1 · [x] A4 · [x] C2 · [x] C3 · [ ] A3 · [ ] B3
+- [x] A1 · [x] A2 · [x] B1 · [x] B2 · [x] C1 · [x] A4 · [x] C2 · [x] C3 · [~] A3 · [ ] B3
+
+**A3 Session 1 landed 2026-07-18** (ADR 0020, amends 0009/0010): the square-grid swap was
+dropped — the Quaternius CC0 art is **iso-rendered** (diamond footprints) and ships finished
+**PNG renders** (no Blender). `isoMath.js` **retuned** (`TILE_W 128 × TILE_H 96`), buildings
+draw at native px (shared-scale-trimmed → real size variety), ground → flat-color diamond
+cells (Kenney landscape retired), level-keyed `GRIT_BUILDING_MAP`. Wired the five
+always-on-screen types (townhall/house/farm/barracks/storehouse, L1–L3); rest are one-line
+manifest additions. Verified: `?dev` base view renders grit sprites seated + graded, zero
+page errors, 182/182 unit + all three smokes green. **Next:** wire the remaining ~15 types;
+gap types need the staged gap-filler packs; consider townhall→Temple/Wonder (plaza reads
+light as an HQ).
 
 **C3 landed 2026-07-18** (ADR 0019): DOM/HUD juice, no new save state. New
 `js/ui/fx/numberTicker.js` (per-element retargeting count-up) wired into
@@ -66,10 +77,10 @@ intact. `BASE_SPEED_PX` 80→265 holds march times steady. **No renderer work ye
 map still draws the warped organic region polygons over the new (larger) rects; B2
 replaces that terrain layer with the chunked grid.
 
-**A3 is now bundled with the base-view projection swap** (ADR 0009): diamond iso →
-square-grid ¾ view (`gridMath.js` replaces `isoMath.js`), new square-tile sprite
-contract in `10-design/assets.md`. Reuse B2's chunked-terrain renderer for the city
-ground layer while in there (also closes the 30fps full-repaint ceiling below).
+**A3 kept the diamond grid, retuned** (ADR 0020 amends 0009): the Quaternius CC0 art is
+iso-rendered (diamond footprints), so `isoMath.js` was **retuned** (`TILE_W 128 × TILE_H 96`)
+rather than replaced by a square `gridMath.js`. Ground is flat-color diamond cells for now;
+a chunked city terrain atlas (reusing B2, closing the 30fps ceiling) is still open.
 
 **B3 art = AI-generated seamless terrain atlas, plan of record** (easiest AI-art win —
 do it before A3's buildings; keep B3 close behind B2 so the grid map doesn't linger in
@@ -203,15 +214,22 @@ sprite generation.
 
 ## Cross-cutting reworks
 
-### Build-menu redesign + placement model + tutorial rework (bundled — ship together)
-- [~] Interim anti-teleport guard in `buildOnPlot`/`getBuildableOnPlot` (applied).
-- [ ] No-reservation placement model (only built/under-construction instances own a
-  plot); extract a `PlacementStore` from `BuildingManager._placements`.
-- [ ] Redesigned build sheet UX.
-- [ ] Empty-plot proxies (`.base-plot[data-plot-id]`) + `buildSheet:opened` event.
-- [ ] Tutorial rework — steps 1–6 move to a 2-phase spotlight (empty plot → build
-  option). Bundled because dropping reservations removes the seeded tiles the current
-  tutorial spotlights.
+### Base layout rework — free placement (ADR 0022, `docs/base-layout-plan.md`)
+
+Supersedes the previously bundled build-menu/placement/tutorial rework: the plot
+model retires entirely (interim anti-teleport guard dies with it).
+
+- [x] **Phase A** (2026-07-19) — half-tile cell grid + occupancy map, footprints in
+  `BUILDINGS_CONFIG`, `instanceId → {cx,cy}` placements, spiral packer (legacy-save
+  migration + new games), place/move ghost UX, tutorial proxy retarget + full
+  tutorial retest.
+- [x] **Phase B** (2026-07-19) — auto-derived decorative roads (`cityRoads.js`, never
+  serialized), rubble-sector expansion (`citySectors.js` layout + `sectorState.js` save
+  state, stable `sector_<ring>_<n>` keys, HQ-gated clears + grandfathering), textured
+  per-cell city ground (`cityGround.js`, earth/cracked/ash/road/rubble + debris scatter).
+  `cityBlueprint.js` + `cityLayout.js` retired. Camera re-homes on base re-entry until
+  the player pans.
+- [ ] **Phase C** — adjacency bonuses + migration bonus toast; balance pass.
 
 ## Backlog / nice-to-haves
 

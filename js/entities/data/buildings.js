@@ -6,6 +6,8 @@
 export const BUILDINGS_CONFIG = {
   townhall: {
     id: 'townhall', name: 'Headquarters (HQ)', shortName: 'HQ', icon: '🏛️',
+    footprint: [4,4],
+    doorSide: 's',
     description: 'The heart of your base. Upgrade to unlock new buildings, increase all caps, and lead a larger population.',
     maxLevel: 10,
     baseCost: { wood: 500, stone: 300 },
@@ -27,6 +29,8 @@ export const BUILDINGS_CONFIG = {
   },
   farm: {
     id: 'farm', name: 'Farm', icon: '🌾',
+    footprint: [3,3],
+    doorSide: 's',
     description: 'Generates food to support a larger army.',
     maxLevel: 10,
     baseCost: { wood: 80, stone: 30 },
@@ -45,6 +49,8 @@ export const BUILDINGS_CONFIG = {
   },
   mine: {
     id: 'mine', name: 'Iron Mine', icon: '⛏️',
+    footprint: [3,3],
+    doorSide: 'sw',
     description: 'Extracts iron ore for tools, weapons, and construction.',
     maxLevel: 10,
     baseCost: { wood: 100, stone: 50 },
@@ -62,6 +68,8 @@ export const BUILDINGS_CONFIG = {
   },
   lumbermill: {
     id: 'lumbermill', name: 'Lumber Mill', icon: '🪵',
+    footprint: [3,3],
+    doorSide: 'sw',
     description: 'Chops down trees for wood production.',
     maxLevel: 10,
     baseCost: { stone: 80 },
@@ -79,6 +87,8 @@ export const BUILDINGS_CONFIG = {
   },
   quarry: {
     id: 'quarry', name: 'Stone Quarry', icon: '🪨',
+    footprint: [3,3],
+    doorSide: 's',
     description: 'Mines stone for construction.',
     maxLevel: 10,
     baseCost: { wood: 100, iron: 20 },
@@ -96,6 +106,8 @@ export const BUILDINGS_CONFIG = {
   },
   storehouse: {
     id: 'storehouse', name: 'Storehouse', icon: '🏚️',
+    footprint: [2,2],
+    doorSide: 'se',
     description: 'Expands your resource storage. Each level significantly increases all caps.',
     maxLevel: 10,
     baseCost: { wood: 300, stone: 200 },
@@ -120,6 +132,8 @@ export const BUILDINGS_CONFIG = {
   },
   well: {
     id: 'well', name: 'Well', icon: '🪣',
+    footprint: [2,2],
+    doorSide: 's',
     description: 'Draws fresh water from underground springs.',
     maxLevel: 8,
     baseCost: { stone: 80, iron: 20 },
@@ -137,6 +151,8 @@ export const BUILDINGS_CONFIG = {
   },
   house: {
     id: 'house', name: 'House', icon: '🏠',
+    footprint: [3,3],
+    doorSide: 'sw',
     description: 'Provides housing for your population.',
     maxLevel: 10,
     baseCost: { wood: 120, stone: 80 },
@@ -164,6 +180,8 @@ export const BUILDINGS_CONFIG = {
   },
   cafeteria: {
     id: 'cafeteria', name: 'Cafeteria', icon: '🍽️',
+    footprint: [3,3],
+    doorSide: 'sw',
     description: 'Maintains an internal stock of food and water that houses draw from each tick. Must be restocked from your global supply — manually or via automation.',
     maxLevel: 8,
     baseCost: { wood: 200, stone: 120 },
@@ -181,6 +199,8 @@ export const BUILDINGS_CONFIG = {
   },
   bank: {
     id: 'bank', name: 'Bank', icon: '🏦',
+    footprint: [2,2],
+    doorSide: 'se',
     description: 'Generates money based on your thriving population. Requires a minimum population to operate.',
     maxLevel: 8,
     baseCost: { wood: 400, stone: 300, iron: 100 },
@@ -204,6 +224,8 @@ export const BUILDINGS_CONFIG = {
   },
   barracks: {
     id: 'barracks', name: 'Barracks', icon: '⚔️',
+    footprint: [3,3],
+    doorSide: 'sw',
     description: 'Squad management building. Each barracks houses one squad. Level determines squad capacity.',
     maxLevel: 8,
     baseCost: { wood: 200, stone: 150 },
@@ -239,6 +261,8 @@ export const BUILDINGS_CONFIG = {
   },
   archeryrange: {
     id: 'archeryrange', name: 'Archery Range', icon: '🏹',
+    footprint: [3,3],
+    doorSide: 'se',
     description: 'Train ranged units with superior attack range.',
     maxLevel: 10,
     baseCost: { wood: 200, stone: 100 },
@@ -264,6 +288,8 @@ export const BUILDINGS_CONFIG = {
   },
   heroquarters: {
     id: 'heroquarters', name: 'Hero Quarters', icon: '🦸',
+    footprint: [4,4],
+    doorSide: 's',
     description: 'Recruit legendary heroes to lead your army.',
     maxLevel: 10,
     baseCost: { wood: 500, stone: 400, iron: 100 },
@@ -277,6 +303,8 @@ export const BUILDINGS_CONFIG = {
   },
   rallypoint: {
     id: 'rallypoint', name: 'Rally Point', icon: '🚩',
+    footprint: [2,2],
+    doorSide: 'sw',
     description: 'Marshal armies for expeditions across the world map. Higher levels field more simultaneous marches and quicken travel.',
     maxLevel: 6,
     baseCost: { wood: 350, stone: 250, iron: 60 },
@@ -298,6 +326,8 @@ export const BUILDINGS_CONFIG = {
   },
   workshop: {
     id: 'workshop', name: 'Workshop', icon: '⚙️',
+    footprint: [3,3],
+    doorSide: 'sw',
     description: 'Research technology and craft powerful equipment. Higher levels unlock more research queue slots.',
     maxLevel: 8,
     baseCost: { wood: 400, stone: 300, iron: 100 },
@@ -311,6 +341,8 @@ export const BUILDINGS_CONFIG = {
   },
   construction_hall: {
     id: 'construction_hall', name: 'Construction Hall', icon: '🏗️',
+    footprint: [3,3],
+    doorSide: 's',
     description: 'A dedicated facility for managing large-scale construction projects. Each level unlocks an additional build queue slot.',
     maxLevel: 3,
     baseCost: { wood: 500, stone: 400 },
@@ -324,6 +356,8 @@ export const BUILDINGS_CONFIG = {
   },
   infantryhall: {
     id: 'infantryhall', name: 'Infantry Hall', icon: '🗡️',
+    footprint: [3,3],
+    doorSide: 'sw',
     description: 'Trains and upgrades infantry units. Each level increases training speed.',
     maxLevel: 10,
     baseCost: { wood: 300, stone: 200, iron: 50 },
@@ -349,6 +383,8 @@ export const BUILDINGS_CONFIG = {
   },
   cavalrystable: {
     id: 'cavalrystable', name: 'Cavalry Stable', icon: '🐴',
+    footprint: [3,3],
+    doorSide: 'sw',
     description: 'Houses and trains cavalry units. Higher levels unlock stronger cavalry tiers.',
     maxLevel: 10,
     baseCost: { wood: 400, stone: 300, iron: 100 },
@@ -374,6 +410,8 @@ export const BUILDINGS_CONFIG = {
   },
   siegeworkshop: {
     id: 'siegeworkshop', name: 'Siege Workshop', icon: '💣',
+    footprint: [2,2],
+    doorSide: 'se',
     description: 'Crafts powerful siege weapons. Requires a workshop to operate.',
     maxLevel: 10,
     baseCost: { wood: 500, stone: 400, iron: 150 },
@@ -399,6 +437,8 @@ export const BUILDINGS_CONFIG = {
   },
   magictower: {
     id: 'magictower', name: 'Comms Tower', icon: '📡',
+    footprint: [2,2],
+    doorSide: 'sw',
     description: 'A fortified communications tower. Coordinates all military operations across the wasteland.',
     maxLevel: 8,
     baseCost: { wood: 600, stone: 500, iron: 200 },

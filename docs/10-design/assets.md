@@ -21,13 +21,19 @@ bottom-anchored over the zone tile, consistent light direction, ~2× diamond wid
 tall buildings. Missing sprite → colored fallback diamond. **Do not source or generate
 any more art against this contract.**
 
-**Target (square-grid ¾ view — grit Phase A3 + projection swap):** building rendered as
-a pre-lit "3D-look" object on a **square tile footprint**, ¾ top-down camera angle
-(consistent across the whole set), PNG with transparency, bottom-anchored, mild vertical
-foreshortening matching the new `gridMath.js` projection; sized ~1 tile for standard
-buildings, up to ~2 tiles tall for landmarks. Ground tiles become square cells (cracked
-earth / broken asphalt / rubble). Exact pixel dimensions get locked when `gridMath.js`
-is written — record them here.
+**Target (retuned iso ¾ view — grit Phase A3, ADR 0020 amends 0009):** the projection swap
+to a screen-aligned square grid was **not executed** — the chosen CC0 building art
+(Quaternius Ultimate Fantasy RTS) is **isometric-rendered**, so its footprints are diamonds
+(~1.1–1.3:1), which need a **diamond grid**. `isoMath.js` is kept and retuned to match:
+`TILE_W 128 × TILE_H 96` (~1.33:1), `GROUND_BOTTOM = TILE_H/2`. Building sprites are
+pre-lit "3D-look" objects, ¾ iso camera (consistent across the pack), PNG with transparency,
+bottom-anchored on the tile's front vertex, drawn at **native px** (no fit-to-width) —
+trimmed to content bbox and downscaled by **one shared factor** so relative sizes are
+authored (town hall > house); larger buildings overhang their plot. Ground = flat-color
+**diamond** cells (grit palette); Kenney landscape sprites retired. Manifest is level-keyed
+(`GRIT_BUILDING_MAP[type] = {1,2,3}`). Session-1 trimmed dims (@ shared scale 0.34, 256-tall
+cap dropped): house 114–147w, farm 153–233w, barracks 153–235w, storehouse 213–216w,
+townhall 199w.
 
 **Function-readability requirement (Steve, 2026-07-15 — binding for A3):** the current
 Kenney set fails legibility — 20 distinct sprites but all generic city blocks, so
@@ -43,12 +49,14 @@ idiom) — never per-frame `ctx.filter`.
 
 ## Sourcing plan of record (grit reskin — ADR 0010)
 
-**Buildings: CC0 3D → render-to-sprite.** One Blender scene (fixed ortho ¾ camera +
-grim light rig) batch-renders low-poly models to PNGs — consistency is automatic, and
-function-readability comes from model choice. Base library: **Quaternius "Ultimate
-Fantasy RTS"** (128 models, CC0, .blend, building **evolution stages** → per-level
-sprites), kit-bashed toward post-apoc (corrugated-metal roofs, Survival-Kit props) —
-fantasy skeleton, grit skin. Gap-fillers: Kenney 3D kits (Survival Kit, city kits,
+**Buildings: CC0 pre-rendered iso PNGs (ADR 0020 — no Blender needed).** The Quaternius
+**"Ultimate Fantasy RTS"** pack already ships a `PNG/` folder of finished ¾-iso renders
+(1024², per family × level × age), CC0 1.0 — the render-to-sprite step is done. Drop-in is:
+offline alpha-bbox **trim + shared-scale downscale** (headless-Chromium script, no
+Blender/PIL) → `assets/tiles/buildings/grit/<key>_L<n>.png` → level-keyed manifest. The
+`.blend`/`.fbx`/`.gltf` in the pack are unused 3D source. Building **evolution stages** →
+per-level sprites. Kit-bash toward post-apoc is deferred; the A1 grit-grade layer
+desaturates the bright-wood renders at load. Gap-fillers: Kenney 3D kits (Survival Kit, city kits,
 Asset Forge for kit-bash-to-sprite), Quaternius Ultimate/Farm Buildings + Zombie
 Apocalypse Kit, KayKit city modules. All CC0.
 

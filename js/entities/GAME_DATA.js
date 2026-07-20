@@ -36,9 +36,15 @@ export { STORY_CHAPTERS } from './data/story.js';
 export { EVENTS_CONFIG } from './data/events.js';
 export { TAB_UNLOCK_CONDITIONS, TAB_GROUPS, BUILDING_TAB_MAP, BUILDING_VIEW_ACTION } from './data/navigation.js';
 export {
-  CITY_BLUEPRINT, CATEGORY_ZONE,
-  isRoad, zoneAt, plotAt, plotById, plotsInZone
-} from './data/cityBlueprint.js';
+  CELL_COLS, CELL_ROWS, BUILD_RECT, CATEGORY_ZONE, HQ_RECT,
+  GRID_TILE_COLS, GRID_TILE_ROWS, GRID_MARGIN_TILES,
+  cellToTile, rectFrontTile, rectCenterTile, rectCornersTile,
+  rectsOverlap, inBounds, clampRect,
+  SKELETON, cellKey, isSkeletonCell, rectHitsSkeleton,
+} from './data/cityGrid.js';
+export {
+  SECTORS, SECTOR_IDS, CORE_RECT, sectorIdAt, coreContains, sectorName,
+} from './data/citySectors.js';
 export { WORLD_MAP } from './data/worldMap.js';
 
 /**

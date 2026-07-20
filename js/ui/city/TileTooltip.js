@@ -11,7 +11,7 @@
  */
 import { eventBus }              from '../../core/EventBus.js';
 import { RES_META, fmt }         from '../uiUtils.js';
-import { BUILDING_VIEW_ACTION, plotById } from '../../entities/GAME_DATA.js';
+import { BUILDING_VIEW_ACTION } from '../../entities/GAME_DATA.js';
 import { ISO_BUILDING_MAP }      from './cityAssets.js';
 import { icon } from '../icons.js';
 
@@ -133,10 +133,9 @@ export class TileTooltip {
     // Cafeteria manual restock (re-homed from the retired detail panel).
     const restockBtn = (isBuilt && buildingId === 'cafeteria' && !(this._bm.getAutomations?.().cafeteriaRestock))
       ? `<button class="btn btn-sm btn-secondary tt-restock-btn">Restock</button>` : '';
-    // Relocate (re-homed from the retired detail panel) — built, not fixed, not mid-build.
+    // Move (re-homed from the retired detail panel) — built, movable, not mid-build.
     const _instId   = `${buildingId}_${instanceIndex}`;
-    const _curPlot  = plotById(this._bm.getPlotOf?.(_instId) ?? '');
-    const canRelocate = isBuilt && !b.isActivelyBuilding && _curPlot && _curPlot.fixed !== buildingId;
+    const canRelocate = isBuilt && !b.isActivelyBuilding && this._bm.isMovable?.(_instId);
     const relocateBtn = canRelocate
       ? `<button class="btn btn-sm btn-ghost tt-relocate-btn">Move</button>` : '';
 
@@ -163,6 +162,9 @@ export class TileTooltip {
 
     this._bid = buildingId;
     this._idx = instanceIndex;
+    this._sectorId = null;
+    this._sectorEndsAt = null;
+    this._sectorPinned = false;
 
     tt.querySelector('.tt-upgrade-btn')?.addEventListener('click', e => {
       e.stopPropagation();
@@ -201,7 +203,7 @@ export class TileTooltip {
       e.stopPropagation();
       eventBus.emit('ui:click');
       this.hide(true);
-      eventBus.emit('ui:relocateBuilding', { instanceId: _instId, zone: this._bm.zoneOfBuilding(buildingId) });
+      eventBus.emit('ui:relocateBuilding', { instanceId: _instId });
     });
 
     // Cafeteria manual restock to full
@@ -250,6 +252,94 @@ export class TileTooltip {
     requestAnimationFrame(() => tt.classList.add('is-visible'));
   }
 
+  /**
+   * Rubble-sector clear panel: name, cost, time, HQ gate, [Clear Rubble] / locked.
+   * `pinned` (an explicit tap) keeps it open until tap-away; a hover shows it
+   * transiently (`pinned: false`).
+   */
+  showSector(sectorId, tileRect, { pinned = true } = {}) {
+    const tt = document.getElementById('tile-tooltip');
+    if (!tt || !tileRect) return;
+    const s = this._bm.getSectors?.().find(x => x.id === sectorId);
+    if (!s) return;
+    const snap = this._rm.getSnapshot();
+
+    const costHtml = Object.entries(s.cost).map(([res, amt]) => {
+      const has = (snap[res]?.amount ?? 0) >= amt;
+      return `<span class="cost-chip ${has ? 'affordable' : 'unaffordable'}" data-res="${res}">${RES_META[res]?.icon ?? '?'} ${fmt(amt)}</span>`;
+    }).join('');
+
+    const mins = Math.round(s.clearTimeSec / 60);
+    let action;
+    if (s.clearing) action = `<button class="btn btn-sm btn-ghost" disabled>Clearing…</button>`;
+    else if (!s.unlocked) action = `<button class="btn btn-sm btn-ghost" disabled>${icon('lock')} Requires HQ Lv.${s.hqLevel}</button>`;
+    else if (!s.canAfford) action = `<button class="btn btn-sm btn-ghost tt-clear-btn" disabled>Clear Rubble</button>`;
+    else action = `<button class="btn btn-sm btn-primary tt-clear-btn">Clear Rubble</button>`;
+
+    this._sectorEndsAt = s.clearing ? s.endsAt : null;
+    const subLine = s.clearing
+      ? `Clearing… <span class="tt-sector-remain">${this._remainLabel()}</span> left`
+      : `⏱ ${mins} min · Requires HQ Lv.${s.hqLevel}`;
+
+    tt.innerHTML = `
+      <div class="tt-header">
+        <div class="tt-title-block">
+          <div class="tt-name">Rubble Sector ${s.ring}</div>
+          <div class="tt-level">${subLine}</div>
+        </div>
+      </div>
+      <div class="tt-effect">Clear the rubble to expand your buildable ground.</div>
+      <div class="tt-costs">${costHtml}</div>
+      <div class="tt-actions">${action}</div>
+      <div class="tt-arrow"></div>`;
+
+    this._position(tt, tileRect);
+    this._bid = null;
+    this._sectorId = sectorId;
+    this._sectorPinned = pinned;
+
+    tt.querySelector('.tt-clear-btn')?.addEventListener('click', e => {
+      e.stopPropagation();
+      eventBus.emit('ui:click');
+      eventBus.emit('ui:clearSector', { sectorId });
+      this.hide(true);
+    });
+  }
+
+  /** m:ss remaining on the open sector clear, or an em dash when not clearing. */
+  _remainLabel() {
+    if (!this._sectorEndsAt) return '—';
+    const remain = Math.max(0, Math.ceil((this._sectorEndsAt - Date.now()) / 1000));
+    return `${Math.floor(remain / 60)}:${String(remain % 60).padStart(2, '0')}`;
+  }
+
+  /**
+   * Tick the open sector panel's remaining-time in place (ADR 0007 — no innerHTML
+   * rebuild per tick, which would eat clicks). No-op unless a clear is running.
+   */
+  patchSector() {
+    if (!this._sectorId || !this._sectorEndsAt) return;
+    const el = document.getElementById('tile-tooltip')?.querySelector('.tt-sector-remain');
+    if (el) el.textContent = this._remainLabel();
+  }
+
+  /** Is a sector panel pinned open (by an explicit tap)? */
+  isSectorPinned() { return !!this._sectorId && this._sectorPinned; }
+
+  /** Close the sector panel if it is showing sector `id` (e.g. its clear completed). */
+  closeSector(id) {
+    if (this._sectorId === id) this.hide(true);
+  }
+
+  /** Re-show the open sector panel when sector state changes (preserves pinned). */
+  refreshSector() {
+    if (!this._sectorId) return;
+    const rect = this._getCity()?.getSectorScreenRect(this._sectorId);
+    if (rect && document.getElementById('tile-tooltip')?.classList.contains('is-visible')) {
+      this.showSector(this._sectorId, rect, { pinned: this._sectorPinned });
+    }
+  }
+
   /** Slim tooltip for empty plots: zone + call to action. */
   showPlot(plotId, zone, tileRect) {
     const tt = document.getElementById('tile-tooltip');
@@ -272,6 +362,9 @@ export class TileTooltip {
     if (!tt) return;
     tt.classList.remove('is-visible');
     this._bid = null;
+    this._sectorId = null;
+    this._sectorEndsAt = null;
+    this._sectorPinned = false;
     const delay = immediate ? 0 : 150;
     setTimeout(() => { if (!tt.classList.contains('is-visible')) tt.style.display = 'none'; }, delay);
   }

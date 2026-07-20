@@ -40,6 +40,7 @@ export class CityInput {
     });
 
     cv.addEventListener("pointermove", (e) => {
+      if (r.ghosting) { r._updateGhost(e.clientX, e.clientY); return; }
       const p = this._pointers.get(e.pointerId);
       if (!p) {
         r._updateHover(e);
@@ -62,6 +63,7 @@ export class CityInput {
         };
         if (dPrev > 0) cam.zoomAt(mid.x, mid.y, dNow / dPrev);
         cam.panBy((p.x - prev.x) / 2, (p.y - prev.y) / 2);
+        r._userInteracted = true;
         if (this._drag) this._drag.moved = true;
       } else if (this._drag) {
         const dx = e.clientX - this._drag.x;
@@ -75,6 +77,7 @@ export class CityInput {
           ) > TAP_SLOP_PX
         ) {
           this._drag.moved = true;
+          r._userInteracted = true;
           cv.style.cursor = "grabbing";
           r._setHover(null);
         }
@@ -88,6 +91,7 @@ export class CityInput {
       if (this._pointers.size > 0) return;
       cv.style.cursor = "grab";
       this._drag = null;
+      if (r.ghosting) { r._commitGhost(); return; }
       if (
         wasDrag &&
         !wasDrag.moved &&
@@ -100,15 +104,16 @@ export class CityInput {
           return;
         }
         const slot = r._slotAtClient(e.clientX, e.clientY);
-        if (!slot) r._onEmptyClick();
-        else if (slot.empty) r._onPlotClick(slot.plotId, slot.zone);
-        else { r.popTile(slot); r._onTileClick(slot.buildingId, slot.instanceIndex); }
+        if (slot) { r.popTile(slot); r._onTileClick(slot.buildingId, slot.instanceIndex); return; }
+        const sector = r._sectorAtClient(e.clientX, e.clientY);
+        if (sector) r._onSectorClick(sector.id, r.getSectorScreenRect(sector.id));
+        else r._onEmptyClick();
       }
     };
     cv.addEventListener("pointerup", endPointer);
     cv.addEventListener("pointercancel", endPointer);
     cv.addEventListener("pointerleave", () => {
-      if (!this._drag) r._setHover(null);
+      if (!this._drag) { r._setHover(null); r._setSectorHover(null); }
     });
 
     cv.addEventListener(
@@ -116,6 +121,7 @@ export class CityInput {
       (e) => {
         e.preventDefault();
         const rect = cv.getBoundingClientRect();
+        r._userInteracted = true;
         cam.zoomAt(
           e.clientX - rect.left,
           e.clientY - rect.top,
@@ -128,6 +134,7 @@ export class CityInput {
     // Double-tap empty ground re-centers on HQ
     let lastTap = 0;
     cv.addEventListener("pointerup", (e) => {
+      if (r.ghosting) return;
       const now = performance.now();
       if (now - lastTap < 350 && !r._slotAtClient(e.clientX, e.clientY))
         r.home();

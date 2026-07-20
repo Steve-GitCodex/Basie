@@ -11,7 +11,7 @@
  *
  * screen = world · zoom + offset   (offset in CSS px)
  */
-import { uvRanges, worldToUV, uvShiftToWorld } from './isoMath.js';
+import { uvRanges, worldToUV, uvShiftToWorld, TILE_W, TILE_H } from './isoMath.js';
 
 const MAX_ZOOM = 2.0;
 
@@ -36,8 +36,8 @@ export class CityCamera {
   minZoom() {
     if (!this._viewW || !this._viewH) return 0.5;
     const r = uvRanges();
-    // An axis-aligned viewport rect spans (vw/66 + vh/33)/zoom in BOTH u and v.
-    const span = this._viewW / 66 + this._viewH / 33;
+    // An axis-aligned viewport rect spans (vw/(TILE_W/2) + vh/(TILE_H/2))/zoom in u and v.
+    const span = this._viewW / (TILE_W / 2) + this._viewH / (TILE_H / 2);
     // ×1.12 keeps pan slack in BOTH axes at the zoom floor — at the exact
     // cover zoom the viewport pins one axis and the map can't pan that way.
     const min  = (span / Math.min(r.u1 - r.u0, r.v1 - r.v0)) * 1.12;

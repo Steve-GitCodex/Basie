@@ -16,14 +16,17 @@
  */
 import { eventBus }                                    from '../core/EventBus.js';
 import {
-  BUILDINGS_CONFIG, QUEUE_CONFIG,
-  CATEGORY_ZONE, plotById, plotsInZone,
+  BUILDINGS_CONFIG, QUEUE_CONFIG, CATEGORY_ZONE, inBounds, rectHitsSkeleton,
 } from '../entities/GAME_DATA.js';
 import { buildingRules } from './building/buildingRules.js';
 import { buildQueue } from './building/buildQueue.js';
 import { buildingEconomy } from './building/buildingEconomy.js';
 import { headquarters } from './building/headquarters.js';
 import { CafeteriaService } from './building/CafeteriaService.js';
+import { PlacementStore } from './building/placementStore.js';
+import { SectorState } from './building/sectorState.js';
+import { packAll, findPlacement, footprintOf, buildingIdOf, skeletonOffenderMoves } from './building/cityPacker.js';
+import { SECTORS, SECTOR_BY_ID } from '../entities/data/citySectors.js';
 
 /**
  * @typedef {{ buildingId: string, instanceIndex: number, instanceId: string, pendingLevel: number, buildTimeSec: number, cost: Object, startedAt: number|null, endsAt: number|null }} BuildQueueItem
@@ -52,11 +55,14 @@ export class BuildingManager {
       getBuildingHero: (iid) => this._hm?.getBuildingHero(iid) ?? null,
     };
 
-    /**
-     * Plot placements — purely positional layer over the instance model.
-     * @type {Map<string, string>} instanceId -> plotId (see CITY_BLUEPRINT.plots)
-     */
-    this._placements = new Map();
+    /** Free-placement positions on the cell grid (ADR 0022) — instanceId → {cx,cy,w,h}. */
+    this._placement = new PlacementStore();
+
+    /** Rubble-sector expansion state (ADR 0022, Phase B). Core is always clear. */
+    this._sectors = new SectorState();
+    // Buildable = cleared ground AND clear of the fixed road skeleton (§4 amend).
+    this._isRectCleared = (cx, cy, w, h) =>
+      this._sectors.isRectCleared(cx, cy, w, h) && !rectHitsSkeleton(cx, cy, w, h);
 
     /** @type {BuildQueueItem[]} */
     this._buildQueue = [];
@@ -118,11 +124,22 @@ export class BuildingManager {
       for (const active of buildQueue.activeItems(this._buildQueue)) {
         active.endsAt -= dt * 99 * 1000;
       }
+      for (const s of SECTORS) {
+        if (this._sectors.isClearing(s.id)) this._sectors.startClear(s.id, this._sectors.clearingEndsAt(s.id) - dt * 99 * 1000);
+      }
     }
     this._catchup(Date.now());
+    this._completeSectorClears(Date.now());
 
     // ── Cafeteria feeding: auto-restock + drain → shortfall → population ──
     this._cafeteria.update(dt);
+  }
+
+  /** Complete any due rubble-sector clears and announce them. @private */
+  _completeSectorClears(nowMs) {
+    const done = this._sectors.update(nowMs);
+    for (const id of done) eventBus.emit('city:sectorCleared', { id });
+    if (done.length) eventBus.emit('city:sectorsChanged');
   }
 
   /**
@@ -133,6 +150,7 @@ export class BuildingManager {
    */
   applyOffline(elapsedSec, nowMs) {
     this._catchup(nowMs);
+    this._completeSectorClears(nowMs);
 
     // Cafeteria drain + population growth/shrinkage for the offline window.
     // Runs after queue completions so any cafeteria/house upgrades are already applied.
@@ -677,101 +695,89 @@ export class BuildingManager {
   }
 
   // ─────────────────────────────────────────────
-  // Plot placements (city blueprint positional layer)
+  // Free-placement positions (cell grid — ADR 0022)
   // ─────────────────────────────────────────────
 
-  /** Plot zone for a building type (category → zone). */
+  /** District a building type clusters into (category → zone) — packer bias + UI grouping. */
   zoneOfBuilding(buildingId) {
     const cfg = BUILDINGS_CONFIG[buildingId];
     return CATEGORY_ZONE[cfg?.category] ?? 'civic';
   }
 
-  /**
-   * Guarantee every unlocked instance has a plot. Lazy + idempotent:
-   * new games, old saves, and newly-unlocked instance slots all flow
-   * through here. Fixed plots (HQ) are honored first.
-   */
-  _ensurePlacements() {
-    const used = new Set(this._placements.values());
+  /** Footprint [w,h] in cells for a building type. */
+  getFootprint(buildingId) { return footprintOf(buildingId); }
 
-    const assign = (instanceId, buildingId) => {
-      const zone = this.zoneOfBuilding(buildingId);
-      // A plot pinned to this building type takes priority (HQ → civic_hq)
-      const pinned = plotsInZone(zone).find(p => p.fixed === buildingId && !used.has(p.id));
-      const free   = pinned
-        ?? plotsInZone(zone).find(p => !p.fixed && !used.has(p.id))
-        ?? null;
-      if (!free) {
-        console.error(`[BuildingManager] no free ${zone} plot for ${instanceId}`);
-        return;
-      }
-      this._placements.set(instanceId, free.id);
-      used.add(free.id);
-    };
-
+  /** Every currently-unlocked instance id, in config order. @private */
+  _unlockedInstanceIds() {
+    const ids = [];
     for (const cfg of Object.values(BUILDINGS_CONFIG)) {
-      const unlockedCount = this._getUnlockedInstanceCount(cfg);
-      for (let idx = 0; idx < unlockedCount; idx++) {
-        const instanceId = `${cfg.id}_${idx}`;
-        if (!this._placements.has(instanceId)) assign(instanceId, cfg.id);
+      const n = this._getUnlockedInstanceCount(cfg);
+      for (let idx = 0; idx < n; idx++) ids.push(`${cfg.id}_${idx}`);
+    }
+    return ids;
+  }
+
+  /**
+   * Guarantee every unlocked instance has a cell position. Lazy + idempotent:
+   * a fully-unplaced set (new game / legacy save) gets the deterministic packer;
+   * newly-unlocked slots on an existing layout are placed incrementally near
+   * their district anchor without disturbing the player's arrangement.
+   */
+  _ensurePlacements(isAllowed = this._isRectCleared) {
+    const ids = this._unlockedInstanceIds();
+    const unplaced = ids.filter(id => !this._placement.has(id));
+    if (unplaced.length === 0) return;
+
+    if (this._placement.rects().length === 0) {
+      for (const [id, { cx, cy }] of packAll(ids, isAllowed)) {
+        const [w, h] = footprintOf(buildingIdOf(id));
+        this._placement.place(id, cx, cy, w, h);
       }
+      return;
+    }
+    for (const id of unplaced) {
+      const [w, h] = footprintOf(buildingIdOf(id));
+      const slot = findPlacement(this._placement.rects(), id, isAllowed);
+      if (slot) this._placement.place(id, slot.cx, slot.cy, w, h);
+      else console.error(`[BuildingManager] no free cell rect for ${id}`);
     }
   }
 
-  /** @returns {Map<string, string>} instanceId -> plotId (live placements, gap-filled) */
-  getPlacements() {
+  /** Placement rects for every unlocked instance (renderer scene source). */
+  getPlacementRects() {
     this._ensurePlacements();
-    return this._placements;
+    return this._placement.rects().map(r => ({
+      instanceId:    r.instanceId,
+      buildingId:    buildingIdOf(r.instanceId),
+      instanceIndex: Number(r.instanceId.slice(r.instanceId.lastIndexOf('_') + 1)),
+      cx: r.cx, cy: r.cy, w: r.w, h: r.h,
+    }));
   }
 
-  getPlotOf(instanceId) {
-    return this.getPlacements().get(instanceId) ?? null;
+  positionOf(instanceId) { return this._placement.positionOf(instanceId); }
+  rectOf(instanceId)     { return this._placement.rectOf(instanceId); }
+
+  /** Whether a footprint may sit at (cx,cy) — cleared ground, in bounds, clear of other buildings. */
+  rectFree(cx, cy, w, h, exceptId = null) {
+    return this._sectors.isRectCleared(cx, cy, w, h) &&
+           !rectHitsSkeleton(cx, cy, w, h) &&
+           this._placement.rectFree(cx, cy, w, h, exceptId);
   }
 
-  /** @returns {string|null} instanceId occupying the plot, or null if free */
-  getInstanceAt(plotId) {
-    for (const [instanceId, pid] of this.getPlacements()) {
-      if (pid === plotId) return instanceId;
-    }
-    return null;
+  // ── Rubble-sector expansion (delegates to SectorState — ADR 0022, Phase B) ──
+  getSectors() { return this._sectors.catalog(this.getHQLevel(), c => this._rm.canAfford(c)); }
+  isCellCleared(cx, cy) { return this._sectors.isCellCleared(cx, cy); }
+
+  /** Clear a rubble sector: validate HQ gate + affordability, spend, start the timer. */
+  clearSector(id) {
+    return this._sectors.requestClear(id, {
+      hqLevel: this.getHQLevel(), rm: this._rm, sandbox: this._gameMode === 'sandbox',
+    });
   }
 
-  /**
-   * Building types the player could start on this plot right now:
-   * zone-matching types that still have an unbuilt, unlocked instance.
-   * @returns {{ id, name, icon, cost, canAfford, ok, reason }[]}
-   */
-  getBuildableOnPlot(plotId) {
-    const plot = plotById(plotId);
-    if (!plot) return [];
-
-    const out = [];
-    for (const cfg of Object.values(BUILDINGS_CONFIG)) {
-      if (this.zoneOfBuilding(cfg.id) !== plot.zone) continue;
-      if (plot.fixed && plot.fixed !== cfg.id) continue;
-
-      const idx = this._findAvailableInstance(cfg.id);
-      if (idx === null) continue; // every instance built, queued, or locked
-
-      // Don't offer a build that would teleport: if this instance already holds
-      // a reserved plot elsewhere, it's built via its own tile, not from here.
-      const homePlot = this._placements.get(`${cfg.id}_${idx}`) ?? null;
-      if (homePlot && homePlot !== plotId) continue;
-
-      const cost     = buildingRules.scaleCost(cfg.baseCost, cfg.costMultiplier, 0);
-      const reqCheck = buildingRules.checkRequirements(cfg.requires, this._rulesCtx);
-      out.push({
-        id:        cfg.id,
-        name:      cfg.name,
-        icon:      cfg.icon,
-        effectLabel: cfg.effectLabel ?? '',
-        cost,
-        canAfford: this._rm.canAfford(cost),
-        ok:        reqCheck.met,
-        reason:    reqCheck.met ? null : reqCheck.reason,
-      });
-    }
-    return out;
+  /** HQ is anchored; everything else placed may be moved. */
+  isMovable(instanceId) {
+    return this._placement.has(instanceId) && buildingIdOf(instanceId) !== 'townhall';
   }
 
   /**
@@ -797,9 +803,8 @@ export class BuildingManager {
             || 'Locked');
       const availableIdx = this._findAvailableInstance(cfg.id);
       const cost         = buildingRules.scaleCost(cfg.baseCost, cfg.costMultiplier, 0);
-      const hasFreePlot  = plotsInZone(zone).some(
-        p => (!p.fixed || p.fixed === cfg.id) && !this.getInstanceAt(p.id),
-      );
+      // Free placement always has room in the buildable rect; the packer seats it.
+      const hasFreePlot  = true;
       out.push({
         id:   cfg.id,
         name: cfg.name,
@@ -822,82 +827,41 @@ export class BuildingManager {
   }
 
   /**
-   * Start a build on a specific empty plot: assigns the plot to an available
-   * unbuilt instance, then delegates to build(). Refuses to relocate an instance
-   * that already holds a reserved plot — those are built via their own tile — so
-   * an empty-plot build can never teleport an existing building. Placement is
-   * reverted if the build is rejected.
+   * Build the next available (unbuilt, unlocked, unqueued) instance of a type.
+   * The instance already holds a packed cell position, so no plot is chosen.
    * @returns {{ success: boolean, reason?: string }}
    */
-  buildOnPlot(buildingId, plotId) {
-    const cfg  = BUILDINGS_CONFIG[buildingId];
-    const plot = plotById(plotId);
-    if (!cfg || !plot) return { success: false, reason: 'Unknown building or plot.' };
-    if (this.zoneOfBuilding(buildingId) !== plot.zone) {
-      return { success: false, reason: `${cfg.name} can only be built in the ${this.zoneOfBuilding(buildingId)} district.` };
-    }
-    if (plot.fixed && plot.fixed !== buildingId) {
-      return { success: false, reason: 'This plot is reserved.' };
-    }
-
-    const occupant = this.getInstanceAt(plotId);
+  buildNext(buildingId) {
+    const cfg = BUILDINGS_CONFIG[buildingId];
+    if (!cfg) return { success: false, reason: 'Unknown building.' };
     const idx = this._findAvailableInstance(buildingId);
     if (idx === null) {
       return { success: false, reason: `No ${cfg.name} available — all copies are built or locked.` };
     }
-    const instanceId = `${buildingId}_${idx}`;
-    if (occupant && occupant !== instanceId) {
-      return { success: false, reason: 'This plot is already occupied.' };
-    }
-
-    // Catalog placement is intentional: an UNBUILT instance's reserved (blueprint)
-    // plot moves to the chosen plot. idx comes from _findAvailableInstance, so the
-    // instance is always level 0 — moving its reservation never teleports a real
-    // building. (Interim until the full no-reservation redesign; see
-    // placement-teleport-bug.) Built instances are moved via relocate() instead.
-    const prevPlot = this._placements.get(instanceId) ?? null;
-    this._placements.set(instanceId, plotId);
-
-    const r = this.build(buildingId, idx);
-    if (!r.success) {
-      if (prevPlot) this._placements.set(instanceId, prevPlot);
-      else this._placements.delete(instanceId);
-      return r;
-    }
-    eventBus.emit('building:relocated', { instanceId, plotId });
-    return r;
+    return this.build(buildingId, idx);
   }
 
   /**
-   * Move a placed instance to a free plot of the same zone.
+   * Move a placed building to a free footprint at cell (cx, cy). HQ is anchored;
+   * a building under construction can't move; the target must be clear + in bounds.
    * @returns {{ success: boolean, reason?: string }}
    */
-  relocate(instanceId, plotId) {
-    const last       = instanceId.lastIndexOf('_');
-    const buildingId = instanceId.substring(0, last);
-    const cfg  = BUILDINGS_CONFIG[buildingId];
-    const plot = plotById(plotId);
-    if (!cfg || !plot) return { success: false, reason: 'Unknown building or plot.' };
-
-    const currentPlot = plotById(this.getPlotOf(instanceId) ?? '');
-    if (currentPlot?.fixed === buildingId) {
+  moveBuilding(instanceId, cx, cy) {
+    const buildingId = buildingIdOf(instanceId);
+    const cfg = BUILDINGS_CONFIG[buildingId];
+    if (!cfg) return { success: false, reason: 'Unknown building.' };
+    if (!this.isMovable(instanceId)) {
       return { success: false, reason: `${cfg.name} is anchored and cannot be moved.` };
-    }
-    if (plot.fixed && plot.fixed !== buildingId) {
-      return { success: false, reason: 'That plot is reserved.' };
-    }
-    if (this.zoneOfBuilding(buildingId) !== plot.zone) {
-      return { success: false, reason: `${cfg.name} belongs in the ${this.zoneOfBuilding(buildingId)} district.` };
-    }
-    if (this.getInstanceAt(plotId)) {
-      return { success: false, reason: 'That plot is already occupied.' };
     }
     if (this._buildQueue.some(q => q.instanceId === instanceId)) {
       return { success: false, reason: 'Cannot move a building while it is under construction.' };
     }
-
-    this._placements.set(instanceId, plotId);
-    eventBus.emit('building:relocated', { instanceId, plotId });
+    const [w, h] = footprintOf(buildingId);
+    if (!this.rectFree(cx, cy, w, h, instanceId)) {
+      return { success: false, reason: 'That spot is blocked or still under rubble.' };
+    }
+    this._placement.move(instanceId, cx, cy);
+    eventBus.emit('building:relocated', { instanceId, cx, cy });
     return { success: true };
   }
 
@@ -931,7 +895,8 @@ export class BuildingManager {
     this._ensurePlacements();
     return {
       buildings,
-      placements:           Object.fromEntries(this._placements),
+      placements:           this._placement.serialize(),
+      sectors:              this._sectors.serialize(),
       buildQueue:           [...this._buildQueue],
       premiumBuildSlots:    this._premiumBuildSlots,
       shopBuildSlotBought:  this._shopBuildSlotBought,
@@ -961,13 +926,33 @@ export class BuildingManager {
       }
     }
 
-    // Plot placements — migrate old saves (absent) via _ensurePlacements()
-    this._placements = new Map(Object.entries(data.placements ?? {}));
-    // Drop placements pointing at plots that no longer exist in the blueprint
-    for (const [instanceId, pid] of this._placements) {
-      if (!plotById(pid)) this._placements.delete(instanceId);
+    // Cell positions — legacy values (plot-id strings / unknown / out-of-bounds)
+    // are dropped, then the packer re-places every unplaced instance (ADR 0022).
+    this._placement = new PlacementStore();
+    for (const [instanceId, pos] of Object.entries(data.placements ?? {})) {
+      const buildingId = buildingIdOf(instanceId);
+      if (!BUILDINGS_CONFIG[buildingId]) continue;
+      if (!pos || typeof pos.cx !== 'number' || typeof pos.cy !== 'number') continue;
+      const [w, h] = footprintOf(buildingId);
+      if (!inBounds(pos.cx, pos.cy, w, h)) continue;
+      this._placement.place(instanceId, pos.cx, pos.cy, w, h);
     }
-    this._ensurePlacements();
+    // Sectors before ensurePlacements: grandfather any sector holding a placed
+    // instance to cleared so no existing base strands a building under rubble.
+    // Legacy saves (no `sectors` key) migrate on the full grid, then every
+    // occupied sector is force-cleared so the whole base survives (ADR 0022).
+    this._sectors = new SectorState();
+    if (data.sectors === undefined) {
+      this._ensurePlacements((cx, cy, w, h) => inBounds(cx, cy, w, h) && !rectHitsSkeleton(cx, cy, w, h));
+      this._sectors.reconcile(this._placement.rects());
+    } else {
+      this._sectors.deserialize(data.sectors, this._placement.rects());
+      this._ensurePlacements();
+    }
+    // Legacy saves may sit a building on a now-fixed skeleton cell (§4 amend) —
+    // relocate offenders to the nearest free cleared cell via the packer.
+    for (const m of skeletonOffenderMoves(this._placement.rects(), this._isRectCleared))
+      this._placement.move(m.instanceId, m.cx, m.cy);
 
     this._buildQueue = (data.buildQueue ?? []).map(item => ({
       instanceIndex: 0,
@@ -1001,6 +986,7 @@ export class BuildingManager {
     // Drain items that expired while closed and stamp timers on up to N workers
     // (migrates legacy saves that only timed the head item).
     this._catchup(Date.now());
+    this._completeSectorClears(Date.now());
   }
 
   // ─────────────────────────────────────────────

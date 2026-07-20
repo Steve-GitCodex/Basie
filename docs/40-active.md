@@ -3,22 +3,383 @@
 > Most-updated file in the repo. Every session that changes code updates this file
 > (what landed, known issues, exact next steps). See the session protocol in `CLAUDE.md`.
 
-## Current state (2026-07-18)
+## Current state (2026-07-19)
 
-- Branch: `Working_Branch`. Everything through C2 canvas juice is **committed** (`927b6f3`).
-  **Uncommitted:** grit reskin **Phase C3 — DOM/UI juice** (below) + its regression test —
-  tree is commit-ready.
+- Branch: `Working_Branch`. Through C3 is committed (`581909f`). **Uncommitted now:**
+  A3 Sessions 1+2 (iso retune, render-to-grid rig, all 20 types wired, ADR 0020/0021)
+  + **base layout rework Phase A + Phase B** (free placement, then auto-roads + rubble
+  sectors + textured ground; ADR 0022, items 15–16 below). Tree is commit-ready
+  (227/227 + four smokes green). **Note:** `/assets/` is git-ignored
+  project-wide — all grit PNGs live on disk only.
 - Phase 1 (UI redesign) and Phase 2 (world map MVP + fast-follows) are **done** —
   see `docs/30-roadmap.md`.
-- Current direction: **grit reskin** (`docs/10-design/grit-reskin.md`) — art/feel pass
-  before Phase 4 AI. A1 + A2 + B1 + B2 + C1 sound + A4 fiction + C2 canvas juice + **C3
-  DOM juice** landed. **Only the two art phases remain: A3 sprites + B3 terrain atlas**
-  (both user-in-the-loop). The code-only reskin work is done.
+- Current direction: **grit reskin** (`docs/10-design/grit-reskin.md`). A1+A2+B1+B2+C1+A4+
+  C2+C3 done; A3 Session 1 (ADR 0020) + **Session 2 (ADR 0021) done — every building type
+  has a grid-fitted sprite**. Remaining: city terrain/ground pass (flat diamonds are the
+  weakest visual now) + B3 world terrain (deferred — Steve likes the current map).
 - **The repo has tests now** (ADR 0012). `npm test` before you hand off; fix a bug →
   add a regression test in the matching `tests/unit/*.test.js`. Contract:
   `tests/README.md`.
 
-### Landed this session (2026-07-18, latest)
+### Landed this session (2026-07-19, later)
+
+24. **Per-sprite ground-anchor system — buildings now sit CENTRED on their plots**
+    (ADR 0022; Steve's call after size-tweaking kept trading one artifact for another).
+    Root insight (Steve): a flat billboard anchored at the plot's front vertex puts the
+    building's ground-contact at the **front edge** of the plot, not its centre — so a
+    base smaller than the plot always looked shoved forward, and sizing alone could
+    never fix both centring and neighbour-overlap.
+    - **Rig** projects the origin (models are centred on it, base at y=0) → that pixel
+      IS the building's ground-contact centre; exported per sprite as `{ax, ay}` into
+      `assets/tiles/buildings/grit/_anchors.json` (60 entries, regenerated with the
+      sprites).
+    - **`cityAssets`** loads the manifest (`_loadAnchors`) and exposes
+      `anchor(id, level)`, falling back to bottom-centre if the file is missing.
+    - **`CityRenderer._spriteBox(slot, scale)`** is now the single source of sprite
+      geometry: it seats the anchor on the plot **centre** (`_centerWorld`). Draw,
+      hit-test (`_pointInSlotSprite`), proxy/tutorial rect (`_slotRect`) and the
+      progress/speed-up badge (`_slotTopWorld`) all derive from it, so they can no
+      longer disagree. `bottomPad` is superseded for placement (kept as a padding guard).
+    - Because each level's sprite carries its own anchor, **per-level centring is
+      automatic** (Steve's "nudge should affect specific levels" note).
+    - **align-smoke rewritten to a real invariant**: "every sprite ground-anchor seats
+      on its plot centre" + "every built sprite has a rig-exported anchor". The old
+      check compared the draw anchor to `_frontWorld` — both from the same function,
+      a tautology that passed while buildings visibly sat wrong.
+    - **Sizing settled at ~80% of plot** (2×2→0.8, 3×3→1.2, 4×4→1.6 tiles) — buildings
+      sit inside their footprint with breathing room, no neighbour pile-ups. Size is now
+      a pure look-and-feel dial: re-rendering at a new fit regenerates the anchors with
+      it, and align-smoke confirmed centring held (Δ 0,0) across the size change.
+    - **Gotcha for future sessions:** the browser smokes each spawn their own
+      `http-server` on port 8123, so running them **back-to-back races on the port** and
+      produces phantom FAILs (hit boot/world once here; both passed alone and in a spaced
+      re-run). Put a ~3s gap between smoke invocations, or run them one at a time,
+      before believing a failure.
+    - **Verified:** 240/240; boot/dev/tutorial/sector/world/align smokes PASS;
+      check-comments clean on touched files; proof shots
+      `.playwright-mcp/anchor-final-{well,townhall}.png` show the ground-contact
+      centred on the plot-centre marker.
+
+23. **Building centering + connector-road shape** (Steve play-test after the anchor
+    fix). (a) Buildings leaned into the bottom-right of their pads with empty top-left,
+    and large production sprites (mine/quarry/lumbermill) spilled down-right — the rig
+    aligned each model by its **front-right (max) corner**, so any non-square footprint
+    dumped its gap on the back-left and big models overhung front-right. Rig now
+    **centers the footprint bbox on the origin** (`(max+min)/2`); all 60 re-rendered.
+    Per-sprite, so each level centers on its own footprint (Steve's "per-level" note is
+    handled structurally). (b) Connector roads were small inset diamonds reading as
+    patches; `cityGround._insetRoad` now draws full cell **height**, ~half **width** —
+    a road strip. Verified: align-smoke still PASS (anchor intact, pad 0); overlay
+    (`.playwright-mcp/centered-real.png`, `prod-built.png`) shows buildings centered
+    and filling pads, production cluster no longer spilling. 240/240; five smokes green.
+    **Open:** if a *specific* type/level still looks off-center, add a per-type-per-level
+    draw nudge (data in buildings.js) — deferred until Steve flags specific ones.
+
+22. **Building float — TRUE root cause: half-cell anchor offset (Steve's diagnosis).**
+    Items 20–21 fixed real but secondary things (sprite padding). The dominant cause,
+    found by comparing the sprite basis against the *actual cell-center grid* instead
+    of against itself: `rectFrontTile`/`rectCenterTile`/`rectCornersTile` in
+    `cityGrid.js` referenced the rect **boundary** coords (`cx+w`, `cy+h`) as if they
+    were cell-center tile coords. The ground/roads place cell (X,Y) at
+    `tileToWorld(X/2, Y/2)` (cell **centers**, occupying cx..cx+w-1), so every sprite,
+    slot outline, badge, plaque, and fx anchor rendered exactly **half a cell (24 world
+    px) down-forward of the road grid** — while roads/ground were correct. Measured
+    live: green(sprite basis) vs cyan(cell basis) S-vertex differed by dy=48px @ 2×
+    zoom = 24 world px, dx=0; after the fix dy=0 (scratchpad `basis-compare.png` →
+    `basis-fixed.png`). Fix: the three functions now reference cell centers (edge
+    cells cx..cx+w-1, vertices ±0.25 tile). Every earlier "proof" missed it because the
+    overlays used `rectCornersTile` — the same function the sprite uses — so they were
+    tautologies (as was align-smoke's anchor check). New guard:
+    `cityGrid.test.js` "rect corners align with the cell-center grid" pins the three
+    functions to `tileToWorld(cell/2)` ± half-cell. Two old unit tests that encoded the
+    buggy values were corrected. **240/240; align/boot/dev/tutorial/sector/world smokes
+    green.** Live: buildings now sit on their footprint cells, on the road grid.
+
+21. **Building float — actual root cause proven, align-smoke was testing a tautology.**
+    The prior align-smoke checked proxy-rect-bottom == `_frontWorld` anchor, but BOTH
+    derive from the same math, so it always passed regardless of sprite padding — it
+    could never catch this class of bug (why "fixed" kept not being fixed). Diagnosed
+    live via headed Playwright with overlay proof (ground suppressed, flat-bg,
+    footprint diamonds drawn from `_cornersWorld`): with the rig's true-lowest-pixel
+    crop (`bottom = maxY`) every sprite now has `bottomPad ≈ 0`, and each building's
+    base seats exactly on its footprint front vertex (scratchpad
+    `.playwright-mcp/anchor-flat.png`, `anchor-all.png`). The remaining lever if a
+    building looks small in its pad is `fit`, not the anchor. **align-smoke
+    strengthened**: now also asserts no built sprite has >6px transparent padding
+    below content — the invariant that actually guards the float. 239/239, five
+    smokes green. Caveat recorded so it isn't relitigated: a truly cache-fresh client
+    is required to observe the fix (server now `-c-1`; hard-reload the browser).
+
+20. **"Buildings float above their pads" — real root causes found live with Steve**
+    (parent session, live headed-Playwright debugging with in-page marker dots).
+    Two stacked problems:
+    - **Art:** the rig cropped sprite bottoms at the theoretical unit-tile front
+      vertex while aligning models by full bbox (roof overhang included) → baked
+      transparent padding under most buildings → sprites drew up-back of their
+      footprints. Rig crop now = actual lowest visible pixel (`maxY`), all 60
+      re-rendered. Belt-and-braces: `CityAssets` measures each sprite's real
+      content-bottom at load (`bottomPad()`, from the grayscale-prerender pass) and
+      `CityRenderer._drawSlot` anchors on measured content — padded art can never
+      float again regardless of source.
+    - **Caching hid every fix:** `http-server` default `max-age=3600` → browsers
+      (Steve's, and even a fresh MCP Playwright process with its persistent profile)
+      served hour-stale sprites/JS **without revalidating**, so landed fixes looked
+      like failures and correct probes looked like lies. `run.bat` now serves with
+      `-c-1` (caching disabled). Lesson for every future session: **after changing
+      assets or JS, verify through a cache-cleared client** (CDP
+      `Network.clearBrowserCache` or a truly fresh profile) before judging.
+    - Verified: 239/239; align/boot/dev/tutorial/sector smokes PASS; live headed
+      browser shows sprites seated with `bottomPad = 0` across types.
+
+19. **Sprite fits now match footprints** (parent session; the real fix for Steve's
+    "buildings look offset" report). The align-smoke invariant (sprite bottom ==
+    footprint front corner) was passing, but sprites were *smaller* than their
+    pads and front-corner-pinned, so every building sat shoved into the front-left
+    of its rect with empty pad behind — perceptually "offset". Rule now: **fit =
+    footprint size** (2×2 cells → 0.95 tiles, 3×3 → 1.42, 4×4 → 1.9; set by
+    `rig/fix-fits.mjs` over `jobs-all.json`, mirrored to `assets/_rig/`). All 60
+    sprites re-rendered — buildings fill their pads by construction. Per-type
+    size variety now comes from footprint class + model silhouette, not ad-hoc
+    fit numbers. Verified: align/boot/dev/tutorial smokes PASS; `?dev` screenshot
+    (`rig/shot-fitmatch.png`) shows pads filled.
+
+18. **Rubble-clear bug fix + road hierarchy (§4) + edge forest** (ADR 0022; two
+    player-reported bugs + one design amendment). Implemented by an Opus subagent.
+    - **BUG — glitchy rubble clearing (root cause).** `CityRenderer._syncSectors` built the
+      ground-raster cache key from `sectorList.filter(s => s.state !== 'rubble')`, which
+      bucketed **`clearing` together with `cleared`**. A sector goes `clearing → cleared` on
+      completion, but that transition left the key **unchanged**, so `CityGround` never
+      re-rastered — the just-cleared sector kept drawing as rubble until an *unrelated*
+      building event happened to force a re-raster. That incidental timing is exactly the
+      nondeterministic report ("no visible progress", "start a 2nd clear → all clear
+      instantly, or one clears and the other never clears"). The `SectorState` timers were
+      always genuinely independent (per-id Map) — proven by the two-clears probe. **Fix:**
+      pure `groundSignature({clearedIds, skeleton, connectors})` in `cityGround.js` counts
+      only truly-`cleared` sectors, so completion invalidates the cache. Legibility:
+      on-canvas progress bar now shows live **m:ss** remaining; the open sector tooltip
+      ticks its countdown in place (`TileTooltip.patchSector`, ADR 0007). Tests:
+      `cityGround.test.js` (signature changes clearing→cleared), `sectorState.test.js`
+      (two concurrent clears complete independently), `tests/browser/sector-smoke.mjs`
+      (campaign, real tick path — A 120→118s over 2s, B still running when A finished, both
+      to completion). **Probe result:** independent completion confirmed.
+    - **BUG + redesign — roads never cross buildings (§4 two-level hierarchy).** Old
+      `cityRoads.js` L-paths ran straight through footprints. Replaced with a **fixed
+      skeleton** (ring around HQ + N/E/S/W arterials to the edge; geometry `SKELETON` in
+      `cityGrid.js`) whose cells are **unbuildable** (`rectHitsSkeleton` extends the
+      placement/move/packer predicate; `_isRectCleared` + `rectFree` reject them) and
+      **connector roads** BFS'd from each building's **visible door** to the nearest
+      skeleton cell over free ground (never a footprint, never rubble). Arterials render
+      only through core + cleared sectors (extend as rubble clears); connectors drawn
+      inset/lighter. Legacy saves with a building on a skeleton cell relocate on load
+      (`cityPacker.skeletonOffenderMoves`, applied in `deserialize` for **all** placement
+      states — built/queued/unbuilt). `doorSide: 'sw'|'se'|'s'` added per type in
+      `buildings.js` (authoritative table from Steve's sprite eyeball). Tests: `cityRoads`
+      (skeleton determinism/unbuildable, no road cell intersects any footprint, arterials
+      gated by cleared sectors, doorSide validity + perimeter), `cityPacker` (never seats on
+      skeleton, `skeletonOffenderMoves` migration), `buildingManager` (after load zero
+      placement rects of any state hit skeleton).
+    - **Edge forest + footprint retune.** `GRID_MARGIN_TILES` 4→9 so the camera clamp never
+      shows the void; `cityGround.treeScatter` fills the surround with dense pines/broadleaf
+      (density rising to the rim) + sparse dead trees in uncleared rubble, painter-ordered
+      with buildings. Footprint buckets: `infantryhall` + `cavalrystable` 4×4→3×3 (sprite
+      fits ~1.2–1.35), so 4×4 is now only `townhall` + `heroquarters` (save-safe shrink).
+    - **Verified:** `npm test` **239/239**; boot/dev/world/**tutorial ×3**/sector smokes all
+      PASS, zero page errors; `check-comments` clean on every touched file; `?dev`
+      screenshot (scratchpad `base-roads.png`) shows the ring+arterial cross with buildings
+      clustered in the quadrants (never on the skeleton), a pine cluster in the surround,
+      and dead trees + debris in the rubble.
+    - **Follow-up (2 play-test issues).** (1) **Sprite-offset report — NOT reproducible;
+      anchor is provably correct.** A headless measurement probe (`tests/browser/align-smoke.mjs`,
+      now permanent) projects each built building's footprint front (south) corner and compares
+      it to the proxy rect's bottom-center: **Δ = (0,0) px** for every building at home framing
+      AND after a pan. Root cause of the *report* is not a code offset — sprite, on-canvas label,
+      proxy rect, and roads all derive from the single `_frontWorld(slot)` anchor, so they cannot
+      diverge; transparent sprite bottom-padding is ≤13px. The likeliest source of Steve's
+      screenshot is a stale cached build from the mid-task window (I was resumed after a usage
+      limit; between the `cityGround` rewrite and the `CityRenderer._groundState` rewiring the
+      ground briefly mismatched). The align-smoke locks the "sprites seat on their plots"
+      invariant (ADR 0021/0022) going forward. (2) **Sector tooltip lifecycle.** The clear panel
+      was pinned by tap and only ever `refreshSector`'d — on completion it re-rendered a *cleared*
+      sector with a bogus "Clear Rubble" button and never closed. Fix: `city:sectorCleared` now
+      `TileTooltip.closeSector(id)` auto-closes a panel open on the just-cleared sector; the panel
+      is **pinned only by an explicit tap** (`showSector(..., {pinned})`), while **hovering** a
+      rubble/clearing sector shows it transiently (new `CityRenderer._setSectorHover` →
+      `onSectorHover/Leave`, reusing the building hover path; never steals a pinned panel). The
+      countdown keeps ticking in place (`patchSector`, ADR 0007). Covered by two new
+      `sector-smoke` assertions (panel opens on tap; auto-closes on completion). `window.game.city`
+      is now exposed on base-view entry as a debug/automation handle for these probes.
+    - **Deferred / notes:** `CityRenderer.js` (~979 ln) and `BuildingManager.js` (~1046 ln)
+      remain over the ~400 ceiling — additions this session were kept thin (skeleton
+      geometry, roads, trees, migration all live in siblings: `cityGrid`/`cityRoads`/
+      `cityGround`/`cityPacker`). A `siegeworkshop` footprint mismatch was noted (2×2 vs
+      ~1.3 sprite fit → arguably 3×3) but left alone: growing a footprint is **not**
+      save-safe without overlap-migration, and only shrinks were in scope.
+
+### Landed this session (2026-07-19)
+
+17. **Tutorial spotlight race fixed** (parent session, found re-verifying Phase B —
+    `tutorial-smoke` was flaky ~1-in-5). `UIManager._showTutorialStep` applied the
+    spotlight **once** 250 ms after the step event; when the canvas proxy tiles
+    weren't in the DOM yet (asset load now outlasts 250 ms on cold boot) it fell to
+    the nav-pulse fallback and hid the ring **permanently** (`_repositionRing`
+    ignores hidden rings). Now retries every 300 ms (≤40×) until the selector
+    resolves, upgrading fallback → ring; timer cleared on hide. Pre-existing race,
+    surfaced by the heavier Phase A/B boot. `tutorial-smoke` also hardened (keeps
+    dismissing a late story dialog while polling; logs last measurement on timeout).
+    Verified: 8/8 tutorial-smoke runs green (was 5/8); 227/227 + other three smokes
+    unaffected. **Debt noted:** `UIManager.js` ~738 ln — extract the tutorial
+    spotlight block (`_showTutorialStep`/`_applySpotlight`/`_repositionRing`/
+    `_hideTutorial`) into a `TutorialSpotlight` module next touch.
+
+16. **Base layout rework Phase B — roads, rubble sectors, textured ground** (ADR 0022;
+    plan `docs/base-layout-plan.md`). Implemented by an Opus subagent.
+    - **Textured city ground** (`js/ui/city/cityGround.js`) replaces flat `GROUND_COLOR`
+      diamonds + district tints: per-cell earth/cracked/ash (deterministic hash), road
+      tiles on road cells, rubble tiles + debris scatter on uncleared sectors. Single
+      full-extent offscreen raster, re-rastered only on road/clear-set change (city is
+      small + fixed → one cache beats the world map's chunk grid; noted vs the spec's
+      "16×16 chunks"). Assets: `assets/tiles/ground/grit/`, `props/grit/`.
+    - **Auto-derived roads** (`js/ui/city/cityRoads.js`, pure): door→nearest-web Manhattan
+      L-paths seeded at the HQ door; deterministic, regenerated on layout change, **never
+      serialized**. `cityAgents.js` walkers/drone now follow the derived road graph.
+    - **Rubble-sector expansion** — `js/entities/data/citySectors.js` (4×4 block tiling;
+      central 2×2 core, 8 ring-1 + 4 ring-2 sectors; `sector_<ring>_<n>` save-key ids;
+      cost ×2.5/ring: ring1 wood600/stone400/iron150 @120s HQ2, ring2 ×2.5 @300s HQ4 —
+      generous, tighten later). `js/systems/building/sectorState.js` (owned by
+      BuildingManager) holds `{cleared, clearing}`, serialized; **grandfathering** on load
+      (any sector under a placed building auto-clears; legacy saves migrate full-grid then
+      reconcile). Placement (packer/ghost/move) confined to cleared cells. Tap a rubble
+      sector → `TileTooltip.showSector` → `ui:clearSector`; clears show progress + dust,
+      emit `city:sectorCleared`.
+    - **Retired**: `js/entities/data/cityBlueprint.js` + `js/ui/city/cityLayout.js`.
+      `CATEGORY_ZONE` + grid dims moved to `cityGrid.js`; isoMath/CityRenderer/GAME_DATA
+      updated. Camera `homeIfUntouched()` re-frames HQ on base re-entry until the player
+      pans (fixes the item-15 off-centre known issue).
+    - **Verified:** `npm test` **227/227** (+24 — citySectors, sectorState, cityRoads,
+      packer predicate, grandfathering + sector round-trip + no-serialize-footprint).
+      boot/dev/world/**tutorial** smokes all PASS, zero page errors; `check-comments`
+      clean on every touched file. `?dev` screenshot (scratchpad `phaseb-base.png`) shows
+      textured ground, road L-paths to the HQ, and debris-scattered rubble edges.
+    - **Deferred / notes:** Phase C (adjacency bonuses) unchanged. `BuildingManager.js`
+      (~1039 ln) and `CityRenderer.js` (~950 ln) remain over the ~400 ceiling
+      (pre-existing debt; Phase B kept additions thin via the sector/ground/road siblings)
+      — a `citySectorPanel` / renderer-draw extraction is the next split candidate.
+
+15. **Base layout rework Phase A — free placement shipped** (ADR 0022; plan
+    `docs/base-layout-plan.md`). Implemented by an Opus subagent (spec in-session);
+    the agent hit a usage limit mid-docs, so this entry + roadmap tick were written
+    by the parent session after independently re-verifying everything.
+    - New: `js/entities/data/cityGrid.js` (half-tile cells, 44×32, rect geometry/
+      bounds), `js/systems/building/cityPacker.js` (deterministic spiral packer, HQ
+      pinned center, category anchors N/E/S/W), `js/systems/building/placementStore.js`
+      (`instanceId → {cx,cy}` + occupancy), `js/ui/city/cityGhost.js` (move drag-ghost
+      with validity fill), `tests/browser/tutorial-smoke.mjs`. Deleted:
+      `js/ui/buildings/PlacementController.js`. `buildings.js` gained per-type
+      `footprint` (2×2/3×3/4×4 cells). `cityBlueprint.js` keeps roads/districts
+      (visual only, Phase B replaces); plots retired.
+    - `CityRenderer` draws footprint rects (sprite bottom-center = rect front corner,
+      ADR 0021 anchor); proxy layer tracks instance footprint rects so the tutorial
+      spotlight contract survives (`.base-tile[data-building-id]` unchanged).
+    - Legacy saves: plot-id-string placements are dropped on deserialize and every
+      instance re-places via the packer (regression-tested).
+    - **Verified by the parent session:** `npm test` **203/203** (+20); boot/dev/
+      world/**tutorial** smokes all PASS, zero page errors; `check-comments` clean on
+      every Phase A file; live probe confirms packer layout (HQ 4×4 at cell (20,14) =
+      grid center, military W / production E / civic N / residential S); `?dev`
+      screenshot shows built sprites + dashed footprint ghosts correctly clustered.
+    - **Known issues:** (a) on `?dev` (boot→world→navigate back to base) the camera
+      home frame can be off-center until a double-tap re-homes — check whether a real
+      save's straight-to-base boot is affected; consider calling `home()` on base-view
+      re-entry. (b) `docs/10-design/city-view.md` was updated by the agent but not
+      re-reviewed line-by-line — skim it next session.
+
+14. **Grit reskin A3 Session 2 — render-to-grid sprite rig; all 20 types wired**
+    (ADR 0021, amends 0020). The "native px + shared 0.34 trim" approach broke on
+    multi-pack sources (accidental relative sizes, footprints disagreeing with the
+    grid) — replaced by a headless-Chromium three.js rig (session scratchpad `rig/`:
+    `render.html`, `render-rig.mjs`, `jobs-*.json`, `catalog-zips.ps1`, `base-shot.mjs`)
+    with an ortho camera locked to the 128×96 diamond; per-type `fit` = footprint in
+    tiles; sprite bottom pinned to the tile front vertex. Loaders: glTF/GLB/OBJ+MTL.
+    - `GRIT_BUILDING_MAP` now covers **all 20 types** (Sonnet subagent wired 13 per
+      spec; well + siegeworkshop added after gap-fill renders). Sources: UFR pack (15),
+      Farm Buildings (well, cavalrystable barns, lumbermill L2–3 open barn), Zombie
+      Apocalypse (well L3 water tower, siege container/armored truck). `townhall`
+      swapped TownCenter plaza → **Temple** (reads heavier). Kenney `ISO_BUILDING_MAP`
+      is now load-failure fallback only.
+    - `CityRenderer._drawLevelBadge` now renders the bottom label line — "Lv4 HOUSE 1"
+      pill+name under the plot (Steve's call; above-sprite badges overlapped tall art).
+      Name drawing moved out of `_drawSlot` for built slots.
+    - Rig look pass 2 (Steve: "most buildings don't look good / well placed"):
+      front-corner seating (model footprint front corner pinned to tile front vertex),
+      sun 2.4→1.7 with self-shadowing, `saturate(.82) brightness(.96) sepia(.10)`
+      post-filter to harmonize the three packs' palettes. All 60 sprites re-rendered
+      via consolidated `rig/jobs-all.json` (the one source of truth for type→model+fit).
+    - Model catalog of every incoming zip: scratchpad `rig/catalog.md`. Pre-rig sprite
+      backup: `rig/backup-grit-v1/`.
+    - **Verified:** `npm test` 183/183 (new `tests/unit/cityAssets.test.js`); boot +
+      dev smokes PASS, zero page errors; `?dev` screenshot shows new sprites seated
+      on-grid at consistent scale.
+    - Eyeball round 2 (Steve): bottom label line hidden for the hovered slot (hover
+      pill was doubling it); heroquarters → Wonder_SecondAge castle, archeryrange →
+      Archery_SecondAge, rallypoint → WatchTower_SecondAge. Gotcha: PS5.1
+      `Set-Content -Encoding utf8` writes a BOM that broke the rig's jobs JSON parse
+      (driver now strips it) — a "re-render" silently no-oped once; check render-rig
+      output lines, not just the copy step.
+    - Eyeball round 3 (Steve): `townhall` → **Wonder_FirstAge** (the golden ziggurat —
+      "like the golden building"); rig gained `clampL` (per-job material-lightness
+      clamp — fixes the farm-pack barns' black/white roofs on lumbermill/cavalrystable)
+      and per-job `filter` overrides (mine/quarry/watertower darkened to earthy).
+    - Eyeball round 4 — full in-game contact sheet (`rig/contact-sheet.mjs`: ?dev boot,
+      raises HQ→8 then every type's instance 0 to L1/L2/L3 via `bm.build(id,0)` +
+      synchronous drain, screenshots `sheet_L{1,2,3}.png`; bank stalls at L1 and
+      magictower at 0 — deeper prereqs/tech, sprites reviewed from renders instead).
+      Fixes: OBJ Phong **specular was defeating `clampL`** (cream-white barn roofs) —
+      rig now zeroes specular on clamped materials; rocks pushed earthier
+      (brightness .66–.68, sepia .3); military-cluster fits trimmed ~0.1 (barracks
+      1.15, archery/infantry 1.2, heroquarters 1.35, siege 1.15/1.3) to reduce
+      adjacent-plot sprite collisions. **Base sprite set is declared done** pending
+      Steve's final look.
+    - **Known / next:** per-type `fit` numbers await Steve's eyeball on the real save;
+      city ground is still flat diamonds (next pass); rig lives in the session
+      scratchpad — copy it somewhere durable if it should outlive temp cleanup.
+
+### Landed earlier (2026-07-18)
+
+13. **Grit reskin A3 Session 1 — grit building sprites + iso retune** (ADR 0020, amends
+    0009/0010). The plan-of-record square-grid projection swap was **dropped mid-session**
+    when measurement contradicted it (surfaced to Steve, who chose "retune iso"):
+    - **Two reality corrections.** (a) The Quaternius "Ultimate Fantasy RTS" zip ships a
+      `PNG/` folder of finished ¾-**iso** renders (1024², per family × level × age, CC0 1.0)
+      — **no Blender** (ADR 0010's render step is moot; the `.blend`/`.fbx`/`.gltf` are unused
+      3D source). (b) Those renders have **diamond footprints** (measured ~1.1–1.3:1 from
+      TownCenter fence corners), so they need a **diamond grid** — ADR 0009's square-grid swap
+      would sit crooked. `gridMath.js` was **not** written.
+    - **isoMath retuned, not replaced:** `TILE_W 132→128`, `TILE_H 66→96` (~1.33:1),
+      `GROUND_BOTTOM = TILE_H/2`. Everything parametric carried over; the one extra fix was
+      `CityCamera.minZoom` (had `66/33` hardcoded → now from `TILE_W`/`TILE_H`).
+    - **Buildings draw at native px** (removed the fit-to-plot-width seating). Sprites are
+      trimmed offline (alpha bbox) and downscaled by **one shared factor (0.34)** so relative
+      sizes are authored (town hall > house); bigger buildings overhang their plot. Trim tool:
+      scratchpad `trim-sprites.mjs` (headless Chromium — no PIL/ImageMagick/Blender).
+    - **Ground → flat-color diamond cells** (`GROUND_COLOR` in CityRenderer); Kenney landscape
+      diamond sprites retired (they were 2:1). A city terrain atlas is a later pass.
+    - **Level-keyed manifest:** `GRIT_BUILDING_MAP[type]={1,2,3}` + `gritBucket` + `building(id,
+      level)` in `cityAssets`, mirrored in `cityGrade` (grades every variant key); falls back
+      to legacy `ISO_BUILDING_MAP` (Kenney) for un-migrated types. **Wired the five**
+      always-on-screen types (townhall/house/farm/barracks/storehouse, L1–L3). Sprites in
+      `assets/tiles/buildings/grit/<key>_L<n>.png`.
+    - **Asset download subagent** pulled the rest of the `assets.md` checklist into
+      `assets/_incoming/` (git-ignored) with a `SOURCES.md`: 11 packs landed (Kenney ×6,
+      KayKit, Low Poly Forest, Chest, Cethiel Weapons, game-icons **CC-BY → needs credit**);
+      **6 Quaternius packs are MANUAL** (itch JS-gated — Farm Buildings, Zombie Apocalypse,
+      Cube World, Mech, Spaceships, Guns; URLs in `SOURCES.md`).
+    - **Verified:** `npm test` **182/182**; boot/world/dev smokes all PASS, **zero page
+      errors**; `?dev` base screenshot shows grit barracks + townhall-L3 seated on the flat
+      diamond grid, graded, level badges, empty-plot pads/labels intact. `check-comments`
+      clean in all edited/new files (only pre-existing UIManager violations remain).
+    - **Known / next:** un-migrated types show legacy Kenney boxes (interim). `townhall` uses
+      TownCenter (monument plaza — reads light as an HQ; one-line swap to Temple/Wonder). Gap
+      types (well/workshop/siege/cavalry/construction) need the staged gap-filler packs.
 
 12. **Grit reskin Phase C3 — DOM/UI juice** (ADR 0019). Presentation only, no gameplay,
     no new save state, no new manager.
@@ -436,6 +797,12 @@
      session's scratchpad (`buff-probe.mjs`, `boot-smoke.mjs`) — headless console tests,
      no UI clicking. `window.game` exposes `resources`/`worldMap`/`eventBus` for probes.
 
+### Base layout rework status (approved 2026-07-19, ADR 0022)
+
+- Plan: `docs/base-layout-plan.md`. **Phase A + Phase B shipped** (items 15, 16 — free
+  placement, then auto-roads + rubble sectors + textured ground). Next: **Phase C**
+  (adjacency bonuses + migration bonus toast; balance pass).
+
 ## Known issues / debt
 
 - **`WorldRenderer.js` is 426 ln** — B2 took it 504 → 426 by extracting the tile engine,
@@ -482,18 +849,16 @@
    `tests/README.md`). Worth adding when someone's in the area: SaveManager round-trip,
    march dispatch end-to-end (needs a save with squads), combat resolution.
 
-1. **C3 DOM juice is DONE** (2026-07-18, ADR 0019 — entry above). **All code-only reskin
-   phases are now complete** (A1/A2/B1/B2/C1/A4/C2/C3). The only reskin work left is the two
-   **user-in-the-loop art phases**, both needing generated assets Steve approves:
-   **B3 terrain atlas** (map-selling AI art; do before A3 — note ADR 0013, a real atlas
-   breaks the fixed-texture-scale chunk cache, so plan a zoom-bucketed/native-res cache up
-   front) and **A3 building sprites + base projection swap** (ADR 0009/0010 — bundles the
-   diamond-iso retirement; CC0 3D render-to-sprite). With the code juice done, the natural
-   non-art alternative is to start the **Hardening** track (systems bug audit / Phase 2
-   verification+balance / data consolidation Phase 1). Deferred follow-ups still open:
-   two **C2** (battle-toast screen flash + camera nudge, building light-flicker overlays)
-   and two **A4 fiction** (hero cast `heroes.js`+`economy.js` → fold into Hero redesign,
-   unit tier names `units.js`).
+1. **A3 is DONE** (ADR 0021) — all 20 types rig-rendered and wired. Open follow-ups:
+   tune per-type `fit` after Steve eyeballs his real save (one number per job in
+   `rig/jobs-*.json`, re-render + copy); **city ground pass** is the next visual work
+   (flat `GROUND_COLOR` diamonds — render/texture ground tiles, likely through the
+   same rig). The 6 formerly-manual Quaternius packs are **on disk now**; game-icons.net
+   is **CC-BY** → needs a credit line if its icons ship.
+   - Non-art alternative any time: the **Hardening** track (systems bug audit / Phase 2
+     verification+balance / data consolidation Phase 1). Deferred follow-ups still open:
+     two **C2** (battle-toast flash + camera nudge, building light-flicker) and two **A4
+     fiction** (hero cast → Hero redesign, unit tier names `units.js`).
 
 2. **Optional sound follow-ups (C1 is done/signed-off, only if asked):** add variants to
    `coin`/`dropLeather` (single-clip repeats on rapid collects); the deferred A2 gacha
@@ -504,15 +869,8 @@
 4. Remaining world/march audit findings (lower severity, roadmap → Hardening): gather
    economic-bonus no-op clamp, `resolveMarchBattle` `milMult < 1` debuff trap, and a
    buff-dependent *UI* listener for `world:buffsChanged`.
-5. Queue the comment-cleanup session (low-cost model; `node scripts/check-comments.mjs`).
-3. Balance items B1 created (roadmap → Hardening): 99 filler nodes change gather supply;
-   `dragon_spire`/`command_ruin` filler is unguarded (neutral → no faction enemy pool);
-   `BASE_SPEED_PX` 265 preserves old times rather than being tuned for the new map.
-4. Remaining world/march audit findings (lower severity, roadmap → Hardening): gather
-   economic-bonus no-op clamp, `resolveMarchBattle` `milMult < 1` debuff trap, and a
-   buff-dependent *UI* listener for `world:buffsChanged`.
 5. Queue the comment-cleanup session (low-cost model; `node scripts/check-comments.mjs`
-   lists 16 violations — none in the B1 files).
+   lists 13 violations, all pre-existing).
 
 ## State of decisions (don't re-litigate)
 

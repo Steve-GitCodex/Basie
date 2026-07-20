@@ -14,7 +14,6 @@ import { BuildQueueSidebar } from '../buildings/BuildQueueSidebar.js';
 import { openSpeedupPicker }  from '../buildings/SpeedupPicker.js';
 import { BuildablesPanel }     from '../buildings/BuildablesPanel.js';
 import { BuildingInfoPanel }   from '../buildings/BuildingInfoPanel.js';
-import { PlacementController } from '../buildings/PlacementController.js';
 
 /** How long the build-queue sidebar stays open after auto-opening on activity. */
 const SIDEBAR_AUTO_CLOSE_MS = 10000;
@@ -44,12 +43,6 @@ export class BuildingsUI {
       inventory:     systems.inventory,
       notifications: systems.notifications,
     });
-    this._placement = new PlacementController({
-      bm:            systems.bm,
-      notifications: systems.notifications,
-      getCity:       () => this._city,
-      tooltip:       this._tooltip,
-    });
     this._buildables = new BuildablesPanel({ bm: systems.bm, rm: systems.rm });
     this._info = new BuildingInfoPanel({ bm: systems.bm });
   }
@@ -73,7 +66,6 @@ export class BuildingsUI {
         // slide-up panel is retired). Hover only highlights (handled by the renderer).
         onTileClick: (bid, idx) => {
           eventBus.emit('ui:click');
-          this._placement.exitRelocateMode();
           const rect = this._city?.getTileScreenRect(bid, idx);
           if (rect) this._tooltip.showTile(bid, idx, rect);
         },
@@ -86,16 +78,27 @@ export class BuildingsUI {
           this._tooltip.hide(true);
           this._openBuildingSpeedup(badgeRect);
         },
-        onPlotClick: (plotId, zone) => {
-          eventBus.emit('ui:click');
-          if (this._placement.isRelocating) { this._placement.tryRelocate(plotId); return; }
-          // Empty-plot tap → open the Buildables panel scoped to this plot's zone.
-          eventBus.emit('ui:openBuildables', { zone, plotId });
+        // Move-placement ghost committed a new footprint.
+        onGhostCommit: (instanceId, cx, cy) => {
+          const r = this._s.bm.moveBuilding(instanceId, cx, cy);
+          if (!r.success) { eventBus.emit('ui:error'); this._s.notifications?.show('warning', 'Cannot Move', r.reason); }
         },
-        onPlotHover: () => {},
         onEmptyClick: () => {
           this._tooltip.hide(true);
-          this._placement.exitRelocateMode();
+          this._city?.cancelGhost();
+        },
+        // Tap a rubble sector → clear panel pinned open (cost/time/HQ gate/Clear Rubble).
+        onSectorClick: (sectorId, rect) => {
+          eventBus.emit('ui:click');
+          if (rect) this._tooltip.showSector(sectorId, rect, { pinned: true });
+        },
+        // Hover a rubble/clearing sector → transient panel (countdown ticks in place);
+        // never steals a pinned tooltip.
+        onSectorHover: (sectorId, rect) => {
+          if (rect && !this._tooltip.isSectorPinned()) this._tooltip.showSector(sectorId, rect, { pinned: false });
+        },
+        onSectorLeave: () => {
+          if (!this._tooltip.isSectorPinned()) this._tooltip.hide();
         },
       });
       this._city.init();
@@ -119,20 +122,31 @@ export class BuildingsUI {
     this._info.init();
     this._buildables.init();
 
-    // Buildables panel intents
-    this._unsubs.push(eventBus.on('ui:placeBuilding', ({ buildingId, plotId } = {}) => {
+    // Buildables panel intents — the packer seats the instance, then it builds.
+    this._unsubs.push(eventBus.on('ui:placeBuilding', ({ buildingId } = {}) => {
       if (!buildingId) return;
-      if (plotId) {
-        const r = this._s.bm.buildOnPlot(buildingId, plotId);
-        if (!r.success) { eventBus.emit('ui:error'); this._s.notifications?.show('warning', 'Cannot Build', r.reason); }
-      } else {
-        // Placement highlights plots on the base-view city renderer — ensure we're there.
-        eventBus.emit('ui:navigateTo', 'base');
-        this._placement.enterBuildMode(buildingId);
-      }
+      const r = this._s.bm.buildNext(buildingId);
+      if (!r.success) { eventBus.emit('ui:error'); this._s.notifications?.show('warning', 'Cannot Build', r.reason); }
     }));
-    this._unsubs.push(eventBus.on('ui:relocateBuilding', ({ instanceId, zone } = {}) => {
-      if (instanceId) this._placement.enterRelocateMode(instanceId, zone);
+    this._unsubs.push(eventBus.on('ui:relocateBuilding', ({ instanceId } = {}) => {
+      if (!instanceId) return;
+      eventBus.emit('ui:navigateTo', 'base');
+      this._city?.enterGhostMode(instanceId);
+    }));
+
+    // Rubble-sector clear intent + state changes (ADR 0022, Phase B).
+    this._unsubs.push(eventBus.on('ui:clearSector', ({ sectorId } = {}) => {
+      if (!sectorId) return;
+      const r = this._s.bm.clearSector(sectorId);
+      if (!r.success) { eventBus.emit('ui:error'); this._s.notifications?.show('warning', 'Cannot Clear', r.reason); }
+    }));
+    this._unsubs.push(eventBus.on('city:sectorsChanged', () => { this._city?.syncState(); this._tooltip.refreshSector(); }));
+    // A completed clear auto-closes any tooltip still open on that sector (it is no
+    // longer a rubble sector to act on); other open sector panels just refresh.
+    this._unsubs.push(eventBus.on('city:sectorCleared', ({ id } = {}) => {
+      this._city?.syncState();
+      if (id) this._tooltip.closeSector(id);
+      this._tooltip.refreshSector();
     }));
 
     // Build queue sidebar toggle (manual interaction cancels any pending auto-close)
@@ -142,8 +156,10 @@ export class BuildingsUI {
     });
 
     this._unsubs.push(eventBus.on('ui:viewChanged',             v => {
-      if (v === 'base') { this.render(); this._city?.start(); }
-      else              { this._city?.stop(); }
+      if (v === 'base') {
+        this.render(); this._city?.start(); this._city?.homeIfUntouched();
+        if (typeof window !== 'undefined' && window.game) window.game.city = this._city; // debug/automation surface
+      } else            { this._city?.stop(); }
     }));
     this._unsubs.push(eventBus.on('building:completed',         () => { this.render(); this._tooltip.refresh(); }));
     this._unsubs.push(eventBus.on('building:started',           () => {
@@ -174,6 +190,7 @@ export class BuildingsUI {
       if (now - this._tickThrottle < 1000) return;
       this._tickThrottle = now;
       this._tooltip.patchAffordability();
+      this._tooltip.patchSector();
     }));
     // Tutorial: center the camera on the focused building; the spotlight rings
     // its tile and the player taps it to open the click-popup (with Build/Upgrade).
@@ -181,13 +198,13 @@ export class BuildingsUI {
       this._city?.centerOnTile(id, 0, true);
     }));
 
-    // Leaving the base view cancels any in-progress placement
+    // Leaving the base view cancels any in-progress move placement
     this._unsubs.push(eventBus.on('ui:viewChanged', v => {
-      if (v !== 'base') this._placement.exitRelocateMode();
+      if (v !== 'base') this._city?.cancelGhost();
     }));
     this._unsubs.push(eventBus.on('building:relocated', () => this.render()));
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') this._placement.exitRelocateMode();
+      if (e.key === 'Escape') this._city?.cancelGhost();
     });
   }
 

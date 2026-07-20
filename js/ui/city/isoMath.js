@@ -2,8 +2,8 @@
  * isoMath.js
  * Pure isometric projection math for the base city view. No DOM, no state.
  *
- * Grid dimensions come from the city blueprint; only the projection and
- * camera-constraint math lives here.
+ * Grid dimensions come from cityGrid; only the projection and camera-constraint
+ * math lives here.
  *
  * World space: 1 world unit = 1 sprite px at zoom 1.
  *   Tile diamond:  TILE_W wide × TILE_H tall, center at (wx, wy).
@@ -16,21 +16,23 @@
  * The terrain (grid + ring) is an axis-aligned box in (u, v) — which makes
  * "keep the viewport fully on terrain" an exact, cheap clamp.
  *
- * Kenney tile anchoring: standard ground blocks are 132×99 — a 66px-tall
- * top diamond plus a 33px earth skirt. All sprites are bottom-anchored:
- * drawY = wy + GROUND_BOTTOM − imgHeight, so taller sprites (buildings,
- * hills) rise upward and occlude correctly with painter's ordering.
+ * Diamond ratio matches the grit building set's isometric footprint (~1.3:1,
+ * measured from the Quaternius renders — ADR 0009). Ground is flat-filled per
+ * cell (no sprite skirt); buildings bottom-anchor at the tile's front vertex
+ * (drawY = wy + GROUND_BOTTOM − imgHeight) so taller sprites rise upward and
+ * occlude correctly under painter's ordering.
  */
-import { CITY_BLUEPRINT } from '../../entities/GAME_DATA.js';
+import { GRID_TILE_COLS, GRID_TILE_ROWS, GRID_MARGIN_TILES } from '../../entities/GAME_DATA.js';
 
-export const TILE_W = 132;
-export const TILE_H = 66;
-export const GRID_COLS = CITY_BLUEPRINT.cols;
-export const GRID_ROWS = CITY_BLUEPRINT.rows;
-export const RING = CITY_BLUEPRINT.ring;
+export const TILE_W = 128;
+export const TILE_H = 96;
+export const GRID_COLS = GRID_TILE_COLS;
+export const GRID_ROWS = GRID_TILE_ROWS;
+/** Empty-ground + camera-overhang margin (tiles) around the buildable rect. */
+export const RING = GRID_MARGIN_TILES;
 
-/** Distance from a tile's diamond center down to the sprite's bottom edge. */
-export const GROUND_BOTTOM = TILE_H / 2 + 33;
+/** Distance from a tile's diamond center down to the sprite's bottom (front) vertex. */
+export const GROUND_BOTTOM = TILE_H / 2;
 
 /** Logical tile → world px (diamond center). */
 export function tileToWorld(col, row) {

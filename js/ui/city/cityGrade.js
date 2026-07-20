@@ -7,7 +7,7 @@
  * building type from the SVG icon set, and draws the full-scene overlay
  * (vignette + cold wash + horizon haze). Collaborator of CityRenderer.
  */
-import { ISO_BUILDING_MAP, GROUND_TILES } from './cityAssets.js';
+import { GROUND_TILES, gritBucket } from './cityAssets.js';
 
 const GRIM_FILTER =
   'saturate(0.55) brightness(0.9) contrast(1.08) sepia(0.15) hue-rotate(-10deg)';
@@ -58,16 +58,26 @@ export class CityGrade {
     await this._renderPlaques();
   }
 
-  building(id) {
-    return this._graded.get(`b:${id}`) ?? this._assets.building(id);
+  building(id, level = 0) {
+    if (level > 0) {
+      const g = this._graded.get(`b:${id}:${gritBucket(level)}`);
+      if (g) return g;
+    }
+    return this._graded.get(`b:${id}:1`) ?? this._graded.get(`b:${id}`)
+      ?? this._assets.building(id, level);
   }
 
   ground(name) {
     return this._graded.get(`g:${name}`) ?? this._assets.ground(name);
   }
 
-  buildingGray(id) {
-    return this._gray.get(id) ?? this._assets.buildingGray(id);
+  buildingGray(id, level = 0) {
+    if (level > 0) {
+      const g = this._gray.get(`b:${id}:${gritBucket(level)}`);
+      if (g) return g;
+    }
+    return this._gray.get(`b:${id}:1`) ?? this._gray.get(`b:${id}`)
+      ?? this._assets.buildingGray(id, level);
   }
 
   drawPlaque(ctx, buildingId, x, y) {
@@ -106,11 +116,11 @@ export class CityGrade {
   }
 
   _gradeSprites() {
-    for (const id of Object.keys(ISO_BUILDING_MAP)) {
-      const graded = this._gradeImage(this._assets.building(id));
-      if (graded) this._graded.set(`b:${id}`, graded);
-      const gray = this._gradeImage(this._assets.buildingGray(id));
-      if (gray) this._gray.set(id, gray);
+    for (const key of this._assets.buildingVariantKeys()) {
+      const graded = this._gradeImage(this._assets.imageByKey(key));
+      if (graded) this._graded.set(key, graded);
+      const gray = this._gradeImage(this._assets.grayByKey(key));
+      if (gray) this._gray.set(key, gray);
     }
     for (const name of Object.keys(GROUND_TILES)) {
       const graded = this._gradeImage(this._assets.ground(name));

@@ -1,56 +1,87 @@
 /**
  * cityAgents.js
- * Ambient life for the base city view: the survey drone on its fixed path and
- * pedestrians wandering the road graph. Owns their motion state and draws them;
+ * Ambient life for the base city view: the survey drone and pedestrians that
+ * wander the auto-derived road web (ADR 0022, Phase B — roads come from
+ * cityRoads, not the retired blueprint). Owns their motion state and draws them;
  * depth ordering is done by CityRenderer, which interleaves these with buildings.
+ *
+ * Positions are kept in tile coords (cell/2) so the renderer's tileToWorld +
+ * depth sort work unchanged. `setRoads` rebuilds the graph on any layout change.
  *
  * Collaborator of CityRenderer — holds a back-reference for canvas context only.
  */
 import { tileToWorld } from "./isoMath.js";
-import { dronePath, roadGraph } from "./cityLayout.js";
+import { roadGraph } from "./cityRoads.js";
 
 const DRONE_SPEED = 1.1; // tiles per second
 const WALKER_SPEED = 0.45; // tiles per second
 const WALKER_COUNT = 3;
 
+function toTile(cellKey) {
+  const [cx, cy] = cellKey.split(",").map(Number);
+  return { col: cx / 2, row: cy / 2 };
+}
+
 export class CityAgents {
   constructor(renderer) {
     this._r = renderer;
-    this._dronePath = dronePath();
-    this._roadGraph = roadGraph();
+    this._graph = new Map();
+    this._keys = [];
+    this._dronePath = [];
     this._droneT = 0;
     this._walkers = [];
   }
 
-  spawn() {
-    const cells = [...this._roadGraph.keys()];
-    if (!cells.length) return;
+  /** Rebuild the road graph + drone path + walkers from the derived road-cell set. */
+  setRoads(roadCells) {
+    this._graph = roadGraph(roadCells);
+    this._keys = [...this._graph.keys()];
+    this._dronePath = this._buildDronePath();
+    this._droneT = 0;
+    this._spawnWalkers();
+  }
+
+  /** Drone glides along the widest road row, edge to edge (cosmetic). */
+  _buildDronePath() {
+    if (!this._keys.length) return [];
+    const rows = new Map();
+    for (const k of this._keys) {
+      const [cx, cy] = k.split(",").map(Number);
+      if (!rows.has(cy)) rows.set(cy, []);
+      rows.get(cy).push(cx);
+    }
+    let bestRow = null, bestLen = 0;
+    for (const [cy, xs] of rows) {
+      if (xs.length > bestLen) { bestLen = xs.length; bestRow = cy; }
+    }
+    const xs = rows.get(bestRow).sort((a, b) => a - b);
+    return xs.map(cx => ({ col: cx / 2, row: bestRow / 2 }));
+  }
+
+  _spawnWalkers() {
+    this._walkers = [];
+    if (!this._keys.length) return;
     for (let i = 0; i < WALKER_COUNT; i++) {
-      const key = cells[(i * 13) % cells.length];
-      const [c, r] = key.split(",").map(Number);
+      const k = this._keys[(i * 13) % this._keys.length];
+      const from = toTile(k);
       this._walkers.push({
-        x: c,
-        y: r, // fractional tile coords
-        from: { col: c, row: r },
-        to: this._nextRoadCell({ col: c, row: r }, null),
-        t: 0,
-        hue: 180 + i * 60,
+        cell: k, prev: null, from, to: from, t: 1,
+        x: from.col, y: from.row, hue: 180 + i * 60,
       });
     }
   }
 
-  /** Advance drone + walker motion by dt seconds. */
   update(dt) {
-    const droneLen = this._dronePath.length - 1;
-    this._droneT =
-      (((this._droneT + dt * DRONE_SPEED) % droneLen) + droneLen) % droneLen;
+    const droneLen = Math.max(1, this._dronePath.length - 1);
+    this._droneT = (((this._droneT + dt * DRONE_SPEED) % droneLen) + droneLen) % droneLen;
     for (const w of this._walkers) {
-      if (!w.to) continue;
       w.t += dt * WALKER_SPEED;
       if (w.t >= 1) {
-        const prev = w.from;
+        const next = this._nextRoadCell(w.cell, w.prev);
+        w.prev = w.cell;
+        w.cell = next;
         w.from = w.to;
-        w.to = this._nextRoadCell(w.from, prev);
+        w.to = toTile(next);
         w.t = 0;
       }
       w.x = w.from.col + (w.to.col - w.from.col) * w.t;
@@ -58,9 +89,7 @@ export class CityAgents {
     }
   }
 
-  get walkers() {
-    return this._walkers;
-  }
+  get walkers() { return this._walkers; }
 
   get droneDepth() {
     const p = this.dronePos();
@@ -68,40 +97,35 @@ export class CityAgents {
   }
 
   dronePos() {
+    if (!this._dronePath.length) return { col: 0, row: 0 };
     const i = Math.floor(this._droneT);
     const f = this._droneT - i;
     const a = this._dronePath[i];
     const b = this._dronePath[Math.min(i + 1, this._dronePath.length - 1)];
-    return {
-      col: a.col + (b.col - a.col) * f,
-      row: a.row + (b.row - a.row) * f,
-    };
+    return { col: a.col + (b.col - a.col) * f, row: a.row + (b.row - a.row) * f };
   }
 
-  _nextRoadCell(cell, prev) {
-    const n = this._roadGraph.get(`${cell.col},${cell.row}`) ?? [];
-    if (!n.length) return cell;
-    const options = n.filter(
-      (o) => !prev || o.col !== prev.col || o.row !== prev.row,
-    );
+  _nextRoadCell(cellKey, prevKey) {
+    const n = this._graph.get(cellKey) ?? [];
+    if (!n.length) return cellKey;
+    const options = n.filter(o => `${o.cx},${o.cy}` !== prevKey);
     const pick = (options.length ? options : n)[
       Math.floor(Math.random() * (options.length || n.length))
     ];
-    return pick;
+    return `${pick.cx},${pick.cy}`;
   }
 
   drawDrone(now) {
+    if (!this._dronePath.length) return;
     const p = this.dronePos();
     const w = tileToWorld(p.col, p.row);
     const bob = Math.sin(now / 400) * 3;
     const ctx = this._r._ctx;
     ctx.save();
-    // ground shadow
     ctx.fillStyle = "rgba(0,0,0,0.3)";
     ctx.beginPath();
     ctx.ellipse(w.x, w.y, 10, 4, 0, 0, Math.PI * 2);
     ctx.fill();
-    // glowing body
     const y = w.y - 34 + bob;
     ctx.fillStyle = "rgba(140, 225, 255, 0.95)";
     ctx.beginPath();
@@ -111,7 +135,6 @@ export class CityAgents {
     ctx.beginPath();
     ctx.arc(w.x + 6, y - 1, 1.4, 0, Math.PI * 2);
     ctx.fill();
-    // light cone
     const g = ctx.createLinearGradient(w.x, y, w.x, w.y);
     g.addColorStop(0, "rgba(140,225,255,0.25)");
     g.addColorStop(1, "rgba(140,225,255,0)");

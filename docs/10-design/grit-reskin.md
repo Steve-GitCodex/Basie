@@ -101,10 +101,22 @@ CSS only where a raw color was hardcoded (grep `hsl(200` and `hsl(150` across `c
   check contrast of text-secondary/muted on the new backgrounds; check the `--z-*` ladder
   untouched.
 
-### Phase A3 — Asset replacement + base projection swap (the real look)  *(2–3 sessions + user-in-the-loop art)*
+### Phase A3 — Asset replacement + iso retune (the real look)  *(in progress — Session 1 done 2026-07-18)*
 
-**Scope change (ADR 0009):** A3 now bundles the diamond-iso retirement. The base view
-moves to a square-grid ¾ projection — `gridMath.js` replaces `isoMath.js` (square cells
+> **As built (ADR 0020 — amends 0009/0010):** the square-grid swap was **not executed**.
+> The chosen CC0 art (Quaternius Ultimate Fantasy RTS) is **iso-rendered** (diamond
+> footprints ~1.1–1.3:1) and ships finished **PNG renders** — no Blender. So `isoMath.js` is
+> **kept and retuned** (`TILE_W 128 × TILE_H 96`, `GROUND_BOTTOM = TILE_H/2`), buildings draw
+> at **native px** (shared-scale-trimmed → authored relative sizes), ground became flat-color
+> **diamond** cells (Kenney landscape retired), and the manifest is level-keyed
+> (`GRIT_BUILDING_MAP`, `building(id, level)` via `gritBucket`). **Session 1** wired the five
+> always-on-screen types (townhall/house/farm/barracks/storehouse, L1–L3). Remaining ~15
+> types are one-line manifest additions; gap types (well/workshop/siege/cavalry/construction)
+> await gap-filler packs (Kenney Survival Kit, Quaternius Farm/Zombie kits — staged in
+> `assets/_incoming/`). Trim script: scratchpad `trim-sprites.mjs` (headless Chromium).
+
+**Superseded plan (ADR 0009 — did not survive contact with the assets):** A3 was to bundle
+the diamond-iso retirement, moving the base view to a square-grid ¾ projection — `gridMath.js` replaces `isoMath.js` (square cells
 + mild Y-foreshortening, same projection family as the world map); CityCamera/culling/
 painter-sort/blueprint/placements/proxy layer all survive (projection-agnostic). Redo
 the decorative terrain ring as square cells; delete the diamond hit-test/seating math.
