@@ -31,14 +31,18 @@ export class TechnologyManager {
     this._queue = [];
     /** Extra premium-purchased queue slots */
     this._premiumQueueSlots = 0;
+    /** Portion of _premiumQueueSlots granted by VIP perks — tracked separately so a
+     *  re-broadcast of the same aggregate perk (e.g. on every load) is idempotent. */
+    this._vipQueueSlots = 0;
     this._shopResearchSlotBought = false; // tracks one-time shop slot purchase
     // VIP perk: stacking research time reduction + extra research slot at VIP VI
     this._vipResearchMultiplier = 1.0;
     eventBus.on('user:vipUpdate', ({ perks, deltaPerks, isInit }) => {
       this._vipResearchMultiplier = 1 - Math.min(0.80, perks?.researchReduction ?? 0);
       const slotsToAdd = isInit
-        ? (perks?.extraResearchSlots ?? 0)
+        ? (perks?.extraResearchSlots ?? 0) - this._vipQueueSlots
         : (deltaPerks?.extraResearchSlots ?? 0);
+      this._vipQueueSlots += slotsToAdd;
       for (let i = 0; i < slotsToAdd; i++) this.addPremiumQueueSlot();
     });
 
@@ -393,6 +397,7 @@ export class TechnologyManager {
       bonuses:                this._appliedBonuses,
       queue:                  [...this._queue],
       premiumQueueSlots:      this._premiumQueueSlots,
+      vipQueueSlots:          this._vipQueueSlots,
       shopResearchSlotBought: this._shopResearchSlotBought,
     };
   }
@@ -413,6 +418,7 @@ export class TechnologyManager {
     this._appliedBonuses    = data.bonuses           ?? {};
     this._queue             = data.queue             ?? [];
     this._premiumQueueSlots = data.premiumQueueSlots ?? 0;
+    this._vipQueueSlots = data.vipQueueSlots ?? 0;
     this._shopResearchSlotBought = data.shopResearchSlotBought ?? false;
     eventBus.emit('resources:bonusChanged', this._appliedBonuses);
   }

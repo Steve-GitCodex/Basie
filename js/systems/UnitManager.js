@@ -619,8 +619,10 @@ export class UnitManager {
   deleteSquad(squadId) {
     const squad = this._squads.get(squadId);
     if (!squad) return { success: false, reason: 'Squad not found' };
-    
-    // Return units to reserve
+    if (this._deployedSquads.has(squadId)) {
+      return { success: false, reason: 'Squad is deployed on a march and cannot be deleted.' };
+    }
+
     for (const [unitId, count] of squad.units) {
       const reserveTargetCount = this._reserve.get(unitId) ?? 0;
       this._reserve.set(unitId, reserveTargetCount + count);
@@ -727,11 +729,37 @@ export class UnitManager {
     const squadCount = squad.units.get(tierKey) ?? 0;
     if (squadCount < count) return { success: false, reason: 'Not enough in squad' };
 
-    squad.units.set(tierKey, squadCount - count);
+    this._removeSquadUnits(squad, tierKey, count);
     const reserveTargetCount = this._reserve.get(tierKey) ?? 0;
     this._reserve.set(tierKey, reserveTargetCount + count);
     eventBus.emit('army:updated');
     return { success: true };
+  }
+
+  /**
+   * @private Removes up to `count` of `tierKey` from a squad, keeping `squad.units`
+   * and `squad.slotUnits` in sync. The single point every squad-membership removal
+   * (manual unassign, combat losses) must route through, so slotUnits can never go
+   * stale relative to units.
+   * @returns {number} amount actually removed
+   */
+  _removeSquadUnits(squad, tierKey, count) {
+    const current = squad.units.get(tierKey) ?? 0;
+    const removed = Math.min(current, count);
+    if (removed <= 0) return 0;
+    squad.units.set(tierKey, current - removed);
+    if (squad.slotUnits) {
+      let remaining = removed;
+      for (const [slotIndex, entry] of squad.slotUnits) {
+        if (remaining <= 0) break;
+        if (entry.tierKey !== tierKey) continue;
+        const take = Math.min(entry.count, remaining);
+        entry.count -= take;
+        remaining -= take;
+        if (entry.count <= 0) squad.slotUnits.delete(slotIndex);
+      }
+    }
+    return removed;
   }
 
   getTotalUnitCount() {
@@ -750,8 +778,7 @@ export class UnitManager {
     for (const [key, count] of Object.entries(losses)) {
       // Support both tierKey ('infantry_t1') and legacy unitId ('footman')
       const tierKey = key.includes('_t') ? key : this._tierKey(key, 1);
-      const cur = squad.units.get(tierKey) ?? 0;
-      squad.units.set(tierKey, Math.max(0, cur - count));
+      this._removeSquadUnits(squad, tierKey, count);
     }
     eventBus.emit('army:updated');
   }

@@ -13,7 +13,7 @@ Deep design lives in `docs/10-design/`; the session handoff is `docs/40-active.m
 |---|---|---|
 | **1** | UI redesign — iso city, blueprint + placements, floating-dock nav, build queue sidebar, HUD restyle, SVG icon system | [x] done |
 | **2** | World map + marches — MVP (gather/attack, regions, Rally Point) **and** fast-follows (scout, ruins, outposts, world bosses, fog) | [x] implemented (uncommitted as of 2026-07-15); hardening open |
-| **Reskin** | Grit reskin (art direction, tile-grid world, juice) — `docs/10-design/grit-reskin.md`, ADR 0008 | [~] in progress (A1+A2 done 2026-07-15, B1+B2 done 2026-07-16, C1+A4+C2+C3 done 2026-07-18; A3 Session 1 done 2026-07-18 — five core grit buildings; A3 rest + B3 left) |
+| **Reskin** | Grit reskin (art direction, tile-grid world, juice) — `docs/10-design/grit-reskin.md`, ADR 0008 | [x] done 2026-07-20 (A1–A4, B1+B2, C1–C3; B3 world terrain atlas deferred by Steve) |
 | **3** | **Arena** — PvP + alliance co-op boss fights + ranks; eventually replaces campaign combat | [ ] blocked on Phase 7 |
 | **4** | AI opponents (`AIManager`) — factions grow with the player, re-capture regions (ADR 0005 seeds this) | [ ] after reskin |
 | **5** | Map events & objectives | [ ] |
@@ -26,7 +26,14 @@ Sequencing per `docs/10-design/grit-reskin.md` — each phase ≈ one session, i
 shippable: A1 grim grade → A2 UI theme → B1 grid data → B2 grid renderer → C1 sound →
 A4 fiction pass → C2/C3 juice → A3 sprites + B3 terrain art (user-in-the-loop last).
 
-- [x] A1 · [x] A2 · [x] B1 · [x] B2 · [x] C1 · [x] A4 · [x] C2 · [x] C3 · [~] A3 · [ ] B3
+- [x] A1 · [x] A2 · [x] B1 · [x] B2 · [x] C1 · [x] A4 · [x] C2 · [x] C3 · [x] A3 · [—] B3
+
+**Reskin closed 2026-07-20.** A3 finished at Session 2 (ADR 0021): all 20 building types
+have grid-fitted grit sprites at L1–L3 (60 sprites + `_anchors.json`), verified against
+`GRIT_BUILDING_MAP`. The city ground pass A3 left open landed inside the base layout
+rework Phase B (`cityGround.js` textured per-cell ground). **B3 (world terrain atlas) is
+deferred by Steve's call** — the current grid map reads well enough; reopen only if the
+flat-colour terrain starts to grate.
 
 **A3 Session 1 landed 2026-07-18** (ADR 0020, amends 0009/0010): the square-grid swap was
 dropped — the Quaternius CC0 art is **iso-rendered** (diamond footprints) and ships finished
@@ -115,9 +122,26 @@ sprite generation.
   pool helpers; unified `BuildingManager._catchup`; same-instance upgrades stay serial;
   legacy saves fan out on load. Fixes the `applyOffline` `elapsedSec` ReferenceError.
   Tests: `buildQueue.test.js` (7) + `buildingManager.test.js` (13).
-- [ ] **Systems bug audit** — most managers are bugged / roughly built (owner's
-  assessment). Sweep system by system (browser + Playwright harness), file findings
-  here, fix the load-bearing ones before the reskin builds on top.
+- [~] **Systems bug audit** — most managers are bugged / roughly built (owner's
+  assessment). **Started 2026-07-20; plan of record: `docs/systems-audit-plan.md`.**
+  Three prongs: (A) five parallel specialist static reviews over the untested manager
+  clusters, (B) a `persistence.test.js` round-trip harness across all 16 serializing
+  managers, (C) empirical browser loop verification. Rationale for not just verifying:
+  the happy path is the least likely place for a surviving bug. Measured risk surface —
+  ~3,900 ln of gameplay managers (Hero 832, Unit 800, Technology 446, Combat 429) carry
+  **zero unit tests**, and no manager has a serialize/deserialize round-trip test despite
+  ADR 0002 making silent state-drop the highest-severity bug class.
+  **Prong A complete (2026-07-20) — findings: `docs/audit-findings.md`.** 12 load-bearing
+  defects, 3 of them independently found by two reviewers each. Headline: `SaveManager.wipe()`
+  permanently latches saving off, and guest→account registration hits it without a reload —
+  all progress after registering is lost from both stores. Also: storage-tech caps dropped
+  every load (destroys resources), VIP slots compound per load, expired events never release
+  their multiplier, unit duplication via dual-tracked squad state, and 40% of gacha scroll
+  rolls grant nothing (dangling item ids).
+  **All 12 load-bearing defects FIXED 2026-07-20** — verified `npm test` 301/301, zero new
+  comment-lint violations. Wrong-but-contained + future-trap findings remain open in
+  `audit-findings.md`, as do 7 deferred design calls. Browser smokes not yet re-run.
+  Prongs B (persistence round-trip harness) and C (loop verification) not yet started.
 
   **Findings so far (world/march code review, 2026-07-15):**
   - [x] **Crash:** an in-flight march whose target POI is removed dereferenced
@@ -170,6 +194,13 @@ sprite generation.
   - [ ] **No-reservation placement model** — confirmed as the base view's biggest
     structural debt (seeded-ghost plots force the anti-teleport guard and couple the
     tutorial to seeded tiles); already bundled below under cross-cutting reworks.
+- [ ] **Split the god files** (deferred by Steve 2026-07-20; do before much more logic
+  lands in them). All pre-existing, all over the ~400 ceiling: `BuildingManager.js` ~1094,
+  `HeroManager.js` ~958, `UnitManager.js` ~913, `TechnologyManager.js` ~525,
+  `ResourceManager.js` ~512, `CityRenderer.js` ~886, `UIManager.js` ~738. Precedents for
+  the split shape already exist (`js/systems/world|march|building`, `js/ui/city|world`).
+  The audit's fix agents correctly declined to refactor mid-fix, so this is its own
+  session. Note `UIManager`'s tutorial-spotlight block was already flagged for extraction.
 - [ ] **Data consolidation** — hardcoded tunables (combat formula coefficients, march
   speed/carry/dwell, market trade table + inflation, population/cafeteria constants,
   starting grants, XP curves, 6 duplicated constants) live in managers instead of

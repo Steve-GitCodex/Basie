@@ -104,14 +104,25 @@ export class ResourceManager {
   // =============================================
   // ENGINE SYSTEM INTERFACE
   // =============================================
+  /**
+   * Add a gain to a resource without ever reducing its current amount. A cap
+   * drop (e.g. tech bonus lost mid-session) leaves an over-cap stockpile
+   * intact and spendable — production just halts until it's spent back down.
+   * @private
+   */
+  _addCapped(res, gained) {
+    if (res.cap === Infinity) { res.amount += gained; return; }
+    if (res.amount >= res.cap) return;
+    res.amount = Math.min(res.amount + gained, res.cap);
+  }
+
   /** Called every tick by GameEngine */
   update(dt) {
     let changed = false;
     for (const [key, res] of Object.entries(this._resources)) {
       if (res.perSec === 0) continue;
-      const gained = res.perSec * dt;
       const before = res.amount;
-      res.amount = res.cap === Infinity ? res.amount + gained : Math.min(res.amount + gained, res.cap);
+      this._addCapped(res, res.perSec * dt);
       if (res.amount !== before) changed = true;
     }
     if (changed) {
@@ -124,10 +135,7 @@ export class ResourceManager {
   applyOffline(elapsedSec) {
     for (const [, res] of Object.entries(this._resources)) {
       if (res.perSec === 0) continue;
-      const gained = res.perSec * elapsedSec;
-      res.amount = res.cap === Infinity
-        ? res.amount + gained
-        : Math.min(res.amount + gained, res.cap);
+      this._addCapped(res, res.perSec * elapsedSec);
     }
     this._uiDirty = true;
   }
@@ -180,15 +188,10 @@ export class ResourceManager {
       }
     }
 
-    // Apply building-stationed hero production bonuses (e.g. Shadowblade at Mine → +gold)
+    // Building-stationed hero production bonuses (e.g. Shadowblade at Mine → +gold) are
+    // already applied per-instance in buildingEconomy.computeActiveRates — applying
+    // HeroManager.getBuildingProductionBonusMap() here again would double-count them.
     if (this._heroManager) {
-      const heroBuildingBonuses = this._heroManager.getBuildingProductionBonusMap();
-      for (const [res, bonus] of Object.entries(heroBuildingBonuses)) {
-        if (this._resources[res] !== undefined) {
-          this._resources[res].perSec *= (1 + bonus);
-        }
-      }
-
       // Apply active production buff multiplier to ALL resource rates
       const buffMult = this._heroManager.getActiveProductionMultiplier();
       if (buffMult > 0) {
@@ -283,11 +286,7 @@ export class ResourceManager {
     const mult = this._gameMode === 'sandbox' ? 10 : 1;
     for (const [key, amount] of Object.entries(rewards)) {
       if (this._resources[key] !== undefined) {
-        const cap    = this._resources[key].cap;
-        const actual = amount * mult;
-        this._resources[key].amount = cap === Infinity
-          ? this._resources[key].amount + actual
-          : Math.min(this._resources[key].amount + actual, cap);
+        this._addCapped(this._resources[key], amount * mult);
       }
     }
     eventBus.emit('resources:added', rewards);
@@ -317,19 +316,26 @@ export class ResourceManager {
    * @param {string} id            unique source id, e.g. 'double_iron_weekend'
    */
   addModifier(resourceType, multiplier, id) {
-    this._modifiers.set(`${id}:${resourceType}`, { resourceType, multiplier });
+    this._modifiers.set(ResourceManager.modifierKey(id, resourceType), { resourceType, multiplier });
     this._reapplyRates();
   }
 
   /**
-   * Remove a temporary modifier by its full key "<id>:<resourceType>".
-   * @param {string} key  e.g. 'double_iron_weekend:iron'
+   * Remove a temporary modifier previously added via addModifier.
+   * @param {string} id            the same source id passed to addModifier
+   * @param {string} resourceType  the same resource type passed to addModifier
    */
-  removeModifier(key) {
+  removeModifier(id, resourceType) {
+    const key = ResourceManager.modifierKey(id, resourceType);
     if (this._modifiers.has(key)) {
       this._modifiers.delete(key);
       this._reapplyRates();
     }
+  }
+
+  /** Shared key construction so addModifier/removeModifier callers cannot drift. */
+  static modifierKey(id, resourceType) {
+    return `${id}:${resourceType}`;
   }
 
   // =============================================

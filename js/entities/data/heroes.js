@@ -262,8 +262,8 @@ export const GACHA_CONFIG = {
     legendary: { common: 5,  rare: 30, legendary: 65 },
   },
 
-  /** Resource bundle pool drawn randomly when outcome=resource */
-  resourcePool: ['res_bundle_wood_sm', 'res_bundle_stone_sm', 'res_bundle_food_sm', 'res_bundle_iron_sm', 'res_bundle_water_sm'],
+  /** Resource bundle pool drawn randomly when outcome=resource — smallest (T1) tier only */
+  resourcePool: ['res_bundle_wood_t1', 'res_bundle_stone_t1', 'res_bundle_food_t1', 'res_bundle_iron_t1', 'res_bundle_water_t1'],
 
   /** XP bundle pool drawn randomly when outcome=xp_item */
   xpPool: {

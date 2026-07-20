@@ -255,7 +255,8 @@ export class MailManager {
       type: _inferType(m.subject),
       ...m,
     }));
-    this._nextId = data.nextId ?? this._messages.length + 1;
+    const maxExistingId = this._messages.reduce((max, m) => Math.max(max, m.id ?? 0), 0);
+    this._nextId = data.nextId ?? maxExistingId + 1;
     eventBus.emit('mail:received', { unreadCount: this.getUnreadCount() });
     eventBus.emit('mail:updated',  { unreadCount: this.getUnreadCount() });
   }

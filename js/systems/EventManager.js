@@ -104,7 +104,7 @@ export class EventManager {
     if (!cfg) { this._activeEventId = null; return; }
     // Remove production multipliers — tag must match the one used in _activateEvent (cfg.id)
     for (const resourceType of Object.keys(cfg.effects ?? {})) {
-      this._rm.removeModifier(cfg.id);
+      this._rm.removeModifier(cfg.id, resourceType);
     }
     this._activeEventId = null;
     eventBus.emit('events:expired', { event: this._getPublicEvent(cfg) });

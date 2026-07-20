@@ -72,6 +72,9 @@ export class BuildingManager {
     /** @type {BuildQueueItem[]} */
     this._buildQueue = [];
     this._premiumBuildSlots    = 0;
+    /** Portion of _premiumBuildSlots granted by VIP perks — tracked separately so a
+     *  re-broadcast of the same aggregate perk (e.g. on every load) is idempotent. */
+    this._vipBuildSlots        = 0;
     this._shopBuildSlotBought  = false; // tracks one-time shop slot purchase
     this._vipBuildTimeReduction = 0;  // cumulative fractional reduction from VIP perks
 
@@ -85,14 +88,19 @@ export class BuildingManager {
       getInstances: (id) => this._buildings.get(id) ?? [],
     });
 
-    eventBus.on('resources:bonusChanged', b => { this._techBonuses = b || {}; this._notifyRates(); });
+    eventBus.on('resources:bonusChanged', b => {
+      this._techBonuses = b || {};
+      this._recalculateAllCaps();
+      this._notifyRates();
+    });
     eventBus.on('population:updated',     () => this._notifyRates());
     // VIP perk: stacking build time reduction + extra build slot at VIP III
     eventBus.on('user:vipUpdate', ({ perks, deltaPerks, isInit }) => {
       this._vipBuildTimeReduction = Math.min(0.80, perks?.buildTimeReduction ?? 0);
       const slotsToAdd = isInit
-        ? (perks?.extraBuildSlots ?? 0)
+        ? (perks?.extraBuildSlots ?? 0) - this._vipBuildSlots
         : (deltaPerks?.extraBuildSlots ?? 0);
+      this._vipBuildSlots += slotsToAdd;
       for (let i = 0; i < slotsToAdd; i++) this.addPremiumBuildSlot();
     });
     // Sandbox mode: near-instant build times
@@ -928,6 +936,7 @@ export class BuildingManager {
       sectors:              this._sectors.serialize(),
       buildQueue:           [...this._buildQueue],
       premiumBuildSlots:    this._premiumBuildSlots,
+      vipBuildSlots:        this._vipBuildSlots,
       shopBuildSlotBought:  this._shopBuildSlotBought,
       automations:          this._cafeteria.getAutomations(),
     };
@@ -998,6 +1007,7 @@ export class BuildingManager {
       ...item,
     }));
     this._premiumBuildSlots = data.premiumBuildSlots ?? 0;
+    this._vipBuildSlots = data.vipBuildSlots ?? 0;
     this._shopBuildSlotBought = data.shopBuildSlotBought ?? false;
     this._cafeteria.restoreAutomations(data.automations);
 

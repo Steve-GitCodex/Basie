@@ -10,9 +10,11 @@ const SAVE_KEY = 'basie_game_state';
 const AUTOSAVE_INTERVAL_MS = 30_000; // 30 seconds
 
 export class SaveManager {
-  constructor() {
+  constructor(storage = localStorage) {
     this.name = 'SaveManager';
+    this._storage = storage;
     this._autosaveTimer = null;
+    this._isWiping = false;
   }
 
   /**
@@ -21,7 +23,7 @@ export class SaveManager {
    */
   load() {
     try {
-      const raw = localStorage.getItem(SAVE_KEY);
+      const raw = this._storage.getItem(SAVE_KEY);
       if (!raw) return null;
       const state = JSON.parse(raw);
       console.log('[SaveManager] Game state loaded successfully.');
@@ -37,13 +39,15 @@ export class SaveManager {
    * @param {object} state
    */
   save(state) {
-    if (this._isWiping) return; // Prevent beforeunload hook from re-saving after a wipe
+    if (this._isWiping) return;
     try {
       state.lastSavedTimestamp = Date.now();
-      localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+      this._storage.setItem(SAVE_KEY, JSON.stringify(state));
       eventBus.emit('game:saved', { timestamp: state.lastSavedTimestamp });
     } catch (e) {
       console.error('[SaveManager] Failed to save state:', e);
+      const isQuotaError = e?.name === 'QuotaExceededError' || e?.code === 22 || e?.code === 1014;
+      eventBus.emit('game:saveFailed', { reason: isQuotaError ? 'quota' : 'unknown', error: e });
     }
   }
 
@@ -72,7 +76,7 @@ export class SaveManager {
    */
   getLocalRawSave() {
     try {
-      const raw = localStorage.getItem(SAVE_KEY);
+      const raw = this._storage.getItem(SAVE_KEY);
       return raw ? JSON.parse(raw) : null;
     } catch (e) {
       return null;
@@ -84,16 +88,23 @@ export class SaveManager {
    * @returns {boolean}
    */
   hasSave() {
-    return !!localStorage.getItem(SAVE_KEY);
+    return !!this._storage.getItem(SAVE_KEY);
+  }
+
+  wipe() {
+    this._isWiping = true;
+    this._storage.removeItem(SAVE_KEY);
+    eventBus.emit('game:wiped');
+    console.log('[SaveManager] Save data wiped.');
+    this._isWiping = false;
   }
 
   /**
-   * Wipe all saved state (used by SettingsManager).
+   * Permanently blocks save() for the remaining lifetime of this page. Callers
+   * that wipe and then reload must use this, or the beforeunload handler
+   * re-saves live in-memory state over the wipe.
    */
-  wipe() {
+  suppressSaves() {
     this._isWiping = true;
-    localStorage.removeItem(SAVE_KEY);
-    eventBus.emit('game:wiped');
-    console.log('[SaveManager] Save data wiped.');
   }
 }

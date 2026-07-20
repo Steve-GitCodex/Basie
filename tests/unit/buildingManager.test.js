@@ -336,6 +336,56 @@ test('an unbuilt instance earns no adjacency bonus', () => {
   assert.equal(bm.getAdjacency('farm_0').bonus, 0);
 });
 
+test('resources:bonusChanged after buildings load recalculates storage caps with the tech bonus', () => {
+  const bm = makeManager(1);
+  bm._buildings.set('townhall', [{ instanceId: 'townhall_0', level: 3 }]);
+  let capturedWoodCap = null;
+  bm._rm.setCap = (res, cap) => { if (res === 'wood') capturedWoodCap = cap; };
+
+  eventBus.emit('resources:bonusChanged', {});
+  const baseline = capturedWoodCap;
+
+  eventBus.emit('resources:bonusChanged', { storageCapacityBonus: 0.2 });
+  assert.ok(capturedWoodCap > baseline);
+});
+
+test('VIP extraBuildSlots grant is idempotent across repeated isInit broadcasts', () => {
+  const bm = makeManager(1);
+  eventBus.emit('user:vipUpdate', { perks: { extraBuildSlots: 1 }, isInit: true });
+  assert.equal(bm._premiumBuildSlots, 1);
+  eventBus.emit('user:vipUpdate', { perks: { extraBuildSlots: 1 }, isInit: true });
+  assert.equal(bm._premiumBuildSlots, 1);
+  eventBus.emit('user:vipUpdate', { perks: { extraBuildSlots: 1 }, isInit: true });
+  assert.equal(bm._premiumBuildSlots, 1);
+});
+
+test('VIP build slot grant survives a save/load cycle without accumulating', () => {
+  const bm = makeManager(1);
+  eventBus.emit('user:vipUpdate', { perks: { extraBuildSlots: 1 }, isInit: true });
+  assert.equal(bm._premiumBuildSlots, 1);
+  const saved = bm.serialize();
+
+  const bm2 = makeManager(1);
+  bm2.deserialize(saved);
+  eventBus.emit('user:vipUpdate', { perks: { extraBuildSlots: 1 }, isInit: true });
+  assert.equal(bm2._premiumBuildSlots, 1, 'reload must not re-add the already-restored VIP grant');
+
+  eventBus.emit('user:vipUpdate', { perks: { extraBuildSlots: 1 }, isInit: true });
+  assert.equal(bm2._premiumBuildSlots, 1, 'a second reload must remain idempotent too');
+});
+
+test('a shop-purchased build slot and a VIP-granted build slot both survive independently', () => {
+  const bm = makeManager(1);
+  bm.grantShopBuildSlot();
+  eventBus.emit('user:vipUpdate', { perks: { extraBuildSlots: 1 }, isInit: true });
+  assert.equal(bm._premiumBuildSlots, 2);
+
+  const bm2 = makeManager(1);
+  bm2.deserialize(bm.serialize());
+  eventBus.emit('user:vipUpdate', { perks: { extraBuildSlots: 1 }, isInit: true });
+  assert.equal(bm2._premiumBuildSlots, 2, 'reload must preserve both the shop slot and the VIP slot');
+});
+
 test('adjacency is never serialized — it re-derives on load', () => {
   const bm = makeManager(1);
   bm._buildings.set('farm', [{ instanceId: 'farm_0', level: 1 }]);

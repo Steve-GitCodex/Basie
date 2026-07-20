@@ -60,6 +60,7 @@ export class SettingsManager {
    */
   wipeAllData() {
     this._sm.wipe();
+    this._sm.suppressSaves();
     localStorage.removeItem(SETTINGS_KEY);
     window.location.reload();
   }

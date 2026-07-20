@@ -94,28 +94,39 @@ export class HeroManager {
     if (outcome === 'resource') {
       const pool   = GACHA_CONFIG.resourcePool;
       const itemId = pool[Math.floor(Math.random() * pool.length)];
-      this._inv.addItem(itemId, 1);
-      result.itemId = itemId;
+      if (this._inv.addItem(itemId, 1)) {
+        result.itemId = itemId;
+      } else {
+        result.grantFailed = true;
+        result.reason = `Failed to grant reward item: ${itemId}.`;
+      }
 
     } else if (outcome === 'xp_item') {
       const pool   = GACHA_CONFIG.xpPool[scrollTier];
       const itemId = pool[Math.floor(Math.random() * pool.length)];
-      this._inv.addItem(itemId, 1);
-      result.itemId = itemId;
+      if (this._inv.addItem(itemId, 1)) {
+        result.itemId = itemId;
+      } else {
+        result.grantFailed = true;
+        result.reason = `Failed to grant reward item: ${itemId}.`;
+      }
 
     } else if (outcome === 'buff') {
       const pool   = GACHA_CONFIG.buffPool[scrollTier];
       const itemId = pool[Math.floor(Math.random() * pool.length)];
-      this._inv.addItem(itemId, 1);
-      result.itemId = itemId;
+      if (this._inv.addItem(itemId, 1)) {
+        result.itemId = itemId;
+      } else {
+        result.grantFailed = true;
+        result.reason = `Failed to grant reward item: ${itemId}.`;
+      }
 
     } else if (outcome === 'fragment') {
       const heroTier    = this._weightedRandom(GACHA_CONFIG.heroTierWeights[scrollTier]);
       const heroesOfTier = Object.values(HEROES_CONFIG).filter(h => h.tier === heroTier);
       const heroTarget  = heroesOfTier[Math.floor(Math.random() * heroesOfTier.length)];
       const fragmentId  = GACHA_CONFIG.fragmentItemId[heroTarget.id];
-      if (fragmentId) {
-        this._inv.addItem(fragmentId, 1);
+      if (fragmentId && this._inv.addItem(fragmentId, 1)) {
         result.itemId  = fragmentId;
         result.heroId  = heroTarget.id;
         result.tier    = heroTier;
@@ -125,6 +136,9 @@ export class HeroManager {
         result.fragmentsOwned  = owned;
         result.fragmentsNeeded = needed;
         result.canSummon       = owned >= needed && !this._owned.has(heroTarget.id);
+      } else {
+        result.grantFailed = true;
+        result.reason = `Failed to grant fragment: ${fragmentId}.`;
       }
 
     } else if (outcome === 'hero') {
@@ -140,9 +154,11 @@ export class HeroManager {
       } else {
         // Give a specific hero card as duplicate compensation
         const cardId = heroCfg.recruitCard;
-        if (cardId && INVENTORY_ITEMS[cardId]) {
-          this._inv.addItem(cardId, 1);
+        if (cardId && INVENTORY_ITEMS[cardId] && this._inv.addItem(cardId, 1)) {
           result.itemId = cardId;
+        } else {
+          result.grantFailed = true;
+          result.reason = `Failed to grant duplicate compensation card: ${cardId}.`;
         }
       }
     }
@@ -500,6 +516,7 @@ export class HeroManager {
       const cfg = HEROES_CONFIG[h.heroId];
       const bb  = cfg?.buildingBonus;
       if (!bb?.stat) continue;
+      if (h.assignment.buildingId?.replace(/_\d+$/, '') !== bb.buildingType) continue;
       const resourceKey = { gold_production: 'money' }[bb.stat];
       if (!resourceKey) continue; // training_speed, mana_production, defense handled elsewhere
       const levelMult = 1 + (h.level - 1) * 0.02; // +2% per hero level
@@ -646,9 +663,8 @@ export class HeroManager {
       const isBarracks = a?.type === 'building' && a.buildingId?.startsWith('barracks_');
       const targetBarracks = squadId !== null ? this._barracksIdForSquad(squadId) : null;
       const isSquadHero = isBarracks && (targetBarracks === null || a.buildingId === targetBarracks);
-      // HQ hero: stationed at a heroquarters building (global effect on all squads)
-      const isHQHero = a?.type === 'building' &&
-        HEROES_CONFIG[hero.heroId]?.buildingBonus?.buildingType === 'heroquarters';
+      // HQ hero: actually stationed at a heroquarters building instance (not just configured for one)
+      const isHQHero = a?.type === 'building' && a.buildingId?.replace(/_\d+$/, '') === 'heroquarters';
       if (!isSquadHero && !isHQHero) continue;
       const cfg = HEROES_CONFIG[hero.heroId];
       if (!cfg) continue;
@@ -723,8 +739,7 @@ export class HeroManager {
     for (const hero of this._owned.values()) {
       const a = hero.assignment;
       const isBarracks = a?.type === 'building' && a.buildingId?.startsWith('barracks_');
-      const isHQ = a?.type === 'building' &&
-        HEROES_CONFIG[hero.heroId]?.buildingBonus?.buildingType === 'heroquarters';
+      const isHQ = a?.type === 'building' && a.buildingId?.replace(/_\d+$/, '') === 'heroquarters';
       const inScope = (isBarracks && (barracksInstanceId === null || a.buildingId === barracksInstanceId)) || isHQ;
       if (!inScope) continue;
 
@@ -905,10 +920,10 @@ export class HeroManager {
   }
 
   deserialize(data) {
-    if (!data?.owned) return;
+    if (!data) return;
     this._activeBuffs = (data.activeBuffs ?? []).filter(b => b.endsAt > Date.now());
 
-    for (const [id, state] of Object.entries(data.owned)) {
+    for (const [id, state] of Object.entries(data.owned ?? {})) {
       const cfg = HEROES_CONFIG[id];
       if (!cfg) continue;
 

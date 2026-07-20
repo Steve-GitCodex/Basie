@@ -3,23 +3,116 @@
 > Most-updated file in the repo. Every session that changes code updates this file
 > (what landed, known issues, exact next steps). See the session protocol in `CLAUDE.md`.
 
-## Current state (2026-07-19)
+## Current state (2026-07-20)
 
-- Branch: `Working_Branch`. Through C3 is committed (`581909f`). **Uncommitted now:**
-  A3 Sessions 1+2 (iso retune, render-to-grid rig, all 20 types wired, ADR 0020/0021)
-  + **base layout rework Phase A + Phase B** (free placement, then auto-roads + rubble
-  sectors + textured ground; ADR 0022, items 15–16 below). Tree is commit-ready
-  (227/227 + four smokes green). **Note:** `/assets/` is git-ignored
-  project-wide — all grit PNGs live on disk only.
+- Branch: `Working_Branch`. Through adjacency is committed (`dd4e575`). **Uncommitted now:**
+  A3 Sessions 1+2 (ADR 0020/0021) + base layout rework Phases A/B/C (ADR 0022) +
+  **the systems bug audit and its 12 load-bearing fixes** (item 26). `npm test`
+  **301/301**. **Note:** `/assets/` is git-ignored project-wide — all grit PNGs live on
+  disk only.
+- ⚠️ **Browser smokes have NOT been re-run since the audit fixes.** Six exist
+  (boot, world, dev, tutorial, sector, align) and the fixes touched save/load, resources,
+  buildings, units and heroes — this is a genuine verification gap, not a formality.
+  **Run these first next session**, spaced ~3s apart (each spawns its own `http-server`
+  on port 8123; back-to-back runs race and produce phantom FAILs — re-run any failure
+  alone before believing it).
+
+### Exact next steps (in order)
+
+1. **Re-run the six browser smokes** (see the warning above). Nothing else should start
+   until the audit fixes are confirmed in a real boot.
+2. **Prong B — persistence round-trip harness** (`docs/systems-audit-plan.md`). The audit
+   found per-manager field diffs *largely symmetric*, so lead with the **coverage
+   assertion** (Proxy-record which keys `deserialize` actually reads, diff against what
+   `serialize` writes, fail on written-but-never-read) rather than 16 hand-written
+   round-trips. That is the assertion that catches the ADR 0002 silent-drop class.
+3. **Prong C — empirical loop verification** (the roadmap's long-open Phase 2 pass).
+4. **Then** the remaining hardening tracks: data consolidation
+   (`docs/data-consolidation-plan.md`), comment cleanup (13 known violations, suited to a
+   cheaper model), balance pass.
+
+### Open debt carried forward (Steve's call, deliberately not done)
+
+- **God files.** `BuildingManager.js` ~1094 ln, `HeroManager.js` ~958, `UnitManager.js`
+  ~913, `TechnologyManager.js` ~525, `ResourceManager.js` ~512 — all over the ~400
+  ceiling. All pre-existing; the audit agents correctly declined to refactor mid-fix.
+  Splitting these is its own session, and should happen **before** much more logic lands
+  in them.
+- **Wrong-but-contained + future-trap findings** are unfixed and listed in
+  `docs/audit-findings.md`. Highest-timing-sensitivity: the **`milMult < 1` debuff guard**
+  — fix it *before* Phase 4 authors any debuff data, or the magnitudes get inflated to
+  compensate and all need re-tuning after a one-character fix.
+- **7 design calls** await Steve at the end of `audit-findings.md`. Contested lines were
+  routed around, never silently decided.
+- **Audit fix residue** — read the "Residue and consequences" section at the top of
+  `audit-findings.md` before any balance work. Notably: hero `buildingBonus.value` no
+  longer affects production (magnitude is now level-only), and already-inflated VIP saves
+  keep their extra slots.
 - Phase 1 (UI redesign) and Phase 2 (world map MVP + fast-follows) are **done** —
   see `docs/30-roadmap.md`.
-- Current direction: **grit reskin** (`docs/10-design/grit-reskin.md`). A1+A2+B1+B2+C1+A4+
-  C2+C3 done; A3 Session 1 (ADR 0020) + **Session 2 (ADR 0021) done — every building type
-  has a grid-fitted sprite**. Remaining: city terrain/ground pass (flat diamonds are the
-  weakest visual now) + B3 world terrain (deferred — Steve likes the current map).
+- **Grit reskin is CLOSED (2026-07-20).** A1–A4, B1+B2, C1–C3 all shipped. A3 verified
+  complete this session: all 20 types in `GRIT_BUILDING_MAP`, 60 sprites + `_anchors.json`
+  on disk. The city terrain/ground pass A3 left open was absorbed by the base layout
+  rework Phase B (`cityGround.js`). **B3 (world terrain atlas) is deferred by Steve** —
+  the current grid map reads fine; reopen only if flat-colour terrain starts to grate.
+- Next direction: **hardening & housekeeping** (`docs/30-roadmap.md`) — the reskin is done,
+  so the "fix load-bearing bugs before the reskin builds on top" gate is now the live work.
 - **The repo has tests now** (ADR 0012). `npm test` before you hand off; fix a bug →
   add a regression test in the matching `tests/unit/*.test.js`. Contract:
   `tests/README.md`.
+
+### Landed this session (2026-07-20, later)
+
+26. **Systems bug audit — Prong A complete, all 12 load-bearing defects fixed.**
+    Plan: `docs/systems-audit-plan.md`. Findings + residue: `docs/audit-findings.md`
+    (read the "Residue and consequences" section before any balance work).
+    - **Why static review, not verification:** the happy path is the least likely place
+      for a surviving bug. Five parallel specialist reviews over the untested manager
+      clusters found **12 load-bearing defects**; three were found independently by two
+      reviewers each. A loop-verification pass would have surfaced almost none of them —
+      they live on reload boundaries, expiry paths, and failure branches that report
+      success.
+    - **Worst:** `SaveManager.wipe()` latched saving off permanently, and guest→account
+      registration hit it **without a reload** — all progress after registering was lost
+      from localStorage *and* Firestore. Also: storage-tech caps dropped every load then
+      the overflow destroyed on the next tick; VIP slots compounding per load in both
+      `BuildingManager` and `TechnologyManager`; expired events never releasing their
+      production multiplier (composite-key mismatch); unit duplication via dual-tracked
+      `squad.units`/`squad.slotUnits`; squads deletable mid-march; 40% of gacha scroll
+      rolls granting nothing (dangling item ids).
+    - **Fixed structurally, not symptomatically:** squad state now routes every mutation
+      through one invariant helper; the modifier key is built by a shared helper so the
+      two sites cannot drift; a data-integrity test asserts every `GACHA_CONFIG` id
+      resolves against `INVENTORY_ITEMS`, retiring the whole dangling-id class.
+    - **A fix that was wrong, caught by checking:** the first `wipe()` fix satisfied its
+      test but broke `wipeAllData()` — `wipe()` then `reload()` fires `beforeunload`,
+      which re-saves live state over the wipe. Root cause was an underspecified spec: one
+      boolean carrying two intents. Split into `wipe()` + `suppressSaves()`; both
+      behaviours now pinned by tests. **Same failure mode as the align-smoke tautologies
+      — a passing test that could not fail.**
+    - **Verified by the session owner, not relayed:** `npm test` **301/301** (283 after
+      wave 1, +18 in wave 2); `check-comments` at exactly **13 pre-existing** violations,
+      confirmed identical against a stashed baseline — zero new. Browser smokes NOT yet
+      re-run (next session: run them spaced ~3s apart, per the port-8123 race).
+    - **NOT fixed, deliberately:** all wrong-but-contained and future-trap findings remain
+      open in `audit-findings.md` — incl. the `milMult < 1` debuff guard (fix **before**
+      Phase 4 authors debuff data), difficulty never restored after load, the
+      ChallengeManager seconds-as-ms reset, and the missing save `version` field.
+    - **7 design calls deferred to Steve** (listed at the end of `audit-findings.md`):
+      `defense_boost` double-count (code contradicts its own comment), hero passive
+      stacking, `concurrentSlots` dead data, UTC daily resets, VIP tracking
+      diamonds-received-not-spent, story chapter rewards, `cancelTrain` full refund.
+      Contested lines were routed around, not silently decided.
+    - **Debt unchanged/grown:** `BuildingManager.js` ~1094 ln, `HeroManager.js` ~958,
+      `UnitManager.js` ~913, `TechnologyManager.js` ~525, `ResourceManager.js` ~512 — all
+      over the ~400 ceiling, all pre-existing. Agents correctly declined to refactor.
+    - **ADR 0023** records the decisions: explicit `suppressSaves()` split, load-time
+      grant idempotence, over-cap stock is legal and never destroyed, hero bonuses apply
+      once per-instance, save failures observable. Includes the rejected alternatives so
+      the first (wrong) `wipe()` fix isn't re-attempted.
+    - **Next:** Prongs B (persistence round-trip harness — the audit found the field
+      diffs largely symmetric, so prioritise the *coverage* assertion that detects
+      written-but-never-read keys) and C (empirical loop verification).
 
 ### Landed this session (2026-07-20)
 

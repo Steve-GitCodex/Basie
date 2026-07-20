@@ -82,14 +82,16 @@ export class InventoryManager {
    * Add qty of an item to the inventory.
    * @param {string} itemId
    * @param {number} [qty=1]
+   * @returns {boolean} false if itemId is unknown and nothing was granted
    */
   addItem(itemId, qty = 1) {
     if (!INVENTORY_ITEMS[itemId]) {
       console.warn(`[InventoryManager] Unknown item: ${itemId}`);
-      return;
+      return false;
     }
     this._items.set(itemId, (this._items.get(itemId) ?? 0) + qty);
     eventBus.emit('inventory:updated', this.getItems());
+    return true;
   }
 
   /**
@@ -210,6 +212,9 @@ export class InventoryManager {
       const r = this._hm.rollScroll(cfg.tier);
       // Emit inventory update (removeItem inside rollScroll already emits,
       // but addItem for the reward also emits — no extra emit needed)
+      if (!r.outcome || r.grantFailed) {
+        return { success: false, reason: r.reason ?? 'Failed to grant reward.', gachaResult: r };
+      }
       return { success: true, gachaResult: r };
 
     } else if (cfg.type === 'hero_fragment') {
