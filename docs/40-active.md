@@ -3,6 +3,332 @@
 > Most-updated file in the repo. Every session that changes code updates this file
 > (what landed, known issues, exact next steps). See the session protocol in `CLAUDE.md`.
 
+## City ambient life — grit walkers + road-following ship-drone & truck (2026-07-23, latest)
+
+Replaced the base city's procedural pedestrian blobs + ellipse drone with rig-rendered grit
+sprites, and made the drone follow roads out-and-back from a parked truck instead of flying
+over the HQ. Spec: `docs/superpowers/specs/2026-07-23-city-ambient-life-walkers-drone.md`;
+plan: `docs/superpowers/plans/2026-07-23-city-ambient-life-walkers-drone.md`.
+
+- **Sprites (rig, ADR 0021):** `assets/_rig/jobs-ambient.json` renders Zombie-Kit survivors
+  (`Characters_Lis/Matt/Sam/Shaun` → `survivor_*`), `Vehicle_Truck` → `truck`, and Ultimate
+  Spaceships `Bob` → `drone` to `assets/tiles/props/ambient/` (+ `_anchors.json`). **Git-ignored
+  on disk** like all other art (`/assets/` is ignored repo-wide) — regenerate via the rig, not
+  committed. Bob's glTF is unpacked into the scratchpad rig's `packs/spaceships/Bob/glTF/`.
+- **New module `js/ui/city/cityAmbientAssets.js`** — decodes + grim-grades the ambient sprites
+  (same filter as CityGrade, duplicated by design to keep ambient props decoupled from building
+  grading). Loaded by `CityRenderer.load()`, handed to agents via `_agents.setAssets(...)`.
+- **`js/ui/city/cityAgents.js`** — added pure exported helpers (`pickDockKey`, `bfsFarthest`,
+  `bfsPath`, `faceLeft`, `pingPong`, unit-tested in `tests/unit/cityAgents.test.js`). `setRoads`
+  now docks at the corner-most road cell and builds a BFS road path dock→farthest; the drone
+  **ping-pongs** out-and-back (no more straight-row fly-over). `drawWalker`/`drawDrone`/new
+  `drawTruck` blit anchored graded sprites (scaled to a fixed on-screen height, mirrored L/R by
+  travel direction) with the old procedural drawing kept as a **fallback** if a sprite is missing.
+- **`js/ui/city/CityRenderer.js`** — loads the ambient assets and depth-interleaves the truck
+  like the drone.
+- **Verified:** `npm test` **315/315** (+8 new: helpers, drone path/ping-pong, walker sprite
+  index, ambient manifest); `boot-smoke` **PASS** (no 404s — sprites on disk); comment-lint clean
+  on touched files. Zoomed `?dev` screenshots confirm: truck = graded van on the road, walkers =
+  graded survivor figures (not blobs), drone = graded ship with scan-beam + shadow following the
+  road. Ambient readout `{walkers:4, drone:true, truck:true}`.
+- **Known / next:** at normal (1×) zoom the agents are small ambient detail (14–22px, grim-graded)
+  — intended. Executed via subagent-driven development; **not committed** (Steve commits himself) —
+  tree is commit-ready. SDD ledger: `.superpowers/sdd/progress.md`.
+
+## Grit is the default sprite set; AI is dev-gated + HQ/hero/quarry re-sourced (2026-07-23)
+
+Steve: until AI modules/effort have a real setting, ship **grit as the default** and give
+dev a UI toggle to preview AI. Plus re-source three grit buildings from stronger models.
+
+- **AI gate (`js/ui/city/cityAssets.js`):** `CityAssets.aiEnabled` (false unless `?ai` or the
+  dev toggle) guards the AI branch in `variantKey` — grit wins for everyone (ADR 0024 update).
+  New **`js/ui/dev/DevSpriteSource.js`** (`?dev` only, wired in `main.js`, `.dev-sprite-source`
+  in `css/components/dev.css`): a live grit↔AI checkbox; the running RAF repaints on flip.
+- **Re-sourced grit art (rig re-run, ADR 0021):** re-mapped in **both** the durable
+  `assets/_rig/jobs-all.json` (source of truth) and a 9-job partial re-render
+  (`jobs-remap.json` in the scratchpad rig) copied into `assets/tiles/buildings/grit/`,
+  anchors **merged** into `_anchors.json` (other ~51 untouched): `townhall`→`Wonder_SecondAge_L1-3`,
+  `heroquarters`→`Temple_SecondAge_L1-3`, `quarry`→`Resource_Gold_1/2/3` (L1=G1, L2=G2, L3=G3 —
+  on-disk dims confirm provenance). Dropped `townhall` grit **L4** (Wonder_SecondAge is 3 levels);
+  `gritBucket` clamps Lv.4+ to L3 automatically.
+- **Removed the dead ground-tile chain.** The Kenney `landscape/`+`city/` tile dirs are gone
+  (ground is procedural via `cityGround.js`), but `GROUND_TILES` still pointed at them and
+  404'd on every boot. Deleted `GROUND_TILES` + `CityAssets.ground()` + the `g:` load entries,
+  and `CityGrade`'s ground import/`ground()`/grading loop. Nothing drew from them.
+- **Verified:** `npm test` **306/306** (updated townhall clamp + new grit-default flag test);
+  `check-comments` clean on touched files; **boot-smoke PASS** (the GROUND_TILES 404s were its
+  only failures); `?dev` screenshot shows grit HQ/hero/quarry seated on-plot, `aiEnabled=false`,
+  `townhall`→`townhall_L3.png` (grit, not AI).
+- **Known / next:** HQ visual quality is now Steve's call (ADR 0024 once judged grit HQ weaker
+  than AI — this re-sources from Wonder_SecondAge; eyeball and iterate the model/`fit` if
+  needed). `main.js` 660 ln stays over the ~400 ceiling (this added the 1-line dev-widget wiring
+  + import); a dev-bootstrap extraction is the natural follow-up.
+
+## Dev Anchor Nudger — interactive sprite-anchor calibration (2026-07-22)
+
+Steve asked for a way to seat AI sprites by eye instead of the edit-JSON-and-rescreenshot
+loop (no pixel heuristic centres every sprite — ADR 0024). Spec:
+`docs/superpowers/specs/2026-07-22-dev-anchor-nudger-design.md`.
+
+- **`js/ui/dev/DevAnchorNudger.js`** (`?dev` only, wired in `main.js` beside the other
+  dev widgets): a **Building mode** toggle. Armed → drag the selected building to set its
+  `ax`/`ay`; **wheel** = scale (`s`), **Alt+wheel** = rotate (`r`°, in-plane tilt),
+  **Ctrl+wheel** = skew (`k`°, horizontal shear); **Shift** = fine on any of them — all
+  live, with a cyan plot-diamond + centre reference. Drag/wheel over empty ground fall
+  through to camera pan/zoom. **Copy** puts a ready-to-paste `_anchor_overrides.json` entry
+  (keyed by sprite filename, only the non-default fields) on the clipboard; **Reset**
+  reverts. Readout warns when `s > 1.1` (raster upscale — re-scale in Python ingest for big
+  changes). Rotation/skew are true tilt for a flat sprite (spin/shear about the anchor, base
+  stays grounded), not 3D — hit-test/badge stay AABB, fine for small angles.
+- **Ground-contact shadow — tried and removed (Steve's call).** The AI cut-outs bake no
+  shadow, so they read as pasted-on regardless of position. Tried a radial ellipse then a
+  projected-silhouette shadow at the anchor; neither convinced (long throw hid behind the
+  building; tight version read as grime), so it was pulled out entirely. Grounding the AI
+  set convincingly is better solved in the art (bake a soft contact shadow into the sprite)
+  than in the renderer. No shadow code remains.
+- **Nudger controls shown inline** (`.dev-nudge-hint`), not just a hover title:
+  "drag move · wheel scale · Alt rotate · Ctrl skew · Shift fine".
+- **Selection is click-driven + shared:** clicking a building emits `dev:buildingSelected`
+  (`BuildingsUI.onTileClick`); both the nudger and `DevLevelSwitcher` snap to it. Nudger has
+  no building dropdown — it acts on the selected building at its rendered level.
+- **Anchor manifest gained optional `s` (scale, default 1), `r` (rotation°, default 0),
+  `k` (horizontal-shear°, default 0).** `CityRenderer._spriteBox` multiplies its draw scale
+  by `anchor.s` (hit-test/proxy/badge derive from it); the draw path (`drawBuilding`) seats
+  the anchor on the plot centre then `rotate(r)` + shear(`k`) + `scale(s)` about it, so the
+  ground-contact point holds at any tilt. `normalizeAnchor` defaults all three.
+  `cityAssets` now loads `ai/_anchor_overrides.json` **on top of** `_anchors.json` at game
+  load (`_loadAnchors` takes a url list) — so a pasted override shows in-game on reload
+  **without** re-ingest and still survives one. New `setDevAnchor`/`clearDevAnchor` (live
+  preview), `variantFile` (override key), `normalizeAnchor` (pure, `s` default).
+- **Verified:** `npm test` **305/305** (+`normalizeAnchor`); `dev-smoke` all functional
+  assertions PASS incl. the new `dev-anchor-nudger` block (widget mounts, click-sync, `s`
+  scales the box, clear restores, `variantFile` key) — only the pre-existing GROUND_TILES
+  404 noise keeps the smoke red; live screenshot shows the widget armed + reference diamond
+  + level-switcher synced. `check-comments` clean on all touched files.
+- **Debt noted (unchanged, deferred):** `CityRenderer.js` 989 ln / `main.js` 658 ln remain
+  over the ~400 ceiling — additions here were 1 line each (renderer scale multiply, dev
+  widget registration); the tool's logic lives in its own `js/ui/dev/` module.
+
+## AI HQ un-parked: base-vs-prop tilt fixed, ai→grit path wired (2026-07-22, earlier)
+
+Steve retried the AI building set (grit HQ art judged weaker) and reported the HQ
+"touching the ground with the left side only, hovering on the right" — a tilt, not a
+float. A previous agent had also overwritten `grit/townhall_L1-L4.png` with the AI
+renders instead of wiring a real AI path.
+
+- **Root cause (verified live, footprint-diamond overlay).** `anchor.py` foot mode
+  derived `ax`/`ay` from the single widest row across the whole sprite. On HQ that
+  row is the parked cart/barrel prop at mid-height, ~18px left of the stone
+  foundation's centre — so the anchor seated the base off toward a plot corner and
+  it read as tilted. `ax` 84→103 removed the tilt at L1; all four stages sit level.
+- **`anchor.py` — kept the simple widest-row default; hard cases go to overrides.**
+  First tried a "lowest row ≥0.7× widest" rule to dodge the cart; it fixed HQ L1 but
+  shoved L3 to the right of its plot (L3's front steps fooled it the same way the cart
+  fooled the old rule). A median-estimator sweep confirmed the ADR's conclusion: **no
+  single pixel rule centres both a side-prop building (L1 cart) and a front-step
+  building (L3)** — widest-row is correct for 3 of 4 stages, the cart defeats every
+  automatic estimator. So `anchor.py` foot mode stays widest-row (reverted), and the
+  four townhall stages are pinned in a re-added
+  `assets/tiles/buildings/ai/_anchor_overrides.json` (merged last by `ingest.py`'s
+  `_apply_overrides`, intact). **Verified anchors, all 4 centred + grounded live:**
+  S1 `(103,123)` · S2 `(67,104)` · S3 `(70,140)` · S4 `(87,145)`, written to both
+  `_anchors.json` (what the game loads) and `_anchor_overrides.json` (survives
+  re-ingest). `ground_width` for scaling still the full silhouette (round-4, unchanged).
+- **`ai → grit → legacy` wired (ADR 0024, was reverted):** `cityAssets.js` gained
+  `AI_BUILDING_MAP` + `stageBucket` + one `variantKey(id, level)` resolver;
+  `building`/`anchor`/`buildingGray`/`bottomPad` + `cityGrade.building`/
+  `buildingGray` all route through it (no divergent sprite picks). AI anchors load
+  via a second `_loadAnchors(url, entries)` call. Only `townhall` is mapped so far —
+  add a type by wiring its stages in `AI_BUILDING_MAP` once its `ai/*_S*.png` land.
+- **Verified:** `npm test` **304/304** (+3: AI-map/stageBucket in
+  `cityAssets.test.js`); `align-smoke` invariants all PASS (missing-anchor check now
+  resolves via `variantKey`; townhall Δ(0,0)); live overlay shows HQ L1-L4 seated
+  level and centred. Boot/align smokes still red **only** on the pre-existing legacy
+  `buildingTiles_*` 404s (ISO_BUILDING_MAP fallbacks not on disk) — confirmed **zero**
+  new/`ai/`/`townhall` 404s introduced.
+- **Removed the legacy "glassy office" set (`ISO_BUILDING_MAP`, Steve's call).** The
+  Kenney iso pack was a dead fallback — grit covers all 20 types, and its
+  `buildingTiles_*.png` weren't on disk, so it only produced 404s. Deleted the map +
+  its load + the `variantKey` legacy branch (now falls back to grit L1). Consumers
+  `TileTooltip`/`BuildingInfoPanel` repointed to the icon set first
+  (`buildingIconUrl`), then the grit L1 sprite — **building 404s 29 → 0** (9 remain,
+  all `GROUND_TILES` landscape/city tiles, left for a ground pass).
+- **Tooltip/info-panel thumbnails now prefer `assets/icons/buildings/*_icon.png`**
+  and only fall back to the building sprite when no icon exists (Steve's call).
+- **Open — grit townhall still clobbered.** `grit/townhall_L1-L4.png` are the AI
+  renders (grit is git-ignored; `assets/_rig/backup-grit-v1/` only has L1-L3 pre-rig
+  art). The grit fallback is cosmetically dead now (AI wins) but should be restored
+  to real grit art via the rig if the fallback is ever wanted — **Steve's call**.
+
+## HQ wired in-game, anchor algorithm rewritten, dev tooling added (2026-07-22, earlier)
+
+Follow-up to the prompt rework below — Steve generated real HQ art with the
+single-prompt-4-images workflow and asked to see it wired in-game, which surfaced a
+real bug in the anchor-detection script itself (not just prompt/art issues).
+
+- **HQ fully wired, all 4 levels**: `assets/tiles/buildings/grit/townhall_L1-L4.png` +
+  `_anchors.json` point at the new `mixBoard/HQ` generation. Steve supplied a
+  same-framing full-res Level 4 render (1024×1024, replacing the earlier 500×500
+  background-removed one that scaled too small) — regenerate via
+  `python assestProcessing/ingest.py HQ`.
+- **Regression caught before shipping: `gritBucket()` needed per-building clamping.**
+  Wiring L4 meant bumping the level→sprite-bucket clamp past 3 — but nearly every other
+  building has `maxLevel` 6-10 in `buildings.js` while only having 3 grit art buckets. A
+  flat global clamp bump to 4 would have made every *other* building fall back to its
+  Level 1 art (not Level 3) the moment its real level exceeded 3, since bucket 4 doesn't
+  exist for them. Fixed `gritBucket(id, level)` (now takes `id`) in `cityAssets.js` to
+  clamp to each building's own highest available bucket from `GRIT_BUILDING_MAP`,
+  defaulting to 3 for unmapped types. Updated all 6 call sites (`cityAssets.js` ×4,
+  `cityGrade.js` ×2). Regression-tested in `tests/unit/cityAssets.test.js` (townhall
+  Lv.10 → bucket 4; well Lv.10 → bucket 3, not 1).
+- **Found and muted a pre-existing duplicate achievement toast**: `main.js` and
+  `NavigationUI.js` both independently listen for `achievement:unlocked` and show a
+  toast (different title/body) — surfaced when muting one half made the other still
+  fire. Not fixed (removing either changes displayed content — main.js's includes the
+  description, NavigationUI's doesn't — a product call, not this session's to make);
+  both are now muted together under the `'achievements'` devMute key so dev sessions are
+  fully silent. Worth a real cleanup pass later.
+- Confirmed visually via a throwaway `?dev` Playwright script (not committed): HQ Lv.4
+  renders as the fortress art, correctly scaled and grounded next to the other Lv.1
+  buildings on the same base.
+- **`anchor.py` rewritten** (`assestProcessing/anchor.py`): `'foot'` mode used to
+  estimate the base's centre with an analytic lift formula assuming an idealised
+  symmetric diamond base — measured 19px wrong on HQ's asymmetric corner-tower design,
+  which read in-game as "standing on one side, hovering on the other." Now measures the
+  widest solid row directly (same as `'base'` mode) — no more analytic lift, no
+  per-sprite override needed. `_anchor_overrides.json` deleted; keep it that way unless
+  a detection is genuinely un-fixable in the algorithm.
+- **`ingest.py` stage-file bug fixed**: `STAGE_RE` matched "stage4" as a *substring*, so
+  a same-folder reference file (`Stage4-removebg-preview.png`) got ingested as a phantom
+  duplicate stage and silently bumped real Level 4 art to `_S5`. Now requires a full
+  filename match (`^stage\s*(\d+)$`).
+- **Level 4 blocked on source art**: Steve's replacement `Stage4.png` (background-removed
+  500×500) has more empty padding around the castle than the original 1024×1024 render,
+  so it scales out much smaller than L1-3 under the pipeline's fixed-scale-from-Stage-1
+  design. Needs the original full-res render or a same-framing re-export — not an anchor
+  problem, `ingest.py`'s own rembg cutout already handles background removal.
+- Full rationale trail (11 rounds) in `docs/10-design/assets.md` under the prompt-contract
+  section — read that before touching `Building-style.md`/`building-fillers.md` again.
+- **New dev tooling** (`?dev` sessions only, zero effect on real play):
+  - `js/ui/dev/DevLevelSwitcher.js` + `js/systems/building/devLevel.js` — floating
+    widget to force any already-placed building instance to any level instantly, for
+    eyeballing per-level sprite anchors without grinding a real upgrade.
+  - `js/ui/dev/DevPopupMuter.js` + `js/core/devMute.js` — floating widget to silence
+    story-chapter, achievement, and quest-completion popups during dev sessions (still
+    grants rewards, just skips the interruption), toggleable back on. `devMute.js` lives
+    in `js/core/` (not `js/ui/`) so both systems (`NotificationManager`) and UI
+    (`UIManager`, `QuestsUI`, `NavigationUI`) can read it without crossing the tier
+    boundary.
+  - Both covered in `tests/browser/dev-smoke.mjs` (appended, not rewritten, per ADR
+    0012).
+
+**Next steps:** get a same-framing Level 4 source for HQ and re-ingest; once HQ reads
+fully correct in-game (all 4 levels), move to the next building per the reboot plan
+(`docs/10-design/assets.md`) — well or another currently-bad type — applying the same
+single-prompt-4-images workflow + fixed anchor algorithm.
+
+## AI sprite prompt rework + icons wired (2026-07-22, later)
+
+Follow-up to the parked pipeline below — prep for Steve's next `mixBoard` regeneration
+round (starting with HQ), plus using the one part of the old set that was already good.
+
+**Second-round fix, same session:** Steve's first regen pass against the rewrite below
+came back "blocky random buildings" — the primitive-cap language capped *how much*
+detail but never required the primitives to visibly join into one structure, so stages
+read as scattered disconnected blocks, worst at the sparse stage-1 end where the model
+had least to anchor an identity to. Levels dropped 6 → 4.
+
+**Third-round rework, same session (Steve + GPT critique):** Steve ran the prompt past
+GPT, which correctly diagnosed the whole approach as written for the wrong audience —
+a diffusion image model, not a reasoning model. Long prose, "never X" negation
+(diffusion models handle negation poorly — naming a concept can reinforce it), and
+abstract meta-fields ("scale ceiling," "primitive cap") don't function the way careful
+instructions do for an LLM. The single-image multi-stage grid was its own failure mode
+too — every level free to compromise against every other level in the same canvas.
+**Pipeline now:** a fixed, never-edited style bible (`assestProcessing/Building-style.md`
+/ `Hero-style.md`) + a short per-item keyword block (`building-fillers.md` /
+`hero-fillers.md`, rewritten to plain concrete "Visual keywords" + per-level
+"additions" lists, zero negation) + buildings generated **one level at a time, chained
+by image reference** (approve Level 1, feed it back in, prompt only the delta to reach
+Level 2, etc.) instead of a grid. `Building-promt.md`/`hero-promt.md` now hold the
+workflow instructions, not the literal prompt content. **Not yet verified against a
+real generation** — next step is confirming the image-chained HQ Level 1→4 workflow
+actually holds consistency before doing the rest of the roster.
+
+- **Diagnosed why the AI art didn't fit** (`game-designer` pass + Steve's own read):
+  it's not a materials problem, it's spatial frequency — at the ~40-130px this game
+  actually renders buildings, only massing/silhouette survives, so "flashy" detail reads
+  as noise, not richness. Grit's 3D models work because they're kitbashed from 3-6
+  simple primitives (a human artist's economy of form under a poly budget), which
+  happens to match glanceable strategy-game legibility. Also found and fixed a *second*,
+  separate failure: generic per-stage escalation language ("grandest," "prestige,"
+  "statues") with no per-building anchor was defaulting high-level farm/mine renders to
+  castle imagery regardless of purpose.
+- **`assestProcessing/promt.md`** (Steve's actual working prompt file, previously unseen
+  by any session doc) rewritten in place: replaced the `"hand-painted, semi-realistic...
+  weathered stone"` style block (the literal source of the over-detail problem) with a
+  primitive-cap + flat-color-block + signature-shape-move contract, and added an
+  explicit anti-castle-drift rule tying each stage's growth to a per-building
+  `{SCALE_CEILING}`, not generic grandeur language.
+- **`assestProcessing/building-fillers.md`** — all 20 building blocks gained
+  `Silhouette identity` / `Primitive cap` / `Scale ceiling` fields. Only `townhall` +
+  `heroquarters` are prestige-tier (grandeur language allowed); every other type's
+  ceiling is explicitly "a bigger version of its own working function, never a
+  castle/fortress/manor" — this is the direct fix for the farm/mine-becomes-a-castle
+  report.
+- **New: `assestProcessing/hero-promt.md` + `hero-fillers.md`** — same locked-style-block
+  approach for one-at-a-time hero portrait generation (post-apoc grounded-tech
+  constraint: no magic-user imagery). Steve chose to re-fiction the 4 existing heroes to
+  the post-apoc setting now rather than generate fantasy art that the pending hero
+  redesign would throw out: Lord Arcturus → Marcus Kestrel, Lyra Dawnveil → Vera Sable
+  (Arc Technician), Kira Nightwhisper → the Ghost Runner (name unchanged), Sir Aldric →
+  Aldric Cross (Iron Warden). **These are draft visual concepts only — `heroes.js`
+  itself is untouched**; carrying the new names/titles into game data is a small
+  follow-up best done alongside the actual hero recruitment/management redesign.
+- **`docs/10-design/assets.md`** gained a permanent "AI-generated building sprites —
+  prompt contract" section recording both failure modes + the reusable template, so a
+  future session isn't starting from scratch.
+- **Cleaned `assets/tiles/buildings/ai/`** (Steve's request, ahead of a fresh HQ-first
+  regeneration): deleted all `*_S1-6.png` sprites + `_anchors.json`/
+  `_anchor_overrides.json` (being regenerated against the new prompt anyway); the 14
+  `*_icon.png` files that were already good moved to new `assets/icons/buildings/`.
+  `ai/` folder itself kept (empty) as ingest.py's output target for the next run.
+- **Wired those icons into the game** — new `js/ui/buildings/buildingIcons.js`
+  (`buildingIconUrl(id)` / `cardIconHtml(id, emoji)`, a static id-list manifest like
+  `GRIT_BUILDING_MAP`'s pattern; falls back to the existing emoji for any type without a
+  generated icon yet). Consumed by `BuildablesPanel.js` (build-catalog cards),
+  `BuildingCards.js` (base-tab card grid + locked-slot cards), and `BuildingInfoPanel.js`
+  (detail overlay, folded into its existing sprite-or-emoji fallback chain). Kept the
+  helper in the sibling module rather than growing `BuildingCards.js` further (already
+  over the ~400-line ceiling, pre-existing debt).
+- **Verified:** `npm test` 301/301; `check-comments` still exactly 13 pre-existing
+  violations (none in touched files); boot-smoke's console 404s confirmed pre-existing
+  and unrelated (legacy `buildingTiles_*`/`landscapeTiles_*`/`cityTiles_*` — same gap
+  noted in ADR 0024, not caused by this work); live Playwright screenshot of the
+  Buildables catalog confirms real icons render (lumbermill/well/farm/quarry/mine/
+  storehouse/construction hall/HQ) in place of emoji.
+- **Next:** Steve regenerates HQ against the new `promt.md` + `building-fillers.md`
+  townhall block first (calibration reference), then farm/mine as the anti-castle-drift
+  test cases, then whichever building looks worst in-game next (well was mentioned).
+  Hero portraits are prepped but not yet started — hero recruitment/management redesign
+  is still the next feature of record (see below); portrait generation can run ahead of
+  it since `heroes.js` itself isn't touched by this prep.
+
+## AI building sprite pipeline — parked (2026-07-21/22)
+
+Steve tried an AI-sprite path for buildings (`assestProcessing/` ingest pipeline:
+bg-strip → trim → auto-anchor → scale → `assets/tiles/buildings/ai/`). After several
+rounds of sizing/anchoring fixes the effort-to-payoff wasn't there yet, so **the game is
+back to grit-only** — `cityAssets.js`/`cityGrade.js` reverted, no `ai/` wiring. Parked,
+not deleted: `assestProcessing/anchor.py`/`ingest.py`/`mixboard_map.json`, the `mixBoard/`
+source images, and the generated `assets/tiles/buildings/ai/` sprites (incl. the
+`_icon.png` set, which looked good and is worth wiring into building cards later even if
+the in-world sprites stay parked) are all still on disk for a future attempt. ADR 0024
+kept as a record of what was learned (real bugs found: scale must be measured against the
+sprite's full width or content overshoots its footprint; anchor centring needs the whole
+silhouette, not just a foot-level band; a diamond footprint only requires the *base* to
+stay contained — roof overflow is normal and fine).
+
 ## Current state (2026-07-20)
 
 - Branch: `Working_Branch`. Through adjacency is committed (`dd4e575`). **Uncommitted now:**
@@ -19,17 +345,25 @@
 
 ### Exact next steps (in order)
 
-1. **Re-run the six browser smokes** (see the warning above). Nothing else should start
-   until the audit fixes are confirmed in a real boot.
-2. **Prong B — persistence round-trip harness** (`docs/systems-audit-plan.md`). The audit
-   found per-manager field diffs *largely symmetric*, so lead with the **coverage
-   assertion** (Proxy-record which keys `deserialize` actually reads, diff against what
-   `serialize` writes, fail on written-but-never-read) rather than 16 hand-written
-   round-trips. That is the assertion that catches the ADR 0002 silent-drop class.
-3. **Prong C — empirical loop verification** (the roadmap's long-open Phase 2 pass).
-4. **Then** the remaining hardening tracks: data consolidation
-   (`docs/data-consolidation-plan.md`), comment cleanup (13 known violations, suited to a
-   cheaper model), balance pass.
+1. **Re-run the six browser smokes** (see the warning above) — the only audit follow-up
+   Steve kept as blocking, because the fixes touched `SaveManager` and load-time grants
+   and a broken boot would be mis-attributed by whoever works next. Cheap; do it first.
+2. **Hero recruitment + management redesign** — **the next feature of record**
+   (Steve, 2026-07-20). Spec lives in `docs/30-roadmap.md` § UX friendliness; write the
+   design up as `docs/10-design/heroes.md`. Worth a `game-designer` specialist pass
+   before any code. Chosen over Phase 4 deliberately: see the roadmap note — Phase 4 is
+   authoring opponents (capabilities, behaviours, personalities), a design project before
+   it is a code project, and much larger than it looks.
+3. **Then** the deferred hardening tracks, in whatever order they start blocking:
+   Prong B (persistence *coverage* assertion — Proxy-record which keys `deserialize`
+   actually reads, diff against what `serialize` writes, fail on written-but-never-read;
+   that is what catches the ADR 0002 silent-drop class), Prong C loop verification, data
+   consolidation, comment cleanup, balance pass.
+
+**Steve's standing call on the audit residue (2026-07-20):** this is not the final build.
+The 7 design calls, the god-file split, the `milMult` guard and the comment-lint
+violations are all **deferred until something actually blocks on them** — do not open a
+session by re-litigating that list. Fix them when they bite.
 
 ### Open debt carried forward (Steve's call, deliberately not done)
 

@@ -10,8 +10,9 @@
 import { eventBus }         from '../../core/EventBus.js';
 import { RES_META, fmt }    from '../uiUtils.js';
 import { BUILDINGS_CONFIG } from '../../entities/GAME_DATA.js';
-import { ISO_BUILDING_MAP } from '../city/cityAssets.js';
+import { GRIT_BUILDING_MAP } from '../city/cityAssets.js';
 import { icon, iconFromEmoji } from '../icons.js';
+import { buildingIconUrl } from './buildingIcons.js';
 
 export class BuildingInfoPanel {
   /** @param {{ bm }} deps */
@@ -33,7 +34,7 @@ export class BuildingInfoPanel {
     if (!cfg || !this._overlay || !this._body) return;
 
     const curLevel = this._bm.getLevelOf?.(buildingId) ?? 0;
-    const sprite   = ISO_BUILDING_MAP[buildingId] ?? '';
+    const sprite   = buildingIconUrl(buildingId) ?? GRIT_BUILDING_MAP[buildingId]?.[1] ?? '';
     const hasEffectCol = this._hasPerLevelEffect(cfg);
 
     // Per-level progression rows. Upgrade cost = baseCost × costMultiplier^(level-1);

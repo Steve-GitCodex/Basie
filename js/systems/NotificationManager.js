@@ -4,6 +4,7 @@
  * Handles queuing (one toast shown at a time), hover-pause of dismiss timers, and CSS animation.
  */
 import { eventBus } from '../core/EventBus.js';
+import { devMute } from '../core/devMute.js';
 
 const TOAST_DURATION_MS = 4000;
 const MAX_VISIBLE       = 1;
@@ -42,7 +43,10 @@ export class NotificationManager {
     // Tech events
     eventBus.on('tech:researched',     d => this.show('success', 'Research Complete!',     `${d.name} — Lv.${d.level ?? 1} complete!`));
     // Quest events
-    eventBus.on('quest:completed',     d => this.show('success', '📜 Quest Complete!',     `"${d.name}" — Rewards collected!`));
+    eventBus.on('quest:completed',     d => {
+      if (devMute.isMuted('quests')) return;
+      this.show('success', '📜 Quest Complete!', `"${d.name}" — Rewards collected!`);
+    });
     // Silent events
     eventBus.on('resources:spent',     () => {/* silent */});
     eventBus.on('game:saved',          () => {/* silent */});

@@ -11,6 +11,7 @@ import { eventBus }      from '../../core/EventBus.js';
 import { RES_META, fmt } from '../uiUtils.js';
 import { BUILDINGS_CONFIG, HEROES_CONFIG, HQ_UNLOCK_TABLE, UNITS_CONFIG, TECH_CONFIG } from '../../entities/GAME_DATA.js';
 import { icon, iconFromEmoji } from '../icons.js';
+import { cardIconHtml } from './buildingIcons.js';
 
 export class BuildingCards {
   /** @param {{ bm, rm, heroes, notifications, requestRender:()=>void }} deps */
@@ -328,7 +329,7 @@ export class BuildingCards {
     card.dataset.bid = b.id;
     card.innerHTML = `
       <div class="card-header">
-        <div class="card-icon">${iconFromEmoji(b.icon ?? '')}</div>
+        <div class="card-icon">${cardIconHtml(b.id, b.icon)}</div>
         <div style="flex:1;min-width:0">
           <div class="card-title">${b.name}${instLabel}</div>
           <div class="card-subtitle">${b.description}</div>
@@ -454,7 +455,7 @@ export class BuildingCards {
     card.className = 'card building-card building-card-locked';
     card.innerHTML = `
       <div class="card-header" style="opacity:0.45">
-        <div class="card-icon">${iconFromEmoji(bType.icon ?? '')}</div>
+        <div class="card-icon">${cardIconHtml(bType.id, bType.icon)}</div>
         <div style="flex:1;min-width:0">
           <div class="card-title">${bType.name} <span class="instance-label">${slot.instanceIndex + 1}</span></div>
           <div class="card-subtitle">Additional slot</div>
@@ -473,7 +474,7 @@ export class BuildingCards {
     card.className = 'card building-card building-card-locked';
     card.innerHTML = `
       <div class="card-header" style="opacity:0.45">
-        <div class="card-icon">${iconFromEmoji(bType.icon ?? '')}</div>
+        <div class="card-icon">${cardIconHtml(bType.id, bType.icon)}</div>
         <div style="flex:1;min-width:0">
           <div class="card-title">${bType.name}</div>
           <div class="card-subtitle">${bType.description}</div>

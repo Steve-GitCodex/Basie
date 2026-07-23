@@ -39,6 +39,7 @@ import { RES_META, openModal, closeModal } from './uiUtils.js';
 import { icon, iconFromEmoji } from './icons.js';
 import { INVENTORY_ITEMS } from '../entities/GAME_DATA.js';
 import { eventBus }     from '../core/EventBus.js';
+import { devMute }      from '../core/devMute.js';
 
 export class UIManager {
   constructor(systems) {
@@ -489,7 +490,35 @@ export class UIManager {
    * Steps through dialogue lines one at a time, then shows rewards.
    * @param {object} chapter
    */
+  /** Grant a chapter's rewards and announce completion — shared by the normal
+   *  finish/skip paths and the dev-mute auto-resolve path. */
+  _grantChapterRewards(chapter, rewardHtml) {
+    if (chapter.rewards) {
+      // XP granted directly to the player — not via inventory resource bundles
+      if (chapter.rewards.xp) this._user?.addXP(chapter.rewards.xp);
+      if (this._inv) {
+        const rewardArray = Object.entries(chapter.rewards)
+          .filter(([k, v]) => k !== 'xp' && v > 0)
+          .map(([k, v]) => ({ type: 'resource', itemId: k, quantity: v }));
+        if (rewardArray.length) this._inv.grantRewards(rewardArray);
+      }
+    }
+    if (rewardHtml) {
+      eventBus.emit('ui:notification', {
+        type: 'success', title: `📜 Chapter Complete: ${chapter.title}`, body: rewardHtml
+      });
+    }
+  }
+
   _showStoryModal(chapter) {
+    const rewardHtml = Object.entries(chapter.rewards ?? {}).map(([k, v]) =>
+      `<span class="story-reward-chip">${RES_META[k]?.icon ?? ''} +${v} ${k}</span>`
+    ).join('');
+
+    // Dev sessions can silence story popups (still grants rewards, just no
+    // interruption) — toggled via the dev popup-muter widget.
+    if (devMute.isMuted('story')) { this._grantChapterRewards(chapter, rewardHtml); return; }
+
     const overlay = document.getElementById('story-modal-overlay');
     const panel   = document.getElementById('story-modal-panel');
     if (!overlay || !panel) return;
@@ -520,11 +549,6 @@ export class UIManager {
       if (btn) btn.textContent = isLast ? 'Collect Rewards' : 'Next ▶';
     };
 
-    // Build the modal content
-    const rewardHtml = Object.entries(chapter.rewards ?? {}).map(([k, v]) =>
-      `<span class="story-reward-chip">${RES_META[k]?.icon ?? ''} +${v} ${k}</span>`
-    ).join('');
-
     panel.innerHTML = `
       <div class="story-header">
         <span class="story-chapter-arc" style="background:${chapter.arcColor ?? '#6c5ce7'}">${chapter.arc ?? 'Chapter'}</span>
@@ -547,23 +571,8 @@ export class UIManager {
         lineIndex++;
         renderLine();
       } else {
-        // Grant rewards via tiered bundles and close.
-        if (chapter.rewards) {
-          // XP granted directly to the player — not via inventory resource bundles
-          if (chapter.rewards.xp) this._user?.addXP(chapter.rewards.xp);
-          if (this._inv) {
-            const rewardArray = Object.entries(chapter.rewards)
-              .filter(([k, v]) => k !== 'xp' && v > 0)
-              .map(([k, v]) => ({ type: 'resource', itemId: k, quantity: v }));
-            if (rewardArray.length) this._inv.grantRewards(rewardArray);
-          }
-        }
+        this._grantChapterRewards(chapter, rewardHtml);
         overlay.classList.add('hidden');
-        if (rewardHtml) {
-          eventBus.emit('ui:notification', {
-            type: 'success', title: `📜 Chapter Complete: ${chapter.title}`, body: rewardHtml
-          });
-        }
       }
     };
 
@@ -573,23 +582,8 @@ export class UIManager {
     });
     panel.querySelector('#story-btn-skip')?.addEventListener('click', () => {
       eventBus.emit('ui:click');
-      if (chapter.rewards) {
-        // XP granted directly to the player — not via inventory resource bundles
-        if (chapter.rewards.xp) this._user?.addXP(chapter.rewards.xp);
-        if (this._inv) {
-          const rewardArray = Object.entries(chapter.rewards)
-            .filter(([k, v]) => k !== 'xp' && v > 0)
-            .map(([k, v]) => ({ type: 'resource', itemId: k, quantity: v }));
-          if (rewardArray.length) this._inv.grantRewards(rewardArray);
-        }
-      }
+      this._grantChapterRewards(chapter, rewardHtml);
       overlay.classList.add('hidden');
-      // P10: emit the same reward notification that the normal finish path emits
-      if (rewardHtml) {
-        eventBus.emit('ui:notification', {
-          type: 'success', title: `📜 Chapter Complete: ${chapter.title}`, body: rewardHtml
-        });
-      }
     });
   }
 

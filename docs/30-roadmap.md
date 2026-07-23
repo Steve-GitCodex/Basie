@@ -15,7 +15,7 @@ Deep design lives in `docs/10-design/`; the session handoff is `docs/40-active.m
 | **2** | World map + marches — MVP (gather/attack, regions, Rally Point) **and** fast-follows (scout, ruins, outposts, world bosses, fog) | [x] implemented (uncommitted as of 2026-07-15); hardening open |
 | **Reskin** | Grit reskin (art direction, tile-grid world, juice) — `docs/10-design/grit-reskin.md`, ADR 0008 | [x] done 2026-07-20 (A1–A4, B1+B2, C1–C3; B3 world terrain atlas deferred by Steve) |
 | **3** | **Arena** — PvP + alliance co-op boss fights + ranks; eventually replaces campaign combat | [ ] blocked on Phase 7 |
-| **4** | AI opponents (`AIManager`) — factions grow with the player, re-capture regions (ADR 0005 seeds this) | [ ] after reskin |
+| **4** | AI opponents (`AIManager`) — factions grow with the player, re-capture regions (ADR 0005 seeds this) | [ ] scoped larger than it looks — see note |
 | **5** | Map events & objectives | [ ] |
 | **6** | Notification center + hero equipment crafting | [ ] |
 | **7** | Backend + true multiplayer (Node.js + Firebase Realtime DB) | [ ] |
@@ -224,9 +224,18 @@ sprite generation.
 - [ ] Decide campaign-combat retirement timing (interim: marches run parallel to the
   menu campaign until the Arena).
 
+## Current focus — Hero recruitment + management redesign
+
+**Next feature of record (Steve, 2026-07-20).** Chosen ahead of Phase 4: the AI is not an
+`AIManager` shell but authoring actual opponents — capabilities, behaviours, and
+**personalities** — which is a design project before it is a code project, and materially
+bigger than the hero work. Hero redesign is bounded, already diagnosed, and touches a
+surface the player meets early. Spec it as `docs/10-design/heroes.md`; `game-designer`
+pass before implementation. Full problem statement below.
+
 ## UX friendliness
 
-- [ ] **Hero recruitment + management redesign** (Steve, 2026-07-15: "does not feel
+- [ ] **Hero recruitment + management redesign** — **IN FOCUS, see above** (Steve, 2026-07-15: "does not feel
   friendly" — confirmed by code review). Problems: recruiting spans four views
   (Shop → Inventory → GachaUI modal → Heroes detail pane) with no in-game guidance;
   five item classes to understand (scrolls, specific cards, universal cards,

@@ -14,7 +14,7 @@
  *  - `_buildings` stores Map<id, [{instanceId, level}]> — only completed levels.
  *  - Resources are spent at queue time, refunded on cancel.
  */
-import { eventBus }                                    from '../core/EventBus.js';
+import { eventBus } from '../core/EventBus.js';
 import {
   BUILDINGS_CONFIG, QUEUE_CONFIG, CATEGORY_ZONE, inBounds, rectHitsSkeleton,
 } from '../entities/GAME_DATA.js';
@@ -24,6 +24,7 @@ import { buildingEconomy } from './building/buildingEconomy.js';
 import { headquarters } from './building/headquarters.js';
 import { CafeteriaService } from './building/CafeteriaService.js';
 import { PlacementStore } from './building/placementStore.js';
+import { devLevel } from './building/devLevel.js';
 import { SectorState } from './building/sectorState.js';
 import { packAll, findPlacement, footprintOf, buildingIdOf, skeletonOffenderMoves } from './building/cityPacker.js';
 import { computeAdjacency, trainTimeMultiplier, productionBonusTotal } from './building/adjacency.js';
@@ -38,7 +39,7 @@ export class BuildingManager {
   /** @param {import('./ResourceManager.js').ResourceManager} resourceManager */
   constructor(resourceManager) {
     this.name = 'BuildingManager';
-    this._rm  = resourceManager;
+    this._rm = resourceManager;
 
     /** @type {Map<string, BuildingInstance[]>} buildingId -> array of instances (completed levels only) */
     this._buildings = new Map();
@@ -46,13 +47,13 @@ export class BuildingManager {
 
     /** Context passed to the pure buildingRules helpers (stateful lookups). */
     this._rulesCtx = {
-      getLevelOf:    (id) => this.getLevelOf(id),
-      getPopulation: ()   => this._rm.getPopulation(),
+      getLevelOf: (id) => this.getLevelOf(id),
+      getPopulation: () => this._rm.getPopulation(),
     };
 
     /** Context passed to the pure buildingEconomy.computeActiveRates helper. */
     this._economyCtx = {
-      getPopulation:   ()    => this._rm.getPopulation(),
+      getPopulation: () => this._rm.getPopulation(),
       getBuildingHero: (iid) => this._hm?.getBuildingHero(iid) ?? null,
       getAdjacencyBonus: (iid) => this.getAdjacency(iid).bonus,
     };
@@ -71,11 +72,11 @@ export class BuildingManager {
 
     /** @type {BuildQueueItem[]} */
     this._buildQueue = [];
-    this._premiumBuildSlots    = 0;
+    this._premiumBuildSlots = 0;
     /** Portion of _premiumBuildSlots granted by VIP perks — tracked separately so a
      *  re-broadcast of the same aggregate perk (e.g. on every load) is idempotent. */
-    this._vipBuildSlots        = 0;
-    this._shopBuildSlotBought  = false; // tracks one-time shop slot purchase
+    this._vipBuildSlots = 0;
+    this._shopBuildSlotBought = false; // tracks one-time shop slot purchase
     this._vipBuildTimeReduction = 0;  // cumulative fractional reduction from VIP perks
 
     this._techBonuses = {};
@@ -84,7 +85,7 @@ export class BuildingManager {
 
     /** Cafeteria feeding feature (stock/restock/auto-restock + population loop). */
     this._cafeteria = new CafeteriaService({
-      rm:           this._rm,
+      rm: this._rm,
       getInstances: (id) => this._buildings.get(id) ?? [],
     });
 
@@ -93,7 +94,7 @@ export class BuildingManager {
       this._recalculateAllCaps();
       this._notifyRates();
     });
-    eventBus.on('population:updated',     () => this._notifyRates());
+    eventBus.on('population:updated', () => this._notifyRates());
     // VIP perk: stacking build time reduction + extra build slot at VIP III
     eventBus.on('user:vipUpdate', ({ perks, deltaPerks, isInit }) => {
       this._vipBuildTimeReduction = Math.min(0.80, perks?.buildTimeReduction ?? 0);
@@ -106,6 +107,9 @@ export class BuildingManager {
     // Sandbox mode: near-instant build times
     this._gameMode = 'campaign';
     eventBus.on('game:modeChanged', ({ mode }) => { this._gameMode = mode; });
+    eventBus.on('ui:devSetBuildingLevel', ({ buildingId, level, instanceIndex = 0 } = {}) => {
+      this.devSetLevel(buildingId, level, instanceIndex);
+    });
     this._notifyRates();
     this._recalculateAllCaps();
   }
@@ -254,9 +258,9 @@ export class BuildingManager {
     const cfg = BUILDINGS_CONFIG[buildingId];
     if (!cfg) return { ok: false, reason: 'Unknown building.' };
 
-    const instances      = this._buildings.get(buildingId) ?? [];
+    const instances = this._buildings.get(buildingId) ?? [];
     const completedLevel = instances[instanceIndex]?.level ?? 0;
-    const queuedCount    = this._buildQueue.filter(
+    const queuedCount = this._buildQueue.filter(
       q => q.buildingId === buildingId && q.instanceIndex === instanceIndex
     ).length;
     const effectiveLevel = completedLevel + queuedCount;
@@ -267,9 +271,9 @@ export class BuildingManager {
 
     // Instance ordering: slot N cannot exceed the level of slot N-1
     if (instanceIndex > 0) {
-      const prevInst      = instances[instanceIndex - 1];
+      const prevInst = instances[instanceIndex - 1];
       const prevCompleted = prevInst?.level ?? 0;
-      const prevQueued    = this._buildQueue.filter(
+      const prevQueued = this._buildQueue.filter(
         q => q.buildingId === buildingId && q.instanceIndex === instanceIndex - 1
       ).length;
       const prevEffective = prevCompleted + prevQueued;
@@ -279,7 +283,7 @@ export class BuildingManager {
     }
 
     const pendingLevel = effectiveLevel + 1;
-    const lvlReqCheck  = buildingRules.checkRequirements(cfg.levelRequirements?.[pendingLevel], this._rulesCtx);
+    const lvlReqCheck = buildingRules.checkRequirements(cfg.levelRequirements?.[pendingLevel], this._rulesCtx);
     if (!lvlReqCheck.met) return { ok: false, reason: lvlReqCheck.reason };
 
     return { ok: true };
@@ -318,20 +322,20 @@ export class BuildingManager {
     missing.push(...buildingRules.collectMissing(cfg.requires, this._rulesCtx));
 
     // Per-level requires
-    const instances      = this._buildings.get(buildingId) ?? [];
+    const instances = this._buildings.get(buildingId) ?? [];
     const completedLevel = instances[instanceIndex]?.level ?? 0;
-    const queuedCount    = this._buildQueue.filter(
+    const queuedCount = this._buildQueue.filter(
       q => q.buildingId === buildingId && q.instanceIndex === instanceIndex
     ).length;
     const effectiveLevel = completedLevel + queuedCount;
-    const pendingLevel   = effectiveLevel + 1;
+    const pendingLevel = effectiveLevel + 1;
     missing.push(...buildingRules.collectMissing(cfg.levelRequirements?.[pendingLevel], this._rulesCtx));
 
     // Instance ordering: slot N cannot exceed the level of slot N-1
     if (instanceIndex > 0) {
-      const prevInst      = instances[instanceIndex - 1];
+      const prevInst = instances[instanceIndex - 1];
       const prevCompleted = prevInst?.level ?? 0;
-      const prevQueued    = this._buildQueue.filter(
+      const prevQueued = this._buildQueue.filter(
         q => q.buildingId === buildingId && q.instanceIndex === instanceIndex - 1
       ).length;
       const prevEffective = prevCompleted + prevQueued;
@@ -361,9 +365,9 @@ export class BuildingManager {
     const buildCheck = this.canBuild(buildingId, instanceIndex);
     if (!buildCheck.ok) return { success: false, reason: buildCheck.reason };
 
-    const instances      = this._buildings.get(buildingId) ?? [];
+    const instances = this._buildings.get(buildingId) ?? [];
     const completedLevel = instances[instanceIndex]?.level ?? 0;
-    const queuedCount    = this._buildQueue.filter(
+    const queuedCount = this._buildQueue.filter(
       q => q.buildingId === buildingId && q.instanceIndex === instanceIndex
     ).length;
     const effectiveLevel = completedLevel + queuedCount;
@@ -407,9 +411,9 @@ export class BuildingManager {
       instArr[instanceIndex] = { instanceId: `${buildingId}_${instanceIndex}`, level: 0 };
     }
 
-    const instanceId    = instArr[instanceIndex].instanceId;
-    const nowMs         = Date.now();
-    const workerFree    = buildQueue.activeItems(this._buildQueue).length < maxSlots;
+    const instanceId = instArr[instanceIndex].instanceId;
+    const nowMs = Date.now();
+    const workerFree = buildQueue.activeItems(this._buildQueue).length < maxSlots;
     const instanceClear = !this._buildQueue.some(q => q.instanceId === instanceId);
 
     if (buildTimeSec === 0 && workerFree && instanceClear) {
@@ -429,11 +433,11 @@ export class BuildingManager {
       buildTimeSec,
       cost,
       startedAt: null,
-      endsAt:    null,
+      endsAt: null,
     });
     buildQueue.fill(this._buildQueue, maxSlots, nowMs);
 
-    eventBus.emit('building:started',      { id: buildingId, instanceIndex, cost, level: pendingLevel });
+    eventBus.emit('building:started', { id: buildingId, instanceIndex, cost, level: pendingLevel });
     eventBus.emit('building:queueUpdated', this.getBuildQueue());
     return { success: true };
   }
@@ -472,10 +476,10 @@ export class BuildingManager {
   // Cafeteria & automation — delegated to CafeteriaService
   // ─────────────────────────────────────────────
 
-  getCafeteriaStock()                                  { return this._cafeteria.getStock(); }
-  restockCafeteria(instanceId, foodAmount, waterAmount){ return this._cafeteria.restock(instanceId, foodAmount, waterAmount); }
-  enableAutomation(type)                               { this._cafeteria.enableAutomation(type); }
-  getAutomations()                                     { return this._cafeteria.getAutomations(); }
+  getCafeteriaStock() { return this._cafeteria.getStock(); }
+  restockCafeteria(instanceId, foodAmount, waterAmount) { return this._cafeteria.restock(instanceId, foodAmount, waterAmount); }
+  enableAutomation(type) { this._cafeteria.enableAutomation(type); }
+  getAutomations() { return this._cafeteria.getAutomations(); }
 
   // ─────────────────────────────────────────────
   // Queries — used by UI
@@ -502,9 +506,9 @@ export class BuildingManager {
     const rows = this._buildQueue.map((item, idx) => ({
       ...item,
       queuePosition: idx,
-      isActive:      item.endsAt != null,
+      isActive: item.endsAt != null,
       waitingPosition: null,
-      cfg:           BUILDINGS_CONFIG[item.buildingId],
+      cfg: BUILDINGS_CONFIG[item.buildingId],
     }));
     rows.sort((a, b) => {
       if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
@@ -522,25 +526,25 @@ export class BuildingManager {
    */
   getBuildingTypesWithInstances() {
     return Object.values(BUILDINGS_CONFIG).map(cfg => {
-      const instances     = this._buildings.get(cfg.id) ?? [];
+      const instances = this._buildings.get(cfg.id) ?? [];
       const unlockedCount = this._getUnlockedInstanceCount(cfg);
       const multiInstance = (cfg.instanceSlots?.length ?? 1) > 1;
 
       const instanceData = [];
       for (let idx = 0; idx < unlockedCount; idx++) {
-        const inst           = instances[idx] ?? { instanceId: `${cfg.id}_${idx}`, level: 0 };
+        const inst = instances[idx] ?? { instanceId: `${cfg.id}_${idx}`, level: 0 };
         const completedLevel = inst.level ?? 0;
-        const queuedForInst  = this._buildQueue.filter(
+        const queuedForInst = this._buildQueue.filter(
           q => q.buildingId === cfg.id && q.instanceIndex === idx
         );
-        const queuedCount    = queuedForInst.length;
+        const queuedCount = queuedForInst.length;
         const effectiveLevel = completedLevel + queuedCount;
-        const activeForInst  = queuedForInst.find(q => q.endsAt != null) ?? null;
+        const activeForInst = queuedForInst.find(q => q.endsAt != null) ?? null;
         const isActivelyBuilding = activeForInst != null;
-        const nextCost    = buildingRules.scaleCost(cfg.baseCost, cfg.costMultiplier, effectiveLevel);
-        const reqCheck    = buildingRules.checkRequirements(cfg.requires, this._rulesCtx);
+        const nextCost = buildingRules.scaleCost(cfg.baseCost, cfg.costMultiplier, effectiveLevel);
+        const reqCheck = buildingRules.checkRequirements(cfg.requires, this._rulesCtx);
         const lvlReqCheck = buildingRules.checkRequirements(cfg.levelRequirements?.[effectiveLevel + 1], this._rulesCtx);
-        const finalReqMet    = reqCheck.met && lvlReqCheck.met;
+        const finalReqMet = reqCheck.met && lvlReqCheck.met;
         const finalReqReason = !reqCheck.met ? (reqCheck.reason ?? null) : (lvlReqCheck.reason ?? null);
         // Collect all unmet requirements for detailed UI display
         const missingRequirements = [
@@ -564,36 +568,36 @@ export class BuildingManager {
 
         instanceData.push({
           ...cfg,
-          instanceId:    inst.instanceId ?? `${cfg.id}_${idx}`,
+          instanceId: inst.instanceId ?? `${cfg.id}_${idx}`,
           instanceIndex: idx,
-          displayName:   multiInstance ? `${cfg.name} ${idx + 1}` : cfg.name,
-          level:         completedLevel,
+          displayName: multiInstance ? `${cfg.name} ${idx + 1}` : cfg.name,
+          level: completedLevel,
           effectiveLevel,
-          cost:               nextCost,
-          canAfford:          this._rm.canAfford(nextCost),
-          requirementsMet:    finalReqMet,
+          cost: nextCost,
+          canAfford: this._rm.canAfford(nextCost),
+          requirementsMet: finalReqMet,
           requirementsReason: finalReqReason,
           missingRequirements,
-          isBuilding:         isActivelyBuilding,
+          isBuilding: isActivelyBuilding,
           isActivelyBuilding,
-          isQueued:           queuedCount > 0 && !isActivelyBuilding,
+          isQueued: queuedCount > 0 && !isActivelyBuilding,
           queuedCount,
-          isMaxLevel:         effectiveLevel >= cfg.maxLevel,
+          isMaxLevel: effectiveLevel >= cfg.maxLevel,
           nextLevelBuildTime,
-          constructionEndsAt: activeForInst?.endsAt    ?? null,
-          startedAt:          activeForInst?.startedAt ?? null,
-          stock:              inst.stock ?? null,
+          constructionEndsAt: activeForInst?.endsAt ?? null,
+          startedAt: activeForInst?.startedAt ?? null,
+          stock: inst.stock ?? null,
           drainRatePerSec,
           depletionSec,
         });
       }
 
-      const totalSlots  = cfg.instanceSlots?.length ?? 1;
+      const totalSlots = cfg.instanceSlots?.length ?? 1;
       const lockedSlots = [];
       for (let idx = unlockedCount; idx < totalSlots; idx++) {
         lockedSlots.push({
           instanceIndex: idx,
-          condition:     cfg.instanceSlots[idx]?.condition ?? null,
+          condition: cfg.instanceSlots[idx]?.condition ?? null,
         });
       }
 
@@ -611,7 +615,7 @@ export class BuildingManager {
   }
 
   getActiveBuildings() {
-    const result    = [];
+    const result = [];
     const activeIds = new Set(buildQueue.activeItems(this._buildQueue).map(q => q.buildingId));
     for (const [id, instances] of this._buildings) {
       for (const inst of instances) {
@@ -636,15 +640,27 @@ export class BuildingManager {
    * Returns 0 if the instance doesn't exist or hasn't been built.
    */
   getInstanceLevelOf(instanceId) {
-    const last      = instanceId.lastIndexOf('_');
+    const last = instanceId.lastIndexOf('_');
     const buildingId = instanceId.substring(0, last);
-    const idx       = parseInt(instanceId.substring(last + 1), 10);
+    const idx = parseInt(instanceId.substring(last + 1), 10);
     return this._buildings.get(buildingId)?.[idx]?.level ?? 0;
   }
 
   /** Current HQ (townhall) level. */
   getHQLevel() {
     return this.getLevelOf('townhall');
+  }
+
+  /** Dev-only: force an already-placed instance to any level (see devLevel.js). */
+  devSetLevel(buildingId, level, instanceIndex = 0) {
+    const cfg = BUILDINGS_CONFIG[buildingId];
+    const result = devLevel.setLevel(this._buildings.get(buildingId), cfg, level, instanceIndex);
+    if (result.success) {
+      this._recalculateAllCaps();
+      eventBus.emit('building:completed', { id: buildingId, instanceIndex, building: { id: buildingId, level: result.level } });
+      this._recalcAdjacency();
+    }
+    return result;
   }
 
   /**
@@ -698,7 +714,7 @@ export class BuildingManager {
       ? this._buildQueue.find(q => q.endsAt != null && q.instanceId === instanceId)
       : buildQueue.earliestActive(this._buildQueue);
     if (!active?.endsAt) return { success: false, reason: 'No active build in progress.' };
-    const now    = Date.now();
+    const now = Date.now();
     if (active.endsAt <= now) return { success: false, reason: 'Build already complete.' };
     const skipMs = seconds >= 999999 ? active.endsAt - now + 1000 : seconds * 1000;
     active.endsAt = Math.max(now, active.endsAt - skipMs);
@@ -760,21 +776,21 @@ export class BuildingManager {
   getPlacementRects() {
     this._ensurePlacements();
     return this._placement.rects().map(r => ({
-      instanceId:    r.instanceId,
-      buildingId:    buildingIdOf(r.instanceId),
+      instanceId: r.instanceId,
+      buildingId: buildingIdOf(r.instanceId),
       instanceIndex: Number(r.instanceId.slice(r.instanceId.lastIndexOf('_') + 1)),
       cx: r.cx, cy: r.cy, w: r.w, h: r.h,
     }));
   }
 
   positionOf(instanceId) { return this._placement.positionOf(instanceId); }
-  rectOf(instanceId)     { return this._placement.rectOf(instanceId); }
+  rectOf(instanceId) { return this._placement.rectOf(instanceId); }
 
   /** Whether a footprint may sit at (cx,cy) — cleared ground, in bounds, clear of other buildings. */
   rectFree(cx, cy, w, h, exceptId = null) {
     return this._sectors.isRectCleared(cx, cy, w, h) &&
-           !rectHitsSkeleton(cx, cy, w, h) &&
-           this._placement.rectFree(cx, cy, w, h, exceptId);
+      !rectHitsSkeleton(cx, cy, w, h) &&
+      this._placement.rectFree(cx, cy, w, h, exceptId);
   }
 
   // ── Layout adjacency (pure math in building/adjacency.js — ADR 0022, Phase C) ──
@@ -826,23 +842,23 @@ export class BuildingManager {
   getBuildablesCatalog() {
     const out = [];
     for (const cfg of Object.values(BUILDINGS_CONFIG)) {
-      const zone       = this.zoneOfBuilding(cfg.id);
-      const instances  = this._buildings.get(cfg.id) ?? [];
-      const maxCount    = cfg.instanceSlots?.length ?? cfg.maxInstances ?? 1;
-      const builtCount  = instances.filter(i => (i.level ?? 0) > 0).length;
-      const reqCheck    = buildingRules.checkRequirements(cfg.requires, this._rulesCtx);
-      const unlocked    = reqCheck.met;
-      const lockReason  = unlocked
+      const zone = this.zoneOfBuilding(cfg.id);
+      const instances = this._buildings.get(cfg.id) ?? [];
+      const maxCount = cfg.instanceSlots?.length ?? cfg.maxInstances ?? 1;
+      const builtCount = instances.filter(i => (i.level ?? 0) > 0).length;
+      const reqCheck = buildingRules.checkRequirements(cfg.requires, this._rulesCtx);
+      const unlocked = reqCheck.met;
+      const lockReason = unlocked
         ? null
         : (reqCheck.reason
-            || buildingRules.collectMissing(cfg.requires, this._rulesCtx).join(', ')
-            || 'Locked');
+          || buildingRules.collectMissing(cfg.requires, this._rulesCtx).join(', ')
+          || 'Locked');
       const availableIdx = this._findAvailableInstance(cfg.id);
-      const cost         = buildingRules.scaleCost(cfg.baseCost, cfg.costMultiplier, 0);
+      const cost = buildingRules.scaleCost(cfg.baseCost, cfg.costMultiplier, 0);
       // Free placement always has room in the buildable rect; the packer seats it.
-      const hasFreePlot  = true;
+      const hasFreePlot = true;
       out.push({
-        id:   cfg.id,
+        id: cfg.id,
         name: cfg.name,
         icon: cfg.icon,
         category: cfg.category,
@@ -853,10 +869,10 @@ export class BuildingManager {
         maxCount,
         unlocked,
         lockReason,
-        canAfford:        this._rm.canAfford(cost),
+        canAfford: this._rm.canAfford(cost),
         availableToBuild: unlocked && availableIdx !== null,
         hasFreePlot,
-        maxed:            builtCount >= maxCount,
+        maxed: builtCount >= maxCount,
       });
     }
     return out;
@@ -909,7 +925,7 @@ export class BuildingManager {
     const unlockedCount = this._getUnlockedInstanceCount(cfg);
     const instances = this._buildings.get(buildingId) ?? [];
     for (let idx = 0; idx < unlockedCount; idx++) {
-      const level  = instances[idx]?.level ?? 0;
+      const level = instances[idx]?.level ?? 0;
       const queued = this._buildQueue.some(q => q.buildingId === buildingId && q.instanceIndex === idx);
       if (level === 0 && !queued) return idx;
     }
@@ -932,13 +948,13 @@ export class BuildingManager {
     this._ensurePlacements();
     return {
       buildings,
-      placements:           this._placement.serialize(),
-      sectors:              this._sectors.serialize(),
-      buildQueue:           [...this._buildQueue],
-      premiumBuildSlots:    this._premiumBuildSlots,
-      vipBuildSlots:        this._vipBuildSlots,
-      shopBuildSlotBought:  this._shopBuildSlotBought,
-      automations:          this._cafeteria.getAutomations(),
+      placements: this._placement.serialize(),
+      sectors: this._sectors.serialize(),
+      buildQueue: [...this._buildQueue],
+      premiumBuildSlots: this._premiumBuildSlots,
+      vipBuildSlots: this._vipBuildSlots,
+      shopBuildSlotBought: this._shopBuildSlotBought,
+      automations: this._cafeteria.getAutomations(),
     };
   }
 
@@ -953,7 +969,7 @@ export class BuildingManager {
         this._buildings.set(id, saved.map((s, idx) => {
           const inst = {
             instanceId: s.instanceId ?? `${id}_${idx}`,
-            level:      s.level ?? 0,
+            level: s.level ?? 0,
           };
           if (s.stock !== undefined) inst.stock = { food: s.stock.food ?? 0, water: s.stock.water ?? 0 };
           return inst;
@@ -1003,7 +1019,7 @@ export class BuildingManager {
 
     this._buildQueue = (data.buildQueue ?? []).map(item => ({
       instanceIndex: 0,
-      instanceId:    `${item.buildingId}_0`,
+      instanceId: `${item.buildingId}_0`,
       ...item,
     }));
     this._premiumBuildSlots = data.premiumBuildSlots ?? 0;
@@ -1014,16 +1030,16 @@ export class BuildingManager {
     // Backward-compat: old format stored constructionEndsAt on the building object
     for (const [id, saved] of Object.entries(buildingsData)) {
       if (!Array.isArray(saved) && saved.constructionEndsAt &&
-          !this._buildQueue.some(q => q.buildingId === id)) {
+        !this._buildQueue.some(q => q.buildingId === id)) {
         this._buildQueue.push({
-          buildingId:    id,
+          buildingId: id,
           instanceIndex: 0,
-          instanceId:    `${id}_0`,
-          pendingLevel:  saved._pendingLevel ?? ((saved.level ?? 0) + 1),
-          buildTimeSec:  saved._buildTimeSec ?? 60,
-          cost:          {},
-          startedAt:     saved.startedAt ?? null,
-          endsAt:        saved.constructionEndsAt,
+          instanceId: `${id}_0`,
+          pendingLevel: saved._pendingLevel ?? ((saved.level ?? 0) + 1),
+          buildTimeSec: saved._buildTimeSec ?? 60,
+          cost: {},
+          startedAt: saved.startedAt ?? null,
+          endsAt: saved.constructionEndsAt,
         });
       }
     }

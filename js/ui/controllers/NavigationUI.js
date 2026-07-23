@@ -11,6 +11,7 @@ import { RES_META, fmt } from '../uiUtils.js';
 import { tickTo } from '../fx/numberTicker.js';
 import { VIP_TIERS, TAB_UNLOCK_CONDITIONS, TAB_GROUPS, BUILDING_TAB_MAP, HQ_UNLOCK_TABLE, BUILDINGS_CONFIG, UNITS_CONFIG } from '../../entities/GAME_DATA.js';
 import { icon } from '../icons.js';
+import { devMute } from '../../core/devMute.js';
 
 export class NavigationUI {
   /**
@@ -303,6 +304,7 @@ export class NavigationUI {
     eventBus.on('events:updated',       state      => { this._updateEventsBadge(state); this._refreshMoreBadges(); });
     eventBus.on('user:vipUpdate',       ()         => this._renderProfile(this._s.user.getProfile()));
     eventBus.on('achievement:unlocked', d          => {
+      if (devMute.isMuted('achievements')) return;
       this._s.notifications?.show('success', '🏆 Achievement Unlocked!', d?.name ?? 'Achievement unlocked');
     });
     eventBus.on('achievements:updated', all        => this._updateAchievementsBadge(all));

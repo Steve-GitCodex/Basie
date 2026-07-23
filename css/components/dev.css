@@ -1,0 +1,80 @@
+.dev-widget {
+  position: fixed;
+  left: 12px;
+  z-index: var(--z-float);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgba(20, 20, 20, 0.85);
+  border: 1px solid #555;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 12px;
+}
+
+.dev-widget select {
+  font-size: 12px;
+}
+
+.dev-level-switcher {
+  bottom: 12px;
+}
+
+.dev-level-switcher [data-dev-status] {
+  opacity: 0.7;
+}
+
+.dev-popup-muter {
+  bottom: 52px;
+}
+
+.dev-popup-muter label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.dev-anchor-nudger {
+  bottom: 92px;
+}
+
+.dev-anchor-nudger label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.dev-anchor-nudger [data-nudge-readout] {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+
+.dev-anchor-nudger .dev-nudge-hint {
+  opacity: 0.55;
+  font-size: 11px;
+}
+
+.dev-anchor-nudger .dev-nudge-btns {
+  display: flex;
+  gap: 4px;
+}
+
+.dev-sprite-source {
+  bottom: 132px;
+}
+
+.dev-sprite-source label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.dev-nudge-overlay {
+  position: fixed;
+  pointer-events: none;
+  z-index: var(--z-overlay);
+}

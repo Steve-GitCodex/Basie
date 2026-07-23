@@ -7,6 +7,7 @@
 import { eventBus } from '../../core/EventBus.js';
 import { RES_META, openModal, closeModal } from '../uiUtils.js';
 import { icon, iconFromEmoji } from '../icons.js';
+import { devMute } from '../../core/devMute.js';
 
 export class QuestsUI {
   /**
@@ -128,6 +129,9 @@ export class QuestsUI {
   // ─────────────────────────────────────────────
 
   _showQuestCelebration(data) {
+    // Dev sessions can silence quest popups — rewards are already delivered by
+    // QuestManager before this fires, so muting is purely visual.
+    if (devMute.isMuted('quests')) return;
     const rewardHtml = Object.entries(data.rewards ?? {}).map(([k, v]) =>
       `<div class="battle-reward-chip">${RES_META[k]?.icon ?? ''} +${v} ${k}</div>`
     ).join('');

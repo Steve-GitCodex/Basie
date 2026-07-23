@@ -7,8 +7,6 @@
  * building type from the SVG icon set, and draws the full-scene overlay
  * (vignette + cold wash + horizon haze). Collaborator of CityRenderer.
  */
-import { GROUND_TILES, gritBucket } from './cityAssets.js';
-
 const GRIM_FILTER =
   'saturate(0.55) brightness(0.9) contrast(1.08) sepia(0.15) hue-rotate(-10deg)';
 
@@ -44,7 +42,7 @@ const PLAQUE_ICON_COLOR = 'hsl(38, 60%, 72%)';
 export class CityGrade {
   constructor(assets) {
     this._assets = assets;
-    this._graded = new Map();   // "b:"/"g:" key → graded offscreen canvas
+    this._graded = new Map();   // building variant key ("b:"/"a:") → graded offscreen canvas
     this._gray = new Map();     // building id → graded grayscale canvas
     this._plaques = new Map();  // building id → plaque canvas
     this._ovW = 0;
@@ -59,24 +57,12 @@ export class CityGrade {
   }
 
   building(id, level = 0) {
-    if (level > 0) {
-      const g = this._graded.get(`b:${id}:${gritBucket(level)}`);
-      if (g) return g;
-    }
-    return this._graded.get(`b:${id}:1`) ?? this._graded.get(`b:${id}`)
+    return this._graded.get(this._assets.variantKey(id, level))
       ?? this._assets.building(id, level);
   }
 
-  ground(name) {
-    return this._graded.get(`g:${name}`) ?? this._assets.ground(name);
-  }
-
   buildingGray(id, level = 0) {
-    if (level > 0) {
-      const g = this._gray.get(`b:${id}:${gritBucket(level)}`);
-      if (g) return g;
-    }
-    return this._gray.get(`b:${id}:1`) ?? this._gray.get(`b:${id}`)
+    return this._gray.get(this._assets.variantKey(id, level))
       ?? this._assets.buildingGray(id, level);
   }
 
@@ -121,10 +107,6 @@ export class CityGrade {
       if (graded) this._graded.set(key, graded);
       const gray = this._gradeImage(this._assets.grayByKey(key));
       if (gray) this._gray.set(key, gray);
-    }
-    for (const name of Object.keys(GROUND_TILES)) {
-      const graded = this._gradeImage(this._assets.ground(name));
-      if (graded) this._graded.set(`g:${name}`, graded);
     }
   }
 

@@ -66,6 +66,7 @@ export class BuildingsUI {
         // slide-up panel is retired). Hover only highlights (handled by the renderer).
         onTileClick: (bid, idx) => {
           eventBus.emit('ui:click');
+          eventBus.emit('dev:buildingSelected', { buildingId: bid });
           const rect = this._city?.getTileScreenRect(bid, idx);
           if (rect) this._tooltip.showTile(bid, idx, rect);
         },

@@ -29,11 +29,13 @@ import { CityGround, groundSignature } from "./cityGround.js";
 import { deriveRoads } from "./cityRoads.js";
 import { CityInput } from "./cityInput.js";
 import { CityAgents } from "./cityAgents.js";
+import { CityAmbientAssets } from "./cityAmbientAssets.js";
 import { CityAmbient } from "./cityAmbient.js";
 import { CityGrade } from "./cityGrade.js";
 import { CityGhost } from "./cityGhost.js";
 import { ParticleField } from "../fx/particles.js";
 
+const DEG = Math.PI / 180;
 const LABEL_MIN_ZOOM = 0.65;
 const HEADROOM = 2; // px above the diamond covered by a building sprite (proxy/hit rect)
 const SPEEDUP_BADGE_R  = 11; // world-px radius of the ⏩ speed-up badge over a building
@@ -85,6 +87,7 @@ export class CityRenderer {
 
     this._input = new CityInput(this);
     this._agents = new CityAgents(this);
+    this._ambientAssets = new CityAmbientAssets();
     this._ambient = new CityAmbient(this, CULL_OBJECT);
     this._grade = new CityGrade(this._assets);
     this._ghost = new CityGhost(this);
@@ -127,6 +130,8 @@ export class CityRenderer {
     await this._assets.load();
     await this._ground.load();
     await this._grade.load();
+    await this._ambientAssets.load();
+    this._agents.setAssets(this._ambientAssets);
     this.ready = true;
     this._loadEl?.classList.add("hidden");
 
@@ -270,11 +275,12 @@ export class CityRenderer {
     const img = this._assets.building(slot.buildingId, slot.level);
     if (!img) return null;
     const a = this._assets.anchor(slot.buildingId, slot.level);
+    const s = scale * (a.s ?? 1);
     const c = this._centerWorld(slot);
-    const left = c.x - a.ax * scale;
-    const top = c.y - a.ay * scale;
-    const width = img.width * scale;
-    const height = img.height * scale;
+    const left = c.x - a.ax * s;
+    const top = c.y - a.ay * s;
+    const width = img.width * s;
+    const height = img.height * s;
     return { left, top, width, height, right: left + width, bottom: top + height };
   }
 
@@ -569,7 +575,9 @@ export class CityRenderer {
 
     // 3 — objects: buildings + props (painter-sorted), agents interleaved
     const droneDepth = this._agents.droneDepth;
+    const truckDepth = this._agents.truckDepth;
     let droneDrawn = false;
+    let truckDrawn = false;
     const walkersToDraw = [...this._agents.walkers].sort(
       (a, b) => a.x + a.y - (b.x + b.y),
     );
@@ -580,6 +588,10 @@ export class CityRenderer {
         walkersToDraw[wi].x + walkersToDraw[wi].y <= item.depth
       ) {
         this._agents.drawWalker(walkersToDraw[wi++], now);
+      }
+      if (!truckDrawn && item.depth > truckDepth) {
+        this._agents.drawTruck(now);
+        truckDrawn = true;
       }
       if (!droneDrawn && item.depth > droneDepth) {
         this._agents.drawDrone(now);
@@ -595,6 +607,7 @@ export class CityRenderer {
     }
     while (wi < walkersToDraw.length)
       this._agents.drawWalker(walkersToDraw[wi++], now);
+    if (!truckDrawn) this._agents.drawTruck(now);
     if (!droneDrawn) this._agents.drawDrone(now);
 
     // 3b — move-placement ghost, above buildings
@@ -658,11 +671,19 @@ export class CityRenderer {
     const pop = this._popScale(slot.instanceId, now);
     const drawBuilding = (image, alpha = 1) => {
       const ctx = this._ctx;
-      const box = this._spriteBox(slot, pop);
-      if (!box) return;
+      const a = this._assets.anchor(slot.buildingId, slot.level);
+      const c = this._centerWorld(slot);
+      const s = pop * (a.s ?? 1);
+      ctx.save();
       if (alpha !== 1) ctx.globalAlpha = alpha;
-      ctx.drawImage(image, box.left, box.top, box.width, box.height);
-      if (alpha !== 1) ctx.globalAlpha = 1;
+      // Seat the anchor on the plot centre, then rotate/skew (dev tilt) about it —
+      // the ground-contact point stays put at any r/k/scale (ADR 0024).
+      ctx.translate(c.x, c.y);
+      if (a.r) ctx.rotate(a.r * DEG);
+      if (a.k) ctx.transform(1, 0, Math.tan(a.k * DEG), 1, 0, 0);
+      ctx.scale(s, s);
+      ctx.drawImage(image, -a.ax, -a.ay);
+      ctx.restore();
     };
 
     if (slot.level === 0 && !slot.isBuilding) {

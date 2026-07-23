@@ -50,7 +50,10 @@
   font-size: 1.6rem;
   flex-shrink: 0;
   box-shadow: inset 0 2px 4px rgba(255,255,255,0.05);
+  overflow: hidden;
 }
+
+.card-icon img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
 
 .card-title {
   font-size: var(--text-md);

@@ -12,7 +12,8 @@
 import { eventBus }              from '../../core/EventBus.js';
 import { RES_META, fmt }         from '../uiUtils.js';
 import { BUILDING_VIEW_ACTION } from '../../entities/GAME_DATA.js';
-import { ISO_BUILDING_MAP }      from './cityAssets.js';
+import { GRIT_BUILDING_MAP }     from './cityAssets.js';
+import { buildingIconUrl }       from '../buildings/buildingIcons.js';
 import { icon } from '../icons.js';
 
 export class TileTooltip {
@@ -98,7 +99,7 @@ export class TileTooltip {
     const snap     = this._rm.getSnapshot();
     if (!b) return;
 
-    const spriteUrl = ISO_BUILDING_MAP[buildingId] ?? '';
+    const spriteUrl = buildingIconUrl(buildingId) ?? GRIT_BUILDING_MAP[buildingId]?.[1] ?? '';
     const isBuilt   = b.level > 0;
     const nextLv    = b.effectiveLevel + 1;
 

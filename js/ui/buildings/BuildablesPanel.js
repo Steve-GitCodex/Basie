@@ -11,6 +11,7 @@
 import { eventBus }          from '../../core/EventBus.js';
 import { RES_META, fmt }     from '../uiUtils.js';
 import { icon, iconFromEmoji } from '../icons.js';
+import { cardIconHtml } from './buildingIcons.js';
 
 const ZONE_GROUPS = [
   { id: 'production',  label: `${icon('production')} Production`  },
@@ -250,7 +251,7 @@ export class BuildablesPanel {
       : `<button class="btn btn-sm btn-ghost" disabled>${i.canAfford === false && i.unlocked && !i.maxed && i.availableToBuild ? 'Need resources' : '—'}</button>`;
 
     return `<div class="bp-card${enabled ? '' : ' bp-card--off'}" data-id="${i.id}">
-      <div class="bp-card__icon">${iconFromEmoji(i.icon ?? '') || icon('hammer')}</div>
+      <div class="bp-card__icon">${cardIconHtml(i.id, i.icon) || icon('hammer')}</div>
       <div class="bp-card__main">
         <div class="bp-card__name">${i.name}</div>
         ${i.effectLabel ? `<div class="bp-card__effect">${i.effectLabel}</div>` : ''}

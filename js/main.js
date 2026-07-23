@@ -36,6 +36,11 @@ import { TimerService }        from './ui/TimerService.js';
 import { TooltipService }      from './ui/TooltipService.js';
 import { FirebaseDataManager, IS_CONFIGURED } from './core/FirebaseDataManager.js';
 import { isDevSession, runDevSession } from './core/devSession.js';
+import { DevLevelSwitcher } from './ui/dev/DevLevelSwitcher.js';
+import { DevPopupMuter } from './ui/dev/DevPopupMuter.js';
+import { DevAnchorNudger } from './ui/dev/DevAnchorNudger.js';
+import { DevSpriteSource } from './ui/dev/DevSpriteSource.js';
+import { devMute } from './core/devMute.js';
 
 const DEV = isDevSession();
 
@@ -457,7 +462,11 @@ function launchGame(authScreen, gameShell, externalState = null) {
   userManager.broadcastVipState();
 
   // Subscribe notification manager to achievement unlocks
+  // NOTE: NavigationUI._registerEvents also shows a toast for this same event
+  // (title "Achievement Unlocked!", no description) — pre-existing duplication,
+  // not introduced here; both are muted together so dev sessions silence fully.
   eventBus.on('achievement:unlocked', d => {
+    if (devMute.isMuted('achievements')) return;
     notificationManager.show('success', `🏆 Achievement: ${d.name}`, d.description);
   });
 
@@ -589,6 +598,10 @@ function launchGame(authScreen, gameShell, externalState = null) {
     if (DEV) {
       engine.start();
       runDevSession({ engine, userManager, resourceManager, buildingManager, unitManager, eventBus, logManager });
+      new DevLevelSwitcher().init(buildingManager);
+      new DevPopupMuter().init();
+      new DevAnchorNudger().init();
+      new DevSpriteSource().init();
       return;
     }
 

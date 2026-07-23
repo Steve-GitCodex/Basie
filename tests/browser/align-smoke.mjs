@@ -65,7 +65,7 @@ async function run() {
     const missing = await page.evaluate(() => {
       const a = window.game.city._assets;
       return window.game.city._slots
-        .filter(s => s.level > 0 && !a._anchor.get(`b:${s.buildingId}:${Math.min(3, s.level)}`))
+        .filter(s => s.level > 0 && !a._anchor.get(a.variantKey(s.buildingId, s.level)))
         .map(s => s.buildingId);
     });
     add('every built sprite has a rig-exported ground anchor', missing.length === 0);
