@@ -186,3 +186,72 @@ test('getBuildingProductionBonusMap applies the bonus when stationed at the matc
   const map = hm.getBuildingProductionBonusMap();
   assert.ok((map.money ?? 0) > 0, 'Shadowblade stationed in a mine should boost money production');
 });
+
+test('awardHeroXP levels a hero up using the 1.3^level curve', () => {
+  const m = makeHM();
+  m._recruitHero('warlord');
+  m.awardHeroXP('warlord', 500);
+  const h = m.getRosterWithState().find(x => x.id === 'warlord');
+  assert.equal(h.level, 2);
+  assert.equal(h.xpToNext, Math.floor(500 * Math.pow(1.3, 1)));
+});
+
+test('awardHeroXP ignores non-finite or non-positive amounts', () => {
+  const m = makeHM();
+  m._recruitHero('warlord');
+  m.awardHeroXP('warlord', NaN);
+  m.awardHeroXP('warlord', -100);
+  assert.equal(m.getRosterWithState().find(x => x.id === 'warlord').level, 1);
+});
+
+test('awardBattleXP only feeds heroes assigned to the target squad barracks', () => {
+  const m = makeHM();
+  m._recruitHero('warlord');
+  m._recruitHero('paladin');
+  m.assignHeroToBuilding('warlord', 'barracks_0');
+  m.assignHeroToBuilding('paladin', 'barracks_1');
+  m.awardBattleXP(500, 'squad_1');
+  const roster = m.getRosterWithState();
+  assert.equal(roster.find(x => x.id === 'warlord').level, 2);
+  assert.equal(roster.find(x => x.id === 'paladin').level, 1);
+});
+
+test('awakenHero via fragments increments stars and consumes fragments', () => {
+  const m = makeHM();
+  m._recruitHero('warlord');
+  m._inv.addItem('fragment_warlord', 10);
+  const r = m.awakenHero('warlord', 'fragment');
+  assert.equal(r.success, true);
+  assert.equal(r.stars, 1);
+  assert.equal(m._inv.getQuantity('fragment_warlord'), 0);
+});
+
+test('assignHeroToBuilding blocks a second hero past a non-barracks heroCapacity', () => {
+  const m = makeHM();
+  m._recruitHero('warlord');
+  m._recruitHero('paladin');
+  const first = m.assignHeroToBuilding('warlord', 'mine_0');
+  const second = m.assignHeroToBuilding('paladin', 'mine_0');
+  assert.equal(first.success, true);
+  assert.equal(second.success, false);
+});
+
+test('assignHeroToSquad maps squad_1 to barracks_0 and getSquadHeroIds reflects it', () => {
+  const m = makeHM();
+  m._recruitHero('warlord');
+  m.assignHeroToSquad('warlord', 'squad_1');
+  assert.deepEqual(m.getSquadHeroIds('squad_1'), ['warlord']);
+});
+
+test('every delegated public method still works after the split', () => {
+  const m = makeHM();
+  m._recruitHero('warlord');
+  assert.equal(typeof m.rollScroll, 'function');
+  assert.equal(typeof m.awardHeroXP, 'function');
+  assert.equal(typeof m.assignHeroToSquad, 'function');
+  assert.equal(typeof m.getCombatBonuses, 'function');
+  assert.equal(typeof m.getBuildingProductionBonusMap, 'function');
+  // round-trip: assign → combat bonus reflects it (heroquarters has heroCapacity: 0, so barracks_0 is the real hero-station path)
+  m.assignHeroToBuilding('warlord', 'barracks_0');
+  assert.ok(m.getCombatBonuses().attackMult > 1.0);
+});
