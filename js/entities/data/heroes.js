@@ -1,15 +1,6 @@
-/**
- * data/heroes.js
- * Hero classifications, buff categories, hero definitions,
- * skills, awakening config, and gacha tables.
- */
+/** Hero classifications, buff categories, hero definitions, skills, awakening config, gacha tables. */
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HERO CLASSIFICATION SYSTEM
-// Heroes belong to one class but can be assigned anywhere.
-// Classification is informational — it drives effectiveness badges and buff
-// categorisation, but never prevents assignment.
-// ─────────────────────────────────────────────────────────────────────────────
+// Classification is informational — drives effectiveness badges/buffs, never blocks assignment.
 export const HERO_CLASSIFICATIONS = {
   combat: {
     label: 'Combat',
@@ -59,11 +50,12 @@ export const AURA_BUFF_CATEGORY = {
 
 export const HEROES_CONFIG = {
   warlord: {
-    id: 'warlord', name: 'Lord Arcturus', title: 'The Warlord', icon: '⚔️',
-    tier: 'common',
+    id: 'warlord', name: 'Marcus Kestrel', title: 'The Warlord', icon: '⚔️',
+    tier: 'legendary',
     classification: 'combat',
     recruitCard: 'card_hero_warlord',
     description: 'A seasoned general who boosts the attack of all nearby melee units.',
+    backstory: 'Marcus Kestrel commanded the last coordinated defense before the old world fell, and never stood down after. He rallies whatever survivors will follow him, convinced the wasteland can still be held if enough people refuse to run.',
     stats: { hp: 1500, attack: 80, defense: 40, speed: 1.2 },
     skills: ['charge', 'battle_cry', 'iron_will'],
     aura: { type: 'attack_boost', value: 0.15, buffCategory: 'military' },
@@ -71,49 +63,74 @@ export const HEROES_CONFIG = {
     buildingBonus: { stat: 'training_speed', label: 'Training Speed', buildingType: 'barracks', buffCategory: 'development' },
   },
   archsorceress: {
-    id: 'archsorceress', name: 'Lyra Dawnveil', title: 'Arch Sorceress', icon: '🔮',
+    id: 'archsorceress', name: 'Vera Sable', title: 'Arch Sorceress', icon: '🔮',
     tier: 'legendary',
     classification: 'tech',
     recruitCard: 'card_hero_archsorceress',
     description: 'Master of arcane magic. Devastating AoE spells.',
+    backstory: 'Vera Sable was a research director before the collapse, and she salvaged more than data from her old labs. She bent the ruined world\'s residual energies into something she calls arcane current, and she is still the only person alive who fully understands it.',
     stats: { hp: 900, attack: 160, defense: 12, speed: 0.9 },
     skills: ['fireball', 'arcane_nova', 'mana_shield'],
-    aura: { type: 'magic_amplify', value: 0.25, buffCategory: 'military' },
+    aura: { type: 'magic_amplify', value: 0.20, buffCategory: 'military' },
     xpPerLevel: 600,
     buildingBonus: { stat: 'research_speed', label: 'Research Speed', buildingType: 'workshop', buffCategory: 'development' },
   },
-  shadowblade: {
-    id: 'shadowblade', name: 'Kira Nightwhisper', title: 'The Shadow Blade', icon: '🗡️',
-    tier: 'rare',
-    classification: 'development',
-    recruitCard: 'card_hero_shadowblade',
-    description: 'Assassin class hero. High single-target burst and evasion.',
-    stats: { hp: 1100, attack: 130, defense: 18, speed: 2.0 },
-    skills: ['shadowstep', 'poison_blade', 'evasion'],
-    aura: { type: 'crit_chance', value: 0.15, buffCategory: 'military' },
-    xpPerLevel: 550,
-    buildingBonus: { stat: 'gold_production', label: 'Gold Output', buildingType: 'mine', buffCategory: 'production' },
-  },
   paladin: {
-    id: 'paladin', name: 'Sir Aldric', title: 'The Paladin', icon: '✝️',
-    tier: 'rare',
+    id: 'paladin', name: 'Aldric Cross', title: 'The Paladin', icon: '✝️',
+    tier: 'epic',
     classification: 'combat',
     recruitCard: 'card_hero_paladin',
     description: 'Holy warrior. Reduces casualties and boosts unit defense.',
+    backstory: 'Aldric Cross led a convoy of refugees through three collapsed settlements before he found the sector worth defending. He carries a salvaged riot shield like a relic and treats every wall he helps raise as a promise he intends to keep.',
     stats: { hp: 2000, attack: 60, defense: 70, speed: 0.9 },
     skills: ['divine_shield', 'holy_light', 'consecration'],
     aura: { type: 'defense_boost', value: 0.20, buffCategory: 'military' },
     xpPerLevel: 650,
     buildingBonus: { stat: 'defense', label: 'Base Defense', buildingType: 'heroquarters', buffCategory: 'military' },
   },
+  junovane: {
+    id: 'junovane', name: 'Juno Vane', title: 'The Signal Runner', icon: '📡',
+    tier: 'epic',
+    classification: 'tech',
+    recruitCard: 'card_hero_junovane',
+    description: 'Field engineer who splices scavenged tech into working weapons and rigs. Boosts research output wherever she\'s stationed.',
+    backstory: 'Juno Vane grew up scavenging dead cities for parts that still hummed with power. She can coax a signal out of anything with a circuit board, and she has never met a workshop she couldn\'t improve by taking it apart first.',
+    stats: { hp: 1050, attack: 140, defense: 22, speed: 1.4 },
+    skills: ['emp_burst', 'overclock', 'static_ward'],
+    aura: { type: 'research_speed', value: 0.18, buffCategory: 'development' },
+    xpPerLevel: 600,
+    buildingBonus: { stat: 'research_speed', label: 'Research Speed', buildingType: 'workshop', buffCategory: 'development' },
+  },
+  kaelenthorne: {
+    id: 'kaelenthorne', name: 'Kaelen Thorne', title: 'The Wastewalker', icon: '🏹',
+    tier: 'normal',
+    classification: 'development',
+    recruitCard: 'card_hero_kaelenthorne',
+    description: 'Ranger and scavenger who knows every safe route through the wastes. Reliable early hire that pulls extra yield from production buildings.',
+    backstory: 'Kaelen Thorne has walked further into the dead zones than anyone willing to talk about it. He trades in routes and rumors, and he stations himself wherever a settlement needs someone who already knows what\'s worth digging for.',
+    stats: { hp: 1300, attack: 95, defense: 30, speed: 1.6 },
+    skills: ['scavenge', 'trail_marks', 'grit'],
+    aura: { type: 'crit_chance', value: 0.15, buffCategory: 'military' },
+    xpPerLevel: 500,
+    buildingBonus: { stat: 'food_production', label: 'Food Output', buildingType: 'farm', buffCategory: 'production' },
+  },
+  shadowblade: {
+    id: 'shadowblade', name: 'Kira Nightwhisper', title: 'The Shadow Blade', icon: '🗡️',
+    tier: 'normal',
+    classification: 'development',
+    recruitCard: 'card_hero_shadowblade',
+    description: 'Assassin class hero. High single-target burst and evasion.',
+    backstory: 'Kira Nightwhisper survived the early raids by never being where the fighting started. She moved from scavenger to killer out of necessity, and now she trades her blade and her silence to anyone who can keep a base standing.',
+    stats: { hp: 1100, attack: 130, defense: 18, speed: 2.0 },
+    skills: ['shadowstep', 'poison_blade', 'evasion'],
+    aura: { type: 'crit_chance', value: 0.15, buffCategory: 'military' },
+    xpPerLevel: 550,
+    buildingBonus: { stat: 'iron_production', label: 'Iron Output', buildingType: 'mine', buffCategory: 'production' },
+  },
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SKILLS CONFIG
-// All hero skills available in the game. Referenced by hero.skills arrays.
-// type: 'passive' — always-on stat modifier unlocked at a level threshold.
-// type: 'active'  — triggered during combat at specific conditions.
-// ─────────────────────────────────────────────────────────────────────────────
+// Referenced by hero.skills arrays. type 'passive' = always-on stat modifier unlocked at a
+// level threshold; type 'active' = triggered during combat at specific conditions.
 export const SKILLS_CONFIG = {
   // Lord Arcturus — Warlord
   charge: {
@@ -208,74 +225,91 @@ export const SKILLS_CONFIG = {
   },
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// AWAKENING CONFIG
-// Star-based hero awakening. Costs duplicate hero cards OR fragments.
-// Each star level grants stat buffs and increases aura value.
-// ─────────────────────────────────────────────────────────────────────────────
+// starShardCosts/perStarStatBonus/perStarAuraBonus: shard-only 10-star track.
+// @see docs/20-decisions/0025-awakening-config-dual-shape-transition.md (closed)
 export const AWAKENING_CONFIG = {
-  maxStars: 5,
-
-  /** Cost per star level (1-indexed: index 0 = going from 0→1 star) */
-  starCosts: [
-    { cards: 1, fragments: { common: 10, rare: 20, legendary: 30 } },
-    { cards: 1, fragments: { common: 15, rare: 30, legendary: 45 } },
-    { cards: 2, fragments: { common: 20, rare: 40, legendary: 60 } },
-    { cards: 2, fragments: { common: 25, rare: 50, legendary: 75 } },
-    { cards: 3, fragments: { common: 30, rare: 60, legendary: 90 } },
+  maxStars: 10,
+  starShardCosts: [
+    { normal: 1, epic: 2, legendary: 2 },
+    { normal: 1, epic: 2, legendary: 2 },
+    { normal: 2, epic: 3, legendary: 4 },
+    { normal: 2, epic: 3, legendary: 4 },
+    { normal: 3, epic: 5, legendary: 6 },
+    { normal: 3, epic: 5, legendary: 6 },
+    { normal: 4, epic: 6, legendary: 8 },
+    { normal: 5, epic: 8, legendary: 10 },
+    { normal: 6, epic: 9, legendary: 12 },
+    { normal: 8, epic: 12, legendary: 16 },
   ],
+  perStarStatBonus: 0.06,
+  perStarAuraBonus: 0.04,
+  // @see docs/superpowers/specs/2026-07-23-hero-economy-numbers.md §B
+  levelScalePerLevel: 0.005,
+  skillAuraFracBase: 0.08,
+  skillAuraFracPerLevel: 0.012,
+};
 
-  /** Per-star bonus applied on top of base stats */
-  perStarBonus: {
-    statMultiplier: 0.10,   // +10% base stats per star
-    auraValueBonus: 0.05,   // +5% aura value per star (absolute, not relative)
+export const XP_CONFIG = {
+  heroLevelCapPerHQLevel: 10,
+  passiveXpCapOffset: 20,
+  baseXpPerLevel: 100,
+  xpPerLevelStep: 20,
+  tierMult: { normal: 1.0, epic: 1.25, legendary: 1.5 },
+  combatXpPerBattle: 800,
+  passiveXpPerProductionTick: 2,
+};
+
+export const PITY_CONFIG = {
+  newHeroRate: { normal: 0.10, epic: 0.12, legendary: 0.14 },
+  softPityFrom: 7,
+  softPityBonusPerPull: 0.08,
+  stage1HardPityN: 10,
+  stage2ShardFloorEveryPulls: 10,
+  stage2ShardFloorAmount: 1,
+  consolationSplit: {
+    normal:    { fragments: 0.75, heroShard: 0.05, xp: 0.20 },
+    epic:      { fragments: 0.60, heroShard: 0.20, xp: 0.20 },
+    legendary: { fragments: 0.45, heroShard: 0.35, xp: 0.20 },
   },
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GACHA CONFIG
-// Weighted probability tables for tiered recruitment scrolls.
-// ─────────────────────────────────────────────────────────────────────────────
-export const GACHA_CONFIG = {
-  /** How many fragments needed to summon each tier hero via fragments alone */
-  fragmentsToSummon: { common: 10, rare: 20, legendary: 30 },
+export const EXCHANGE_CONFIG = {
+  tierShardsPerHeroShard: 3,
+  maxedOverflowToTierShards: 2,
+};
 
-  /** Fragment item IDs per hero */
+// @see docs/superpowers/specs/2026-07-23-hero-economy-numbers.md §F
+export const FRAGMENTS_PER_SHARD = { normal: 8, epic: 10, legendary: 12 };
+export const SHARDS_TO_UNLOCK    = { normal: 4, epic: 6,  legendary: 8 };
+
+export const PROD_BONUS_CONFIG = {
+  base: {
+    resourceOutput: 0.15,
+    trainingSpeed: 0.12,
+    researchSpeed: 0.12,
+    buildSpeed: 0.12,
+  },
+  levelScalePerLevel: 0.01,
+  starBonusPerStar: 0.02,
+  statEffectMap: {
+    bank:       { stat: 'gold_production',  effect: 'money' },
+    farm:       { stat: 'food_production',  effect: 'food' },
+    lumbermill: { stat: 'wood_production',  effect: 'wood' },
+    quarry:     { stat: 'stone_production', effect: 'stone' },
+    mine:       { stat: 'iron_production',  effect: 'iron' },
+    barracks:   { stat: 'training_speed',   effect: 'trainingSpeed' },
+    workshop:   { stat: 'research_speed',   effect: 'researchSpeed' },
+  },
+};
+
+export const GACHA_CONFIG = {
   fragmentItemId: {
     warlord:       'fragment_warlord',
     archsorceress: 'fragment_archsorceress',
     shadowblade:   'fragment_shadowblade',
     paladin:       'fragment_paladin',
+    junovane:      'fragment_junovane',
+    kaelenthorne:  'fragment_kaelenthorne',
   },
 
-  /** Outcome weights per scroll tier. Must sum to 100. */
-  outcomeWeights: {
-    common:    { resource: 40, xp_item: 30, buff: 15, fragment: 10, hero: 5  },
-    rare:      { resource: 30, xp_item: 25, buff: 20, fragment: 17, hero: 8  },
-    legendary: { resource: 20, xp_item: 20, buff: 20, fragment: 20, hero: 20 },
-  },
-
-  /** When outcome=hero, which tier hero is drawn. Must sum to 100. */
-  heroTierWeights: {
-    common:    { common: 91, rare: 8,  legendary: 1  },
-    rare:      { common: 20, rare: 70, legendary: 10 },
-    legendary: { common: 5,  rare: 30, legendary: 65 },
-  },
-
-  /** Resource bundle pool drawn randomly when outcome=resource — smallest (T1) tier only */
-  resourcePool: ['res_bundle_wood_t1', 'res_bundle_stone_t1', 'res_bundle_food_t1', 'res_bundle_iron_t1', 'res_bundle_water_t1'],
-
-  /** XP bundle pool drawn randomly when outcome=xp_item */
-  xpPool: {
-    common:    ['xp_bundle_small'],
-    rare:      ['xp_bundle_small', 'xp_bundle_medium'],
-    legendary: ['xp_bundle_medium', 'xp_bundle_large'],
-  },
-
-  /** Buff pool drawn randomly when outcome=buff */
-  buffPool: {
-    common:    ['buff_prod_sm'],
-    rare:      ['buff_prod_sm', 'buff_prod_lg'],
-    legendary: ['buff_prod_lg'],
-  },
 };

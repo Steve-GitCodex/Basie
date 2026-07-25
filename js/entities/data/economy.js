@@ -1,58 +1,8 @@
-/**
- * data/economy.js
- * Inventory item definitions and shop configuration.
- */
+import { HERO_ECONOMY_ITEMS } from './heroEconomyItems.js';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// INVENTORY ITEMS
-// Items that can be held in the player inventory. Hero cards are the primary
-// recruitment mechanism. XP bundles are purchasable from the shop (coming soon).
-// ─────────────────────────────────────────────────────────────────────────────
+/** Inventory item definitions and shop configuration. */
 export const INVENTORY_ITEMS = {
-  // ── Specific Hero Cards ──────────────────────────────────────────────────
-  card_hero_warlord: {
-    id: 'card_hero_warlord', type: 'hero_card',
-    name: 'Hero Card: Lord Arcturus', icon: '⚔️',
-    description: 'Recruit the legendary Warlord, Lord Arcturus.',
-    rarity: 'common', targetHeroId: 'warlord',
-  },
-  card_hero_archsorceress: {
-    id: 'card_hero_archsorceress', type: 'hero_card',
-    name: 'Hero Card: Lyra Dawnveil', icon: '🔮',
-    description: 'Recruit the legendary Arch Sorceress, Lyra Dawnveil.',
-    rarity: 'legendary', targetHeroId: 'archsorceress',
-  },
-  card_hero_shadowblade: {
-    id: 'card_hero_shadowblade', type: 'hero_card',
-    name: 'Hero Card: Kira Nightwhisper', icon: '🗡️',
-    description: 'Recruit the elusive Shadow Blade, Kira Nightwhisper.',
-    rarity: 'rare', targetHeroId: 'shadowblade',
-  },
-  card_hero_paladin: {
-    id: 'card_hero_paladin', type: 'hero_card',
-    name: 'Hero Card: Sir Aldric', icon: '✝️',
-    description: 'Recruit the noble Paladin, Sir Aldric.',
-    rarity: 'rare', targetHeroId: 'paladin',
-  },
-  // ── Universal Hero Cards ─────────────────────────────────────────────────
-  card_common: {
-    id: 'card_common', type: 'hero_card_universal',
-    name: 'Common Hero Card', icon: '🃏',
-    description: 'Recruits a random unowned Common-tier hero.',
-    rarity: 'common', targetTier: 'common',
-  },
-  card_rare: {
-    id: 'card_rare', type: 'hero_card_universal',
-    name: 'Rare Hero Card', icon: '🎴',
-    description: 'Recruits a random unowned Rare-tier hero.',
-    rarity: 'rare', targetTier: 'rare',
-  },
-  card_legendary: {
-    id: 'card_legendary', type: 'hero_card_universal',
-    name: 'Legendary Hero Card', icon: '👑',
-    description: 'Recruits a random unowned Legendary-tier hero.',
-    rarity: 'legendary', targetTier: 'legendary',
-  },
+  ...HERO_ECONOMY_ITEMS,
   // ── XP Bundles ───────────────────────────────────────────────────────────
   xp_bundle_small: {
     id: 'xp_bundle_small', type: 'xp_bundle',
@@ -72,12 +22,6 @@ export const INVENTORY_ITEMS = {
     description: 'Grants 5,000 Hero XP to a chosen hero.',
     moneyCost: 4000, grants: { xp: 5000 }, rarity: 'rare',
   },
-  // ── Resource Bundles (5-tier system) ──────────────────────────────────────
-  // Common (Wood, Stone, Food, Money): T1=200 / T2=500 / T3=1000 / T4=2500 / T5=5000
-  // Rare   (Iron, Water):              T1=50  / T2=100 / T3=250  / T4=500  / T5=1000
-  // Diamond:                           T1=5   / T2=10  / T3=20   / T4=50   / T5=100
-  // Rarity: T1-T2=common, T3=rare, T4-T5=legendary
-
   // ── Wood ────────────────────────────────────────────────────────────────
   res_bundle_wood_t1: { id: 'res_bundle_wood_t1', type: 'resource_bundle', name: 'Wood Bundle (Small)',    icon: '🪵', description: 'Grants 200 Wood.',   moneyCost: 0, grants: { wood: 200  }, rarity: 'common'    },
   res_bundle_wood_t2: { id: 'res_bundle_wood_t2', type: 'resource_bundle', name: 'Wood Bundle (Medium)',   icon: '🪵', description: 'Grants 500 Wood.',   moneyCost: 0, grants: { wood: 500  }, rarity: 'common'    },
@@ -166,13 +110,13 @@ export const INVENTORY_ITEMS = {
   scroll_common: {
     id: 'scroll_common', type: 'recruitment_scroll',
     name: 'Common Recruitment Scroll', icon: '📜',
-    description: 'Roll the dice to recruit a hero, fragment, resource, XP, or buff. Common tier — heroes are mostly common.',
+    description: 'Roll the dice to recruit a hero, fragment, resource, XP, or buff. Common tier — heroes are mostly Normal-tier.',
     rarity: 'common', tier: 'common',
   },
   scroll_rare: {
     id: 'scroll_rare', type: 'recruitment_scroll',
     name: 'Rare Recruitment Scroll', icon: '🌀',
-    description: 'Roll the dice to recruit a hero, fragment, resource, XP, or buff. Rare tier — heroes skew rare.',
+    description: 'Roll the dice to recruit a hero, fragment, resource, XP, or buff. Rare tier — heroes skew Epic-tier.',
     rarity: 'rare', tier: 'rare',
   },
   scroll_legendary: {
@@ -180,31 +124,6 @@ export const INVENTORY_ITEMS = {
     name: 'Legendary Recruitment Scroll', icon: '✨',
     description: 'Roll the dice to recruit a hero, fragment, resource, XP, or buff. Legendary tier — all hero tiers possible at high rates.',
     rarity: 'legendary', tier: 'legendary',
-  },
-  // ── Hero Fragments ────────────────────────────────────────────────────────
-  fragment_warlord: {
-    id: 'fragment_warlord', type: 'hero_fragment',
-    name: 'Fragment: Lord Arcturus', icon: '⚔️',
-    description: 'A fragment of Lord Arcturus\' essence. Collect 10 to summon the hero or use for awakening.',
-    rarity: 'common', targetHeroId: 'warlord', xpValue: 50,
-  },
-  fragment_archsorceress: {
-    id: 'fragment_archsorceress', type: 'hero_fragment',
-    name: 'Fragment: Lyra Dawnveil', icon: '🔮',
-    description: 'A fragment of Lyra Dawnveil\' power. Collect 30 to summon the hero or use for awakening.',
-    rarity: 'legendary', targetHeroId: 'archsorceress', xpValue: 50,
-  },
-  fragment_shadowblade: {
-    id: 'fragment_shadowblade', type: 'hero_fragment',
-    name: 'Fragment: Kira Nightwhisper', icon: '🗡️',
-    description: 'A fragment of Kira Nightwhisper\' shadow. Collect 20 to summon the hero or use for awakening.',
-    rarity: 'rare', targetHeroId: 'shadowblade', xpValue: 50,
-  },
-  fragment_paladin: {
-    id: 'fragment_paladin', type: 'hero_fragment',
-    name: 'Fragment: Sir Aldric', icon: '✝️',
-    description: 'A fragment of Sir Aldric\' holy light. Collect 20 to summon the hero or use for awakening.',
-    rarity: 'rare', targetHeroId: 'paladin', xpValue: 50,
   },
   // ── Speed-Up Items ─────────────────────────────────────────────────────────
   speedup_build_5m:   { id: 'speedup_build_5m',   type: 'speed_boost', target: 'building',  name: 'Build Speed-Up (5m)',        icon: '🏗️', description: 'Reduces the active build timer by 5 minutes.',    rarity: 'common',    skipSeconds: 300    },
@@ -226,11 +145,6 @@ export const INVENTORY_ITEMS = {
   speedup_universal_instant: { id: 'speedup_universal_instant', type: 'speed_boost', target: 'any', name: 'Instant Completion', icon: '✨', description: 'Instantly completes the current active build, train, or research.', rarity: 'legendary', skipSeconds: 999999 },
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SHOP CONFIG
-// Defines what items are sold in the Shop and at what price.
-// goldCost: in-game gold. premiumCost: future real-money / premium currency.
-// ─────────────────────────────────────────────────────────────────────────────
 export const SHOP_CONFIG = [
   {
     id: 'heroes', label: 'Recruit', icon: '🎲',
@@ -243,17 +157,19 @@ export const SHOP_CONFIG = [
   {
     id: 'hero_cards', label: 'Hero Cards', icon: '🃏',
     items: [
-      { itemId: 'card_hero_warlord',      moneyCost: 750 },
+      { itemId: 'card_hero_shadowblade',   moneyCost: 750 },
+      { itemId: 'card_hero_kaelenthorne',  moneyCost: 750 },
       { itemId: 'card_hero_paladin',       moneyCost: 1250 },
-      { itemId: 'card_hero_shadowblade',   moneyCost: 1250 },
+      { itemId: 'card_hero_junovane',      moneyCost: 1250 },
+      { itemId: 'card_hero_warlord',       diamondCost: 5, featured: true },
       { itemId: 'card_hero_archsorceress', diamondCost: 5, featured: true },
     ],
   },
   {
     id: 'universal_cards', label: 'Universal Cards', icon: '🎴',
     items: [
-      { itemId: 'card_common',    moneyCost: 400  },
-      { itemId: 'card_rare',      moneyCost: 1000 },
+      { itemId: 'card_normal',    moneyCost: 400  },
+      { itemId: 'card_epic',      moneyCost: 1000 },
       { itemId: 'card_legendary', diamondCost: 6 },
     ],
   },
@@ -325,11 +241,6 @@ export const SHOP_CONFIG = [
   },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// DIAMOND PACKAGES
-// Used by ShopUI to render the "Buy Diamonds" section.
-// displayPrice is cosmetic only — no real charge is made (simulated purchase).
-// ─────────────────────────────────────────────────────────────────────────────
 export const DIAMOND_PACKAGES = [
   { id: 'diamonds_100',  diamonds: 100,  displayPrice: '$0.99'  },
   { id: 'diamonds_500',  diamonds: 500,  displayPrice: '$4.99'  },
@@ -338,12 +249,6 @@ export const DIAMOND_PACKAGES = [
   { id: 'diamonds_5000', diamonds: 5000, displayPrice: '$39.99' },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// VIP TIERS
-// Earned by cumulative diamond spending (real or simulated store).
-// threshold: total diamonds spent to reach this tier.
-// perks are applied via EventBus user:vipUpdate in each manager.
-// ─────────────────────────────────────────────────────────────────────────────
 export const VIP_TIERS = [
   {
     tier: 1, threshold: 500,     label: 'VIP I',    badge: '⭐',

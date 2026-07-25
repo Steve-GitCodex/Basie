@@ -230,12 +230,26 @@ sprite generation.
 `AIManager` shell but authoring actual opponents — capabilities, behaviours, and
 **personalities** — which is a design project before it is a code project, and materially
 bigger than the hero work. Hero redesign is bounded, already diagnosed, and touches a
-surface the player meets early. Spec it as `docs/10-design/heroes.md`; `game-designer`
-pass before implementation. Full problem statement below.
+surface the player meets early.
+
+**Phase 0 (manager split) and Phase 1 (economy foundation) are done** (2026-07-25,
+ADR 0026). Roster retiered to normal/epic/legendary (+2 new heroes), heroes-only
+token rolls with two-stage pity, dupe→fragment/shard conversion, 10-star shard-only
+awakening, bounded aura, HQ-gated XP curve, fragment/shard/tier-shard economy, wired
+(but not yet live-consumed) production bonuses — all headless, no UI yet.
+**Known gaps carried forward, see ADR 0026:** production bonuses don't reach live
+resource rates (needs its own redesign, not a patch); recruit tokens have no
+acquisition path in-game yet (shop still sells dead scrolls) — the new economy is
+functionally unreachable by a player until this is wired. **Next: Phase 2**
+(progression — 6-skill model, ~36 class-matched skills, levelable skills), **then**
+Phases 3-4 (Heroes screen + Recruit Hall UI, which is also where the token-shop gap
+gets closed).
 
 ## UX friendliness
 
-- [ ] **Hero recruitment + management redesign** — **IN FOCUS, see above** (Steve, 2026-07-15: "does not feel
+- [~] **Hero recruitment + management redesign** — **IN FOCUS, see above.** Phase 0+1
+  (economy foundation) done 2026-07-25; UI work (this section's original scope) is
+  Phase 3-4, not yet started. (Steve, 2026-07-15: "does not feel
   friendly" — confirmed by code review). Problems: recruiting spans four views
   (Shop → Inventory → GachaUI modal → Heroes detail pane) with no in-game guidance;
   five item classes to understand (scrolls, specific cards, universal cards,

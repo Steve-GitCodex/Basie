@@ -1,15 +1,8 @@
-/**
- * BarracksUI.js
- * Per-building SQUAD MODAL (replaces the old #view-military Barracks sub-tab page).
- *
- * Opened from a Barracks tile tooltip (`ui:openSquads { buildingId, instanceIndex }`).
- * Each Barracks instance == one squad. Layout: ‹ squad name + Lv › · combat stat strip ·
- * 2×2 hero+unit slot tiles. A ‹ › pager cycles the player's built Barracks (squads).
- * Hero/unit assignment reuses the floating pickers below.
- */
+/** Per-building squad modal: each Barracks instance == one squad, 2×2 hero+unit slot tiles. */
 import { eventBus } from '../../core/EventBus.js';
 import { UNITS_CONFIG, BUILDINGS_CONFIG, HEROES_CONFIG, HERO_CLASSIFICATIONS } from '../../entities/GAME_DATA.js';
 import { icon, iconFromEmoji } from '../icons.js';
+import { TIER_CSS_SUFFIX } from '../uiUtils.js';
 
 export class BarracksUI {
   /** @param {{ rm, um, heroes, inventory, notifications }} systems */
@@ -31,11 +24,7 @@ export class BarracksUI {
     return this._s.um._bm?.getBuiltInstanceCount?.('barracks') ?? 0;
   }
 
-  /**
-   * Ensure a squad exists for built barracks instance `i`, then return it.
-   * Keyed by `barracksInstanceId` (NOT array index) so deleting/recreating a squad
-   * never breaks the instance↔squad mapping or collides with another instance.
-   */
+  // Keyed by barracksInstanceId (not array index) so squad delete/recreate never collides.
   _squadForInstance(i) {
     const um = this._s.um;
     const instId = `barracks_${i}`;
@@ -191,7 +180,7 @@ export class BarracksUI {
     if (hero && heroCfg) {
       const stars = hero.stars ? '★'.repeat(hero.stars) : '';
       heroHalf.innerHTML = `
-        <div class="sq-hero-portrait sq-portrait--${heroCfg.tier ?? 'common'}">${heroCfg.icon ?? '?'}</div>
+        <div class="sq-hero-portrait sq-portrait--${TIER_CSS_SUFFIX[heroCfg.tier] ?? 'common'}">${heroCfg.icon ?? '?'}</div>
         <div class="sq-hero-info">
           <div class="sq-hero-name">${heroCfg.name}</div>
           <div class="sq-hero-lvl">Lv.${hero.level}${stars ? ' ' + stars : ''}</div>

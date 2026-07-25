@@ -4,11 +4,23 @@ import {
   INVENTORY_ITEMS,
   SKILLS_CONFIG,
   AWAKENING_CONFIG,
+  XP_CONFIG,
 } from '../../entities/GAME_DATA.js';
 
 export class HeroProgression {
   constructor(hero) {
     this._h = hero;
+  }
+
+  /** XP required to advance from `level` to `level + 1` for a given tier. */
+  xpToNext(level, tier) {
+    const tierMult = XP_CONFIG.tierMult[tier] ?? 1;
+    return Math.round((XP_CONFIG.baseXpPerLevel + XP_CONFIG.xpPerLevelStep * (level - 1)) * tierMult);
+  }
+
+  /** Hero level cap, gated by Hero Quarters level. */
+  levelCap() {
+    return (this._h._bm?.getLevelOf('heroquarters') ?? 1) * XP_CONFIG.heroLevelCapPerHQLevel;
   }
 
   /** Convert a hero fragment to XP on the target hero */
@@ -22,6 +34,20 @@ export class HeroProgression {
     this._applyXP(hero, HEROES_CONFIG[heroId], cfg.xpValue ?? 50);
     eventBus.emit('heroes:updated', this._h.getRosterWithState());
     return { success: true, xpAmount: cfg.xpValue ?? 50 };
+  }
+
+  /** Consume an XP card, granting its configured flat XP to the target hero. */
+  applyXPCard(itemId, heroId) {
+    const cfg = INVENTORY_ITEMS[itemId];
+    if (!cfg || cfg.type !== 'xp_card') return { success: false, reason: 'Not an XP card.' };
+    if (!this._h._inv.hasItem(itemId)) return { success: false, reason: 'No XP cards owned.' };
+    const hero = this._h._owned.get(heroId);
+    if (!hero) return { success: false, reason: 'Hero not in roster.' };
+    this._h._inv.removeItem(itemId, 1);
+    const xpAmount = cfg.xpValue ?? 0;
+    this._applyXP(hero, HEROES_CONFIG[heroId], xpAmount);
+    eventBus.emit('heroes:updated', this._h.getRosterWithState());
+    return { success: true, xpAmount };
   }
 
   /** Get skill configs for a hero annotated with unlock state. */
@@ -42,7 +68,7 @@ export class HeroProgression {
     const cfg = HEROES_CONFIG[hero.heroId];
     if (!cfg) return;
 
-    const starMult = 1 + (hero.stars ?? 0) * AWAKENING_CONFIG.perStarBonus.statMultiplier;
+    const starMult = 1 + (hero.stars ?? 0) * AWAKENING_CONFIG.perStarStatBonus;
     const ef = {
       hp:      Math.floor(cfg.stats.hp      * starMult),
       attack:  Math.floor(cfg.stats.attack  * starMult),
@@ -106,13 +132,17 @@ export class HeroProgression {
   _applyXP(hero, cfg, amount) {
     const safeAmount = Number(amount);
     if (!isFinite(safeAmount) || safeAmount <= 0) return;
+    const cap = this.levelCap();
+    if (hero.level >= cap) return;
+
     hero.xp = (isFinite(hero.xp) ? hero.xp : 0) + safeAmount;
-    while (hero.xp >= hero.xpToNext) {
+    while (hero.level < cap && hero.xp >= hero.xpToNext) {
       hero.xp -= hero.xpToNext;
       hero.level++;
-      hero.xpToNext = Math.floor((cfg.xpPerLevel ?? 500) * Math.pow(1.3, hero.level - 1));
+      hero.xpToNext = this.xpToNext(hero.level, cfg.tier);
       this.applySkillPassives(hero);
       eventBus.emit('hero:levelUp', { heroId: hero.heroId, name: cfg.name, level: hero.level });
     }
+    if (hero.level >= cap) hero.xp = 0;
   }
 }

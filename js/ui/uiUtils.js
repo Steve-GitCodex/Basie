@@ -5,6 +5,8 @@
 
 import { icon } from './icons.js';
 
+export const TIER_CSS_SUFFIX = { normal: 'common', epic: 'rare', legendary: 'legendary' };
+
 export const RES_META = {
   wood:    { icon: icon('wood'),                  label: 'Wood'    },
   stone:   { icon: icon('stone'),                 label: 'Stone'   },

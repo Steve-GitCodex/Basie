@@ -1,14 +1,6 @@
-/**
- * BuildingCards.js
- * Renders the building-management card grid for the Base tab: a two-level tab
- * strip (category → building type) plus the live instance cards, locked-slot
- * cards, and HQ-locked cards. Owns its own tab-selection state.
- *
- * Extracted from BuildingsUI. The host controller calls render() and supplies a
- * requestRender callback for post-action refreshes (build/restock/station).
- */
+/** Building-management card grid for the Base tab: category/type tabs, instance/locked/HQ-locked cards. */
 import { eventBus }      from '../../core/EventBus.js';
-import { RES_META, fmt } from '../uiUtils.js';
+import { RES_META, fmt, TIER_CSS_SUFFIX } from '../uiUtils.js';
 import { BUILDINGS_CONFIG, HEROES_CONFIG, HQ_UNLOCK_TABLE, UNITS_CONFIG, TECH_CONFIG } from '../../entities/GAME_DATA.js';
 import { icon, iconFromEmoji } from '../icons.js';
 import { cardIconHtml } from './buildingIcons.js';
@@ -145,7 +137,7 @@ export class BuildingCards {
         const stationed = hm.getBuildingHero(b.instanceId);
         if (stationed) {
           const hName   = HEROES_CONFIG[stationed.heroId]?.name ?? stationed.heroId;
-          const hTier   = HEROES_CONFIG[stationed.heroId]?.tier ?? 'common';
+          const hTier   = TIER_CSS_SUFFIX[HEROES_CONFIG[stationed.heroId]?.tier] ?? 'common';
           const bonusPct = stationed.level * 5;
           heroStationHtml = `
             <div class="hero-station-section">
@@ -488,10 +480,6 @@ export class BuildingCards {
     return card;
   }
 
-  /**
-   * Build an HTML string previewing what the next HQ level unlocks.
-   * Shown inside the townhall building card.
-   */
   _buildHQPreview() {
     const hqLv = this._bm.getHQLevel();
     const nextLv = hqLv + 1;

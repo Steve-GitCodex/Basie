@@ -5,6 +5,7 @@ import {
   INVENTORY_ITEMS,
   GACHA_CONFIG,
   AWAKENING_CONFIG,
+  FRAGMENTS_PER_SHARD,
 } from '../entities/GAME_DATA.js';
 import { HeroRecruitment } from './hero/heroRecruitment.js';
 import { HeroProgression } from './hero/heroProgression.js';
@@ -30,6 +31,9 @@ export class HeroManager {
     /** Track previous buff count to detect expiry in update() */
     this._lastBuffCount = 0;
 
+    /** Per-tier pull counter since the last new-hero (stage 1) or shard-floor (stage 2) grant */
+    this._pity = { normal: 0, epic: 0, legendary: 0 };
+
     this._recruitment = new HeroRecruitment(this);
     this._progression = new HeroProgression(this);
     this._assignment  = new HeroAssignment(this);
@@ -41,15 +45,22 @@ export class HeroManager {
   // RECRUITMENT — Card-based, gacha, awakening (delegated to HeroRecruitment)
   // =============================================
 
-  rollScroll(scrollTier)      { return this._recruitment.rollScroll(scrollTier); }
-  summonFromFragments(heroId) { return this._recruitment.summonFromFragments(heroId); }
+  rollToken(tier)             { return this._recruitment.rollToken(tier); }
   recruitWithCard(cardId)     { return this._recruitment.recruitWithCard(cardId); }
   awakenHero(heroId, method)  { return this._recruitment.awakenHero(heroId, method); }
   recruitHeroRecord(heroId)   { return this._recruitment._recruitHero(heroId); }
   _recruitHero(heroId)        { return this._recruitment._recruitHero(heroId); }
+  _resolveTokenHero(tier, forcedId) { return this._recruitment._resolveTokenHero(tier, forcedId); }
+  _grantHeroCurrency(outcome, heroId, tier, isDuplicate) { return this._recruitment._grantHeroCurrency(outcome, heroId, tier, isDuplicate); }
+  convertFragments(heroId)                 { return this._recruitment.convertFragments(heroId); }
+  unlockFromShards(heroId)                 { return this._recruitment.unlockFromShards(heroId); }
+  exchangeTierShards(tier, heroId, count)  { return this._recruitment.exchangeTierShards(tier, heroId, count); }
 
   /** Convert a hero fragment to XP on the target hero */
   useFragmentAsXP(fragmentItemId, heroId) { return this._progression.useFragmentAsXP(fragmentItemId, heroId); }
+
+  /** Consume an XP card, granting its configured flat XP to the target hero */
+  applyXPCard(itemId, heroId) { return this._progression.applyXPCard(itemId, heroId); }
 
   // =============================================
   // SKILLS
@@ -128,24 +139,23 @@ export class HeroManager {
       const universalCardQty = this._inv?.getQuantity(universalCardId)     ?? 0;
       const fragmentItemId   = GACHA_CONFIG.fragmentItemId[cfg.id];
       const fragmentQty      = fragmentItemId ? (this._inv?.getQuantity(fragmentItemId) ?? 0) : 0;
-      const fragmentsNeeded  = GACHA_CONFIG.fragmentsToSummon[cfg.tier];
+      const fragmentsNeeded  = FRAGMENTS_PER_SHARD[cfg.tier];
       const canRecruit       = !owned && (specificCardQty > 0 || universalCardQty > 0);
-      const canSummonByFrags = !owned && fragmentQty >= fragmentsNeeded;
 
-      // Awakening costs for next star
-      const stars      = owned?.stars ?? 0;
-      const nextStarCost = stars < AWAKENING_CONFIG.maxStars ? AWAKENING_CONFIG.starCosts[stars] : null;
-      const dupCardQty   = this._inv?.getQuantity(cfg.recruitCard) ?? 0;
-      const fragForAwaken = nextStarCost ? nextStarCost.fragments[cfg.tier] : 0;
-      const canAwakenByCard = owned && nextStarCost && dupCardQty >= nextStarCost.cards;
-      const canAwakenByFrag = owned && nextStarCost && fragmentQty >= fragForAwaken;
+      // Awakening costs for next star — shard-only (@see docs/20-decisions/0025)
+      const stars           = owned?.stars ?? 0;
+      const shardQty        = this._inv?.getQuantity(`shard_${cfg.id}`) ?? 0;
+      const nextStarShardCost = stars < AWAKENING_CONFIG.maxStars
+        ? (AWAKENING_CONFIG.starShardCosts[stars]?.[cfg.tier] ?? null)
+        : null;
+      const canAwakenByShard = !!owned && nextStarShardCost !== null && shardQty >= nextStarShardCost;
 
       return {
         ...cfg,
         isOwned:          !!owned,
         level:            owned?.level    ?? 1,
         xp:               owned?.xp       ?? 0,
-        xpToNext:         owned?.xpToNext ?? cfg.xpPerLevel ?? 500,
+        xpToNext:         owned?.xpToNext ?? this._progression.xpToNext(1, cfg.tier),
         stars,
         effectiveStats:   owned?.effectiveStats ?? cfg.stats,
         assignment,
@@ -162,11 +172,9 @@ export class HeroManager {
         fragmentQty,
         fragmentsNeeded,
         canRecruit,
-        canSummonByFrags,
-        dupCardQty,
-        nextStarCost,
-        canAwakenByCard,
-        canAwakenByFrag,
+        shardQty,
+        nextStarShardCost,
+        canAwakenByShard,
         canAffordSmallXP:  goldAvailable >= INVENTORY_ITEMS.xp_bundle_small.goldCost,
         canAffordMediumXP: goldAvailable >= INVENTORY_ITEMS.xp_bundle_medium.goldCost,
         canAffordLargeXP:  goldAvailable >= INVENTORY_ITEMS.xp_bundle_large.goldCost,
@@ -176,6 +184,12 @@ export class HeroManager {
   }
 
   isOwned(heroId) { return this._owned.has(heroId); }
+
+  rosterComplete(tier) {
+    return Object.values(HEROES_CONFIG)
+      .filter(cfg => cfg.tier === tier)
+      .every(cfg => this._owned.has(cfg.id));
+  }
 
   update(_dt) {
     // Detect buff expiry and notify listeners
@@ -196,12 +210,18 @@ export class HeroManager {
     return {
       owned:       Object.fromEntries(this._owned),
       activeBuffs: this._activeBuffs ?? [],
+      pity:        { ...this._pity },
     };
   }
 
   deserialize(data) {
     if (!data) return;
     this._activeBuffs = (data.activeBuffs ?? []).filter(b => b.endsAt > Date.now());
+    this._pity = {
+      normal:    data.pity?.normal    ?? 0,
+      epic:      data.pity?.epic      ?? 0,
+      legendary: data.pity?.legendary ?? 0,
+    };
 
     for (const [id, state] of Object.entries(data.owned ?? {})) {
       const cfg = HEROES_CONFIG[id];
@@ -221,15 +241,17 @@ export class HeroManager {
         assignment = { type: 'building', buildingId: `barracks_${Math.max(0, squadNum - 1)}` };
       }
 
+      const level = state.level ?? 1;
       const hero = {
         heroId:     id,
-        level:      state.level    ?? 1,
-        xp:         isFinite(state.xp)       ? state.xp       : 0,
-        xpToNext:   isFinite(state.xpToNext) ? state.xpToNext : (cfg.xpPerLevel ?? 500),
-        stars:      state.stars    ?? 0,
+        level,
+        xp:         isFinite(state.xp) ? state.xp : 0,
+        xpToNext:   this._progression.xpToNext(level, cfg.tier),
+        stars:      state.stars ?? 0,
         effectiveStats: state.effectiveStats ?? { ...cfg.stats },
         assignment,
       };
+      if (hero.xp > hero.xpToNext) hero.xp = hero.xpToNext;
       this._owned.set(id, hero);
       this.applySkillPassives(hero);
     }

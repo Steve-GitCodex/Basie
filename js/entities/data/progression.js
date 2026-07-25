@@ -1,8 +1,4 @@
-/**
- * data/progression.js
- * Quests, achievements, challenges, daily login rewards, and pass configs.
- */
-
+/** Quests, achievements, challenges, daily login rewards, and pass configs. */
 export const QUESTS_CONFIG = {
   first_building: {
     id: 'first_building', name: 'The First Stone',
@@ -230,12 +226,8 @@ export const ACHIEVEMENTS_CONFIG = {
   },
 };
 
-// ─── CHALLENGES CONFIG ────────────────────────────────────────────
-// Each challenge: id, type ('daily'|'weekly'), name, description,
-//   objective: { event, count, countField? },
-//   reward: { resources },  xpReward: pass XP awarded on claim
+// Each challenge: id, type ('daily'|'weekly'), objective { event, count, countField? }, reward.
 export const CHALLENGES_CONFIG = [
-  // ══ Daily (total max XP: 580) ════════════════════════════════════
   {
     id:          'daily_research',
     type:        'daily',
@@ -411,7 +403,7 @@ export const CHALLENGE_PASS_CONFIG = [
   { xp:  200, label: '+5 Diamonds',         rewards: [{ type: 'resource', itemId: 'diamond',          quantity: 5    }],                                                          icon: '💎' },
   { xp:  500, label: 'Rare Scroll',         rewards: [{ type: 'item',     itemId: 'scroll_rare',      quantity: 1    }],                                                          icon: '📜' },
   { xp:  875, label: '+10 Diamonds',        rewards: [{ type: 'resource', itemId: 'diamond',          quantity: 10   }, { type: 'resource', itemId: 'money', quantity: 2000 }],   icon: '💎' },
-  { xp: 1200, label: 'Rare Hero Card',      rewards: [{ type: 'item',     itemId: 'card_rare',        quantity: 1    }],                                                          icon: '🃏' },
+  { xp: 1200, label: 'Epic Hero Card',      rewards: [{ type: 'item',     itemId: 'card_epic',        quantity: 1    }],                                                          icon: '🃏' },
   { xp: 1500, label: '+20 Diamonds',        rewards: [{ type: 'resource', itemId: 'diamond',          quantity: 20   }],                                                          icon: '💎' },
   { xp: 1750, label: 'Legendary Scroll',    rewards: [{ type: 'item',     itemId: 'scroll_legendary', quantity: 1    }],                                                          icon: '📜' },
 ];

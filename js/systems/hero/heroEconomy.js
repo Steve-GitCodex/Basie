@@ -1,10 +1,13 @@
 import { eventBus } from '../../core/EventBus.js';
-import { HEROES_CONFIG } from '../../entities/GAME_DATA.js';
+import { HEROES_CONFIG, PROD_BONUS_CONFIG } from '../../entities/GAME_DATA.js';
+
+const RESOURCE_OUTPUT_EFFECTS = new Set(['money', 'food', 'wood', 'stone', 'iron']);
 
 export class HeroEconomy {
   constructor(hero) { this._h = hero; }
 
-  /** Resource-keyed bonus map for all building-stationed heroes, e.g. { money: 0.25 }. */
+  /** Resource/speed-keyed bonus map for all building-stationed heroes, e.g. { iron: 0.18 }.
+   * @see docs/superpowers/specs/2026-07-23-hero-economy-numbers.md §I */
   getBuildingProductionBonusMap() {
     const bonuses = {};
     for (const h of this._h._owned.values()) {
@@ -12,11 +15,20 @@ export class HeroEconomy {
       const cfg = HEROES_CONFIG[h.heroId];
       const bb  = cfg?.buildingBonus;
       if (!bb?.stat) continue;
-      if (h.assignment.buildingId?.replace(/_\d+$/, '') !== bb.buildingType) continue;
-      const resourceKey = { gold_production: 'money' }[bb.stat];
-      if (!resourceKey) continue; // training_speed, mana_production, defense handled elsewhere
-      const levelMult = 1 + (h.level - 1) * 0.02; // +2% per hero level
-      bonuses[resourceKey] = (bonuses[resourceKey] ?? 0) + (bb.value ?? 0.15) * levelMult;
+      const buildingType = h.assignment.buildingId?.replace(/_\d+$/, '');
+      if (buildingType !== bb.buildingType) continue;
+
+      const entry = PROD_BONUS_CONFIG.statEffectMap[buildingType];
+      if (!entry || entry.stat !== bb.stat) continue;
+
+      const base = RESOURCE_OUTPUT_EFFECTS.has(entry.effect)
+        ? PROD_BONUS_CONFIG.base.resourceOutput
+        : PROD_BONUS_CONFIG.base[entry.effect];
+      if (base == null) continue;
+
+      const starMult  = 1 + PROD_BONUS_CONFIG.starBonusPerStar * (h.stars ?? 0);
+      const levelMult = 1 + PROD_BONUS_CONFIG.levelScalePerLevel * ((h.level ?? 1) - 1);
+      bonuses[entry.effect] = (bonuses[entry.effect] ?? 0) + base * starMult * levelMult;
     }
     return bonuses;
   }

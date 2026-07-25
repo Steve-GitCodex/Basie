@@ -37,29 +37,7 @@ function makeHM(inv = stubInv()) {
   return new HeroManager(stubRM(), stubBM(), inv);
 }
 
-// ── L7 regression: gacha resourcePool ids must resolve to real inventory items ──
-
-test('every GACHA_CONFIG resourcePool id resolves to a real inventory item', () => {
-  for (const itemId of GACHA_CONFIG.resourcePool) {
-    assert.ok(INVENTORY_ITEMS[itemId], `resourcePool id '${itemId}' has no INVENTORY_ITEMS entry`);
-  }
-});
-
-test('every GACHA_CONFIG xpPool id resolves to a real inventory item', () => {
-  for (const pool of Object.values(GACHA_CONFIG.xpPool)) {
-    for (const itemId of pool) {
-      assert.ok(INVENTORY_ITEMS[itemId], `xpPool id '${itemId}' has no INVENTORY_ITEMS entry`);
-    }
-  }
-});
-
-test('every GACHA_CONFIG buffPool id resolves to a real inventory item', () => {
-  for (const pool of Object.values(GACHA_CONFIG.buffPool)) {
-    for (const itemId of pool) {
-      assert.ok(INVENTORY_ITEMS[itemId], `buffPool id '${itemId}' has no INVENTORY_ITEMS entry`);
-    }
-  }
-});
+// ── L7 regression: gacha fragmentItemId ids must resolve to real inventory items ──
 
 test('every GACHA_CONFIG fragmentItemId resolves to a real inventory item', () => {
   for (const itemId of Object.values(GACHA_CONFIG.fragmentItemId)) {
@@ -67,43 +45,23 @@ test('every GACHA_CONFIG fragmentItemId resolves to a real inventory item', () =
   }
 });
 
-test('rolling a resource outcome actually grants an item to the inventory', () => {
-  const inv = stubInv();
-  inv._seed('scroll_common', 1);
-  const hm = makeHM(inv);
+// ── Task 6: rollScroll retired in favor of heroes-only rollToken ──
 
-  let granted = false;
-  for (let i = 0; i < 200 && !granted; i++) {
-    const r = hm.rollScroll('common');
-    if (r.outcome === 'resource') {
-      granted = true;
-      assert.ok(r.itemId, 'resource roll must report an itemId');
-      assert.ok(!r.grantFailed, 'resource roll must not report grantFailed');
-      assert.ok(inv.getQuantity(r.itemId) > 0, 'inventory must actually contain the granted item');
-    }
-    if (!granted) inv._seed('scroll_common', 1);
-  }
-  assert.ok(granted, 'expected at least one resource outcome across 200 rolls');
-});
-
-// ── L2: addItem failure must surface, not be swallowed as success ──
-
-test('rollScroll marks the result as grantFailed when addItem rejects the reward', () => {
+test('rollToken marks the result as grantFailed when addItem rejects the reward', () => {
   const inv = stubInv({ addItem: () => false });
-  inv._seed('scroll_common', 1);
+  inv._seed('token_normal', 1);
   const hm = makeHM(inv);
 
   let sawFailure = false;
   for (let i = 0; i < 200; i++) {
-    inv._seed('scroll_common', 1);
-    const r = hm.rollScroll('common');
-    if (r.outcome === 'resource' || r.outcome === 'xp_item' || r.outcome === 'buff') {
-      assert.ok(r.grantFailed, `${r.outcome} roll should report grantFailed when addItem fails`);
+    inv._seed('token_normal', 1);
+    const r = hm.rollToken('normal');
+    if (r.grantFailed) {
       assert.ok(!r.itemId, `${r.outcome} roll should not report an itemId when the grant failed`);
       sawFailure = true;
     }
   }
-  assert.ok(sawFailure, 'expected at least one resource/xp_item/buff outcome across 200 rolls');
+  assert.ok(sawFailure, 'expected at least one grantFailed outcome across 200 rolls');
 });
 
 // ── L9: HQ aura must key off actual assignment location, not hero config ──
@@ -172,7 +130,7 @@ test('getBuildingProductionBonusMap ignores a hero stationed off their preferred
   });
 
   const map = hm.getBuildingProductionBonusMap();
-  assert.equal(map.money ?? 0, 0, 'Shadowblade stationed in a barracks must not boost money production');
+  assert.equal(map.iron ?? 0, 0, 'Shadowblade stationed in a barracks must not boost iron production');
 });
 
 test('getBuildingProductionBonusMap applies the bonus when stationed at the matching building type', () => {
@@ -184,16 +142,16 @@ test('getBuildingProductionBonusMap applies the bonus when stationed at the matc
   });
 
   const map = hm.getBuildingProductionBonusMap();
-  assert.ok((map.money ?? 0) > 0, 'Shadowblade stationed in a mine should boost money production');
+  assert.ok((map.iron ?? 0) > 0, 'Shadowblade stationed in a mine should boost iron production');
 });
 
-test('awardHeroXP levels a hero up using the 1.3^level curve', () => {
+test('awardHeroXP levels a hero up using the linear-step XP curve with tier multiplier', () => {
   const m = makeHM();
-  m._recruitHero('warlord');
+  m._recruitHero('warlord'); // legendary, tierMult 1.5
   m.awardHeroXP('warlord', 500);
   const h = m.getRosterWithState().find(x => x.id === 'warlord');
-  assert.equal(h.level, 2);
-  assert.equal(h.xpToNext, Math.floor(500 * Math.pow(1.3, 1)));
+  assert.equal(h.level, 3);
+  assert.equal(h.xpToNext, Math.round((100 + 20 * 2) * 1.5));
 });
 
 test('awardHeroXP ignores non-finite or non-positive amounts', () => {
@@ -212,18 +170,18 @@ test('awardBattleXP only feeds heroes assigned to the target squad barracks', ()
   m.assignHeroToBuilding('paladin', 'barracks_1');
   m.awardBattleXP(500, 'squad_1');
   const roster = m.getRosterWithState();
-  assert.equal(roster.find(x => x.id === 'warlord').level, 2);
+  assert.equal(roster.find(x => x.id === 'warlord').level, 3);
   assert.equal(roster.find(x => x.id === 'paladin').level, 1);
 });
 
-test('awakenHero via fragments increments stars and consumes fragments', () => {
+test('awakenHero consumes Hero Shards and increments stars', () => {
   const m = makeHM();
   m._recruitHero('warlord');
-  m._inv.addItem('fragment_warlord', 10);
-  const r = m.awakenHero('warlord', 'fragment');
+  m._inv.addItem('shard_warlord', 30);
+  const r = m.awakenHero('warlord');
   assert.equal(r.success, true);
   assert.equal(r.stars, 1);
-  assert.equal(m._inv.getQuantity('fragment_warlord'), 0);
+  assert.equal(m._inv.getQuantity('shard_warlord'), 28);
 });
 
 test('assignHeroToBuilding blocks a second hero past a non-barracks heroCapacity', () => {
@@ -246,7 +204,7 @@ test('assignHeroToSquad maps squad_1 to barracks_0 and getSquadHeroIds reflects 
 test('every delegated public method still works after the split', () => {
   const m = makeHM();
   m._recruitHero('warlord');
-  assert.equal(typeof m.rollScroll, 'function');
+  assert.equal(typeof m.rollToken, 'function');
   assert.equal(typeof m.awardHeroXP, 'function');
   assert.equal(typeof m.assignHeroToSquad, 'function');
   assert.equal(typeof m.getCombatBonuses, 'function');
@@ -254,4 +212,179 @@ test('every delegated public method still works after the split', () => {
   // round-trip: assign → combat bonus reflects it (heroquarters has heroCapacity: 0, so barracks_0 is the real hero-station path)
   m.assignHeroToBuilding('warlord', 'barracks_0');
   assert.ok(m.getCombatBonuses().attackMult > 1.0);
+});
+
+// ── Task 4: awakenHero now supports the full shard-only 10-star track past star 5 ──
+
+test('awakenHero succeeds via shards at stars 5, beyond the old legacy starCosts array bound', () => {
+  const m = makeHM();
+  m._recruitHero('warlord');
+  const hero = m._owned.get('warlord');
+  hero.stars = 5;
+  m._inv.addItem('shard_warlord', 30);
+
+  const result = m.awakenHero('warlord');
+  assert.equal(result.success, true);
+  assert.equal(result.stars, 6);
+});
+
+test('awakenHero succeeds via shards at stars 9, then rejects at stars 10', () => {
+  const m = makeHM();
+  m._recruitHero('paladin');
+  const hero = m._owned.get('paladin');
+  hero.stars = 9;
+  m._inv.addItem('shard_paladin', 30);
+
+  const result = m.awakenHero('paladin');
+  assert.equal(result.success, true);
+  assert.equal(result.stars, 10);
+
+  const capped = m.awakenHero('paladin');
+  assert.equal(capped.success, false);
+  assert.equal(capped.reason, 'Hero is at max stars.');
+});
+
+test('getRosterWithState publishes a positive nextStarShardCost for a hero mid-track at stars 5', () => {
+  const m = makeHM();
+  m._recruitHero('shadowblade');
+  const hero = m._owned.get('shadowblade');
+  hero.stars = 5;
+
+  const roster = m.getRosterWithState();
+  const shadowbladeEntry = roster.find(x => x.id === 'shadowblade');
+  assert.ok(shadowbladeEntry.nextStarShardCost > 0);
+});
+
+test('getRosterWithState returns null for nextStarShardCost when hero is at stars 10 (max)', () => {
+  const m = makeHM();
+  m._recruitHero('warlord');
+  const hero = m._owned.get('warlord');
+  hero.stars = 10;
+
+  const roster = m.getRosterWithState();
+  const warlordEntry = roster.find(x => x.id === 'warlord');
+  assert.equal(warlordEntry.nextStarShardCost, null);
+});
+
+// ── Task 7: two-stage pity persistence ──
+
+test('HeroManager starts with zeroed per-tier pity counters', () => {
+  const m = makeHM();
+  assert.deepEqual(m._pity, { normal: 0, epic: 0, legendary: 0 });
+});
+
+test('pity counters survive serialize/deserialize', () => {
+  const m = makeHM();
+  m._inv.addItem('token_normal', 5);
+  for (let i = 0; i < 5; i++) m.rollToken('normal');
+  const data = m.serialize();
+  const m2 = makeHM();
+  m2.deserialize(data);
+  assert.equal(m2._pity.normal, m._pity.normal);
+});
+
+test('deserialize reconciles a legacy save missing _pity to zeroed defaults', () => {
+  const m = makeHM();
+  assert.doesNotThrow(() => m.deserialize({ owned: {}, activeBuffs: [] }));
+  assert.deepEqual(m._pity, { normal: 0, epic: 0, legendary: 0 });
+});
+
+test('rosterComplete is false with no heroes owned and true once every hero of that tier is recruited', () => {
+  const m = makeHM();
+  assert.equal(m.rosterComplete('normal'), false);
+  for (const h of m.getRosterWithState().filter(h => h.tier === 'normal')) {
+    m._recruitHero(h.id);
+  }
+  assert.equal(m.rosterComplete('normal'), true);
+});
+
+test('rosterComplete is scoped to the given tier: completing one tier leaves the others incomplete', () => {
+  const m = makeHM();
+  for (const h of m.getRosterWithState().filter(h => h.tier === 'normal')) {
+    m._recruitHero(h.id);
+  }
+  assert.equal(m.rosterComplete('normal'), true);
+  assert.equal(m.rosterComplete('epic'), false);
+  assert.equal(m.rosterComplete('legendary'), false);
+});
+
+// ── Task 10: full persistence round-trip (ADR 0002 guard) ──
+
+test('serialize→deserialize preserves owned heroes, stars, and pity', () => {
+  const m = makeHM();
+  m._recruitHero('warlord');
+  m._owned.get('warlord').stars = 4;
+  m._inv.addItem('token_normal', 3);
+  for (let i = 0; i < 3; i++) m.rollToken('normal');
+
+  const data = m.serialize();
+  const m2 = makeHM();
+  m2.deserialize(data);
+
+  assert.equal(m2._owned.get('warlord').stars, 4);
+  assert.deepEqual(m2._pity, m._pity);
+});
+
+test('deserialize computes xpToNext from the current XP curve, not a legacy per-hero constant, for a corrupted legacy save', () => {
+  const m = makeHM();
+  m._recruitHero('warlord');
+  const freshXpToNext = m._owned.get('warlord').xpToNext;
+
+  const m2 = makeHM();
+  m2.deserialize({
+    owned: { warlord: { level: 1, xp: 0, xpToNext: NaN, stars: 0 } },
+    activeBuffs: [],
+  });
+
+  assert.equal(m2._owned.get('warlord').xpToNext, freshXpToNext);
+});
+
+test('deserialize reconciles a legacy save missing stars to 0', () => {
+  const m = makeHM();
+  m.deserialize({ owned: { warlord: { level: 1, xp: 0, xpToNext: 500 } }, activeBuffs: [] });
+  assert.equal(m._owned.get('warlord').stars, 0);
+});
+
+// ── Review finding 3: a finite-but-stale legacy xpToNext must not survive a load ──
+
+test('deserialize recomputes xpToNext from the current curve even when the saved value is finite but stale', () => {
+  const m = makeHM();
+  m._recruitHero('warlord');
+  const freshXpToNext = m._owned.get('warlord').xpToNext;
+
+  const m2 = makeHM();
+  m2.deserialize({
+    owned: { warlord: { level: 10, xp: 0, xpToNext: 5300, stars: 0 } },
+    activeBuffs: [],
+  });
+
+  assert.notEqual(m2._owned.get('warlord').xpToNext, 5300);
+  assert.equal(m2._owned.get('warlord').xpToNext, m2._progression.xpToNext(10, 'legendary'));
+  assert.notEqual(freshXpToNext, m2._owned.get('warlord').xpToNext);
+});
+
+// ── Review finding 6: ADR 0025 dual-shape cleanup — legacy awaken fields are gone ──
+
+test('getRosterWithState no longer publishes the retired legacy-shape awaken fields', () => {
+  const m = makeHM();
+  m._recruitHero('shadowblade');
+  const entry = m.getRosterWithState().find(x => x.id === 'shadowblade');
+  assert.equal('nextStarCost' in entry, false);
+  assert.equal('fragForAwaken' in entry, false);
+  assert.equal('canAwakenByCard' in entry, false);
+  assert.equal('canAwakenByFrag' in entry, false);
+  assert.equal('canSummonByFrags' in entry, false);
+});
+
+test('getRosterWithState publishes a shard-based next-awaken cost instead', () => {
+  const m = makeHM();
+  m._recruitHero('shadowblade');
+  const hero = m._owned.get('shadowblade');
+  hero.stars = 10;
+  const entry = m.getRosterWithState().find(x => x.id === 'shadowblade');
+  assert.equal(entry.nextStarShardCost, null);
+
+  hero.stars = 0;
+  const entry2 = m.getRosterWithState().find(x => x.id === 'shadowblade');
+  assert.equal(entry2.nextStarShardCost, 1);
 });

@@ -1,25 +1,14 @@
-/**
- * GachaUI.js
- * Handles the gacha recruitment roll modal experience.
- *
- * Flow:
- *   1. Player clicks "Roll" on a recruitment_scroll item in InventoryUI.
- *   2. InventoryUI emits 'ui:openGacha' with { scrollTier }.
- *   3. GachaUI opens the modal, plays a dice-flip animation, then calls
- *      inventory.useItem(scrollId) which delegates to HeroManager.rollScroll().
- *   4. Result is revealed with a card-flip animation and rarity glow.
- *   5. "Roll Again" appears if more scrolls of the same tier are available.
- *   6. A session-only "Last 5 Rolls" history strip is shown at the bottom.
- */
+/** Gacha recruitment roll modal: dice-flip animation, then reveals the HeroManager.rollScroll() result. */
 import { eventBus }         from '../../core/EventBus.js';
 import { INVENTORY_ITEMS,
          HEROES_CONFIG,
-         GACHA_CONFIG }     from '../../entities/GAME_DATA.js';
+         FRAGMENTS_PER_SHARD } from '../../entities/GAME_DATA.js';
 import { icon, iconFromEmoji } from '../icons.js';
+import { TIER_CSS_SUFFIX } from '../uiUtils.js';
 
 const TIER_COLORS = {
-  common:    'var(--clr-tier-common)',
-  rare:      'var(--clr-tier-rare)',
+  normal:    'var(--clr-tier-common)',
+  epic:      'var(--clr-tier-rare)',
   legendary: 'var(--clr-tier-legendary)',
 };
 
@@ -182,7 +171,7 @@ export class GachaUI {
     const heroListHtml = newHeroes.length > 0
       ? `<div class="gacha-multi-heroes">
           <div class="gacha-multi-heroes-label">New recruits:</div>
-          ${newHeroes.map(h => `<span class="gacha-multi-hero-chip gacha-multi-hero-chip--${h.tier}">${iconFromEmoji(h.icon ?? '') || icon('crown')} ${h.name}</span>`).join('')}
+          ${newHeroes.map(h => `<span class="gacha-multi-hero-chip gacha-multi-hero-chip--${TIER_CSS_SUFFIX[h.tier] ?? 'common'}">${iconFromEmoji(h.icon ?? '') || icon('crown')} ${h.name}</span>`).join('')}
         </div>`
       : '';
 
@@ -194,8 +183,8 @@ export class GachaUI {
       if (r.outcome === 'hero' || r.outcome === 'fragment') {
         const heroCfg = r.heroId ? HEROES_CONFIG[r.heroId] : null;
         name     = heroCfg?.name ?? r.heroId ?? '';
-        const tier = heroCfg?.tier ?? 'common';
-        tierChip = `<span class="gacha-multi-row-tier gacha-multi-row-tier--${tier}">${tier.charAt(0).toUpperCase() + tier.slice(1)}</span>`;
+        const tier = heroCfg?.tier ?? 'normal';
+        tierChip = `<span class="gacha-multi-row-tier gacha-multi-row-tier--${TIER_CSS_SUFFIX[tier] ?? 'common'}">${tier.charAt(0).toUpperCase() + tier.slice(1)}</span>`;
       } else {
         const itemCfg = r.itemId ? INVENTORY_ITEMS[r.itemId] : null;
         name = itemCfg?.name ?? meta.label;
@@ -339,12 +328,13 @@ export class GachaUI {
 
     if (result.outcome === 'hero') {
       const heroCfg = HEROES_CONFIG[result.heroId];
-      const tier    = heroCfg?.tier ?? 'common';
-      glowClass     = `gacha-result--${tier}`;
+      const tier    = heroCfg?.tier ?? 'normal';
+      const tierCss = TIER_CSS_SUFFIX[tier] ?? 'common';
+      glowClass     = `gacha-result--${tierCss}`;
       resultTier    = tier;
       resultTitle   = result.isDuplicate ? `${icon('warning')} Duplicate Hero!` : 'Hero Recruited!';
-      iconHtml      = `<div class="gacha-result-hero-icon gacha-result-hero-icon--${tier}">${iconFromEmoji(heroCfg?.icon ?? '') || icon('crown')}</div>`;
-      badgeHtml     = `<span class="gacha-result-tier-badge gacha-result-tier-badge--${tier}">${tier.charAt(0).toUpperCase() + tier.slice(1)}</span>`;
+      iconHtml      = `<div class="gacha-result-hero-icon gacha-result-hero-icon--${tierCss}">${iconFromEmoji(heroCfg?.icon ?? '') || icon('crown')}</div>`;
+      badgeHtml     = `<span class="gacha-result-tier-badge gacha-result-tier-badge--${tierCss}">${tier.charAt(0).toUpperCase() + tier.slice(1)}</span>`;
       detailHtml    = `
         <div class="gacha-result-name">${heroCfg?.name ?? result.heroId}</div>
         <div class="gacha-result-sub">${heroCfg?.title ?? ''}</div>
@@ -355,15 +345,16 @@ export class GachaUI {
     } else if (result.outcome === 'fragment') {
       const heroCfg  = result.heroId ? HEROES_CONFIG[result.heroId] : null;
       const fragCfg  = result.itemId ? INVENTORY_ITEMS[result.itemId] : null;
-      const tier     = heroCfg?.tier ?? 'common';
-      glowClass      = `gacha-result--${tier}`;
+      const tier     = heroCfg?.tier ?? 'normal';
+      const tierCss  = TIER_CSS_SUFFIX[tier] ?? 'common';
+      glowClass      = `gacha-result--${tierCss}`;
       resultTier     = tier;
       resultTitle    = 'Hero Fragment!';
       iconHtml       = `<div class="gacha-result-generic-icon">${iconFromEmoji(fragCfg?.icon ?? '') || icon('flask-potion')}</div>`;
-      badgeHtml      = `<span class="gacha-result-tier-badge gacha-result-tier-badge--${tier}">${tier.charAt(0).toUpperCase() + tier.slice(1)} Fragment</span>`;
+      badgeHtml      = `<span class="gacha-result-tier-badge gacha-result-tier-badge--${tierCss}">${tier.charAt(0).toUpperCase() + tier.slice(1)} Fragment</span>`;
 
       const ownedFrag  = result.fragmentsOwned ?? 0;
-      const neededFrag = result.fragmentsNeeded ?? GACHA_CONFIG.fragmentsToSummon[tier] ?? 10;
+      const neededFrag = result.fragmentsNeeded ?? FRAGMENTS_PER_SHARD[tier] ?? 8;
       const pct        = Math.min(100, Math.round((ownedFrag / neededFrag) * 100));
 
       detailHtml = `
@@ -437,7 +428,7 @@ export class GachaUI {
         ? (HEROES_CONFIG[r.heroId]?.name ?? r.heroId)
         : (r.itemId ? (INVENTORY_ITEMS[r.itemId]?.name ?? r.itemId) : '');
       const tierClass = r.outcome === 'hero' || r.outcome === 'fragment'
-        ? `gacha-history-row--${HEROES_CONFIG[r.heroId]?.tier ?? 'common'}`
+        ? `gacha-history-row--${TIER_CSS_SUFFIX[HEROES_CONFIG[r.heroId]?.tier] ?? 'common'}`
         : `gacha-history-row--${r.outcome}`;
       return `
         <div class="gacha-history-row ${i === 0 ? 'gacha-history-row--latest' : ''} ${tierClass}">

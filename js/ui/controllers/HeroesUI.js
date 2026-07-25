@@ -1,18 +1,14 @@
-/**
- * HeroesUI.js
- * Two-column hero management: compact roster list on the left with separate
- * sections for owned vs recruitable heroes; full detail/management panel on
- * the right that updates on card selection without re-rendering the roster.
- */
+/** Two-column hero management: roster list left, full detail/management panel right. */
 import { eventBus }        from '../../core/EventBus.js';
 import { INVENTORY_ITEMS,
          AWAKENING_CONFIG,
          HERO_CLASSIFICATIONS } from '../../entities/GAME_DATA.js';
 import { icon, iconFromEmoji } from '../icons.js';
+import { TIER_CSS_SUFFIX } from '../uiUtils.js';
 
 const TIER_META = {
-  common:    { label: 'Common',    symbol: '●', cssClass: 'hero-card--common' },
-  rare:      { label: 'Rare',      symbol: '◆', cssClass: 'hero-card--rare' },
+  normal:    { label: 'Normal',    symbol: '●', cssClass: 'hero-card--common' },
+  epic:      { label: 'Epic',      symbol: '◆', cssClass: 'hero-card--rare' },
   legendary: { label: 'Legendary', symbol: '★', cssClass: 'hero-card--legendary' },
 };
 
@@ -64,8 +60,8 @@ export class HeroesUI {
     controlBar.innerHTML = `
       <div class="tier-filter-bar">
         <button class="tier-pill ${this._tierFilter === 'all'       ? 'tier-pill--active' : ''}" data-tier="all">All Heroes</button>
-        <button class="tier-pill pill-common ${this._tierFilter === 'common'    ? 'tier-pill--active' : ''}" data-tier="common">● Common</button>
-        <button class="tier-pill pill-rare ${this._tierFilter === 'rare'      ? 'tier-pill--active' : ''}" data-tier="rare">◆ Rare</button>
+        <button class="tier-pill pill-common ${this._tierFilter === 'normal'    ? 'tier-pill--active' : ''}" data-tier="normal">● Normal</button>
+        <button class="tier-pill pill-rare ${this._tierFilter === 'epic'      ? 'tier-pill--active' : ''}" data-tier="epic">◆ Epic</button>
         <button class="tier-pill pill-legendary ${this._tierFilter === 'legendary' ? 'tier-pill--active' : ''}" data-tier="legendary">★ Legendary</button>
       </div>
       <div class="hero-bonus-strip">
@@ -234,7 +230,7 @@ export class HeroesUI {
   // ── Compact roster card (left pane) ─────────────────────────────────────
 
   _buildRosterCard(hero) {
-    const tierMeta   = TIER_META[hero.tier] ?? TIER_META.common;
+    const tierMeta   = TIER_META[hero.tier] ?? TIER_META.normal;
     const isSelected = hero.id === this._selectedHeroId;
 
     let statusHtml = '';
@@ -267,15 +263,16 @@ export class HeroesUI {
       }
     }
 
+    const tierCssSuffix = TIER_CSS_SUFFIX[hero.tier] ?? 'common';
     const card = document.createElement('div');
-    card.className = `hero-roster-card hero-roster-card--${hero.tier}${isSelected ? ' hero-roster-card--selected' : ''}`;
+    card.className = `hero-roster-card hero-roster-card--${tierCssSuffix}${isSelected ? ' hero-roster-card--selected' : ''}`;
     card.dataset.heroId = hero.id;
     card.innerHTML = `
-      <div class="hero-roster-portrait hero-roster-portrait--${hero.tier}">${hero.icon}</div>
+      <div class="hero-roster-portrait hero-roster-portrait--${tierCssSuffix}">${hero.icon}</div>
       <div class="hero-roster-info">
         <div class="hero-roster-name">${hero.name}</div>
         <div class="hero-roster-sub">
-          <span class="hero-tier-pill tier-pill-${hero.tier}">${tierMeta.symbol} ${tierMeta.label}</span>
+          <span class="hero-tier-pill tier-pill-${tierCssSuffix}">${tierMeta.symbol} ${tierMeta.label}</span>
           ${hero.isOwned ? `<span class="hero-level-pip">Lv.${hero.level}</span>` : ''}
         </div>
       </div>
@@ -303,7 +300,7 @@ export class HeroesUI {
   // ── Full detail panel (right pane) ──────────────────────────────────────
 
   _buildDetailPanel(hero) {
-    const tierMeta = TIER_META[hero.tier] ?? TIER_META.common;
+    const tierMeta = TIER_META[hero.tier] ?? TIER_META.normal;
     const xpPct    = hero.isOwned ? Math.min(100, ((isFinite(hero.xp) ? hero.xp : 0) / (isFinite(hero.xpToNext) ? hero.xpToNext : 1)) * 100) : 0;
 
     const statsHtml = `
@@ -356,9 +353,6 @@ export class HeroesUI {
             <span>${icon('flask-potion')} ${hero.fragmentQty ?? 0} / ${hero.fragmentsNeeded ?? '?'} fragments</span>
             <span>${fragPct}%</span>
           </div>
-          ${hero.canSummonByFrags
-            ? `<button class="btn btn-primary btn-summon-frags w-full" data-hero="${hero.id}">${icon('star-burst', 'icon--gold')} Summon from Fragments</button>`
-            : ''}
         </div>`;
 
     } else {
@@ -400,15 +394,11 @@ export class HeroesUI {
       }).join('');
 
       const atMaxStars = hero.stars >= maxStars;
-      const fragNeeded = hero.nextStarCost?.fragments[hero.tier] ?? 0;
       const awakenHtml = atMaxStars
         ? `<div class="hero-awaken-maxed">${icon('star-burst', 'icon--gold')} Fully Awakened!</div>`
         : `<div class="hero-awaken-costs">
-            <button class="btn btn-xs btn-awaken-card ${hero.canAwakenByCard ? 'btn-gold' : 'btn-ghost'}" data-hero="${hero.id}" ${!hero.canAwakenByCard ? 'disabled' : ''}>
-              ${icon('scroll')} Card (${hero.nextStarCost?.cards ?? 1} dup${(hero.nextStarCost?.cards ?? 1) > 1 ? 's' : ''})
-            </button>
-            <button class="btn btn-xs btn-awaken-frag ${hero.canAwakenByFrag ? 'btn-primary' : 'btn-ghost'}" data-hero="${hero.id}" ${!hero.canAwakenByFrag ? 'disabled' : ''}>
-              ${icon('flask-potion')} Frags (${hero.fragmentQty ?? 0}/${fragNeeded})
+            <button class="btn btn-xs btn-awaken-shard ${hero.canAwakenByShard ? 'btn-gold' : 'btn-ghost'}" data-hero="${hero.id}" ${!hero.canAwakenByShard ? 'disabled' : ''}>
+              ${icon('star-burst', 'icon--gold')} Shards (${hero.shardQty ?? 0}/${hero.nextStarShardCost ?? 0})
             </button>
           </div>`;
 
@@ -477,13 +467,14 @@ export class HeroesUI {
         </div>`;
     }
 
+    const detailTierCssSuffix = TIER_CSS_SUFFIX[hero.tier] ?? 'common';
     return `
       <div class="heroes-detail-panel">
-        <div class="heroes-detail-hero-header heroes-detail-hero-header--${hero.tier}">
-          <div class="hero-detail-portrait hero-detail-portrait--${hero.tier}">${hero.icon}</div>
+        <div class="heroes-detail-hero-header heroes-detail-hero-header--${detailTierCssSuffix}">
+          <div class="hero-detail-portrait hero-detail-portrait--${detailTierCssSuffix}">${hero.icon}</div>
           <div class="hero-detail-header-info">
             <div class="hero-detail-badges-row">
-              <div class="hero-tier-badge tier-badge-${hero.tier}">${tierMeta.symbol} ${tierMeta.label}</div>
+              <div class="hero-tier-badge tier-badge-${detailTierCssSuffix}">${tierMeta.symbol} ${tierMeta.label}</div>
               ${hero.classification ? `<div class="hero-class-badge class-${hero.classification}">${iconFromEmoji(HERO_CLASSIFICATIONS[hero.classification]?.icon ?? '') || icon('sword')} ${(HERO_CLASSIFICATIONS[hero.classification]?.label ?? hero.classification)}</div>` : ''}
             </div>
             <div class="hero-detail-name">${hero.name}</div>
@@ -512,18 +503,6 @@ export class HeroesUI {
       } else {
         const cfg = this._s.heroes.getRosterWithState().find(h => h.id === r.heroId);
         this._s.notifications?.show('success', '👑 Hero Recruited!', `${cfg?.name ?? r.heroId} has joined your roster!`);
-      }
-    });
-
-    detailPane.querySelector('.btn-summon-frags')?.addEventListener('click', e => {
-      eventBus.emit('ui:click');
-      const r = this._s.heroes.summonFromFragments(e.currentTarget.dataset.hero);
-      if (!r.success) {
-        eventBus.emit('ui:error');
-        this._s.notifications?.show('warning', 'Cannot Summon', r.reason);
-      } else {
-        const cfg = this._s.heroes.getRosterWithState().find(h => h.id === r.heroId);
-        this._s.notifications?.show('success', '✨ Hero Summoned!', `${cfg?.name ?? r.heroId} materialised from fragments!`);
       }
     });
 
@@ -593,15 +572,9 @@ export class HeroesUI {
       });
     });
 
-    detailPane.querySelector('.btn-awaken-card')?.addEventListener('click', e => {
+    detailPane.querySelector('.btn-awaken-shard')?.addEventListener('click', e => {
       eventBus.emit('ui:click');
-      const r = this._s.heroes.awakenHero(e.currentTarget.dataset.hero, 'card');
-      if (!r.success) { eventBus.emit('ui:error'); this._s.notifications?.show('warning', 'Cannot Awaken', r.reason); }
-    });
-
-    detailPane.querySelector('.btn-awaken-frag')?.addEventListener('click', e => {
-      eventBus.emit('ui:click');
-      const r = this._s.heroes.awakenHero(e.currentTarget.dataset.hero, 'fragment');
+      const r = this._s.heroes.awakenHero(e.currentTarget.dataset.hero);
       if (!r.success) { eventBus.emit('ui:error'); this._s.notifications?.show('warning', 'Cannot Awaken', r.reason); }
     });
   }

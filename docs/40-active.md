@@ -3,7 +3,145 @@
 > Most-updated file in the repo. Every session that changes code updates this file
 > (what landed, known issues, exact next steps). See the session protocol in `CLAUDE.md`.
 
-## City ambient life — grit walkers + road-following ship-drone & truck (2026-07-23, latest)
+## Hero redesign Phase 1 — economy foundation shipped (2026-07-25, latest)
+
+Executed `docs/superpowers/plans/2026-07-23-hero-redesign-phase1-economy-foundation.md`
+via subagent-driven development (10 tasks, each independently task-reviewed with fix
+rounds where issues surfaced, plus a final whole-branch review on Opus — one retry
+needed on a 529 overload, second attempt succeeded — that found 1 Critical + 5
+Important cross-task issues, all fixed in one combined commit and verified resolved
+in a re-review). ADR 0026 records the full decision set.
+
+- **Full new hero economy, headless (no UI this phase).** Roster retiered
+  `common/rare/legendary` → `normal/epic/legendary` (fixed 2/2/2, +2 new heroes: Juno
+  Vane, Kaelen Thorne; all 6 got `backstory`). Heroes-only recruit tokens
+  (`rollToken(tier)`) replace resource/buff/xp gacha scrolls — never pays a base
+  resource, always hero/fragment/shard/xp; two-stage pity (soft ramp from pull 7,
+  hard-guaranteed new hero by pull 10, **per-tier** not global — Steve's call after
+  review flagged the brief's literal global reading left a completed tier degraded);
+  dupe rolls convert to that hero's fragments/shard instead of wasting the pull.
+  10-star shard-only awakening (was 5-star card-or-fragment). Bounded, base-relative
+  aura formula (folded away the old `magic_amplify × 0.8` hack). HQ-gated XP curve
+  (`HERO_LEVEL_CAP = HeroQuarters_level × 10`, was unusable `1.3^L`).
+  Fragment→Shard→Unlock + lossy Tier-Shard exchange (buy 3:1, refund only 2:1 — no
+  laundering loop). Production bonuses recomputed correctly per the locked numbers
+  spec for all 5 resource types (was gold-only).
+- **Every new save field has real serialize/deserialize/reconcile coverage (ADR
+  0002)** — verified end-to-end in the final review, not just per-field: legacy saves
+  with the old `1.3^L`-curve `xpToNext`, saves holding the renamed `card_common`/
+  `card_rare` ids, and saves missing `_pity` entirely all reconcile safely with no
+  data loss.
+- **Two known gaps shipped deliberately open, both recorded in ADR 0026 — read it
+  before touching hero economy code again:**
+  1. **Production bonuses don't reach live gameplay.** `getBuildingProductionBonusMap()`
+     computes the correct §I numbers but `ResourceManager` still drives real resource
+     rates through a separate, older per-instance mechanism
+     (`1 + stationedHero.level·0.05` in `js/systems/building/buildingEconomy.js`).
+     Steve's call: this needs real redesign, not a patch — don't wire the map in
+     as-is without rethinking how the two mechanisms should merge.
+  2. **Recruit tokens are unobtainable in-game.** `token_{tier}` items aren't sold in
+     `SHOP_CONFIG`, granted by quests/achievements, or referenced anywhere outside
+     their own data definition — surfaced in the final review, after the economy
+     itself was otherwise verified closed-loop. Meanwhile `SHOP_CONFIG`'s `'heroes'`
+     section still sells the now-retired `scroll_*` items (always fail on use since
+     `HeroManager.rollScroll` no longer exists). **As shipped, no player can reach
+     this entire new economy through any in-game action.** Needs a follow-up: wire
+     `token_{tier}` into the shop and/or reward tables, retire `scroll_*` from sale.
+- **Verified:** `npm test` **390/390**; `check-comments.mjs` clean on touched files;
+  `boot-smoke` PASS. `dev-smoke` not re-run after the final fix commit (was PASS
+  except one pre-existing, unrelated `dev-anchor-nudger` failure as of Task 10 —
+  re-run before the next UI-touching session just to be safe, though this fix
+  commit touched no rendering code).
+- **Not committed (Steve commits himself)** — tree is commit-ready, all 17 task/fix
+  commits squashed to staged changes (`git reset --soft` back to the pre-Phase1 base
+  after the final review passed, per Steve's standing preference — same pattern as
+  Phase 0). SDD ledger: `.superpowers/sdd/progress.md`.
+- **Next step:** either close gap #2 above first (cheapest way to make the shipped
+  economy actually playable), or move straight to **Phase 2** — progression (6-skill
+  model, ~36 class-matched skills, levelable skills, extended star bumps) per the
+  plan's own Handoff note. Phases 3-4 (Heroes screen + Recruit Hall UI) are where
+  gap #2 would also naturally get closed alongside the real UI work.
+
+## Hero redesign Phase 0 — HeroManager split shipped (2026-07-25, earlier)
+
+Executed `docs/superpowers/plans/2026-07-23-hero-redesign-phase0-manager-split.md` via
+subagent-driven development (7 tasks, each independently task-reviewed + a final
+whole-branch review on the most capable model — all clean, no Critical/Important findings).
+
+- **`js/systems/HeroManager.js` 958 → 237 lines.** Split into five collaborator modules
+  under `js/systems/hero/`, each `constructor(hero) { this._h = hero; }` back-ref pattern:
+  `heroRecruitment.js` (gacha/card recruit, awakening), `heroProgression.js` (XP, skill
+  passives; owns the canonical `barracksIdForSquad(squadId)` — stays on `HeroManager`
+  itself, shared by progression + assignment), `heroAssignment.js` (13 squad/building
+  assignment methods, the largest extraction), `heroCombat.js` (combat-bonus aggregation +
+  timed buffs; `_activeBuffs` stays manager-owned/serialized), `heroEconomy.js`
+  (production-bonus map, deliberately tiny — Phase 2 grows it). `HeroManager` keeps every
+  original public method as a one-line delegator — **zero consumer changed**
+  (`HeroesUI`/`GachaUI`/`CombatManager`/`ResourceManager`/`BuildingsUI`/`UnitManager`).
+- **Zero behavior change, verified mechanically.** Task 1 added characterization tests
+  (XP curve, awakening, assignment) before any extraction; every later task's reviewer
+  diffed moved bodies byte-for-byte against the pre-move originals. `serialize()`/
+  `deserialize()` shape (`{owned, activeBuffs}`) untouched.
+- **Verified:** `npm test` **322/322**; `check-comments.mjs` clean on all six touched hero
+  files; `boot-smoke` PASS; `dev-smoke` PASS on its core boot block (one unrelated
+  pre-existing failure in the `dev-anchor-nudger` sub-suite, confirmed out of this
+  branch's diff scope).
+- **Deferred to Phase 1 (non-blocking, flagged by the final review):** unused `eventBus`
+  import in `heroEconomy.js`; dual `recruitHeroRecord`/`_recruitHero` proxy (collapse once
+  `tests/unit/heroManager.test.js` is editable again); pre-existing dead
+  `MAX_HEROES_PER_SQUAD` constant and `_lastBuffCount` field (both predate this refactor);
+  `HeroesUI.js` has its own hand-copied `_barracksIdForSquad` — could now call the
+  manager's public version instead. The class-header narrative comment lost in Task 4's
+  forced condensing (squad/building mutual-exclusivity, HQ-global-bonus semantics) should
+  be confirmed captured in `docs/10-design/` before it's lost institutionally.
+- **Not committed (Steve commits himself)** — tree is commit-ready, 7 logical chunks
+  squashed to staged changes (`git reset --soft` back to the pre-Phase0 commit after the
+  final review passed, per Steve's standing preference). SDD ledger:
+  `.superpowers/sdd/progress.md`.
+- **Next step:** Phase 1 — `docs/superpowers/plans/2026-07-23-hero-redesign-phase1-economy-foundation.md`
+  (currencies, XP curve + HQ level cap, shard-only awakening, bounded aura, two-stage pity,
+  wired dev bonuses).
+
+## Hero recruitment + management redesign — designed & planned (2026-07-23, latest)
+
+The next feature of record is now **fully designed and Phase 0+1 planned** (no code yet).
+Steve iterated the whole model with me; scope = **consolidate + reskin** the hero systems
+(no new *combat* depth — troop-affinity/positioning/power-rating are future notes).
+
+- **Spec:** `docs/superpowers/specs/2026-07-23-hero-recruitment-management-redesign-design.md`
+  — approved. Roster grows past 6 over time (data-driven). Recruit Hall **is the Hero
+  Quarters interior**. Currencies: 3 Recruit Tokens, Specific Hero Cards (event-gated),
+  per-hero **Fragments** (partial) → **Hero Shards** (full copy), **Tier Shards**
+  (exchange-only), **XP Cards**; dupe→frag/shard; no separate "dust" (maxed overflow → tier
+  shards). Rates + **two-stage pity**. **6 skills/hero HARD CAP** (3 passive / 2 support /
+  1 Major=Awakening), composition matches the hero's field (dev heroes get dev skills).
+  Ceilings raised: hero max level (HQ×10=100), stars 5→10, skill levels →10. Base/production
+  buffs belong to the **HQ / base-management** feature (unbuilt) — evicted from Heroes here.
+- **Locked numbers:** `docs/superpowers/specs/2026-07-23-hero-economy-numbers.md`
+  (game-designer pass — full XP curve, bounded aura fix, star/skill shard sinks, pity odds
+  ~50-pull median, 3:1/2:1 exchange, wired per-resource dev bonuses). Consumed verbatim by
+  the plans.
+- **Plans written (Phase 0 + 1; 2–5 are JIT):**
+  - `docs/superpowers/plans/2026-07-23-hero-redesign-phase0-manager-split.md` — split the
+    958-ln `HeroManager` into `js/systems/hero/` (recruitment/progression/assignment/combat/
+    economy), pure refactor behind characterization tests. **Do this first.**
+  - `docs/superpowers/plans/2026-07-23-hero-redesign-phase1-economy-foundation.md` — the
+    whole economy headless + unit-tested (currencies, XP curve + HQ level cap, 10-star
+    shard-only awakening, bounded aura, heroes-only token rolls, two-stage pity w/ persisted
+    counters, fragments/shard unlock, tier-shard exchange, wired dev bonuses).
+- **New art on disk (git-ignored):** `mixBoard/Heroes/` — full-body renders for all 6
+  (Marcus Kestrel, Vera Sable, Kira Nightwhisper, Aldric Cross, Juno Vane, Kaelen Thorne) +
+  **videos** for Juno Vane & Marcus Kestrel (detail/reveal use a **▶ manual play button, no
+  autoplay**). Art ingest + backstory copy land in Phase 5.
+- **Phased roadmap:** 0 split · 1 economy · 2 progression (6-skill model, ~36 class-matched
+  skills) · 3 Heroes screen · 4 Recruit Hall · 5 art+content. Fast-follow: passive
+  building-XP (guardrails already designed: slower than combat, capped 20 lvls below HQ cap).
+- **Next step:** execute Phase 0, then Phase 1. An **ADR** for the economy decisions
+  (heroes-only tokens, dupe→shard, shard-only awakening, two-shard roles, HQ-gated level cap,
+  two-stage pity) lands with the Phase 1 code. Nothing committed (Steve commits himself) —
+  docs are commit-ready.
+
+## City ambient life — grit walkers + road-following ship-drone & truck (2026-07-23, earlier)
 
 Replaced the base city's procedural pedestrian blobs + ellipse drone with rig-rendered grit
 sprites, and made the drone follow roads out-and-back from a parked truck instead of flying

@@ -11,6 +11,12 @@ import { INVENTORY_ITEMS } from '../entities/GAME_DATA.js';
  * Tier ladder for each resource type — matched to the entries in economy.js.
  * Listed smallest → largest; used by _splitIntoTierBundles() for greedy decomposition.
  */
+/** @see docs/20-decisions — Task 1 renamed universal cards; fold legacy saves onto the new ids. */
+const LEGACY_ITEM_ID_ALIASES = {
+  card_common: 'card_normal',
+  card_rare:   'card_epic',
+};
+
 const RESOURCE_BUNDLE_TIERS = {
   wood:    [200, 500, 1000, 2500, 5000].map((q, i) => ({ id: `res_bundle_wood_t${i + 1}`,    qty: q })),
   stone:   [200, 500, 1000, 2500, 5000].map((q, i) => ({ id: `res_bundle_stone_t${i + 1}`,   qty: q })),
@@ -208,10 +214,10 @@ export class InventoryManager {
 
     } else if (cfg.type === 'recruitment_scroll') {
       if (!this._hm) return { success: false, reason: 'Hero system not available.' };
-      // removeItem is handled inside rollScroll so the result info is correct
+      if (typeof this._hm.rollScroll !== 'function') {
+        return { success: false, reason: 'Recruitment scrolls have been retired — use Recruit Tokens instead.' };
+      }
       const r = this._hm.rollScroll(cfg.tier);
-      // Emit inventory update (removeItem inside rollScroll already emits,
-      // but addItem for the reward also emits — no extra emit needed)
       if (!r.outcome || r.grantFailed) {
         return { success: false, reason: r.reason ?? 'Failed to grant reward.', gachaResult: r };
       }
@@ -222,6 +228,11 @@ export class InventoryManager {
       if (!heroId) return { success: false, reason: 'Select a hero to receive the XP.' };
       if (!this._hm) return { success: false, reason: 'Hero system not available.' };
       return this._hm.useFragmentAsXP(itemId, heroId);
+
+    } else if (cfg.type === 'xp_card') {
+      if (!heroId) return { success: false, reason: 'Select a hero to receive the XP.' };
+      if (!this._hm) return { success: false, reason: 'Hero system not available.' };
+      return this._hm.applyXPCard(itemId, heroId);
 
     } else if (cfg.type === 'xp_bundle') {
       if (!heroId) return { success: false, reason: 'Select a hero to receive the XP.' };
@@ -315,8 +326,11 @@ export class InventoryManager {
 
   deserialize(data) {
     if (!data?.items) return;
-    for (const [id, qty] of Object.entries(data.items)) {
-      if (qty > 0 && INVENTORY_ITEMS[id]) this._items.set(id, qty);
+    for (const [rawId, qty] of Object.entries(data.items)) {
+      const id = LEGACY_ITEM_ID_ALIASES[rawId] ?? rawId;
+      if (qty > 0 && INVENTORY_ITEMS[id]) {
+        this._items.set(id, (this._items.get(id) ?? 0) + qty);
+      }
     }
     // P12: notify UI panels to refresh after a save load
     eventBus.emit('inventory:updated', { source: 'load' });

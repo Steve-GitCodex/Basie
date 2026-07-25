@@ -9,6 +9,29 @@ import {
 export class HeroCombat {
   constructor(hero) { this._h = hero; }
 
+  /** auraValue = base·(1 + levelScale·(L−1) + perStarBonus·stars + skillAuraFrac). @see docs/superpowers/specs/2026-07-23-hero-economy-numbers.md §B */
+  _auraValueFor(hero, cfg) {
+    const base = cfg.aura?.value ?? 0;
+    if (!base) return 0;
+
+    let skillAuraFrac = 0;
+    for (const skillId of (cfg.skills ?? [])) {
+      const skill = SKILLS_CONFIG[skillId];
+      if (!skill || skill.type !== 'passive' || skill.effect.stat !== 'auraValue') continue;
+      const skillLvl = hero.skillLevels?.[skillId];
+      if (skillLvl) {
+        skillAuraFrac += AWAKENING_CONFIG.skillAuraFracBase + AWAKENING_CONFIG.skillAuraFracPerLevel * (skillLvl - 1);
+      } else if ((hero.level ?? 1) >= skill.unlockLevel) {
+        // Bridge until Phase 2 lands per-skill levels: fall back to the pre-Phase-1 flat gate.
+        skillAuraFrac += skill.effect.value;
+      }
+    }
+
+    const levelTerm = AWAKENING_CONFIG.levelScalePerLevel * ((hero.level ?? 1) - 1);
+    const starTerm  = (AWAKENING_CONFIG.perStarAuraBonus ?? 0) * (hero.stars ?? 0);
+    return base * (1 + levelTerm + starTerm + skillAuraFrac);
+  }
+
   /** Aggregate aura bonuses for a squad's heroes plus HQ heroes (null squadId = all). */
   getCombatBonuses(squadId = null) {
     let attackMult    = 1.0;
@@ -28,24 +51,14 @@ export class HeroCombat {
       const cfg = HEROES_CONFIG[hero.heroId];
       if (!cfg) continue;
 
-      // Aura value boosted by level, stars, and auraValue passive skills
-      let auraValue = (cfg.aura?.value ?? 0) * (1 + (hero.level - 1) * 0.05);
-      auraValue += (hero.stars ?? 0) * AWAKENING_CONFIG.perStarBonus.auraValueBonus;
-
-      // Add auraValue passive skill bonuses
-      for (const skillId of (cfg.skills ?? [])) {
-        const skill = SKILLS_CONFIG[skillId];
-        if (!skill || skill.type !== 'passive') continue;
-        if (hero.level < skill.unlockLevel) continue;
-        if (skill.effect.stat === 'auraValue') auraValue += skill.effect.value;
-      }
+      const auraValue = this._auraValueFor(hero, cfg);
 
       if (cfg.aura) {
         switch (cfg.aura.type) {
-          case 'attack_boost':  attackMult  += auraValue;       break;
-          case 'magic_amplify': attackMult  += auraValue * 0.8; break;
-          case 'crit_chance':   attackMult  += auraValue;       break;
-          case 'defense_boost': defenseMult += auraValue;       break;
+          case 'attack_boost':
+          case 'magic_amplify':
+          case 'crit_chance':   attackMult  += auraValue; break;
+          case 'defense_boost': defenseMult += auraValue; break;
         }
         // defense_boost only gives lossReduction, not double-counted
         if (cfg.aura.type === 'defense_boost') lossReduction += auraValue * 0.5;
@@ -99,8 +112,7 @@ export class HeroCombat {
       const cfg = HEROES_CONFIG[hero.heroId];
       if (!cfg) continue;
 
-      const auraValue = (cfg.aura?.value ?? 0) * (1 + (hero.level - 1) * 0.05)
-        + (hero.stars ?? 0) * (AWAKENING_CONFIG.perStarBonus?.auraValueBonus ?? 0);
+      const auraValue = this._auraValueFor(hero, cfg);
 
       if (cfg.aura?.type) {
         const category = cfg.aura.buffCategory ?? AURA_BUFF_CATEGORY[cfg.aura.type] ?? 'military';

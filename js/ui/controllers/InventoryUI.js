@@ -1,19 +1,7 @@
-/**
- * InventoryUI.js
- * Renders the player inventory as a right-side slide-in panel.
- * Triggered by the 🎒 button in the header (event: ui:openInventory).
- *
- * Universal — displays ALL item types:
- *   hero_card / hero_card_universal → Recruit button
- *   xp_bundle                       → Apply button (inline hero picker)
- *   resource_bundle                 → Open button
- *   buff                            → Activate button (stubbed)
- *
- * No purchasing happens here — buy from the Shop tab first.
- */
+/** Player inventory as a right-side slide-in panel (event: ui:openInventory). No purchasing here — buy from Shop first. */
 import { eventBus }        from '../../core/EventBus.js';
 import { HEROES_CONFIG,
-         GACHA_CONFIG }    from '../../entities/GAME_DATA.js';
+         FRAGMENTS_PER_SHARD } from '../../entities/GAME_DATA.js';
 import { icon } from '../icons.js';
 
 const RARITY_META = {
@@ -275,20 +263,14 @@ export class InventoryUI {
     // ── Hero Fragments ────────────────────────────────────────────────────
     if (item.type === 'hero_fragment') {
       const heroId     = item.targetHeroId;
-      const needed     = GACHA_CONFIG.fragmentsToSummon[HEROES_CONFIG[heroId]?.tier ?? 'common'] ?? 10;
-      const canSummon  = !ownedHeroIds.has(heroId) && item.quantity >= needed;
+      const needed     = FRAGMENTS_PER_SHARD[HEROES_CONFIG[heroId]?.tier ?? 'normal'] ?? 8;
       const canConvert = ownedHeroIds.has(heroId); // owned heroes can receive XP from fragments
       return `
         <div class="inv-frag-actions">
-          ${canSummon
-            ? `<button class="btn btn-xs btn-gold inv-summon-frag" data-item="${item.id}" data-hero="${heroId}">${icon('star-burst', 'icon--gold')} Summon</button>`
-            : ''}
           ${canConvert
             ? `<button class="btn btn-xs btn-primary inv-convert-frag" data-item="${item.id}" data-hero="${heroId}">→ XP</button>`
             : ''}
-          ${!canSummon && !canConvert
-            ? `<span class="inv-frag-hint">${item.quantity}/${needed}</span>`
-            : ''}
+          <span class="inv-frag-hint">${item.quantity}/${needed}</span>
         </div>`;
     }
 
@@ -377,23 +359,6 @@ export class InventoryUI {
           const roster = this._s.heroes?.getRosterWithState?.() ?? [];
           const hero   = roster.find(h => h.id === r.heroId);
           this._s.notifications?.show('success', '👑 Hero Recruited!', `${hero?.name ?? r.heroId} has joined your roster!`);
-        }
-      });
-    });
-
-    // ── Hero Fragments → summon via fragments ─────────────────────────────
-    panel.querySelectorAll('.inv-summon-frag').forEach(btn => {
-      btn.addEventListener('click', e => {
-        eventBus.emit('ui:click');
-        const heroId = e.currentTarget.dataset.hero;
-        const r = this._s.heroes?.summonFromFragments(heroId);
-        if (!r?.success) {
-          eventBus.emit('ui:error');
-          this._s.notifications?.show('warning', 'Cannot Summon', r?.reason ?? 'Failed.');
-        } else {
-          const roster = this._s.heroes?.getRosterWithState?.() ?? [];
-          const hero   = roster.find(h => h.id === r.heroId);
-          this._s.notifications?.show('success', '✨ Hero Summoned!', `${hero?.name ?? heroId} has materialised!`);
         }
       });
     });
