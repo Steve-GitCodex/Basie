@@ -204,3 +204,37 @@
   animation: xpFloat 1.0s ease-out forwards;
   text-shadow: 0 1px 4px rgba(0,0,0,0.6);
 }
+
+.heroes-tabs {
+  display: flex;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--clr-border);
+  margin-bottom: var(--space-3);
+}
+
+.heroes-tab-panel {
+  min-height: var(--space-12);
+}
+
+.heroes-tab {
+  padding: var(--space-2) var(--space-4);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--clr-text-muted);
+  cursor: pointer;
+}
+
+.heroes-tab--active {
+  color: var(--clr-text-primary);
+  border-bottom-color: var(--clr-primary);
+}
+
+.heroes-roster-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-3);
+}
+
+.hero-portrait--thumb { width: 100%; height: auto; object-fit: contain; }
+.hero-portrait--emoji { font-size: 2rem; }

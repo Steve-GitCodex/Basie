@@ -96,6 +96,7 @@ export class UIManager {
     this._heroes = new HeroesUI({
       rm:            systems.rm,
       um:            systems.um,
+      bm:            systems.bm,
       heroes:        systems.heroes,
       inventory:     systems.inventory,
       notifications: systems.notifications,
@@ -264,8 +265,7 @@ export class UIManager {
 
     // Perform the full initial render
     this._buildings.render();
-    // BarracksUI, MilitaryUI & ResearchUI are modal-driven (opened from building tooltips) — no initial render.
-    this._heroes.render();
+    // BarracksUI, MilitaryUI, ResearchUI & HeroesUI are modal/tab-driven — no initial render.
     this._combat.render();
     this._quests.render();
     this._market.render();

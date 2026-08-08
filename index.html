@@ -258,10 +258,19 @@
         <!-- HEROES VIEW -->
         <section class="view hidden" id="view-heroes">
           <div class="view-header">
-            <h2><span class="icon icon--crown icon--gold"></span> Heroes</h2>
-            <p class="view-subtitle">Recruit legendary champions via Hero Cards — assign them to your squad or buildings</p>
+            <h2><span class="icon icon--crown icon--gold"></span> Hero Quarters</h2>
+            <p class="view-subtitle">Recruit, inspect and post your heroes</p>
           </div>
-          <div class="heroes-grid" id="heroes-grid"></div>
+          <div class="heroes-tabs" id="heroes-tabs">
+            <button class="heroes-tab heroes-tab--active" data-tab="roster">Roster</button>
+            <button class="heroes-tab" data-tab="recruit">Recruit</button>
+            <button class="heroes-tab" data-tab="assign">Assignments</button>
+          </div>
+          <div class="heroes-tab-panels">
+            <div class="heroes-tab-panel" id="heroes-tab-roster"></div>
+            <div class="heroes-tab-panel hidden" id="heroes-tab-recruit"></div>
+            <div class="heroes-tab-panel hidden" id="heroes-tab-assign"></div>
+          </div>
         </section>
 
         <!-- COMBAT VIEW -->
