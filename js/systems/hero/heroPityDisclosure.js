@@ -23,7 +23,7 @@ export function pityDisclosure(tier, pullsCompleted = 0, rosterComplete = false)
 
   return {
     stage: 1,
-    rate: base === 0 ? 0 : Math.min(1, base + softBonus),
+    rate: base === 0 ? 0 : (nextPull >= PITY_CONFIG.stage1HardPityN ? 1 : Math.min(1, base + softBonus)),
     softPityFrom: PITY_CONFIG.softPityFrom,
     hardPityAt: PITY_CONFIG.stage1HardPityN,
     pullsUntilGuarantee: Math.max(0, PITY_CONFIG.stage1HardPityN - completed),
