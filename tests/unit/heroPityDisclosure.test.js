@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { pityDisclosure } from '../../js/systems/hero/heroPityDisclosure.js';
+import { PITY_CONFIG } from '../../js/entities/GAME_DATA.js';
 
 test('before soft pity the rate is the flat per-tier new-hero rate', () => {
   const d = pityDisclosure('epic', 0, false);
@@ -11,9 +12,25 @@ test('before soft pity the rate is the flat per-tier new-hero rate', () => {
   assert.equal(d.hardPityAt, 10);
 });
 
-test('inside the soft-pity window the rate ramps per pull', () => {
-  const d = pityDisclosure('epic', 7, false);
-  assert.ok(Math.abs(d.rate - (0.12 + 0.08)) < 1e-9, 'pull 8 is the first ramped pull');
+test('6 pulls completed disclose the ramped rate for the next pull, pull 7', () => {
+  const d = pityDisclosure('epic', 6, false);
+  assert.ok(Math.abs(d.rate - (0.12 + 0.08)) < 1e-9, 'pull 7 is the first ramped pull');
+});
+
+test('stage 2 (roster complete) never ramps, even inside the soft-pity window', () => {
+  const d = pityDisclosure('epic', 8, true);
+  assert.ok(Math.abs(d.rate - PITY_CONFIG.newHeroRate.epic) < 1e-9);
+});
+
+test('the disclosed rate matches what the next real pull will roll at', () => {
+  const pullsCompleted = 6;
+  const nextPull = pullsCompleted + 1;
+  const softBonus = nextPull >= PITY_CONFIG.softPityFrom
+    ? (nextPull - PITY_CONFIG.softPityFrom + 1) * PITY_CONFIG.softPityBonusPerPull
+    : 0;
+  const expected = Math.min(1, PITY_CONFIG.newHeroRate.epic + softBonus);
+  const d = pityDisclosure('epic', pullsCompleted, false);
+  assert.ok(Math.abs(d.rate - expected) < 1e-9);
 });
 
 test('the rate never exceeds 1', () => {
