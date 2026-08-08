@@ -12,6 +12,7 @@ import { HeroProgression } from './hero/heroProgression.js';
 import { HeroAssignment }  from './hero/heroAssignment.js';
 import { HeroCombat }      from './hero/heroCombat.js';
 import { HeroEconomy }     from './hero/heroEconomy.js';
+import { pityDisclosure }  from './hero/heroPityDisclosure.js';
 
 const MAX_HEROES_PER_SQUAD = 4;
 
@@ -55,6 +56,7 @@ export class HeroManager {
   convertFragments(heroId)                 { return this._recruitment.convertFragments(heroId); }
   unlockFromShards(heroId)                 { return this._recruitment.unlockFromShards(heroId); }
   exchangeTierShards(tier, heroId, count)  { return this._recruitment.exchangeTierShards(tier, heroId, count); }
+  getPityState(tier)                       { return pityDisclosure(tier, this._pity?.[tier] ?? 0, this.rosterComplete(tier)); }
 
   /** Convert a hero fragment to XP on the target hero */
   useFragmentAsXP(fragmentItemId, heroId) { return this._progression.useFragmentAsXP(fragmentItemId, heroId); }
