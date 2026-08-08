@@ -1,6 +1,7 @@
 import { eventBus } from '../../core/EventBus.js';
 import { TIER_CSS_SUFFIX } from '../uiUtils.js';
 import { portraitHtml, statusChipHtml, tierPillHtml, TIER_META } from './heroCardView.js';
+import { squadNameForHero } from './heroSquadLookup.js';
 
 const TIER_FILTERS = [
   { id: 'all',       label: 'All Heroes' },
@@ -27,7 +28,10 @@ export class HeroRosterPanel {
           ${TIER_FILTERS.map(f => `<button class="tier-pill${f.id === 'all' ? ' tier-pill--active' : ''}" data-tier="${f.id}">${f.label}</button>`).join('')}
         </div>
       </div>
-      <div class="heroes-roster-grid" id="heroes-roster-grid"></div>`;
+      <div class="heroes-split-layout">
+        <div class="heroes-roster-grid" id="heroes-roster-grid"></div>
+        <div class="heroes-detail-pane" id="heroes-detail-pane"></div>
+      </div>`;
     this._grid = this._root.querySelector('#heroes-roster-grid');
     this._root.querySelectorAll('.tier-pill').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -84,11 +88,7 @@ export class HeroRosterPanel {
     return this._tierFilter === 'all' ? roster : roster.filter(h => h.tier === this._tierFilter);
   }
 
-  _squadName(hero) {
-    if (!hero.isInSquad || !hero.assignedBuilding) return null;
-    const idx = parseInt(hero.assignedBuilding.replace('barracks_', ''), 10);
-    return this._s.um?.getSquads()?.[idx]?.name ?? `Squad ${idx + 1}`;
-  }
+  _squadName(hero) { return squadNameForHero(hero, this._s.um); }
 
   _cardHtml(hero) {
     const suffix = TIER_CSS_SUFFIX[hero.tier] ?? 'common';

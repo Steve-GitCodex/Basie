@@ -238,3 +238,14 @@
 
 .hero-portrait--thumb { width: 100%; height: auto; object-fit: contain; }
 .hero-portrait--emoji { font-size: 2rem; }
+
+.hero-portrait--splash { width: 100%; max-height: 420px; object-fit: contain; }
+.hero-splash-video { position: relative; display: flex; justify-content: center; }
+.hero-play-btn {
+  padding: var(--space-2) var(--space-4);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.hero-splash-video-el { width: 100%; max-height: 420px; }
+.hero-backstory { font-style: italic; opacity: 0.85; }
+.hero-deploy-hint { font-size: 0.85em; opacity: 0.7; margin-top: var(--space-1); }

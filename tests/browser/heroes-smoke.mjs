@@ -22,5 +22,13 @@ await withPage(async ({ page, errors, origin }) => {
   await page.click('.heroes-tab[data-tab="roster"]');
   checks.push({ label: 'roster tab switches back', ok: await page.isVisible('#heroes-tab-roster') });
 
+  await page.click('.hero-roster-card[data-hero-id="warlord"]');
+  checks.push({ label: 'detail panel shows a splash', ok: await page.locator('#heroes-detail-pane img.hero-portrait--splash, #heroes-detail-pane .hero-portrait--emoji').count() >= 1 });
+  checks.push({ label: 'a hero with a clip offers a manual play button', ok: await page.locator('#heroes-detail-pane .hero-play-btn').count() === 1 });
+  checks.push({ label: 'no video autoplays', ok: await page.locator('#heroes-detail-pane video').count() === 0 });
+
+  await page.click('.hero-roster-card[data-hero-id="kaelenthorne"]');
+  checks.push({ label: 'a hero without a clip has no play button', ok: await page.locator('#heroes-detail-pane .hero-play-btn').count() === 0 });
+
   report('heroes-smoke', checks, errors);
 });
