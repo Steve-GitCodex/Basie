@@ -108,3 +108,21 @@ test('slotUnits stays consistent with squad.units across combat losses and manua
   assert.equal(squad.units.get('infantry_t1'), 0);
   assert.equal(squad.slotUnits.size, 0);
 });
+
+test('a barracks-stationed hero shortens train time via the global trainingSpeed effect', () => {
+  const um = new UnitManager(stubRM(), stubBM());
+  um._hm = { getHeroGlobalEffects: () => ({ trainingSpeed: 0.12 }) };
+  const withHero = um._trainMultiplier();
+
+  um._hm = { getHeroGlobalEffects: () => ({}) };
+  const without = um._trainMultiplier();
+
+  assert.ok(withHero < without, 'a training-speed hero reduces the multiplier');
+  assert.ok(Math.abs(withHero - without / 1.12) < 1e-9);
+});
+
+test('_trainMultiplier is unchanged when no hero manager is present', () => {
+  const um = new UnitManager(stubRM(), stubBM());
+  um._hm = null;
+  assert.ok(Number.isFinite(um._trainMultiplier()));
+});

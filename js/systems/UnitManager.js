@@ -17,6 +17,7 @@ export class UnitManager {
     this._rm = rm;
     this._bm = bm;
     this._tm = null; // set via setTechnologyManager() after TechnologyManager is created
+    this._hm = null; // set via setHeroManager()
     /** @type {Map<string, number>} tierKey (e.g. 'infantry_t1') -> count */
     this._reserve = new Map();
     /** @type {Map<string, {id: string, name: string, units: Map<string, number>, slotUnitLinks: Map<number, string>}>} squadId -> squad */
@@ -36,10 +37,7 @@ export class UnitManager {
     eventBus.on('game:modeChanged', ({ mode }) => { this._gameMode = mode; });
   }
 
-  /** @private VIP train-time cut folded with the military-cluster adjacency cut (ADR 0022 Phase C). */
-  _trainMultiplier() {
-    return this._vipTrainMultiplier * (this._bm.getTrainTimeMultiplier?.() ?? 1);
-  }
+  setHeroManager(hm) { this._hm = hm; }
 
   // ── Tier key helpers ───────────────────────────────────────────────────────
   /** @private Returns the tier key for reserve/queue maps. */
@@ -114,6 +112,14 @@ export class UnitManager {
     if (queueChanged) {
       eventBus.emit('unit:queueUpdated', this.getAllQueues());
     }
+  }
+
+  /** @private VIP + military-cluster adjacency cuts folded with the stationed-hero training bonus. */
+  _trainMultiplier() {
+    const heroBonus = this._hm?.getHeroGlobalEffects?.().trainingSpeed ?? 0;
+    return this._vipTrainMultiplier
+      * (this._bm.getTrainTimeMultiplier?.() ?? 1)
+      / (1 + heroBonus);
   }
 
   /**

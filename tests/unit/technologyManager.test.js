@@ -52,3 +52,21 @@ test('a shop-purchased research slot and a VIP-granted slot both survive indepen
   eventBus.emit('user:vipUpdate', { perks: { extraResearchSlots: 1 }, isInit: true });
   assert.equal(tm2._premiumQueueSlots, 2, 'reload must preserve both the shop slot and the VIP slot');
 });
+
+test('a workshop-stationed hero shortens research time via researchSpeed', () => {
+  const tm = new TechnologyManager(stubRM(), stubBM());
+  tm._hm = { getHeroGlobalEffects: () => ({ researchSpeed: 0.12 }) };
+  const withHero = tm._researchMultiplier();
+
+  tm._hm = { getHeroGlobalEffects: () => ({}) };
+  const without = tm._researchMultiplier();
+
+  assert.ok(withHero < without);
+  assert.ok(Math.abs(withHero - without / 1.12) < 1e-9);
+});
+
+test('_researchMultiplier is unchanged when no hero manager is present', () => {
+  const tm = new TechnologyManager(stubRM(), stubBM());
+  tm._hm = null;
+  assert.ok(Number.isFinite(tm._researchMultiplier()));
+});

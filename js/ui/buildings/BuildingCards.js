@@ -138,7 +138,13 @@ export class BuildingCards {
         if (stationed) {
           const hName   = HEROES_CONFIG[stationed.heroId]?.name ?? stationed.heroId;
           const hTier   = TIER_CSS_SUFFIX[HEROES_CONFIG[stationed.heroId]?.tier] ?? 'common';
-          const bonusPct = stationed.level * 5;
+          const instBonus = hm.getHeroInstanceBonus(b.instanceId);
+          const heroStat  = HEROES_CONFIG[stationed.heroId]?.buildingBonus?.stat;
+          const gEffects  = hm.getHeroGlobalEffects();
+          const gBonus    = heroStat === 'training_speed' ? gEffects.trainingSpeed
+                          : heroStat === 'research_speed' ? gEffects.researchSpeed
+                          : 0;
+          const bonusPct = Math.round((instBonus || gBonus || 0) * 100);
           heroStationHtml = `
             <div class="hero-station-section">
               <div class="hero-stationed-badge">

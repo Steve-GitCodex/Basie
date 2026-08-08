@@ -139,11 +139,11 @@ test('a ruin expedition loots once and carries a resource reward home', () => {
 test('item and buff ruin rewards land in grants, not payload', () => {
   const item = resolveArrival(
     { type: 'scout' },
-    { id: 'r1', type: 'ruin', reward: { kind: 'item', itemId: 'scroll_rare', qty: 2 } },
+    { id: 'r1', type: 'ruin', reward: { kind: 'item', itemId: 'token_epic', qty: 2 } },
     { worldMapManager: fakeWorld() },
   );
   assert.deepEqual(item.payload, {});
-  assert.deepEqual(item.grants, { items: [{ itemId: 'scroll_rare', qty: 2 }] });
+  assert.deepEqual(item.grants, { items: [{ itemId: 'token_epic', qty: 2 }] });
 
   const buff = resolveArrival(
     { type: 'scout' },

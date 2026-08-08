@@ -55,6 +55,7 @@ export class BuildingManager {
     this._economyCtx = {
       getPopulation: () => this._rm.getPopulation(),
       getBuildingHero: (iid) => this._hm?.getBuildingHero(iid) ?? null,
+      getHeroInstanceBonus: (iid) => this._hm?.getHeroInstanceBonus(iid) ?? 0,
       getAdjacencyBonus: (iid) => this.getAdjacency(iid).bonus,
     };
 

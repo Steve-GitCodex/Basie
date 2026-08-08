@@ -22,6 +22,7 @@ export class TechnologyManager {
     this.name = 'TechnologyManager';
     this._rm  = rm;
     this._bm  = bm;
+    this._hm  = null; // set via setHeroManager()
 
     /** @type {Map<string, { level: number, researchEndsAt: number|null, startedAt: number|null }>} */
     this._state = new Map();
@@ -54,6 +55,8 @@ export class TechnologyManager {
       this._state.set(id, { level: 0, researchEndsAt: null, startedAt: null });
     }
   }
+
+  setHeroManager(hm) { this._hm = hm; }
 
   // ─────────────────────────────────────────────
   // Engine tick
@@ -119,7 +122,7 @@ export class TechnologyManager {
         const nextId    = this._queue[0];
         const nextState = this._state.get(nextId);
         const nextCfg   = TECH_CONFIG[nextId];
-        const timeSec   = Math.ceil(this._timeForLevel(nextCfg, nextState.level + 1) * this._vipResearchMultiplier);
+        const timeSec   = Math.ceil(this._timeForLevel(nextCfg, nextState.level + 1) * this._researchMultiplier());
         nextState.startedAt      = completedAt;
         nextState.researchEndsAt = completedAt + timeSec * 1000;
       }
@@ -427,6 +430,12 @@ export class TechnologyManager {
   // Private helpers
   // ─────────────────────────────────────────────
 
+  /** @private VIP research cut folded with the stationed-hero research bonus. */
+  _researchMultiplier() {
+    const heroBonus = this._hm?.getHeroGlobalEffects?.().researchSpeed ?? 0;
+    return this._vipResearchMultiplier / (1 + heroBonus);
+  }
+
   /** @private */
   _startActiveQueueItem() {
     if (!this._queue.length) return;
@@ -434,7 +443,7 @@ export class TechnologyManager {
     const state       = this._state.get(activeId);
     const cfg         = TECH_CONFIG[activeId];
     const targetLevel = state.level + 1;
-    const timeSec     = Math.ceil(this._timeForLevel(cfg, targetLevel) * this._vipResearchMultiplier);
+    const timeSec     = Math.ceil(this._timeForLevel(cfg, targetLevel) * this._researchMultiplier());
     const now         = Date.now();
     state.startedAt      = now;
     state.researchEndsAt = now + timeSec * 1000;

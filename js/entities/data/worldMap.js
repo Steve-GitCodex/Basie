@@ -145,7 +145,7 @@ const WORLD_DEF = {
     { id: 'rn_iron',   type: 'resource_node', regionId: 'west_warrens', name: 'Iron Vein',  icon: '⛏️', level: 2, resource: 'iron',  gatherRate: 4, capacity: 800,  regenPerSec: 1.2 },
     { id: 'camp_west', type: 'camp',          regionId: 'west_warrens', name: 'Scav Camp',  icon: '🪓', level: 2, monsterId: 'goblin_camp',  respawnMs: 1_800_000 },
     { id: 'ruin_warren', type: 'ruin',        regionId: 'west_warrens', name: 'Old Warren Vault', icon: '🗿', level: 3, expeditionMs: 45_000, garrison: 'goblin_camp',
-      reward: { kind: 'item', itemId: 'scroll_rare', qty: 1 } },
+      reward: { kind: 'item', itemId: 'token_epic', qty: 1 } },
     { id: 'op_shrine', type: 'outpost',       regionId: 'west_warrens', name: 'Warden Bunker', icon: '📡', level: 3, subtype: 'shrine', garrison: 'goblin_camp',
       boon: { flavor: 'military', pct: 0.08 } },
 
@@ -156,9 +156,9 @@ const WORLD_DEF = {
     { id: 'wb_roc',    type: 'world_boss',    regionId: 'red_lowlands', name: 'The Bonecrusher', icon: '☠️', level: 8, monsterId: 'frost_giant',
       window: { everyMs: 180_000, openMs: 90_000 },
       lootTable: [
-        { kind: 'item',     itemId: 'scroll_rare',   qty: 1,   weight: 3 },
+        { kind: 'item',     itemId: 'token_epic',   qty: 1,   weight: 3 },
         { kind: 'resource', resource: 'money',       amount: 500, weight: 5 },
-        { kind: 'item',     itemId: 'scroll_common', qty: 2,   weight: 2 },
+        { kind: 'item',     itemId: 'token_normal', qty: 2,   weight: 2 },
       ] },
 
     // ── Ashwood (scavengers, wood) ───────────────────────────────────────────

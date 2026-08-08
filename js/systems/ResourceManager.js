@@ -188,9 +188,8 @@ export class ResourceManager {
       }
     }
 
-    // Building-stationed hero production bonuses (e.g. Shadowblade at Mine → +gold) are
-    // already applied per-instance in buildingEconomy.computeActiveRates — applying
-    // HeroManager.getBuildingProductionBonusMap() here again would double-count them.
+    // Stationed-hero production bonuses are applied per-instance in
+    // buildingEconomy.computeActiveRates; re-applying them here would double-count.
     if (this._heroManager) {
       // Apply active production buff multiplier to ALL resource rates
       const buffMult = this._heroManager.getActiveProductionMultiplier();

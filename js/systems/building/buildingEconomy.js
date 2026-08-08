@@ -7,7 +7,7 @@
  * Extracted from BuildingManager to keep the economy formulas testable and
  * portable to an authoritative server.
  */
-import { BUILDINGS_CONFIG, HEROES_CONFIG } from '../../entities/GAME_DATA.js';
+import { BUILDINGS_CONFIG } from '../../entities/GAME_DATA.js';
 
 /**
  * Sum storage/population/cafeteria-stock caps across every built instance and
@@ -76,7 +76,7 @@ function computeStorageCaps(buildings, techBonuses = {}) {
  * Build the list of active production effects (with bank pop-scaling and
  * stationed-hero bonuses) consumed by ResourceManager.recalculateRates().
  * @param {Map<string, {instanceId:string, level:number}[]>} buildings
- * @param {{ getPopulation():{current:number,cap:number}, getBuildingHero(instanceId:string):({heroId:string,level:number}|null), getAdjacencyBonus?:(instanceId:string)=>number }} ctx
+ * @param {{ getPopulation():{current:number,cap:number}, getHeroInstanceBonus?:(instanceId:string)=>number, getAdjacencyBonus?:(instanceId:string)=>number }} ctx
  * @returns {{ effects: Object, level: number }[]}
  */
 function computeActiveRates(buildings, ctx) {
@@ -90,26 +90,20 @@ function computeActiveRates(buildings, ctx) {
     for (const inst of instances) {
       if ((inst.level ?? 0) <= 0) continue;
 
-      // Check for a hero stationed at this instance and compute production bonus
-      const stationedHero = ctx.getBuildingHero(inst.instanceId);
       let scaledEffects = cfg.effects;
 
       if (id === 'bank') {
-        // Money output scales with population fill ratio (0 pop → 0 income)
         scaledEffects = {};
         for (const [res, val] of Object.entries(cfg.effects)) {
           scaledEffects[res] = val * bankEfficiency;
         }
-      } else if (stationedHero) {
-        const heroCfg = HEROES_CONFIG[stationedHero.heroId];
-        const buildingType = inst.instanceId.replace(/_\d+$/, '');
-        if (heroCfg?.buildingBonus?.buildingType === buildingType) {
-          const multiplier = 1 + stationedHero.level * 0.05;
-          scaledEffects = {};
-          for (const [res, val] of Object.entries(cfg.effects)) {
-            scaledEffects[res] = val * multiplier;
-          }
-        }
+      }
+
+      const heroBonus = ctx.getHeroInstanceBonus?.(inst.instanceId) ?? 0;
+      if (heroBonus > 0) {
+        const boosted = {};
+        for (const [res, val] of Object.entries(scaledEffects)) boosted[res] = val * (1 + heroBonus);
+        scaledEffects = boosted;
       }
 
       const adjacency = ctx.getAdjacencyBonus?.(inst.instanceId) ?? 0;

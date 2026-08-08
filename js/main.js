@@ -70,11 +70,13 @@ resourceManager.setBuildingManager(buildingManager);
 inventoryManager.setHeroManager(heroManager);
 inventoryManager.setResourceManager(resourceManager);
 const unitManager      = new UnitManager(resourceManager, buildingManager);
+unitManager.setHeroManager(heroManager);
 const combatManager    = new CombatManager(unitManager, userManager, resourceManager, heroManager, buildingManager);
 resourceManager.setHeroManager(heroManager);
 const mailManager      = new MailManager();
 const questManager     = new QuestManager(resourceManager, userManager);
 const techManager      = new TechnologyManager(resourceManager, buildingManager);
+techManager.setHeroManager(heroManager);
 inventoryManager.setBuildingManager(buildingManager);
 inventoryManager.setUnitManager(unitManager);
 inventoryManager.setTechnologyManager(techManager);
@@ -193,9 +195,10 @@ function applyGameState(state) {
   eventManager.deserialize(state.events);
   if (state.worldMap) worldMapManager.deserialize(state.worldMap);
   if (state.march)    marchManager.deserialize(state.march);
-  // World state loads after buildings, so re-run production rates now that any
-  // captured economic regions/outposts are restored (ResourceManager listens).
+  // heroManager/worldMap load after buildings, so re-run rates now that
+  // stationed heroes and any captured regions/outposts exist (each manager below listens for its own event).
   eventBus.emit('world:buffsChanged', {});
+  eventBus.emit('heroes:updated', heroManager.getRosterWithState());
 }
 
 // =============================================
@@ -551,9 +554,8 @@ function launchGame(authScreen, gameShell, externalState = null) {
         icon: '👑',
         attachments: { gold: 500, wood: 200, stone: 100 },
       });
-      // Starter hero cards — one Common hero card + one Rare hero card
-      inventoryManager.addItem('scroll_common', 2);
-      inventoryManager.addItem('scroll_rare', 1);
+      inventoryManager.addItem('token_normal', 2);
+      inventoryManager.addItem('token_epic', 1);
       inventoryManager.addItem('xp_bundle_small', 2);
     }
   };

@@ -94,7 +94,7 @@ export class HeroAssignment {
 
     hero.assignment = { type: 'building', buildingId, slotIndex };
     eventBus.emit('heroes:updated', this._h.getRosterWithState());
-    eventBus.emit('hero:productionBonusChanged', this._h.getBuildingProductionBonusMap());
+    eventBus.emit('hero:productionBonusChanged');
     return { success: true };
   }
 
@@ -107,7 +107,7 @@ export class HeroAssignment {
     }
     hero.assignment = { type: 'none' };
     eventBus.emit('heroes:updated', this._h.getRosterWithState());
-    eventBus.emit('hero:productionBonusChanged', this._h.getBuildingProductionBonusMap());
+    eventBus.emit('hero:productionBonusChanged');
     return { success: true };
   }
 

@@ -87,7 +87,6 @@ test('applyOffline never snaps an over-cap amount down', () => {
 test('hero building production bonus is not applied globally (no double count)', () => {
   const rm = new ResourceManager();
   rm.setHeroManager({
-    getBuildingProductionBonusMap: () => ({ iron: 5 }),
     getActiveProductionMultiplier: () => 0,
   });
   rm.recalculateRates([{ effects: { iron: 10, money: 10 }, level: 1 }]);

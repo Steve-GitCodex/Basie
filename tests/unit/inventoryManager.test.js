@@ -109,3 +109,34 @@ test('deserialize folds a legacy alias id onto an already-held new-id quantity',
   inv.deserialize({ items: { card_normal: 1, card_common: 4 } });
   assert.equal(inv.getQuantity('card_normal'), 5);
 });
+
+// ── Task 5: legacy scroll ids fold onto recruit tokens ──────────────────────
+
+test('legacy scroll ids fold onto recruit tokens on load', () => {
+  const im = new InventoryManager();
+  im.deserialize({ items: { scroll_common: 2, scroll_rare: 1, scroll_legendary: 3 } });
+  assert.equal(im.getQuantity('token_normal'), 2);
+  assert.equal(im.getQuantity('token_epic'), 1);
+  assert.equal(im.getQuantity('token_legendary'), 3);
+  assert.equal(im.getQuantity('scroll_common'), 0, 'no scroll survives the load');
+});
+
+test('scroll→token folding is idempotent across a save/load round trip', () => {
+  const first = new InventoryManager();
+  first.deserialize({ items: { scroll_rare: 1 } });
+
+  const second = new InventoryManager();
+  second.deserialize(first.serialize());
+  assert.equal(second.getQuantity('token_epic'), 1, 're-loading must not re-convert or double');
+});
+
+test('a fresh save is unaffected by the alias', () => {
+  const im = new InventoryManager();
+  im.deserialize({ items: { token_epic: 1 } });
+  assert.equal(im.getQuantity('token_epic'), 1);
+});
+
+test('welcome-mail starter grant item ids resolve in INVENTORY_ITEMS', () => {
+  assert.ok(INVENTORY_ITEMS.token_normal, 'token_normal must be a known item');
+  assert.ok(INVENTORY_ITEMS.token_epic, 'token_epic must be a known item');
+});

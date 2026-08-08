@@ -140,8 +140,8 @@ export const ACHIEVEMENTS_CONFIG = {
   },
   hall_of_heroes: {
     id: 'hall_of_heroes', name: 'Hall of Heroes', icon: '👑',
-    description: 'Recruit all 4 heroes.',
-    trigger: 'hero_recruited', count: 4,
+    description: 'Recruit all 6 heroes.',
+    trigger: 'hero_recruited', count: 6,
     reward: { money: 10000, diamond: 10, xp: 5000 }, rarity: 'legendary',
   },
 
@@ -390,7 +390,7 @@ export const DAILY_LOGIN_MILESTONE = [
 // 5 milestones spread across the full range.
 export const DAILY_PASS_CONFIG = [
   { xp:  80, label: '+1,000 Gold',          rewards: [{ type: 'resource', itemId: 'money',   quantity: 1000 }],                                                                      icon: '🪙' },
-  { xp: 200, label: 'Common Scroll',        rewards: [{ type: 'item',     itemId: 'scroll_common',    quantity: 1 }],                                                              icon: '📜' },
+  { xp: 200, label: 'Normal Recruit Token', rewards: [{ type: 'item',     itemId: 'token_normal',     quantity: 1 }],                                                              icon: '🎫' },
   { xp: 360, label: '+5 Diamonds',          rewards: [{ type: 'resource', itemId: 'diamond', quantity: 5    }],                                                                      icon: '💎' },
   { xp: 480, label: '+2,000 Gold & Iron',   rewards: [{ type: 'resource', itemId: 'money',   quantity: 2000 }, { type: 'resource', itemId: 'iron', quantity: 300 }],               icon: '⚗️' },
   { xp: 580, label: '+8 Diamonds',          rewards: [{ type: 'resource', itemId: 'diamond', quantity: 8    }],                                                                      icon: '👑' },
@@ -401,9 +401,9 @@ export const DAILY_PASS_CONFIG = [
 // 6 milestones spread across the full range.
 export const CHALLENGE_PASS_CONFIG = [
   { xp:  200, label: '+5 Diamonds',         rewards: [{ type: 'resource', itemId: 'diamond',          quantity: 5    }],                                                          icon: '💎' },
-  { xp:  500, label: 'Rare Scroll',         rewards: [{ type: 'item',     itemId: 'scroll_rare',      quantity: 1    }],                                                          icon: '📜' },
+  { xp:  500, label: 'Epic Recruit Token',  rewards: [{ type: 'item',     itemId: 'token_epic',       quantity: 1    }],                                                          icon: '🎟️' },
   { xp:  875, label: '+10 Diamonds',        rewards: [{ type: 'resource', itemId: 'diamond',          quantity: 10   }, { type: 'resource', itemId: 'money', quantity: 2000 }],   icon: '💎' },
   { xp: 1200, label: 'Epic Hero Card',      rewards: [{ type: 'item',     itemId: 'card_epic',        quantity: 1    }],                                                          icon: '🃏' },
   { xp: 1500, label: '+20 Diamonds',        rewards: [{ type: 'resource', itemId: 'diamond',          quantity: 20   }],                                                          icon: '💎' },
-  { xp: 1750, label: 'Legendary Scroll',    rewards: [{ type: 'item',     itemId: 'scroll_legendary', quantity: 1    }],                                                          icon: '📜' },
+  { xp: 1750, label: 'Legendary Recruit Token', rewards: [{ type: 'item', itemId: 'token_legendary',  quantity: 1    }],                                                          icon: '🏵️' },
 ];

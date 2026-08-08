@@ -149,9 +149,9 @@ export const SHOP_CONFIG = [
   {
     id: 'heroes', label: 'Recruit', icon: '🎲',
     items: [
-      { itemId: 'scroll_common',    moneyCost: 400,  featured: false },
-      { itemId: 'scroll_rare',      moneyCost: 1250, featured: true  },
-      { itemId: 'scroll_legendary', diamondCost: 6, featured: false },
+      { itemId: 'token_normal',    moneyCost: 400,  featured: false },
+      { itemId: 'token_epic',      moneyCost: 1250, featured: true  },
+      { itemId: 'token_legendary', diamondCost: 6, featured: false },
     ],
   },
   {

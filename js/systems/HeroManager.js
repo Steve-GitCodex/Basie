@@ -94,7 +94,8 @@ export class HeroManager {
   }
   unassignHeroFromBuilding(heroId) { return this._assignment.unassignHeroFromBuilding(heroId); }
 
-  getBuildingProductionBonusMap() { return this._economy.getBuildingProductionBonusMap(); }
+  getHeroInstanceBonus(instanceId) { return this._economy.getInstanceBonus(instanceId); }
+  getHeroGlobalEffects()           { return this._economy.getGlobalEffectMap(); }
 
   getBuildingHero(buildingId)           { return this._assignment.getBuildingHero(buildingId); }
   getHeroesForBuilding(buildingId)      { return this._assignment.getHeroesForBuilding(buildingId); }

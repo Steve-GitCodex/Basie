@@ -15,6 +15,9 @@ import { INVENTORY_ITEMS } from '../entities/GAME_DATA.js';
 const LEGACY_ITEM_ID_ALIASES = {
   card_common: 'card_normal',
   card_rare:   'card_epic',
+  scroll_common:    'token_normal',
+  scroll_rare:      'token_epic',
+  scroll_legendary: 'token_legendary',
 };
 
 const RESOURCE_BUNDLE_TIERS = {

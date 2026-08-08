@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import {
   BUILDINGS_CONFIG, CATEGORY_ZONE,
   BUILD_RECT, inBounds, WORLD_MAP, MONSTERS_CONFIG,
+  ACHIEVEMENTS_CONFIG, HEROES_CONFIG,
+  SHOP_CONFIG, INVENTORY_ITEMS, PROD_BONUS_CONFIG,
 } from '../../js/entities/GAME_DATA.js';
 
 const RESOURCE_KEYS = new Set(['wood', 'stone', 'iron', 'food', 'water', 'money']);
@@ -140,4 +142,69 @@ test('save-key ids are unchanged by fiction passes', () => {
     ['bandit_camp', 'chaos_titan', 'corrupted_arena', 'demon_gates', 'dragon_lair',
      'frost_giant', 'goblin_camp', 'orc_warband', 'troll_bridge', 'undead_legion'],
   );
+});
+
+test('hall_of_heroes achievement unlock count matches hero roster size', () => {
+  const heroCount = Object.keys(HEROES_CONFIG).length;
+  assert.equal(ACHIEVEMENTS_CONFIG.hall_of_heroes.count, heroCount,
+    'hall_of_heroes count must match current HEROES_CONFIG size');
+});
+
+test('every shop entry references a real inventory item', () => {
+  for (const section of SHOP_CONFIG) {
+    for (const entry of section.items ?? []) {
+      if (!entry.itemId) continue;
+      assert.ok(INVENTORY_ITEMS[entry.itemId],
+        `shop section '${section.id}' sells unknown item '${entry.itemId}'`);
+    }
+  }
+});
+
+test('every recruit token has at least one acquisition path', () => {
+  const sold = new Set();
+  for (const section of SHOP_CONFIG) {
+    for (const entry of section.items ?? []) if (entry.itemId) sold.add(entry.itemId);
+  }
+  for (const tier of ['normal', 'epic', 'legendary']) {
+    assert.ok(sold.has(`token_${tier}`),
+      `token_${tier} is unreachable — no player can enter the hero economy`);
+  }
+});
+
+test('no retired recruitment scroll is still for sale', () => {
+  for (const section of SHOP_CONFIG) {
+    for (const entry of section.items ?? []) {
+      assert.ok(!String(entry.itemId ?? '').startsWith('scroll_'),
+        `retired item '${entry.itemId}' is still on sale and always fails on use`);
+    }
+  }
+});
+
+test('every statEffectMap entry resolves to a known PROD_BONUS_CONFIG base key', () => {
+  const resourceEffects = new Set(['money', 'food', 'wood', 'stone', 'iron']);
+  for (const [buildingType, entry] of Object.entries(PROD_BONUS_CONFIG.statEffectMap)) {
+    if (resourceEffects.has(entry.effect)) continue;
+    assert.ok(PROD_BONUS_CONFIG.base[entry.effect] != null,
+      `statEffectMap['${buildingType}'] maps to '${entry.effect}' with no base value`);
+  }
+});
+
+test('paladin\'s buildingBonus is knowingly inert — heroquarters has no statEffectMap entry', () => {
+  assert.equal(HEROES_CONFIG.paladin.buildingBonus.buildingType, 'heroquarters');
+  assert.equal(PROD_BONUS_CONFIG.statEffectMap.heroquarters, undefined,
+    'wiring this needs a balance number the numbers spec never defined — a future phase decides');
+});
+
+const KNOWN_INERT_HERO_BUILDING_BONUSES = new Set(['paladin:heroquarters']);
+
+test('every hero buildingBonus resolves to a live statEffectMap stat, or is on the known-inert allowlist', () => {
+  for (const hero of Object.values(HEROES_CONFIG)) {
+    const bb = hero.buildingBonus;
+    if (!bb) continue;
+    const mapped = PROD_BONUS_CONFIG.statEffectMap[bb.buildingType];
+    const isLive = mapped?.stat === bb.stat;
+    const isAllowlisted = KNOWN_INERT_HERO_BUILDING_BONUSES.has(`${hero.id}:${bb.buildingType}`);
+    assert.ok(isLive || isAllowlisted,
+      `${hero.id}'s buildingBonus (${bb.buildingType} → ${bb.stat}) no longer resolves to a live PROD_BONUS_CONFIG effect and is not on the known-inert allowlist`);
+  }
 });

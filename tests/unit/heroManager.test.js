@@ -121,7 +121,7 @@ test('deserialize with no data at all is a safe no-op', () => {
 
 // ── L8-partial: building production bonus must respect buildingType ──
 
-test('getBuildingProductionBonusMap ignores a hero stationed off their preferred building type', () => {
+test('getHeroInstanceBonus ignores a hero stationed off their preferred building type', () => {
   const hm = makeHM();
   hm._owned.set('shadowblade', {
     heroId: 'shadowblade', level: 1, xp: 0, xpToNext: 550, stars: 0,
@@ -129,11 +129,10 @@ test('getBuildingProductionBonusMap ignores a hero stationed off their preferred
     assignment: { type: 'building', buildingId: 'barracks_0' },
   });
 
-  const map = hm.getBuildingProductionBonusMap();
-  assert.equal(map.iron ?? 0, 0, 'Shadowblade stationed in a barracks must not boost iron production');
+  assert.equal(hm.getHeroInstanceBonus('barracks_0'), 0, 'Shadowblade stationed in a barracks must not boost iron production');
 });
 
-test('getBuildingProductionBonusMap applies the bonus when stationed at the matching building type', () => {
+test('getHeroInstanceBonus applies the bonus when stationed at the matching building type', () => {
   const hm = makeHM();
   hm._owned.set('shadowblade', {
     heroId: 'shadowblade', level: 1, xp: 0, xpToNext: 550, stars: 0,
@@ -141,8 +140,7 @@ test('getBuildingProductionBonusMap applies the bonus when stationed at the matc
     assignment: { type: 'building', buildingId: 'mine_0' },
   });
 
-  const map = hm.getBuildingProductionBonusMap();
-  assert.ok((map.iron ?? 0) > 0, 'Shadowblade stationed in a mine should boost iron production');
+  assert.ok(hm.getHeroInstanceBonus('mine_0') > 0, 'Shadowblade stationed in a mine should boost iron production');
 });
 
 test('awardHeroXP levels a hero up using the linear-step XP curve with tier multiplier', () => {
@@ -208,7 +206,8 @@ test('every delegated public method still works after the split', () => {
   assert.equal(typeof m.awardHeroXP, 'function');
   assert.equal(typeof m.assignHeroToSquad, 'function');
   assert.equal(typeof m.getCombatBonuses, 'function');
-  assert.equal(typeof m.getBuildingProductionBonusMap, 'function');
+  assert.equal(typeof m.getHeroInstanceBonus, 'function');
+  assert.equal(typeof m.getHeroGlobalEffects, 'function');
   // round-trip: assign → combat bonus reflects it (heroquarters has heroCapacity: 0, so barracks_0 is the real hero-station path)
   m.assignHeroToBuilding('warlord', 'barracks_0');
   assert.ok(m.getCombatBonuses().attackMult > 1.0);

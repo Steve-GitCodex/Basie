@@ -3,6 +3,108 @@
 > Most-updated file in the repo. Every session that changes code updates this file
 > (what landed, known issues, exact next steps). See the session protocol in `CLAUDE.md`.
 
+## Hero redesign Phase 2a — "Make It Real" shipped (2026-08-08, latest)
+
+Executed `docs/superpowers/plans/2026-07-26-hero-phase2a-make-it-real.md` via
+subagent-driven development (8 tasks, each independently task-reviewed clean, plus this
+final documentation + full-verification task). ADR 0027 records the full decision set.
+SDD ledger: `.superpowers/sdd/progress.md`.
+
+- **Per-instance hero production bonus is now the live model.** New pure module
+  `js/systems/hero/heroProductionBonus.js` implements the §I formula
+  (`resourceBonusFor`/`globalEffectBonus`). `getBuildingProductionBonusMap()` (the
+  Phase 1 map with correct numbers but no consumer) is **removed**.
+  `buildingEconomy.computeActiveRates` now calls `ctx.getHeroInstanceBonus(instanceId)`
+  — the old dead `1 + level·0.05` formula is gone, and the bank `if`/`else if` bug is
+  fixed so bank pop-scaling and the hero bonus **compose** instead of one discarding
+  the other. No hero currently maps to `gold_production`, so the bank branch is dormant
+  capacity for now — it no longer discards a hero bonus, but none exists to pay out yet.
+- **Balance consequence (intended, spec §2.7):** a level-10, 0-star stationed hero's
+  building bonus goes from a flat **+50%** to **~+16.35%** under the real formula — a
+  real magnitude shift on existing saves, not a bug, flagged for the eventual balance
+  pass.
+- **`trainingSpeed`/`researchSpeed` now have real consumers.** Both stay roster-wide
+  global effects (no single building to attach to) but are actually read now:
+  `UnitManager._trainMultiplier()` and new `TechnologyManager._researchMultiplier()`
+  divide job duration by `(1 + bonus)`. `setHeroManager` injection added to both,
+  wired in `main.js`.
+- **Recruit tokens are now reachable in-game — closes Phase 1's known gap #2.**
+  `token_normal`/`token_epic`/`token_legendary` are sold in `SHOP_CONFIG` and granted
+  by progression/world-map reward tables. `scroll_*` retires **from sale** (item
+  definitions and the `useItem` branch are deliberately kept — persisted mail/quest
+  payloads can still name them); legacy scroll ids fold onto tokens via
+  `LEGACY_ITEM_ID_ALIASES`, idempotent, no migration-marker save field. Welcome-mail
+  grant in `main.js` repointed to tokens.
+- **Steve's call this session:** `hall_of_heroes`'s trigger count bumped 4 → 6 so it
+  matches its own "recruit all 6 heroes" description (stale since Phase 1 grew the
+  roster). A regression test derives the expected count from `HEROES_CONFIG` so a
+  future roster resize fails loudly instead of drifting stale again.
+- **Hero art ingested.** New `js/ui/icons/heroArt.js` manifest + tests; ingest ran via
+  `assestProcessing/ingest_heroes.py`, `assets/heroes/` holds 12 PNGs + 2 MP4s (warlord
+  + Juno Vane get video). **`ingest_heroes.py` itself is untracked** — `/assestProcessing/`
+  is git-ignored repo-wide (`.gitignore:20`) and zero files there are tracked, same as
+  the pre-existing building `ingest.py`; only the consuming JS files are committed.
+- **Still knowingly inert (needs a balance number a future phase sets):** `paladin`'s
+  `heroquarters` station bonus (no `statEffectMap` entry) and
+  `PROD_BONUS_CONFIG.base.buildSpeed` (no building consumes it). Both asserted
+  explicitly inert by `tests/unit/gameData.test.js`.
+- **`GachaUI.js` remains knowingly broken** — untouched by design this phase, Phase 2b
+  deletes it outright rather than patching a UI that's about to be replaced.
+- **Verified this session:** `npm test` **425/425**. `check-comments.mjs` — exactly 12
+  violations, all pre-existing (March 2026, `git blame`-confirmed) in files this phase
+  never touched the flagged lines of (`InventoryManager.js`, `QuestManager.js`,
+  `UnitManager.js` — touched by Task 4 but not near these lines — and `UIManager.js`);
+  zero violations introduced by this phase. `boot-smoke.mjs` **PASS**, zero page
+  errors — this mattered because the economy changes reach load-time paths
+  (`InventoryManager.deserialize`, `BuildingManager._notifyRates`).
+- **Not committed (Steve commits himself)** — docs are commit-ready; the ADR/handoff/
+  roadmap commit for this task lands separately from the 8 task commits already on the
+  branch.
+- **Next step: Phase 2b — Heroes screen + Recruit Hall.** Spec
+  `docs/superpowers/specs/2026-07-27-hero-phase2b-heroes-screen-recruit-hall-design.md`,
+  plan `docs/superpowers/plans/2026-07-27-hero-phase2b-heroes-screen-recruit-hall.md`
+  (9 tasks). `#view-heroes` becomes a three-tab Hero Quarters interior (Roster ·
+  Recruit · Assignments); `HeroesUI.js` 581 ln → a shell over seven modules in
+  `js/ui/heroes/`; `GachaUI.js` + `css/components/gacha.css` + `ui:openGacha` deleted.
+
+## Hero redesign Phase 2a + 2b — both planned (superseded — 2a now shipped, see above)
+
+No code changed this session. Both halves of the "make heroes real and visible" work are
+now specced and planned; **next session executes 2a end-to-end, then 2b on top.**
+
+- **Phase 2a — "Make It Real"** (headless): spec
+  `docs/superpowers/specs/2026-07-26-hero-phase2a-make-it-real-design.md`, plan
+  `docs/superpowers/plans/2026-07-26-hero-phase2a-make-it-real.md` (8 tasks). Per-instance
+  stationed-hero production bonus becomes the model of record, `trainingSpeed`/`researchSpeed`
+  get real consumers, `scroll_*` retires onto `token_*`, hero art is ingested behind a
+  manifest.
+- **Plan bug found and fixed this session:** the 2a plan asserted
+  `getBuildingProductionBonusMap()` had no live call site. It has **two** —
+  `js/systems/hero/heroAssignment.js:97` and `:110`, where it supplies an ignored payload to
+  `hero:productionBonusChanged`. Removing the method without the new Task 2 Step 1c would
+  make **every hero assignment throw**. Task 2 now carries the full call-site table, the
+  repointed emits, a regression test, and the real test surface (`heroManager.test.js`,
+  `heroEconomy.test.js`, `resourceManager.test.js:90`, not just the one file it anticipated).
+- **Phase 2b — Heroes screen + Recruit Hall** (UI): spec
+  `docs/superpowers/specs/2026-07-27-hero-phase2b-heroes-screen-recruit-hall-design.md`, plan
+  `docs/superpowers/plans/2026-07-27-hero-phase2b-heroes-screen-recruit-hall.md` (9 tasks).
+  `#view-heroes` becomes a three-tab Hero Quarters interior (Roster · Recruit · Assignments);
+  `HeroesUI.js` 581 ln → a shell over seven modules in `js/ui/heroes/`, two of them pure and
+  unit-tested. `GachaUI.js` + `css/components/gacha.css` + `ui:openGacha` are deleted.
+- **Steve's calls this session:** recruiting is **tied to the building** — Inventory stores
+  tokens/cards and redirects to the Recruit tab, it never spends them. **Barracks/squad
+  assignment stays in the Barracks**; the new Assignments board owns every *other* building
+  slot including HQ, forward-compatible with a future Hero Station building. The
+  production-buff block **moves to Inventory** rather than being deleted. XP cards and
+  fragments-as-XP apply from the hero detail panel.
+- **Still knowingly inert after both phases** (needs a balance number a future phase sets):
+  `paladin`'s `heroquarters` station bonus, and `PROD_BONUS_CONFIG.base.buildSpeed`. The
+  board renders the HQ slot as "no station bonus yet" rather than inventing a magnitude.
+- **Next after 2b:** Phase 2c — the 6-skill progression model (parent design §5). The 2b
+  detail panel already groups skills Passive / Support / Major, so 2c is data plus level-up
+  controls, not a re-layout.
+- **Not committed (Steve commits himself)** — docs are commit-ready.
+
 ## Hero redesign Phase 1 — economy foundation shipped (2026-07-25, latest)
 
 Executed `docs/superpowers/plans/2026-07-23-hero-redesign-phase1-economy-foundation.md`
