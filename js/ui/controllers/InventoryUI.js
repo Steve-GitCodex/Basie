@@ -242,7 +242,7 @@ export class InventoryUI {
     if (item.type === 'hero_card') {
       const alreadyOwned = item.targetHeroId && ownedHeroIds.has(item.targetHeroId);
       if (alreadyOwned) return `<button class="btn btn-xs btn-ghost" disabled>Owned</button>`;
-      return `<button class="btn btn-xs btn-gold inv-use-card" data-item="${item.id}">Recruit</button>`;
+      return `<button class="btn btn-xs btn-gold inv-goto-recruit">Recruit</button>`;
     }
 
     // ── Universal Hero Cards — fix: check if ALL heroes of tier are owned ─
@@ -251,7 +251,7 @@ export class InventoryUI {
       const heroesOfTier  = Object.values(HEROES_CONFIG).filter(h => h.tier === tier);
       const allOwned      = heroesOfTier.length > 0 && heroesOfTier.every(h => ownedHeroIds.has(h.id));
       if (allOwned) return `<button class="btn btn-xs btn-ghost" disabled title="All ${tier} heroes owned">All Owned</button>`;
-      return `<button class="btn btn-xs btn-gold inv-use-card" data-item="${item.id}">Recruit</button>`;
+      return `<button class="btn btn-xs btn-gold inv-goto-recruit">Recruit</button>`;
     }
 
     // ── Hero Fragments ────────────────────────────────────────────────────
@@ -319,30 +319,13 @@ export class InventoryUI {
       });
     });
 
-    // ── Recruitment Scrolls → redirect to Hero Quarters Recruit tab ───────
+    // ── Recruitment Scrolls / Hero Cards → redirect to Hero Quarters Recruit tab ─
     panel.querySelectorAll('.inv-goto-recruit').forEach(btn => {
       btn.addEventListener('click', () => {
         eventBus.emit('ui:click');
         this._close();
         eventBus.emit('ui:navigateTo', 'heroes');
         eventBus.emit('ui:openHeroesTab', 'recruit');
-      });
-    });
-
-    // ── Hero cards → recruit ──────────────────────────────────────────────
-    panel.querySelectorAll('.inv-use-card').forEach(btn => {
-      btn.addEventListener('click', e => {
-        eventBus.emit('ui:click');
-        const itemId = e.currentTarget.dataset.item;
-        const r = this._s.inventory.useItem(itemId);
-        if (!r.success) {
-          eventBus.emit('ui:error');
-          this._s.notifications?.show('warning', 'Cannot Recruit', r.reason);
-        } else {
-          const roster = this._s.heroes?.getRosterWithState?.() ?? [];
-          const hero   = roster.find(h => h.id === r.heroId);
-          this._s.notifications?.show('success', '👑 Hero Recruited!', `${hero?.name ?? r.heroId} has joined your roster!`);
-        }
       });
     });
 
