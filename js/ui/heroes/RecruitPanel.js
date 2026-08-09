@@ -1,5 +1,6 @@
 import { eventBus } from '../../core/EventBus.js';
 import { HEROES_CONFIG, INVENTORY_ITEMS, EXCHANGE_CONFIG, AWAKENING_CONFIG } from '../../entities/GAME_DATA.js';
+import { escapeHtml } from '../uiUtils.js';
 import { portraitHtml } from './heroCardView.js';
 import { recruitReveal } from './recruitReveal.js';
 
@@ -80,13 +81,18 @@ export class RecruitPanel {
   }
 
   _cardListHtml() {
-    const owned = Object.values(HEROES_CONFIG)
-      .map(cfg => ({ cfg, qty: this._s.inventory?.getQuantity(cfg.recruitCard) ?? 0 }))
+    const specificCards = Object.values(HEROES_CONFIG)
+      .map(cfg => ({ id: cfg.recruitCard, name: INVENTORY_ITEMS[cfg.recruitCard]?.name ?? cfg.name }));
+    const universalCards = Object.values(INVENTORY_ITEMS)
+      .filter(item => item.type === 'hero_card_universal')
+      .map(item => ({ id: item.id, name: item.name }));
+    const owned = [...specificCards, ...universalCards]
+      .map(e => ({ ...e, qty: this._s.inventory?.getQuantity(e.id) ?? 0 }))
       .filter(e => e.qty > 0);
     if (owned.length === 0) return `<div class="recruit-empty">No hero cards yet.</div>`;
-    return owned.map(({ cfg, qty }) => `
-      <button class="btn btn-gold btn-use-card" data-card="${cfg.recruitCard}">
-        ${INVENTORY_ITEMS[cfg.recruitCard]?.name ?? cfg.name} ×${qty}
+    return owned.map(({ id, name, qty }) => `
+      <button class="btn btn-gold btn-use-card" data-card="${escapeHtml(id)}">
+        ${escapeHtml(name)} ×${qty}
       </button>`).join('');
   }
 

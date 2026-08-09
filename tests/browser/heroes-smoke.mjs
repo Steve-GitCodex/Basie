@@ -187,5 +187,28 @@ await withPage(async ({ page, errors, origin }) => {
   const heroCardQtyAfter = await page.evaluate(() => window.game.inventory.getQuantity('card_hero_warlord'));
   checks.push({ label: 'hero card is not spent by the redirect', ok: heroCardQtyAfter === heroCardQtyBefore });
 
+  await page.evaluate(() => window.game.inventory.addItem('card_epic', 1));
+  await page.waitForTimeout(200);
+  await dismissOverlays(page);
+  await page.evaluate(() => window.game.eventBus.emit('ui:navigateTo', 'heroes'));
+  await page.waitForSelector('#view-heroes:not(.hidden)', { timeout: 5000 });
+  await dismissOverlays(page);
+  await page.click('.heroes-tab[data-tab="recruit"]');
+  await page.waitForSelector('.btn-use-card[data-card="card_epic"]', { timeout: 5000 });
+  const epicOwnedBefore = await page.evaluate(() =>
+    window.game.heroes.getRosterWithState().filter(h => h.tier === 'epic' && h.isOwned).map(h => h.id));
+  const epicCardQtyBefore = await page.evaluate(() => window.game.inventory.getQuantity('card_epic'));
+  await dismissOverlays(page);
+  await page.click('.btn-use-card[data-card="card_epic"]');
+  await page.waitForTimeout(300);
+  const epicOwnedAfter = await page.evaluate(() =>
+    window.game.heroes.getRosterWithState().filter(h => h.tier === 'epic' && h.isOwned).map(h => h.id));
+  const epicCardQtyAfter = await page.evaluate(() => window.game.inventory.getQuantity('card_epic'));
+  const newlyOwned = epicOwnedAfter.filter(id => !epicOwnedBefore.includes(id));
+  checks.push({
+    label: 'universal epic hero card is spendable from the Recruit tab and grants a new unowned epic hero',
+    ok: epicCardQtyAfter === epicCardQtyBefore - 1 && newlyOwned.length === 1,
+  });
+
   report('heroes-smoke', checks, errors);
 });
