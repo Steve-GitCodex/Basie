@@ -44,14 +44,16 @@ export function videoHtml(hero) {
 }
 
 export function bindPlayButton(rootEl) {
-  rootEl.querySelector('.hero-play-btn')?.addEventListener('click', e => {
-    eventBus.emit('ui:click');
-    const wrap = e.currentTarget.closest('.hero-splash-video');
-    const video = document.createElement('video');
-    video.src = wrap.dataset.src;
-    video.controls = true;
-    video.className = 'hero-splash-video-el';
-    wrap.replaceChildren(video);
-    video.play();
+  rootEl.querySelectorAll('.hero-play-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      eventBus.emit('ui:click');
+      const wrap = e.currentTarget.closest('.hero-splash-video');
+      const video = document.createElement('video');
+      video.src = wrap.dataset.src;
+      video.controls = true;
+      video.className = 'hero-splash-video-el';
+      wrap.replaceChildren(video);
+      video.play();
+    });
   });
 }

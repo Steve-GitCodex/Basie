@@ -29,12 +29,20 @@ export class RecruitPanel {
   patch() {
     if (!this._root || this._revealing) return;
     for (const tier of TIERS) {
+      const count = this._tokenCount(tier);
       const el = this._root.querySelector(`.recruit-token-count[data-tier="${tier}"]`);
-      if (el) el.textContent = String(this._tokenCount(tier));
+      if (el) el.textContent = String(count);
+      this._root.querySelectorAll(`.btn-pull[data-tier="${tier}"]`).forEach(btn => {
+        btn.disabled = count < 1;
+      });
     }
     const list = this._root.querySelector('.recruit-card-list');
     if (list) list.innerHTML = this._cardListHtml();
     this._bindCards();
+  }
+
+  dismissReveal() {
+    this._revealing = false;
   }
 
   _tokenCount(tier) { return this._s.inventory?.getQuantity(`token_${tier}`) ?? 0; }

@@ -50,6 +50,7 @@ export class HeroesUI {
   }
 
   _showTab(tab) {
+    if (this._activeTab === 'recruit' && tab !== 'recruit') this._recruit.dismissReveal();
     this._activeTab = tab;
     for (const id of TABS) this._panelEls[id]?.classList.toggle('hidden', id !== tab);
     this._tabs?.querySelectorAll('.heroes-tab').forEach(b => {

@@ -77,6 +77,8 @@ await withPage(async ({ page, errors, origin }) => {
   await page.waitForTimeout(300);
   await page.click('.recruit-banner--normal .btn-pull[data-count="1"]');
   checks.push({ label: 'a single pull shows a reveal card', ok: await page.locator('.recruit-result-card').count() === 1 });
+  const revealCardText = await page.locator('.recruit-result-card').first().innerText();
+  checks.push({ label: 'reveal card renders real outcome content', ok: revealCardText.trim().length > 0 && !/Unknown Outcome/.test(revealCardText) });
   await page.click('.recruit-reveal-done');
   await page.waitForTimeout(300);
   checks.push({ label: 'reveal dismisses back to the banners', ok: await page.locator('.recruit-banner').count() === 3 });
