@@ -37,7 +37,11 @@ export class HeroesUI {
       });
     });
 
-    eventBus.on('ui:viewChanged',  v => { if (v === 'heroes') this._showTab(this._activeTab); });
+    eventBus.on('ui:viewChanged',  v => {
+      if (v !== 'heroes') return;
+      this._recruit.dismissReveal();
+      this._showTab(this._activeTab);
+    });
     eventBus.on('ui:openHeroesTab', tab => {
       if (!TABS.includes(tab)) return;
       this._activeTab = tab;

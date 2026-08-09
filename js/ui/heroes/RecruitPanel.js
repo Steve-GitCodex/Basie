@@ -1,5 +1,5 @@
 import { eventBus } from '../../core/EventBus.js';
-import { HEROES_CONFIG, INVENTORY_ITEMS, EXCHANGE_CONFIG } from '../../entities/GAME_DATA.js';
+import { HEROES_CONFIG, INVENTORY_ITEMS, EXCHANGE_CONFIG, AWAKENING_CONFIG } from '../../entities/GAME_DATA.js';
 import { portraitHtml } from './heroCardView.js';
 import { recruitReveal } from './recruitReveal.js';
 
@@ -92,13 +92,14 @@ export class RecruitPanel {
 
   _exchangeHtml() {
     const rate = EXCHANGE_CONFIG.tierShardsPerHeroShard;
+    const roster = this._s.heroes.getRosterWithState?.() ?? [];
     return `
       <div class="recruit-section-title">Shard Exchange</div>
       <div class="recruit-exchange-note">${rate} Tier Shards → 1 Hero Shard</div>
-      ${TIERS.map(t => this._exchangeTierHtml(t, rate)).join('')}`;
+      ${TIERS.map(t => this._exchangeTierHtml(t, rate, roster)).join('')}`;
   }
 
-  _exchangeTierHtml(tier, rate) {
+  _exchangeTierHtml(tier, rate, roster) {
     const qty = this._s.inventory?.getQuantity(`tier_shard_${tier}`) ?? 0;
     const heroes = Object.values(HEROES_CONFIG).filter(h => h.tier === tier);
     return `
@@ -108,7 +109,11 @@ export class RecruitPanel {
         </div>
         <div class="recruit-exchange-controls">
           <select class="recruit-exchange-hero" data-tier="${tier}">
-            ${heroes.map(h => `<option value="${h.id}">${h.name}</option>`).join('')}
+            ${heroes.map(h => {
+              const state = roster.find(r => r.id === h.id);
+              const maxed = !!state?.isOwned && state.stars >= AWAKENING_CONFIG.maxStars;
+              return `<option value="${h.id}">${h.name}${maxed ? ' (Maxed — converts to tier shards)' : ''}</option>`;
+            }).join('')}
           </select>
           <button class="btn btn-gold btn-exchange" data-tier="${tier}" ${qty < rate ? 'disabled' : ''}>Exchange</button>
         </div>
@@ -137,6 +142,19 @@ export class RecruitPanel {
         if (!r.success) {
           eventBus.emit('ui:error');
           this._s.notifications?.show('warning', 'Cannot Exchange', r.reason);
+          return;
+        }
+        const heroName = HEROES_CONFIG[heroId]?.name ?? heroId;
+        if (r.outcome === 'overflow') {
+          const spent = EXCHANGE_CONFIG.tierShardsPerHeroShard * r.count;
+          const refunded = EXCHANGE_CONFIG.maxedOverflowToTierShards * r.count;
+          this._s.notifications?.show(
+            'warning',
+            'Hero Already Maxed',
+            `${heroName} is at max stars, so no Hero Shard was granted. Spent ${spent} tier shards, refunded ${refunded} back.`,
+          );
+        } else {
+          this._s.notifications?.show('success', 'Shard Exchanged', `Received 1 Hero Shard for ${heroName}.`);
         }
       });
     });

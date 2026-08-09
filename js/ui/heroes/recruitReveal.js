@@ -1,6 +1,6 @@
 import { HEROES_CONFIG, INVENTORY_ITEMS } from '../../entities/GAME_DATA.js';
 import { icon, iconFromEmoji } from '../icons.js';
-import { TIER_CSS_SUFFIX } from '../uiUtils.js';
+import { TIER_CSS_SUFFIX, escapeHtml } from '../uiUtils.js';
 import { portraitHtml, videoHtml, bindPlayButton } from './heroCardView.js';
 
 const OUTCOME_META = {
@@ -29,7 +29,7 @@ function resultCardHtml(result) {
       <div class="recruit-result-card recruit-result--error">
         ${icon('warning')}
         <div class="recruit-result-name">${meta.label}</div>
-        <div class="recruit-result-sub">${result.reason ?? 'Grant failed.'}</div>
+        <div class="recruit-result-sub">${escapeHtml(result.reason ?? 'Grant failed.')}</div>
       </div>`;
   }
 

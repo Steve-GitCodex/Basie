@@ -102,5 +102,44 @@ await withPage(async ({ page, errors, origin }) => {
   const displayedTierShardQty = await page.locator('.recruit-exchange-qty[data-tier="normal"]').innerText();
   checks.push({ label: 'exchange qty display patches in place after spend', ok: displayedTierShardQty.trim() === String(afterTierShards) });
 
+  await page.evaluate(() => {
+    window.game.inventory.addItem('shard_kaelenthorne', 100);
+    for (let i = 0; i < 10; i++) window.game.heroes.awakenHero('kaelenthorne');
+  });
+  await page.waitForTimeout(300);
+  await page.click('.heroes-tab[data-tab="roster"]');
+  await page.click('.heroes-tab[data-tab="recruit"]');
+  await page.waitForSelector('.recruit-banner', { timeout: 5000 });
+  const maxedOptionText = await page.locator('.recruit-exchange-hero[data-tier="normal"] option[value="kaelenthorne"]').innerText();
+  checks.push({ label: 'exchange picker marks a fully-maxed hero before the click', ok: /Maxed/.test(maxedOptionText) });
+
+  await page.evaluate(() => window.game.inventory.addItem('tier_shard_normal', 5));
+  await page.waitForTimeout(200);
+  const beforeOverflowTierShards = await page.evaluate(() => window.game.inventory.getQuantity('tier_shard_normal'));
+  const beforeOverflowHeroShards = await page.evaluate(() => window.game.inventory.getQuantity('shard_kaelenthorne'));
+  await page.evaluate(async () => {
+    const { NotificationManager } = await import('/js/systems/NotificationManager.js');
+    window.__capturedToasts = [];
+    const original = NotificationManager.prototype.show;
+    NotificationManager.prototype.show = function (type, title, message) {
+      window.__capturedToasts.push({ type, title, message });
+      return original.call(this, type, title, message);
+    };
+  });
+  await page.selectOption('.recruit-exchange-hero[data-tier="normal"]', 'kaelenthorne');
+  await page.click('.btn-exchange[data-tier="normal"]');
+  await page.waitForTimeout(300);
+  const afterOverflowTierShards = await page.evaluate(() => window.game.inventory.getQuantity('tier_shard_normal'));
+  const afterOverflowHeroShards = await page.evaluate(() => window.game.inventory.getQuantity('shard_kaelenthorne'));
+  checks.push({
+    label: 'exchanging into a maxed hero spends shards and refunds the lossy overflow amount, no hero shard granted',
+    ok: afterOverflowTierShards === beforeOverflowTierShards - 1 && afterOverflowHeroShards === beforeOverflowHeroShards,
+  });
+  const capturedToasts = await page.evaluate(() => window.__capturedToasts ?? []);
+  checks.push({
+    label: 'overflow exchange surfaces a toast telling the player why',
+    ok: capturedToasts.some(t => /already|maxed/i.test(t.title) || /already|maxed/i.test(t.message)),
+  });
+
   report('heroes-smoke', checks, errors);
 });

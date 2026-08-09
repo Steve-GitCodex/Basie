@@ -7,6 +7,12 @@ import { icon } from './icons.js';
 
 export const TIER_CSS_SUFFIX = { normal: 'common', epic: 'rare', legendary: 'legendary' };
 
+const HTML_ESCAPE_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+
+export function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, ch => HTML_ESCAPE_MAP[ch]);
+}
+
 export const RES_META = {
   wood:    { icon: icon('wood'),                  label: 'Wood'    },
   stone:   { icon: icon('stone'),                 label: 'Stone'   },
