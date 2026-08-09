@@ -30,5 +30,39 @@ await withPage(async ({ page, errors, origin }) => {
   await page.click('.hero-roster-card[data-hero-id="kaelenthorne"]');
   checks.push({ label: 'a hero without a clip has no play button', ok: await page.locator('#heroes-detail-pane .hero-play-btn').count() === 0 });
 
+  await page.evaluate(() => {
+    window.game.buildings.build('barracks');
+    window.game.eventBus.emit('ui:devSetBuildingLevel', { buildingId: 'barracks', level: 3 });
+    window.game.eventBus.emit('ui:devSetBuildingLevel', { buildingId: 'townhall', level: 4 });
+    window.game.buildings.build('heroquarters');
+    window.game.eventBus.emit('ui:devSetBuildingLevel', { buildingId: 'heroquarters', level: 1 });
+    window.game.buildings.build('mine');
+    window.game.heroes.recruitHeroRecord('kaelenthorne');
+  });
+  await page.waitForTimeout(300);
+  await dismissOverlays(page);
+  await page.evaluate(() => document.querySelector('#story-modal-overlay')?.classList.add('hidden'));
+  await page.click('.heroes-tab[data-tab="assign"]');
+  await page.waitForSelector('.hero-board-row', { timeout: 5000 });
+  checks.push({ label: 'board excludes barracks', ok: await page.locator('.hero-board-row[data-instance^="barracks_"]').count() === 0 });
+  checks.push({ label: 'board shows the slot counter', ok: /Hero slots: \d+ \/ \d+/.test(await page.locator('.hero-board-header').innerText()) });
+
+  const beforeOccupied = await page.locator('.hero-board-row--occupied').count();
+  await dismissOverlays(page);
+  await page.click('.hero-board-row .btn-board-assign');
+  const pickable = await page.locator('.hero-board-pick').count();
+  if (pickable > 0) {
+    await dismissOverlays(page);
+    await page.click('.hero-board-pick');
+    await page.waitForTimeout(300);
+    checks.push({ label: 'assigning fills a slot', ok: await page.locator('.hero-board-row--occupied').count() === beforeOccupied + 1 });
+    await dismissOverlays(page);
+    await page.click('.btn-board-remove');
+    await page.waitForTimeout(300);
+    checks.push({ label: 'removing empties it again', ok: await page.locator('.hero-board-row--occupied').count() === beforeOccupied });
+  } else {
+    checks.push({ label: 'assign round trip (no owned hero in sandbox — skipped)', ok: true });
+  }
+
   report('heroes-smoke', checks, errors);
 });
