@@ -83,5 +83,24 @@ await withPage(async ({ page, errors, origin }) => {
   await page.waitForTimeout(300);
   checks.push({ label: 'reveal dismisses back to the banners', ok: await page.locator('.recruit-banner').count() === 3 });
 
+  const normalExchangeOptions = await page.locator('.recruit-exchange-hero[data-tier="normal"] option').allTextContents();
+  checks.push({ label: 'exchange hero picker is restricted to normal-tier heroes', ok: normalExchangeOptions.length === 2 });
+
+  await page.evaluate(() => window.game.inventory.addItem('tier_shard_normal', 5));
+  await page.waitForTimeout(200);
+  const beforeTierShards = await page.evaluate(() => window.game.inventory.getQuantity('tier_shard_normal'));
+  const beforeHeroShards = await page.evaluate(() => window.game.inventory.getQuantity('shard_kaelenthorne'));
+  await page.selectOption('.recruit-exchange-hero[data-tier="normal"]', 'kaelenthorne');
+  await page.click('.btn-exchange[data-tier="normal"]');
+  await page.waitForTimeout(300);
+  const afterTierShards = await page.evaluate(() => window.game.inventory.getQuantity('tier_shard_normal'));
+  const afterHeroShards = await page.evaluate(() => window.game.inventory.getQuantity('shard_kaelenthorne'));
+  checks.push({
+    label: 'exchange spends tier shards through the manager to grant the selected hero shard',
+    ok: afterTierShards === beforeTierShards - 3 && afterHeroShards === beforeHeroShards + 1,
+  });
+  const displayedTierShardQty = await page.locator('.recruit-exchange-qty[data-tier="normal"]').innerText();
+  checks.push({ label: 'exchange qty display patches in place after spend', ok: displayedTierShardQty.trim() === String(afterTierShards) });
+
   report('heroes-smoke', checks, errors);
 });

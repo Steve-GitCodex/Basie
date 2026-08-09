@@ -1,5 +1,5 @@
 import { eventBus } from '../../core/EventBus.js';
-import { HEROES_CONFIG, INVENTORY_ITEMS } from '../../entities/GAME_DATA.js';
+import { HEROES_CONFIG, INVENTORY_ITEMS, EXCHANGE_CONFIG } from '../../entities/GAME_DATA.js';
 import { portraitHtml } from './heroCardView.js';
 import { recruitReveal } from './recruitReveal.js';
 
@@ -35,6 +35,11 @@ export class RecruitPanel {
       this._root.querySelectorAll(`.btn-pull[data-tier="${tier}"]`).forEach(btn => {
         btn.disabled = count < 1;
       });
+      const shardQty = this._s.inventory?.getQuantity(`tier_shard_${tier}`) ?? 0;
+      const qtyEl = this._root.querySelector(`.recruit-exchange-qty[data-tier="${tier}"]`);
+      if (qtyEl) qtyEl.textContent = String(shardQty);
+      const exchangeBtn = this._root.querySelector(`.btn-exchange[data-tier="${tier}"]`);
+      if (exchangeBtn) exchangeBtn.disabled = shardQty < EXCHANGE_CONFIG.tierShardsPerHeroShard;
     }
     const list = this._root.querySelector('.recruit-card-list');
     if (list) list.innerHTML = this._cardListHtml();
@@ -86,12 +91,28 @@ export class RecruitPanel {
   }
 
   _exchangeHtml() {
+    const rate = EXCHANGE_CONFIG.tierShardsPerHeroShard;
     return `
       <div class="recruit-section-title">Shard Exchange</div>
-      ${TIERS.map(t => {
-        const qty = this._s.inventory?.getQuantity(`tier_shard_${t}`) ?? 0;
-        return `<div class="recruit-exchange-row">${t}: ${qty} tier shards</div>`;
-      }).join('')}`;
+      <div class="recruit-exchange-note">${rate} Tier Shards → 1 Hero Shard</div>
+      ${TIERS.map(t => this._exchangeTierHtml(t, rate)).join('')}`;
+  }
+
+  _exchangeTierHtml(tier, rate) {
+    const qty = this._s.inventory?.getQuantity(`tier_shard_${tier}`) ?? 0;
+    const heroes = Object.values(HEROES_CONFIG).filter(h => h.tier === tier);
+    return `
+      <div class="recruit-exchange-row" data-tier="${tier}">
+        <div class="recruit-exchange-label">
+          ${tier}: <span class="recruit-exchange-qty" data-tier="${tier}">${qty}</span> tier shards
+        </div>
+        <div class="recruit-exchange-controls">
+          <select class="recruit-exchange-hero" data-tier="${tier}">
+            ${heroes.map(h => `<option value="${h.id}">${h.name}</option>`).join('')}
+          </select>
+          <button class="btn btn-gold btn-exchange" data-tier="${tier}" ${qty < rate ? 'disabled' : ''}>Exchange</button>
+        </div>
+      </div>`;
   }
 
   _bind() {
@@ -102,6 +123,23 @@ export class RecruitPanel {
       });
     });
     this._bindCards();
+    this._bindExchange();
+  }
+
+  _bindExchange() {
+    this._root.querySelectorAll('.btn-exchange').forEach(btn => {
+      btn.addEventListener('click', e => {
+        eventBus.emit('ui:click');
+        const tier = e.currentTarget.dataset.tier;
+        const heroId = this._root.querySelector(`.recruit-exchange-hero[data-tier="${tier}"]`)?.value;
+        if (!heroId) return;
+        const r = this._s.heroes.exchangeTierShards(tier, heroId, 1);
+        if (!r.success) {
+          eventBus.emit('ui:error');
+          this._s.notifications?.show('warning', 'Cannot Exchange', r.reason);
+        }
+      });
+    });
   }
 
   _bindCards() {

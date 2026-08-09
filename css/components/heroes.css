@@ -320,13 +320,38 @@
 .recruit-card-list { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .recruit-empty { color: var(--clr-text-muted); font-size: var(--text-sm); }
 
+.recruit-exchange-note {
+  font-size: var(--text-xs);
+  color: var(--clr-text-muted);
+  margin-bottom: var(--space-2);
+}
+
 .recruit-exchange-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
   padding: var(--space-2) 0;
   border-bottom: 1px solid var(--clr-border);
   font-size: var(--text-sm);
   color: var(--clr-text-muted);
-  text-transform: capitalize;
 }
+
+.recruit-exchange-label { text-transform: capitalize; }
+.recruit-exchange-qty { color: var(--clr-text-primary); font-weight: 700; }
+
+.recruit-exchange-controls { display: flex; align-items: center; gap: var(--space-2); }
+.recruit-exchange-hero {
+  padding: var(--space-1) var(--space-2);
+  background: hsla(210, 30%, 16%, 0.6);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-sm);
+  color: var(--clr-text-primary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.btn-exchange:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .recruit-reveal { display: flex; flex-direction: column; gap: var(--space-4); align-items: center; }
 .recruit-reveal-cards {
