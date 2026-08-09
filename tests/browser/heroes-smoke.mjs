@@ -107,6 +107,7 @@ await withPage(async ({ page, errors, origin }) => {
     for (let i = 0; i < 10; i++) window.game.heroes.awakenHero('kaelenthorne');
   });
   await page.waitForTimeout(300);
+  await dismissOverlays(page);
   await page.click('.heroes-tab[data-tab="roster"]');
   await page.click('.heroes-tab[data-tab="recruit"]');
   await page.waitForSelector('.recruit-banner', { timeout: 5000 });
