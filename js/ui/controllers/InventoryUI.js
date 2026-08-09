@@ -3,6 +3,7 @@ import { eventBus }        from '../../core/EventBus.js';
 import { HEROES_CONFIG,
          FRAGMENTS_PER_SHARD } from '../../entities/GAME_DATA.js';
 import { icon } from '../icons.js';
+import { InventoryBuffSection } from '../inventory/InventoryBuffSection.js';
 
 const RARITY_META = {
   common:    { label: 'Common',    color: 'var(--clr-tier-common)'    },
@@ -30,6 +31,7 @@ export class InventoryUI {
     this._clearNewTimer = null;
     this._activeTab      = null;     // selected tab id (reset on close → re-evaluated on open)
     this._selectedItemId = null;     // tile whose detail popover is shown
+    this._buffSection    = new InventoryBuffSection(systems);
   }
 
   // ─────────────────────────────────────────────
@@ -71,6 +73,10 @@ export class InventoryUI {
       // Debounce rapid updates (e.g. rapid shop purchases) so hero picker isn't destroyed mid-use
       clearTimeout(this._renderDebounceTimer);
       this._renderDebounceTimer = setTimeout(() => this._render(), 100);
+    });
+    eventBus.on('buffs:updated', () => this._buffSection.refresh());
+    eventBus.on('buff:activated', d => {
+      this._s.notifications?.show('success', '⛏️ Buff Active!', `+${(d.value * 100).toFixed(0)}% production for ${(d.durationMs / 60000).toFixed(0)}m`);
     });
   }
 
@@ -138,6 +144,7 @@ export class InventoryUI {
             <div class="inv-empty-sub">Buy items from the <strong>${icon('gift')} Shop</strong> tab.</div>
           </div>
         </div>`;
+      panel.querySelector('.inv-panel-body').appendChild(this._buffSection.build());
       this._bindListeners(panel);
       return;
     }
@@ -191,6 +198,7 @@ export class InventoryUI {
       </div>
       ${detailHtml}`;
 
+    panel.appendChild(this._buffSection.build());
     this._bindListeners(panel);
   }
 
@@ -224,23 +232,9 @@ export class InventoryUI {
   _buildActionHtml(item, ownedHeroIds) {
     // ── Recruitment Scrolls ──────────────────────────────────────────────
     if (item.type === 'recruitment_scroll') {
-      const can10  = item.quantity >= 10;
-      const can100 = item.quantity >= 100;
       return `
         <div class="inv-scroll-actions">
-          <button class="btn btn-xs btn-gold inv-use-scroll" data-item="${item.id}" data-tier="${item.tier}">${icon('scroll')} Roll 1×</button>
-          <button class="btn btn-xs btn-secondary inv-bulk-scroll"
-            data-tier="${item.tier}" data-count="10"
-            ${can10 ? '' : 'disabled'}
-            title="${can10 ? 'Roll 10 scrolls at once' : `Need ${10 - item.quantity} more scrolls`}">
-            Roll 10× <span class="inv-scroll-cost">(10 scrolls)</span>
-          </button>
-          <button class="btn btn-xs btn-secondary inv-bulk-scroll"
-            data-tier="${item.tier}" data-count="100"
-            ${can100 ? '' : 'disabled'}
-            title="${can100 ? 'Roll 100 scrolls at once' : `Need ${100 - item.quantity} more scrolls`}">
-            Roll 100× <span class="inv-scroll-cost">(100 scrolls)</span>
-          </button>
+          <button class="btn btn-xs btn-gold inv-goto-recruit">Recruit at Hero Quarters</button>
         </div>`;
     }
 
@@ -325,24 +319,13 @@ export class InventoryUI {
       });
     });
 
-    // ── Recruitment Scrolls → open GachaUI ─────────────────────────────
-    panel.querySelectorAll('.inv-use-scroll').forEach(btn => {
-      btn.addEventListener('click', e => {
+    // ── Recruitment Scrolls → redirect to Hero Quarters Recruit tab ───────
+    panel.querySelectorAll('.inv-goto-recruit').forEach(btn => {
+      btn.addEventListener('click', () => {
         eventBus.emit('ui:click');
-        const tier = e.currentTarget.dataset.tier;
         this._close();
-        eventBus.emit('ui:openGacha', { scrollTier: tier });
-      });
-    });
-
-    // ── Bulk Recruitment Scrolls → open GachaUI with count ───────────────
-    panel.querySelectorAll('.inv-bulk-scroll').forEach(btn => {
-      btn.addEventListener('click', e => {
-        eventBus.emit('ui:click');
-        const tier  = e.currentTarget.dataset.tier;
-        const count = parseInt(e.currentTarget.dataset.count, 10);
-        this._close();
-        eventBus.emit('ui:openGacha', { scrollTier: tier, count });
+        eventBus.emit('ui:navigateTo', 'heroes');
+        eventBus.emit('ui:openHeroesTab', 'recruit');
       });
     });
 

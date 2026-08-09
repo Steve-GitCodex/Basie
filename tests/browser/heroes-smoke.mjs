@@ -142,5 +142,27 @@ await withPage(async ({ page, errors, origin }) => {
     ok: capturedToasts.some(t => /already|maxed/i.test(t.title) || /already|maxed/i.test(t.message)),
   });
 
+  await page.evaluate(() => window.game.inventory.addItem('scroll_common', 1));
+  await page.waitForTimeout(200);
+  await dismissOverlays(page);
+  await page.evaluate(() => window.game.eventBus.emit('ui:openInventory'));
+  await page.waitForSelector('#inventory-panel.open', { timeout: 5000 });
+  await page.click('.inv-tab[data-tab="scroll"]');
+  await page.click('.inv-tile[data-item-id="scroll_common"]');
+  await page.click('.inv-goto-recruit');
+  await page.waitForSelector('#view-heroes:not(.hidden)', { timeout: 5000 });
+  checks.push({ label: 'inventory recruit redirect lands on the Heroes view', ok: await page.isVisible('#view-heroes') });
+  checks.push({ label: 'inventory recruit redirect activates the Recruit tab', ok: await page.locator('.heroes-tab--active[data-tab="recruit"]').count() === 1 });
+
+  await page.evaluate(() => window.game.eventBus.emit('ui:navigateTo', 'heroes'));
+  await page.waitForSelector('#view-heroes:not(.hidden)', { timeout: 5000 });
+  await dismissOverlays(page);
+  await page.click('.heroes-tab[data-tab="roster"]');
+  checks.push({ label: 'buff block no longer on the Heroes screen', ok: await page.locator('#view-heroes .heroes-buff-section, #view-heroes .inv-buff-section').count() === 0 });
+
+  await page.evaluate(() => window.game.eventBus.emit('ui:openInventory'));
+  await page.waitForSelector('#inventory-panel.open', { timeout: 5000 });
+  checks.push({ label: 'buff block rehomed onto the Inventory panel', ok: await page.locator('#inventory-panel .inv-buff-section').count() === 1 });
+
   report('heroes-smoke', checks, errors);
 });

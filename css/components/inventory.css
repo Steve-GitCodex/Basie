@@ -704,3 +704,137 @@
   border-radius: 6px;
   cursor: pointer;
 }
+
+/* =============================================
+ * INVENTORY — Active Buffs
+ * ============================================= */
+
+.inv-buff-section {
+  margin-top: var(--space-6);
+  padding: var(--space-5);
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: var(--radius-lg);
+}
+
+.inv-buff-heading {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--clr-text-primary);
+  margin-bottom: var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.buff-heading-icon { font-size: 1.1rem; }
+
+/* Card list */
+.buff-card-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+/* Empty state */
+.buff-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-4);
+  width: 100%;
+  text-align: center;
+  color: var(--clr-text-muted);
+}
+
+.buff-empty-icon {
+  font-size: 2rem;
+  opacity: 0.5;
+}
+
+.buff-empty-hint {
+  font-size: var(--text-xs);
+  max-width: 340px;
+}
+
+/* Individual buff card */
+.buff-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: linear-gradient(135deg, rgba(245,158,11,0.1), rgba(251,191,36,0.05));
+  border: 1px solid rgba(245,158,11,0.3);
+  border-radius: var(--radius-md);
+  min-width: 240px;
+  flex: 1;
+  max-width: 380px;
+  animation: buff-card-in 0.25s ease-out;
+}
+
+@keyframes buff-card-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+.buff-card-icon {
+  font-size: 1.8rem;
+  flex-shrink: 0;
+}
+
+.buff-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.buff-card-name {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--clr-gold, #f59e0b);
+}
+
+.buff-card-effect {
+  font-size: var(--text-xs);
+  color: var(--clr-text-secondary, #94a3b8);
+  margin-top: 2px;
+}
+
+/* Countdown timer */
+.buff-card-timer {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.buff-timer-label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--clr-text-muted);
+}
+
+.buff-timer-value {
+  font-size: var(--text-md);
+  font-weight: 800;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  color: var(--clr-gold, #f59e0b);
+  white-space: nowrap;
+}
+
+.buff-timer-bar {
+  width: 80px;
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.buff-timer-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--clr-gold, #f59e0b), #fcd34d);
+  border-radius: 2px;
+  transition: width 1s linear;
+}
