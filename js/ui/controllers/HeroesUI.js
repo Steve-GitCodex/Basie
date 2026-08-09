@@ -2,6 +2,7 @@ import { eventBus } from '../../core/EventBus.js';
 import { HeroRosterPanel } from '../heroes/HeroRosterPanel.js';
 import { HeroDetailPanel } from '../heroes/HeroDetailPanel.js';
 import { HeroAssignmentPanel } from '../heroes/HeroAssignmentPanel.js';
+import { RecruitPanel } from '../heroes/RecruitPanel.js';
 
 const TABS = ['roster', 'recruit', 'assign'];
 
@@ -15,6 +16,7 @@ export class HeroesUI {
     this._roster = new HeroRosterPanel(systems);
     this._detail = new HeroDetailPanel(systems);
     this._assign = new HeroAssignmentPanel(systems);
+    this._recruit = new RecruitPanel(systems);
   }
 
   init() {
@@ -25,6 +27,7 @@ export class HeroesUI {
     this._roster.init(this._panelEls.roster);
     this._detail.init(document.getElementById('heroes-detail-pane'));
     this._assign.init(this._panelEls.assign);
+    this._recruit.init(this._panelEls.recruit);
     this._roster.onSelect(heroId => this._detail.showHero(heroId));
 
     this._tabs.querySelectorAll('.heroes-tab').forEach(btn => {
@@ -63,6 +66,7 @@ export class HeroesUI {
   _panelFor(tab) {
     if (tab === 'roster') return this._roster;
     if (tab === 'assign') return this._assign;
+    if (tab === 'recruit') return this._recruit;
     return null;
   }
 }

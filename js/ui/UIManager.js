@@ -29,7 +29,6 @@ import { MailUI }       from './controllers/MailUI.js';
 import { SettingsUI }   from './controllers/SettingsUI.js';
 import { InventoryUI }  from './controllers/InventoryUI.js';
 import { ShopUI }       from './controllers/ShopUI.js';
-import { GachaUI }      from './controllers/GachaUI.js';
 import { MilitaryUI }   from './controllers/MilitaryUI.js';
 import { ChallengesUI } from './controllers/ChallengesUI.js';
 import { EventsUI }     from './controllers/EventsUI.js';
@@ -117,12 +116,6 @@ export class UIManager {
       user:          systems.user,
     });
 
-    this._gacha = new GachaUI({
-      inventory:     systems.inventory,
-      heroes:        systems.heroes,
-      notifications: systems.notifications,
-    });
-
     this._combat = new CombatUI({
       cm:            systems.cm,
       um:            systems.um,
@@ -203,7 +196,6 @@ export class UIManager {
     this._mail.init();
     this._settings.init();
     this._shop.init();
-    this._gacha.init();
     this._challenges.init();
     this._events.init();
     this._world.init();

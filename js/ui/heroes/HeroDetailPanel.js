@@ -2,8 +2,7 @@ import { eventBus } from '../../core/EventBus.js';
 import { AWAKENING_CONFIG, HERO_CLASSIFICATIONS } from '../../entities/GAME_DATA.js';
 import { icon, iconFromEmoji } from '../icons.js';
 import { TIER_CSS_SUFFIX } from '../uiUtils.js';
-import { portraitHtml, statusChipHtml, TIER_META } from './heroCardView.js';
-import { heroArt } from '../icons/heroArt.js';
+import { portraitHtml, statusChipHtml, TIER_META, videoHtml, bindPlayButton } from './heroCardView.js';
 import { squadNameForHero } from './heroSquadLookup.js';
 
 const AURA_LABELS = {
@@ -46,15 +45,6 @@ export class HeroDetailPanel {
   _hero() { return this._s.heroes.getRosterWithState().find(h => h.id === this._heroId) ?? null; }
 
   _squadName(hero) { return squadNameForHero(hero, this._s.um); }
-
-  _videoHtml(hero) {
-    const src = heroArt(hero.id).video;
-    if (!src) return '';
-    return `
-      <div class="hero-splash-video" data-src="${src}">
-        <button class="hero-play-btn" type="button" aria-label="Play ${hero.name} clip">▶</button>
-      </div>`;
-  }
 
   _html(hero) {
     const tierMeta = TIER_META[hero.tier] ?? TIER_META.normal;
@@ -178,7 +168,7 @@ export class HeroDetailPanel {
       <div class="heroes-detail-panel">
         <div class="heroes-detail-hero-header heroes-detail-hero-header--${detailTierCssSuffix}">
           ${portraitHtml(hero, 'splash')}
-          ${this._videoHtml(hero)}
+          ${videoHtml(hero)}
           <div class="hero-detail-header-info">
             <div class="hero-detail-badges-row">
               <div class="hero-tier-badge tier-badge-${detailTierCssSuffix}">${tierMeta.symbol} ${tierMeta.label}</div>
@@ -232,15 +222,6 @@ export class HeroDetailPanel {
       if (!r.success) { eventBus.emit('ui:error'); this._s.notifications?.show('warning', 'Cannot Awaken', r.reason); }
     });
 
-    root.querySelector('.hero-play-btn')?.addEventListener('click', e => {
-      eventBus.emit('ui:click');
-      const wrap = e.currentTarget.closest('.hero-splash-video');
-      const video = document.createElement('video');
-      video.src = wrap.dataset.src;
-      video.controls = true;
-      video.className = 'hero-splash-video-el';
-      wrap.replaceChildren(video);
-      video.play();
-    });
+    bindPlayButton(root);
   }
 }

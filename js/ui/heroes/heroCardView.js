@@ -1,3 +1,4 @@
+import { eventBus } from '../../core/EventBus.js';
 import { heroArt } from '../icons/heroArt.js';
 import { TIER_CSS_SUFFIX } from '../uiUtils.js';
 
@@ -31,4 +32,26 @@ export function tierPillHtml(hero) {
   const meta = TIER_META[hero?.tier] ?? TIER_META.normal;
   const suffix = TIER_CSS_SUFFIX[hero?.tier] ?? 'common';
   return `<span class="hero-tier-pill tier-pill-${suffix}">${meta.symbol} ${meta.label}</span>`;
+}
+
+export function videoHtml(hero) {
+  const src = heroArt(hero?.id).video;
+  if (!src) return '';
+  return `
+    <div class="hero-splash-video" data-src="${src}">
+      <button class="hero-play-btn" type="button" aria-label="Play ${hero?.name ?? ''} clip">▶</button>
+    </div>`;
+}
+
+export function bindPlayButton(rootEl) {
+  rootEl.querySelector('.hero-play-btn')?.addEventListener('click', e => {
+    eventBus.emit('ui:click');
+    const wrap = e.currentTarget.closest('.hero-splash-video');
+    const video = document.createElement('video');
+    video.src = wrap.dataset.src;
+    video.controls = true;
+    video.className = 'hero-splash-video-el';
+    wrap.replaceChildren(video);
+    video.play();
+  });
 }

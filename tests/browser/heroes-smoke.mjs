@@ -64,5 +64,22 @@ await withPage(async ({ page, errors, origin }) => {
     checks.push({ label: 'assign round trip (no owned hero in sandbox — skipped)', ok: true });
   }
 
+  await page.click('.heroes-tab[data-tab="recruit"]');
+  await page.waitForSelector('.recruit-banner', { timeout: 5000 });
+  checks.push({ label: 'three recruit banners', ok: await page.locator('.recruit-banner').count() === 3 });
+  checks.push({ label: 'banner shows a live token count', ok: await page.locator('.recruit-token-count').first().isVisible() });
+  await page.click('.recruit-rates >> nth=0');
+  checks.push({ label: 'rates panel discloses the guarantee', ok: /Guaranteed/.test(await page.locator('.recruit-rates-body').first().innerText()) });
+
+  await page.evaluate(() => {
+    window.game.inventory.addItem('token_normal', 1);
+  });
+  await page.waitForTimeout(300);
+  await page.click('.recruit-banner--normal .btn-pull[data-count="1"]');
+  checks.push({ label: 'a single pull shows a reveal card', ok: await page.locator('.recruit-result-card').count() === 1 });
+  await page.click('.recruit-reveal-done');
+  await page.waitForTimeout(300);
+  checks.push({ label: 'reveal dismisses back to the banners', ok: await page.locator('.recruit-banner').count() === 3 });
+
   report('heroes-smoke', checks, errors);
 });
