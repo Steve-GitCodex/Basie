@@ -266,7 +266,8 @@
   border: 1px solid transparent;
 }
 .hero-skill-slot--passive { border-color: rgba(99,102,241,0.35); }
-.hero-skill-slot--active { border-color: rgba(245,158,11,0.35); }
+.hero-skill-slot--support { border-color: rgba(245,158,11,0.35); }
+.hero-skill-slot--major { border-color: rgba(115,128,71,0.35); }
 .hero-skill-slot--locked { opacity: 0.42; }
 
 .hero-skill-icon { font-size: 1.1rem; line-height: 1; width: 1.4rem; text-align: center; flex-shrink: 0; }
@@ -278,7 +279,8 @@
 }
 .hero-skill-type { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
 .hero-skill-type--passive { color: #a5b4fc; }
-.hero-skill-type--active { color: #fde68a; }
+.hero-skill-type--support { color: #fde68a; }
+.hero-skill-type--major { color: #bacc66; }
 .hero-skill-unlock { font-size: 0.65rem; color: hsl(225,10%,42%); flex-shrink: 0; }
 .hero-skill-active-badge { font-size: 0.75rem; color: #7ab143; font-weight: 700; flex-shrink: 0; }
 
