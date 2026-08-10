@@ -86,6 +86,27 @@ export function collectEffects(hero, { trigger = null } = {}) {
   return out;
 }
 
+export function sumTriggeredEffects(entries) {
+  const acc = { attackBonus: 0, defenseBonus: 0, lossReduction: 0, evasion: false };
+  for (const { skill, level } of (entries ?? [])) {
+    const fx = skill?.effect ?? {};
+    acc.attackBonus   += effectValueAt(skill, fx.attackBonus   ?? 0, level);
+    acc.defenseBonus  += effectValueAt(skill, fx.defenseBonus  ?? 0, level);
+    acc.lossReduction += effectValueAt(skill, fx.lossReduction ?? 0, level);
+    if (fx.evasion) acc.evasion = true;
+  }
+  return acc;
+}
+
+export function bucketTriggeredByEvent(entries) {
+  const buckets = { battle_start: [], wave_start: [], final_wave: [], losing: [] };
+  for (const entry of (entries ?? [])) {
+    const bucket = buckets[entry?.skill?.effect?.trigger];
+    if (bucket) bucket.push(entry);
+  }
+  return buckets;
+}
+
 export function groupedSkillsFor(heroId, hero) {
   const groups = { passive: [], support: [], major: [] };
   const levels = reconcileSkillLevels(heroId, hero?.skillLevels);

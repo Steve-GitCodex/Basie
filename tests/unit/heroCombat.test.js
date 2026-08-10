@@ -123,5 +123,65 @@ test('postBattleHeal from a passive skill reaches the returned combat bonuses', 
   hero.assignment = { type: 'building', buildingId: 'heroquarters_0' };
 
   const b = m.getCombatBonuses();
-  assert.ok(b.postBattleHeal > 0, 'consecration postBattleHeal never reached heroBonus.postBattleHeal');
+  assert.ok(Math.abs(b.postBattleHeal - 0.05) < 1e-9,
+    `consecration postBattleHeal should be exactly 0.05 at skill level 1, got ${b.postBattleHeal}`);
+});
+
+test('triggered skills are bucketed by their trigger', () => {
+  const m = makeManager({ heroquartersLevel: 10 });
+  m._recruitHero('warlord');
+  const h = m._owned.get('warlord');
+  h.level = 100; h.stars = 5;
+  h.skillLevels = { last_stand: 1 };
+  h.assignment = { type: 'building', buildingId: 'barracks_0' };
+
+  const b = m.getCombatBonuses();
+  assert.ok(b.triggeredByEvent.battle_start.some(e => e.skill.id === 'charge'),
+    'charge should be bucketed under battle_start');
+  assert.ok(b.triggeredByEvent.wave_start.some(e => e.skill.id === 'rally'),
+    'rally should be bucketed under wave_start');
+  assert.ok(b.triggeredByEvent.losing.some(e => e.skill.id === 'last_stand'),
+    'last_stand should be bucketed under losing');
+  assert.deepEqual(b.triggeredByEvent.final_wave, [],
+    'every trigger key must be present as an array');
+});
+
+test('activeSkills stays an alias of the battle_start bucket', () => {
+  const m = makeManager({ heroquartersLevel: 10 });
+  m._recruitHero('warlord');
+  const h = m._owned.get('warlord');
+  h.level = 20;
+  h.assignment = { type: 'building', buildingId: 'barracks_0' };
+
+  const b = m.getCombatBonuses();
+  assert.deepEqual(
+    b.activeSkills.map(e => e.skill.id).sort(),
+    b.triggeredByEvent.battle_start.map(e => e.skill.id).sort(),
+  );
+});
+
+test('a bucketed entry carries the hero\'s stored level so magnitudes can scale', () => {
+  const m = makeManager({ heroquartersLevel: 10 });
+  m._recruitHero('warlord');
+  const h = m._owned.get('warlord');
+  h.level = 20;
+  h.skillLevels = { charge: 10 };
+  h.assignment = { type: 'building', buildingId: 'barracks_0' };
+
+  const charge = m.getCombatBonuses().triggeredByEvent.battle_start
+    .find(e => e.skill.id === 'charge');
+  assert.equal(charge.level, 10, 'the bucket entry lost the skill level');
+});
+
+test('a duration-1 battle_start skill is scoped to the first wave only', () => {
+  const m = makeManager({ heroquartersLevel: 10 });
+  m._recruitHero('warlord');
+  const h = m._owned.get('warlord');
+  h.level = 20;
+  h.assignment = { type: 'building', buildingId: 'barracks_0' };
+
+  const charge = m.getCombatBonuses().triggeredByEvent.battle_start
+    .find(e => e.skill.id === 'charge');
+  assert.equal(charge.skill.effect.duration, 1,
+    'charge must stay duration 1 — the wave filter relies on it');
 });

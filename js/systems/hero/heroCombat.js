@@ -4,17 +4,15 @@ import {
   AWAKENING_CONFIG,
   AURA_BUFF_CATEGORY,
 } from '../../entities/GAME_DATA.js';
-import { collectEffects } from './heroSkills.js';
+import { collectEffects, bucketTriggeredByEvent } from './heroSkills.js';
 
 export class HeroCombat {
   constructor(hero) { this._h = hero; }
 
-  /** auraValue = base·(1 + levelScale·(L−1) + perStarBonus·stars + skillAuraFrac). @see docs/superpowers/specs/2026-07-23-hero-economy-numbers.md §B */
-  _auraValueFor(hero, cfg) {
+  _auraValueFor(hero, cfg, auraFrac = 0) {
     const base = cfg.aura?.value ?? 0;
     if (!base) return 0;
 
-    const { auraFrac } = collectEffects(hero, {});
     const levelTerm = AWAKENING_CONFIG.levelScalePerLevel * ((hero.level ?? 1) - 1);
     const starTerm  = (AWAKENING_CONFIG.perStarAuraBonus ?? 0) * (hero.stars ?? 0);
     return base * (1 + levelTerm + starTerm + auraFrac);
@@ -26,7 +24,7 @@ export class HeroCombat {
     let defenseMult    = 1.0;
     let lossReduction  = 0;
     let postBattleHeal = 0;
-    let activeSkills   = []; // Active skill effects for CombatManager
+    const triggered    = [];
 
     for (const hero of this._h._owned.values()) {
       const a = hero.assignment;
@@ -40,7 +38,8 @@ export class HeroCombat {
       const cfg = HEROES_CONFIG[hero.heroId];
       if (!cfg) continue;
 
-      const auraValue = this._auraValueFor(hero, cfg);
+      const fx = collectEffects(hero, {});
+      const auraValue = this._auraValueFor(hero, cfg, fx.auraFrac);
 
       if (cfg.aura) {
         switch (cfg.aura.type) {
@@ -53,12 +52,11 @@ export class HeroCombat {
         if (cfg.aura.type === 'defense_boost') lossReduction += auraValue * 0.5;
       }
 
-      const fx = collectEffects(hero, {});
       attackMult     += fx.attackMult;
       defenseMult    += fx.defenseMult;
       lossReduction  += fx.lossReduction;
       postBattleHeal += fx.postBattleHeal;
-      activeSkills.push(...fx.triggered);
+      triggered.push(...fx.triggered);
     }
 
     // Active production buffs
@@ -66,7 +64,13 @@ export class HeroCombat {
     this._h._activeBuffs = this._h._activeBuffs.filter(b => b.endsAt > now);
     const buffMult = this._h._activeBuffs.reduce((acc, b) => acc + b.value, 0);
 
-    return { attackMult, defenseMult, lossReduction, postBattleHeal, activeSkills, productionBuffMult: buffMult };
+    const triggeredByEvent = bucketTriggeredByEvent(triggered);
+
+    return {
+      attackMult, defenseMult, lossReduction, postBattleHeal,
+      triggeredByEvent, activeSkills: triggeredByEvent.battle_start,
+      productionBuffMult: buffMult,
+    };
   }
 
   /** Hero aura bonuses by category (military/development/production) plus active timed buffs. */
@@ -83,7 +87,7 @@ export class HeroCombat {
       const cfg = HEROES_CONFIG[hero.heroId];
       if (!cfg) continue;
 
-      const auraValue = this._auraValueFor(hero, cfg);
+      const auraValue = this._auraValueFor(hero, cfg, collectEffects(hero, {}).auraFrac);
 
       if (cfg.aura?.type) {
         const category = cfg.aura.buffCategory ?? AURA_BUFF_CATEGORY[cfg.aura.type] ?? 'military';

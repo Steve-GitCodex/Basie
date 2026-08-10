@@ -11,6 +11,7 @@ import {
   DIFFICULTY_MODIFIERS, SURVIVAL_MONSTER,
 } from '../entities/GAME_DATA.js';
 import { BUILDINGS_CONFIG } from '../entities/GAME_DATA.js';
+import { sumTriggeredEffects } from './hero/heroSkills.js';
 
 const MAX_BATTLE_LOG = 20;
 
@@ -244,17 +245,8 @@ _simulateBattle(army, monster, modifier = null, squadId = null) {
       attack: Math.round(w.attack * diffMod.enemyAtkMult),
     }));
 
-    // ── Active hero skills (battle_start triggers) ──────────────────────
-    const activeSkills = heroBonus.activeSkills ?? [];
-    let skillAttackBonus  = 0;   // additive multiplier for first wave attack
-    let skillDefenseBonus = 0;   // additive multiplier for first wave defense
-    let skillEvasion      = false; // if true, player takes no damage in first wave
-    for (const { skill } of activeSkills) {
-      if (skill.effect?.trigger !== 'battle_start') continue;
-      if (skill.effect.attackBonus)  skillAttackBonus  += skill.effect.attackBonus;
-      if (skill.effect.defenseBonus) skillDefenseBonus += skill.effect.defenseBonus;
-      if (skill.effect.evasion)      skillEvasion       = true;
-    }
+    const buckets = heroBonus.triggeredByEvent
+      ?? { battle_start: [], wave_start: [], final_wave: [], losing: [] };
 
     // Post-battle heal from passive skills (e.g. consecration's postBattleHeal)
     const postBattleHeal = heroBonus.postBattleHeal ?? 0;
@@ -262,6 +254,7 @@ _simulateBattle(army, monster, modifier = null, squadId = null) {
     let remainingPlayerHP = playerTotalHP;
     let wavesSurvived = 0;
     let waveIndex = 0;
+    let triggeredLossReduction = 0;
     const waveDetails = [];
 
     for (const wave of waves) {
@@ -284,19 +277,23 @@ _simulateBattle(army, monster, modifier = null, squadId = null) {
       }
 
       const isFirstWave = (wavesSurvived === 0);
+      const isFinalWave = (waveIndex === waves.length - 1);
+      const isLosing    = remainingPlayerHP < playerTotalHP * 0.4;
 
-      // Apply active hero skill bonuses on first wave
-      let currentAttack  = playerTotalAttack;
-      let currentDmg     = dmgToPlayer;
-      if (isFirstWave) {
-        currentAttack *= (1 + (tech.firstWaveBonus || 0) + skillAttackBonus);
-        // Shadowstep evasion: no damage taken in wave 1
-        if (skillEvasion) currentDmg = 0;
-        // Divine Shield: reduce incoming damage by defenseBonus
-        if (skillDefenseBonus > 0) currentDmg *= (1 - skillDefenseBonus);
-      } else {
-        currentAttack *= 1; // no bonus after first wave
-      }
+      const active = buckets.battle_start
+        .filter(e => waveIndex < (e.skill.effect?.duration ?? 1))
+        .concat(buckets.wave_start);
+      if (isFinalWave) active.push(...buckets.final_wave);
+      if (isLosing)    active.push(...buckets.losing);
+
+      const waveFx = sumTriggeredEffects(active);
+      triggeredLossReduction = Math.max(triggeredLossReduction, waveFx.lossReduction);
+
+      let currentAttack = playerTotalAttack
+        * (1 + (isFirstWave ? (tech.firstWaveBonus || 0) : 0) + waveFx.attackBonus);
+      let currentDmg = dmgToPlayer;
+      if (waveFx.evasion) currentDmg = 0;
+      if (waveFx.defenseBonus > 0) currentDmg *= (1 - waveFx.defenseBonus);
 
       const waveKillRounds = Math.ceil(waveHP / Math.max(1, currentAttack));
       const totalDmgTaken  = currentDmg * waveKillRounds * 0.3;
@@ -338,7 +335,8 @@ _simulateBattle(army, monster, modifier = null, squadId = null) {
     const victory     = remainingPlayerHP > 0;
     const survivalRate = Math.max(0, Math.min(1, remainingPlayerHP / playerTotalHP));
     const baseLossRate = victory
-      ? Math.max(0.02, 1 - survivalRate) * (1 - heroBonus.lossReduction - (tech.lossReduction || 0))
+      ? Math.max(0.02, 1 - survivalRate)
+        * Math.max(0, 1 - heroBonus.lossReduction - triggeredLossReduction - (tech.lossReduction || 0))
       : 0.5 + (1 - survivalRate) * 0.5;
 
     const losses = {};

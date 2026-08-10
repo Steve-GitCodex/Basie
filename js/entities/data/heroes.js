@@ -149,8 +149,6 @@ export const AWAKENING_CONFIG = {
   perStarAuraBonus: 0.04,
   // @see docs/superpowers/specs/2026-07-23-hero-economy-numbers.md §B
   levelScalePerLevel: 0.005,
-  skillAuraFracBase: 0.08,
-  skillAuraFracPerLevel: 0.012,
 };
 
 export const XP_CONFIG = {

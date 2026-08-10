@@ -5,7 +5,7 @@ import {
   SKILL_LEVEL_CAP, MAJOR_SKILL_LEVEL_CAP,
   shardCostForSkillLevel, majorSkillCost,
   levelCapFor, defaultLevelFor, effectValueAt,
-  reconcileSkillLevels, groupedSkillsFor, collectEffects,
+  reconcileSkillLevels, groupedSkillsFor, collectEffects, sumTriggeredEffects,
 } from '../../js/systems/hero/heroSkills.js';
 import { SKILLS_CONFIG, HEROES_CONFIG } from '../../js/entities/GAME_DATA.js';
 
@@ -100,4 +100,46 @@ test('a level-0 major contributes nothing even at star 10', () => {
   const out = collectEffects(hero, { trigger: 'losing' });
   assert.equal(out.triggered.find(t => t.skill.id === 'last_stand'), undefined,
     'an unpurchased major must not fire');
+});
+
+test('a purchased major stays locked below star 5 even at level 100', () => {
+  const hero = { heroId: 'warlord', level: 100, stars: 4, skillLevels: { last_stand: 5 } };
+  const out = collectEffects(hero, {});
+  assert.equal(out.triggered.find(t => t.skill.id === 'last_stand'), undefined,
+    'the star-5 major gate leaked at star 4');
+});
+
+test('omitting trigger returns every triggered skill; naming one filters to that bucket', () => {
+  const hero = { heroId: 'warlord', level: 100, stars: 5, skillLevels: { last_stand: 1 } };
+  assert.deepEqual(
+    collectEffects(hero, {}).triggered.map(t => t.skill.id).sort(),
+    ['charge', 'last_stand', 'rally'],
+    'a null trigger must return all triggered skills, not none',
+  );
+  assert.deepEqual(
+    collectEffects(hero, { trigger: 'battle_start' }).triggered.map(t => t.skill.id),
+    ['charge'],
+    'a named trigger must return only that bucket',
+  );
+});
+
+test('a levelled support contributes a strictly larger triggered magnitude', () => {
+  const entryAt = level => ({ heroId: 'warlord', skill: SKILLS_CONFIG.charge, level });
+  const l1  = sumTriggeredEffects([entryAt(1)]);
+  const l10 = sumTriggeredEffects([entryAt(10)]);
+  assert.ok(Math.abs(l1.attackBonus - 0.20) < 1e-9, `L1 got ${l1.attackBonus}`);
+  assert.ok(Math.abs(l10.attackBonus - 0.38) < 1e-9, `L10 got ${l10.attackBonus}`);
+  assert.ok(l10.attackBonus > l1.attackBonus, 'levelling a support bought the player nothing');
+});
+
+test('sumTriggeredEffects folds every triggered magnitude kind', () => {
+  const out = sumTriggeredEffects([
+    { heroId: 'warlord',  skill: SKILLS_CONFIG.last_stand, level: 1 },
+    { heroId: 'engineer', skill: SKILLS_CONFIG.static_ward, level: 1 },
+    { heroId: 'rogue',    skill: SKILLS_CONFIG.shadowstep, level: 1 },
+  ]);
+  assert.ok(Math.abs(out.attackBonus - 0.30) < 1e-9);
+  assert.ok(Math.abs(out.defenseBonus - 0.25) < 1e-9);
+  assert.ok(Math.abs(out.lossReduction - 0.32) < 1e-9);
+  assert.equal(out.evasion, true);
 });

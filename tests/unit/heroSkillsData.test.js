@@ -54,16 +54,26 @@ const LIVE_EFFECT_KINDS = new Set([
   'trainingSpeed', 'researchSpeed',
 ]);
 
+const STRUCTURAL_EFFECT_KEYS = new Set(['trigger', 'duration', 'scope', 'stat', 'value']);
+
 function effectKindsOf(skill) {
   const fx = skill.effect ?? {};
   const kinds = [];
   if (fx.stat) kinds.push(fx.stat);
-  for (const k of ['attackBonus', 'defenseBonus', 'evasion', 'postBattleHeal',
-                   'trainingSpeed', 'researchSpeed', 'resourceOutput']) {
-    if (fx[k] != null) kinds.push(k === 'resourceOutput' ? 'money' : k);
+  for (const [key, value] of Object.entries(fx)) {
+    if (STRUCTURAL_EFFECT_KEYS.has(key) || value == null) continue;
+    kinds.push(key === 'resourceOutput' ? 'money' : key);
   }
   return kinds;
 }
+
+test('the seam guard sees bare triggered effect keys, not just fx.stat', () => {
+  assert.ok(effectKindsOf(SKILLS_CONFIG.last_stand).includes('lossReduction'),
+    'a triggered lossReduction must be visible to the seam rule');
+  assert.ok(effectKindsOf(SKILLS_CONFIG.safe_route).includes('lossReduction'));
+  assert.ok(!effectKindsOf(SKILLS_CONFIG.charge).includes('duration'),
+    'structural keys must not be mistaken for effect kinds');
+});
 
 test('every hero has exactly 6 skills composed 3 passive / 2 support / 1 major', () => {
   for (const hero of Object.values(HEROES_CONFIG)) {
