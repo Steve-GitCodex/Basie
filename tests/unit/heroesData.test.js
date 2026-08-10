@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { INVENTORY_ITEMS } from '../../js/entities/data/economy.js';
-import { HEROES_CONFIG, XP_CONFIG, PITY_CONFIG, EXCHANGE_CONFIG, AWAKENING_CONFIG } from '../../js/entities/data/heroes.js';
+import { HEROES_CONFIG, XP_CONFIG, PITY_CONFIG, EXCHANGE_CONFIG, AWAKENING_CONFIG, AURA_BUFF_CATEGORY } from '../../js/entities/data/heroes.js';
 
 test('roster has 6 heroes at 2/2/2 tiers with backstory', () => {
   const ids = Object.keys(HEROES_CONFIG);
@@ -38,4 +38,23 @@ test('config blocks match locked numbers', () => {
   assert.equal(XP_CONFIG.tierMult.legendary, 1.5);
   assert.equal(PITY_CONFIG.stage1HardPityN, 10);
   assert.equal(EXCHANGE_CONFIG.tierShardsPerHeroShard, 3);
+});
+
+test('Kira is classified combat, matching her assassin fiction and crit aura', () => {
+  assert.equal(HEROES_CONFIG.shadowblade.classification, 'combat');
+});
+
+test('Kaelen\'s aura is production-flavoured, matching his scavenger fiction', () => {
+  const aura = HEROES_CONFIG.kaelenthorne.aura;
+  assert.equal(aura.type, 'gold_production');
+  assert.equal(aura.buffCategory, 'production');
+  assert.equal(AURA_BUFF_CATEGORY[aura.type], 'production');
+});
+
+test('every hero aura type is a known AURA_BUFF_CATEGORY key', () => {
+  for (const hero of Object.values(HEROES_CONFIG)) {
+    if (!hero.aura) continue;
+    assert.ok(AURA_BUFF_CATEGORY[hero.aura.type],
+      `${hero.id}'s aura type '${hero.aura.type}' is not in AURA_BUFF_CATEGORY`);
+  }
 });

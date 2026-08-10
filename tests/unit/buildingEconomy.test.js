@@ -53,6 +53,28 @@ test('a hero stationed at a bank gets the bonus AND pop-scaling (regression)', (
     'bank pop-scaling and the hero bonus compose; they are no longer an else-if');
 });
 
+test('a bank with a stationed kaelenthorne composes pop-scaling and his gold_production aura bonus', () => {
+  const buildings = new Map([['bank', [{ instanceId: 'bank_0', level: 1 }]]]);
+  const popOnlyCtx = { getPopulation: () => ({ current: 5, cap: 10 }) };
+  const heroOnlyCtx = {
+    getPopulation: () => ({ current: 0, cap: 0 }),
+    getHeroInstanceBonus: (iid) => (iid === 'bank_0' ? 0.15 : 0),
+  };
+  const combinedCtx = {
+    getPopulation: () => ({ current: 5, cap: 10 }),
+    getHeroInstanceBonus: (iid) => (iid === 'bank_0' ? 0.15 : 0),
+  };
+
+  const [popOnly]   = buildingEconomy.computeActiveRates(buildings, popOnlyCtx);
+  const [heroOnly]  = buildingEconomy.computeActiveRates(buildings, heroOnlyCtx);
+  const [combined]  = buildingEconomy.computeActiveRates(buildings, combinedCtx);
+
+  assert.ok(combined.effects.money > popOnly.effects.money,
+    'combined rate must exceed pop-scaling alone');
+  assert.ok(combined.effects.money > heroOnly.effects.money,
+    'combined rate must exceed the hero bonus alone');
+});
+
 test('computeActiveRates works when getHeroInstanceBonus is absent', () => {
   const buildings = new Map([['farm', [{ instanceId: 'farm_0', level: 1 }]]]);
   const ctx = { getPopulation: () => ({ current: 10, cap: 10 }) };
