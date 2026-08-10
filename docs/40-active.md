@@ -3,7 +3,177 @@
 > Most-updated file in the repo. Every session that changes code updates this file
 > (what landed, known issues, exact next steps). See the session protocol in `CLAUDE.md`.
 
-## Hero redesign Phase 2a — "Make It Real" shipped (2026-08-08, latest)
+## Hero redesign Phase 2b — Heroes Screen + Recruit Hall shipped, all 9 tasks (2026-08-09, latest)
+
+Executed the remainder of
+`docs/superpowers/plans/2026-07-27-hero-phase2b-heroes-screen-recruit-hall.md`
+(Tasks 6-9, resuming the session below) via subagent-driven development. All 9 tasks
+independently task-reviewed clean. ADR 0028 records the full decision set —
+**it is gitignored, not committed** (Steve's call at Task 1; see the ADR's own header).
+SDD ledger: `.superpowers/sdd/progress.md`.
+
+- **`#view-heroes` is the three-tab Hero Quarters interior, complete.** `HeroesUI.js`
+  went **581 → 78 lines**. Roster, hero detail, the Assignments board, and the Recruit
+  tab all live in `js/ui/heroes/` (`HeroRosterPanel.js`, `HeroDetailPanel.js`,
+  `HeroAssignmentPanel.js`, `RecruitPanel.js`, `stationBoard.js`,
+  `heroPityDisclosure.js`, `heroCardView.js`, `recruitReveal.js`,
+  `heroSquadLookup.js`). `GachaUI.js` (480 ln) and `css/components/gacha.css`
+  (688 ln) are **deleted**; `ui:openGacha` no longer exists.
+- **The pity-disclosure fix (Task 2, the single most important decision of this
+  phase) is now recorded in ADR 0028.** `HeroManager._pity[tier]` holds
+  pulls-**completed** (incremented before the roll resolves). Disclosing the odds for
+  the *next* pull therefore needs two different indices from that one counter: the
+  rate ramp reads `pullsCompleted + 1`, the guarantee countdown keeps reading
+  `pullsCompleted`. A second review round found the ramp formula alone still lied at
+  the hard-pity boundary (44% shown for what `_rollStage1` actually resolves as a
+  100%-certain guaranteed hero) — the rate now clamps to 1 whenever the next pull
+  reaches `stage1HardPityN`. Stage 2 (post-roster-complete shard-floor pity) is
+  deliberately unramped and unclamped — its guarantee is a flat shard rate, not a
+  new-hero rate.
+- **The Assignments board (Task 6)** excludes barracks by construction — squad
+  assignment stays in the Barracks screen; the board owns every other building slot
+  including HQ. Fixed a real bug in the plan's own sample code: `_openPicker` cleared
+  its guard *after* the synchronous `assignHeroToBuilding` → `heroes:updated` →
+  `patch()` chain had already fired, so a successful assignment never visually filled
+  the slot — the guard now clears before the manager call.
+- **The Recruit tab + reveal (Task 7)** ports `rollToken`'s real 8-outcome delegate
+  tree (hero/shard/fragment/xp/overflow), not the old scroll-gacha's 5-outcome table
+  the brief pointed at — porting as literally instructed would have reproduced the
+  exact "40% of rolls grant nothing" bug the brief itself warned about. **Steve's
+  call: the Shard Exchange is wired up, not a read-only tally** — the brief
+  contradicted itself by declaring `exchangeTierShards` a consumed interface while
+  templating a static display. A per-tier hero picker (restricted to that tier by
+  construction) now calls it for real; the maxed-hero lossy overflow path gets its
+  own toast reading amounts from `EXCHANGE_CONFIG` instead of silently dropping
+  counters. The `gacha.css` deletion initially took several **live, non-gacha
+  styles** with it (`.hero-stars-row`, `.hero-skill-*`, `.btn-summon-frags`,
+  `.shop-item-featured`, etc.) — relocated verbatim into `heroes.css`/`inventory.css`
+  before the file was removed, byte-compared both directions in review.
+- **Inventory rehoming (Task 8).** The production-buff block is live again in
+  `InventoryUI` (`js/ui/inventory/InventoryBuffSection.js`) after being unrendered
+  since Task 4 — including its `buff:activated` toast, which had **zero listeners**
+  for that whole span (the emit in `heroCombat.js` never stopped firing; nothing was
+  listening). Inventory no longer spends recruitment items directly — it redirects to
+  the Recruit tab. A review round caught a **Critical** self-inflicted by the first
+  fix: consolidating everything onto the `.inv-goto-recruit` redirect killed the only
+  spend path for **universal** hero cards (`hero_card_universal` — shop-sold and
+  level-reward-granted), because `RecruitPanel._cardListHtml` only built buttons from
+  the six brief-specified per-hero cards. Fixed by unioning universal cards into the
+  same list and binding.
+- **Retired recruitment scrolls now render a disabled "Retired" action** instead of a
+  live-looking recruit-redirect button that led to a tab with nothing to spend them
+  on. `_buildActionHtml`'s `recruitment_scroll` branch in
+  `js/ui/controllers/InventoryUI.js` returns
+  `<button class="btn btn-xs btn-ghost" disabled title="Recruitment scrolls have been
+  retired — use Recruit Tokens instead.">Retired</button>`, mirroring the existing
+  disabled-ghost idiom used for "Owned"/"All Owned". Deleted the now-orphaned
+  `.inv-scroll-actions`/`.inv-scroll-cost` rules from `css/components/inventory.css`
+  (grep-confirmed no other emitter of either class). `tests/browser/heroes-smoke.mjs`
+  lines ~150-158 (its committed scroll-fixture block) is a deliberate ADR-0012
+  exception: **both original assertions were replaced, none dropped** — "inventory
+  recruit redirect lands on the Heroes view" / "activates the Recruit tab" (already
+  independently covered by the hero-card redirect block at lines ~174-188) became
+  "retired scroll shows no recruit redirect" (`.inv-goto-recruit` count is 0) and
+  "retired scroll shows a disabled Retired action explaining the retirement"
+  (a `:disabled` button with a `title` containing "retired" is present). The scroll
+  block also needed a new explicit `#inv-panel-close` click — the old flow relied on
+  `.inv-goto-recruit`'s click handler to close the panel as a side effect, and without
+  a redirect nothing else closed it before the next test step tried to click through
+  the still-open overlay (caught by a real first-attempt smoke failure, not
+  theoretical).
+- **Verified this session, by the session owner, not relayed:** `npm test`
+  **449/449, 0 failing.** `check-comments.mjs` — exactly **12 violations, all
+  pre-existing** (`InventoryManager.js`, `QuestManager.js`, `UnitManager.js`,
+  `UIManager.js`), **zero** in any Phase 2b file or in the two files this task
+  touched. `heroes-smoke` **PASS, 34/34 checks** (2 attempts — the first failed on
+  the smoke-file's own missing panel-close after the retired-scroll edit, a real bug
+  in the test change itself, fixed before the second run). `boot-smoke` **PASS** (1
+  attempt). `dev-smoke` **PASS** except the one pre-existing, unrelated
+  `dev-anchor-nudger` `variantFile` failure carried since 2026-07-22 (1 attempt).
+  `tutorial-smoke` **PASS** (1 attempt) — confirms the `#view-heroes` markup rewrite
+  across all of Phase 2b did not break the tutorial's hardcoded view-id/spotlight
+  contract.
+- **Two data gaps stay knowingly inert** (need a balance number a future phase sets,
+  asserted inert by `tests/unit/gameData.test.js`): `heroquarters` has no
+  `statEffectMap` entry, so the Assignments board shows "no station bonus yet" for
+  that slot; `PROD_BONUS_CONFIG.base.buildSpeed` has no consuming building.
+- **Not committed (Steve commits himself).** Stage only: `docs/40-active.md`,
+  `docs/30-roadmap.md`, `.gitignore`, `js/ui/controllers/InventoryUI.js`,
+  `css/components/inventory.css`, `tests/browser/heroes-smoke.mjs`. **ADR 0028 is
+  intentionally not staged** — it's gitignored, on-disk only, same as ADR 0027.
+- **Next step: Phase 2c — the 6-skill progression model** (parent design §5, 2b spec
+  §10). The 2b detail panel already groups skills Passive/Support/Major, so 2c is
+  data plus level-up controls, not a re-layout.
+
+## Hero redesign Phase 2b — Tasks 1-5 of 9 landed (2026-08-08 — superseded by the completion summary above; kept for per-task detail)
+
+**Historical, mid-plan status as of 2026-08-08 — Phase 2b is now complete, see the
+section above.** Kept verbatim for the per-task detail on Tasks 1-5 it originally
+compressed; Tasks 6-9 landed the next day and are summarized above, not here.
+
+Executed `docs/superpowers/plans/2026-07-27-hero-phase2b-heroes-screen-recruit-hall.md`
+Tasks 1-5 via subagent-driven development; Steve stopped the session after Task 5, Tasks
+6-9 ran the next session. Each of the five tasks was independently task-reviewed (spec +
+quality) and is clean. SDD ledger: `.superpowers/sdd/progress.md`.
+
+- **`#view-heroes` is now the three-tab Hero Quarters interior.** `HeroesUI.js` went
+  **581 → 54 lines**, a shell owning `_activeTab`, the tab strip and a `_panelFor(tab)`
+  seam. Roster and detail live in `js/ui/heroes/`. The Recruit and Assignments panels are
+  **mounted but empty** — that is Tasks 6-7, not a bug.
+- **Landed:** `stationBoard.js` (pure building×hero join, barracks excluded),
+  `heroPityDisclosure.js` + `HeroManager.getPityState`, `heroCardView.js` (shared portrait/
+  chip/tier-pill markup), `HeroRosterPanel.js`, `HeroDetailPanel.js` (splash art, backstory,
+  manual ▶ video, XP bundles, awakening, skills, Deploy handoff), `heroSquadLookup.js`.
+- **Real bug found and fixed by review, not by the plan — the plan's own code was wrong.**
+  `HeroManager._pity[tier]` is incremented *before* a roll resolves
+  (`heroRecruitment.js:26`), so it holds pulls-**completed**. The plan's `pityDisclosure`
+  treated it as the index of the pull being disclosed and used it for both the rate ramp
+  and the countdown, so the disclosed odds lagged reality by one soft-pity step (12% shown
+  where the next pull actually rolls at 20%). **Steve's call: disclose the next pull.** The
+  two fields genuinely need different indexing — the ramp now uses `pullsCompleted + 1`,
+  the countdown still uses `pullsCompleted`. A second review round caught the boundary:
+  `_rollStage1` short-circuits to a guaranteed hero at `stage1HardPityN`, so the rate now
+  clamps to 1 there instead of showing 44% for a certainty. **This decision needs to land
+  in ADR 0028 at Task 9.**
+- **Roadmap cleanup folded in ahead of schedule:** "stop string-parsing `assignedBuilding`
+  for squad names" (listed under Phase 2b in `30-roadmap.md`) is **done**. The old code
+  indexed `getSquads()[idx]` from `barracks_<idx>`, but `getSquads()` returns Map insertion
+  order, not barracks-slot order — a wrong squad label whenever squads were made out of
+  order. New `js/ui/heroes/heroSquadLookup.js` matches on `barracksInstanceId`; both panels
+  share the one copy.
+- **Two deliberate gaps, do not "fix" them mid-plan:** the production-buff block was
+  dropped from the Heroes screen and is **unrendered until Task 8** rehomes it into
+  `InventoryUI`; `GachaUI.js` remains live and knowingly broken until **Task 7** deletes it.
+- **Verified by the session owner, not relayed:** `npm test` **449/449**;
+  `heroes-smoke` (new, `tests/browser/heroes-smoke.mjs`) **PASS 10/10** — including
+  "roster card shows hero art, not emoji", which proves the 2a art ingest reaches the DOM;
+  `boot-smoke` **PASS**; `tutorial-smoke` **PASS** (the `#view-heroes` markup rewrite did
+  not break the hardcoded tutorial contract); `dev-smoke` **PASS** except the one
+  pre-existing unrelated `dev-anchor-nudger` `variantFile` failure carried since
+  2026-07-22. `check-comments.mjs` exactly **12 violations, all pre-existing**, zero in any
+  Phase 2b file.
+- **The brief's CSS token names are wrong** — `--color-*` does not exist. The real tokens
+  are `--clr-border` / `--clr-primary` / `--clr-text-primary` / `--clr-text-muted` and
+  `--space-1..12` in `css/base/variables.css`. Tasks 6-8 append CSS; check before pasting.
+- **Known plan bug for Task 8:** its Step 2 says recover the buff methods via
+  `git show HEAD:js/ui/controllers/HeroesUI.js`. By Task 8 that file is already a shell.
+  The real source is **`git show 843dd90:js/ui/controllers/HeroesUI.js`**.
+- **Recorded, unfixed, for the final review:** `heroCardView.portraitHtml` interpolates
+  `hero.name` into `alt=""` and `hero.icon` into element text with **no escaping**. Safe
+  today (static config only) — but Task 7's recruit reveal must not route dynamic text
+  through it.
+- **Not committed (Steve commits himself).** Five task commits are on `Working_Branch`
+  (`44a8fa4`, `e55dfa7`+`d069a90`+`0297ef0`, `9dec6fd`, `df0f438`, `3e42686`). Per Steve's
+  call this session, `.superpowers/sdd/progress.md` is **untracked** (`git rm --cached`,
+  staged, kept on disk) and `/docs/superpowers/` + `docs/20-decisions/0027-*.md` are now
+  gitignored. **Task 9 must ask whether ADR 0028 should follow 0027 out of tracking** —
+  ADRs 0001-0026 are all still committed.
+- **Next step: resume at Task 6** (Assignments board), then 7, 8, 9. Extract each brief
+  with `.superpowers` `scripts/task-brief`, and carry a hard git-hygiene block in every
+  dispatch — subagents damaged the untracked ledger in three of five tasks this session,
+  once restoring it from the stale tracked blob and destroying two task entries.
+
+## Hero redesign Phase 2a — "Make It Real" shipped (2026-08-08, earlier)
 
 Executed `docs/superpowers/plans/2026-07-26-hero-phase2a-make-it-real.md` via
 subagent-driven development (8 tasks, each independently task-reviewed clean, plus this

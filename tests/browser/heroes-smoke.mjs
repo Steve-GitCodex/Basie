@@ -154,10 +154,10 @@ await withPage(async ({ page, errors, origin }) => {
   await page.waitForSelector('#inventory-panel.open', { timeout: 5000 });
   await page.click('.inv-tab[data-tab="scroll"]');
   await page.click('.inv-tile[data-item-id="scroll_common"]');
-  await page.click('.inv-goto-recruit');
-  await page.waitForSelector('#view-heroes:not(.hidden)', { timeout: 5000 });
-  checks.push({ label: 'inventory recruit redirect lands on the Heroes view', ok: await page.isVisible('#view-heroes') });
-  checks.push({ label: 'inventory recruit redirect activates the Recruit tab', ok: await page.locator('.heroes-tab--active[data-tab="recruit"]').count() === 1 });
+  checks.push({ label: 'retired scroll shows no recruit redirect', ok: await page.locator('.inv-goto-recruit').count() === 0 });
+  checks.push({ label: 'retired scroll shows a disabled Retired action explaining the retirement', ok: await page.locator('.inv-card-action button:disabled[title*="retired" i]').count() === 1 });
+  await page.click('#inv-panel-close');
+  await page.waitForSelector('#inventory-panel:not(.open)', { timeout: 5000 });
 
   await page.evaluate(() => window.game.eventBus.emit('ui:navigateTo', 'heroes'));
   await page.waitForSelector('#view-heroes:not(.hidden)', { timeout: 5000 });

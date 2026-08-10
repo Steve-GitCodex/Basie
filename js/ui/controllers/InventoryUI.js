@@ -230,12 +230,9 @@ export class InventoryUI {
   }
 
   _buildActionHtml(item, ownedHeroIds) {
-    // ── Recruitment Scrolls ──────────────────────────────────────────────
+    // ── Recruitment Scrolls (retired, legacy-save residue only) ──────────
     if (item.type === 'recruitment_scroll') {
-      return `
-        <div class="inv-scroll-actions">
-          <button class="btn btn-xs btn-gold inv-goto-recruit">Recruit at Hero Quarters</button>
-        </div>`;
+      return `<button class="btn btn-xs btn-ghost" disabled title="Recruitment scrolls have been retired — use Recruit Tokens instead.">Retired</button>`;
     }
 
     // ── Specific Hero Cards ───────────────────────────────────────────────

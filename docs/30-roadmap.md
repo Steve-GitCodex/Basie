@@ -239,28 +239,31 @@ heroes), heroes-only token rolls with two-stage pity, dupe→fragment/shard conv
 economy, and — as of Phase 2a — production bonuses now **live-consumed**: the §I formula
 drives real per-building resource rates, `trainingSpeed`/`researchSpeed` shorten real
 unit-training/research jobs, and recruit tokens are sold in the shop and reward tables
-(the token-acquisition gap from Phase 1 is closed). **Next: Phase 2b** — Heroes screen +
-Recruit Hall UI (`docs/superpowers/plans/2026-07-27-hero-phase2b-heroes-screen-recruit-hall.md`).
+(the token-acquisition gap from Phase 1 is closed).
+
+**Phase 2b is complete — all 9 tasks landed (2026-08-09), ADR 0028.**
+`#view-heroes` is now the three-tab Hero Quarters interior (`HeroesUI.js` 581 → 78 lines
+over modules in `js/ui/heroes/`): Roster, hero detail, the Assignments board, and the
+Recruit tab (with a working Shard Exchange) are all live. `GachaUI.js` +
+`css/components/gacha.css` are deleted; Inventory redirects to the Recruit tab instead
+of spending recruitment items directly, and the production-buff block is rehomed onto
+the Inventory panel. The `assignedBuilding` string-parsing cleanup listed under UX
+friendliness below is **done** (`heroSquadLookup.js` matches on `barracksInstanceId`).
+Plan: `docs/superpowers/plans/2026-07-27-hero-phase2b-heroes-screen-recruit-hall.md`;
+ADR: `docs/20-decisions/0028-hero-quarters-screen-and-recruit-hall.md` (gitignored, not
+committed — same convention as ADR 0027); session detail in `docs/40-active.md`.
+**Next: Phase 2c — the 6-skill progression model.**
 
 ## UX friendliness
 
-- [~] **Hero recruitment + management redesign** — **IN FOCUS, see above.** Phase 0
-  (manager split), Phase 1 (economy foundation), and Phase 2a (production bonuses/
-  training-research speed/token shop live) are done; UI work (this section's original
-  scope) is **Phase 2b, next**. (Steve, 2026-07-15: "does not feel
-  friendly" — confirmed by code review). Problems: recruiting spans four views
-  (Shop → Inventory → GachaUI modal → Heroes detail pane) with no in-game guidance;
-  five item classes to understand (scrolls, specific cards, universal cards,
-  per-hero fragments, XP tomes); no drop-rate display and no pity/guarantee system
-  anywhere; Heroes screen leads with raw multiplier chips and packs
-  recruit/fragments/XP/skills/awakening into one dense pane; an unrelated
-  "production buffs from Inventory" section sits in the Heroes view.
-  Direction is now locked in
-  `docs/superpowers/specs/2026-07-27-hero-phase2b-heroes-screen-recruit-hall-design.md`:
-  `#view-heroes` becomes a three-tab Hero Quarters interior (Roster · Recruit ·
-  Assignments); `HeroesUI.js` splits into `js/ui/heroes/` modules; `GachaUI.js` is
-  deleted. Code cleanups to fold in: stop string-parsing `assignedBuilding` for squad
-  names (HeroesUI); patch-in-place instead of full `render()` rebuilds (ADR 0007).
+- [x] **Hero recruitment + management redesign** — Phase 0 (manager split), Phase 1
+  (economy foundation), Phase 2a (production bonuses/training-research speed/token
+  shop live), and Phase 2b (Heroes screen + Recruit Hall UI) are **all done**
+  (2026-08-09, ADR 0028). Recruiting is now tied to the Hero Quarters building itself:
+  `#view-heroes` is a three-tab interior (Roster · Recruit · Assignments), pity odds
+  disclose the next pull with a hard-pity clamp, the Shard Exchange is a real spend
+  path, and Inventory redirects rather than duplicating a spend surface. Next:
+  **Phase 2c — the 6-skill progression model** (parent design §5).
 
 ## Cross-cutting reworks
 

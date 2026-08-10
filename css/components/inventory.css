@@ -230,25 +230,6 @@
   padding: 4px 12px;
 }
 
-/* --- Recruitment scroll bulk-pull action group -------------- */
-.inv-scroll-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  align-items: center;
-}
-
-.inv-scroll-actions .btn {
-  font-size: 0.72rem;
-  padding: 3px 9px;
-}
-
-.inv-scroll-cost {
-  font-size: 0.65rem;
-  opacity: 0.65;
-  margin-left: 2px;
-}
-
 /* --- Empty state -------------------------------------------- */
 .inv-empty {
   display: flex;
