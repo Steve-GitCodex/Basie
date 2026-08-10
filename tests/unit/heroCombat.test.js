@@ -114,3 +114,14 @@ test('the schema migration does not change combat aggregation for a squad hero',
   assert.ok(chargeEntry, 'charge is no longer collected as a triggered skill');
   assert.equal(chargeEntry.skill.effect.attackBonus, 0.20, 'charge lost its magnitude');
 });
+
+test('postBattleHeal from a passive skill reaches the returned combat bonuses', () => {
+  const m = makeManager({ heroquartersLevel: 10 });
+  m._recruitHero('paladin'); // Aldric, consecration (unlockLevel 20) grants postBattleHeal 0.05
+  const hero = m._owned.get('paladin');
+  hero.level = 20; hero.stars = 0;
+  hero.assignment = { type: 'building', buildingId: 'heroquarters_0' };
+
+  const b = m.getCombatBonuses();
+  assert.ok(b.postBattleHeal > 0, 'consecration postBattleHeal never reached heroBonus.postBattleHeal');
+});

@@ -5,7 +5,7 @@ import {
   SKILL_LEVEL_CAP, MAJOR_SKILL_LEVEL_CAP,
   shardCostForSkillLevel, majorSkillCost,
   levelCapFor, defaultLevelFor, effectValueAt,
-  reconcileSkillLevels, groupedSkillsFor,
+  reconcileSkillLevels, groupedSkillsFor, collectEffects,
 } from '../../js/systems/hero/heroSkills.js';
 import { SKILLS_CONFIG, HEROES_CONFIG } from '../../js/entities/GAME_DATA.js';
 
@@ -79,4 +79,25 @@ test('a major is locked below star 5 and unlocked at star 5', () => {
   const at    = groupedSkillsFor('warlord', { heroId: 'warlord', level: 100, stars: 5, skillLevels: {} });
   assert.equal(below.major[0].unlocked, false);
   assert.equal(at.major[0].unlocked, true);
+});
+
+test('collectEffects aggregates a level-20 warlord\'s unlocked passives in one pass', () => {
+  const hero = { heroId: 'warlord', level: 20, stars: 0, skillLevels: {} };
+  const out = collectEffects(hero, {});
+  assert.ok(out.lossReduction >= 0.08, 'iron_will lossReduction missing');
+  assert.ok(out.attackMult >= 0.10, 'battle_cry squad attack missing');
+  assert.ok(out.auraFrac > 0, 'commanding_presence aura fraction missing');
+});
+
+test('collectEffects ignores skills below their unlock level', () => {
+  const hero = { heroId: 'warlord', level: 1, stars: 0, skillLevels: {} };
+  const out = collectEffects(hero, {});
+  assert.equal(out.lossReduction, 0, 'iron_will (Lv.20) leaked at level 1');
+});
+
+test('a level-0 major contributes nothing even at star 10', () => {
+  const hero = { heroId: 'warlord', level: 100, stars: 10, skillLevels: { last_stand: 0 } };
+  const out = collectEffects(hero, { trigger: 'losing' });
+  assert.equal(out.triggered.find(t => t.skill.id === 'last_stand'), undefined,
+    'an unpurchased major must not fire');
 });

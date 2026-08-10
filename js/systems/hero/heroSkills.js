@@ -57,6 +57,35 @@ export function isUnlocked(skill, hero) {
   return (hero?.level ?? 1) >= skill.unlockLevel;
 }
 
+export function collectEffects(hero, { trigger = null } = {}) {
+  const out = {
+    attackMult: 0, defenseMult: 0, lossReduction: 0,
+    postBattleHeal: 0, auraFrac: 0, triggered: [],
+  };
+  const heroId = hero?.heroId;
+  const levels = reconcileSkillLevels(heroId, hero?.skillLevels);
+
+  for (const id of (HEROES_CONFIG[heroId]?.skills ?? [])) {
+    const skill = SKILLS_CONFIG[id];
+    if (!skill || !isUnlocked(skill, hero)) continue;
+    const level = levels[id];
+    if (skill.type === 'major' && level < 1) continue;
+
+    const fx = skill.effect ?? {};
+    if (fx.trigger) {
+      if (trigger === null || fx.trigger === trigger) out.triggered.push({ heroId, skill, level });
+      continue;
+    }
+    const scaled = v => effectValueAt(skill, v, level);
+    if (fx.stat === 'auraValue')      out.auraFrac       += scaled(fx.value);
+    if (fx.stat === 'lossReduction')  out.lossReduction  += scaled(fx.value);
+    if (fx.stat === 'attack'  && fx.scope === 'squad') out.attackMult  += scaled(fx.value);
+    if (fx.stat === 'defense' && fx.scope === 'squad') out.defenseMult += scaled(fx.value);
+    if (fx.postBattleHeal)            out.postBattleHeal += scaled(fx.postBattleHeal);
+  }
+  return out;
+}
+
 export function groupedSkillsFor(heroId, hero) {
   const groups = { passive: [], support: [], major: [] };
   const levels = reconcileSkillLevels(heroId, hero?.skillLevels);

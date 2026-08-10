@@ -1,10 +1,10 @@
 import { eventBus } from '../../core/EventBus.js';
 import {
   HEROES_CONFIG,
-  SKILLS_CONFIG,
   AWAKENING_CONFIG,
   AURA_BUFF_CATEGORY,
 } from '../../entities/GAME_DATA.js';
+import { collectEffects } from './heroSkills.js';
 
 export class HeroCombat {
   constructor(hero) { this._h = hero; }
@@ -14,30 +14,19 @@ export class HeroCombat {
     const base = cfg.aura?.value ?? 0;
     if (!base) return 0;
 
-    let skillAuraFrac = 0;
-    for (const skillId of (cfg.skills ?? [])) {
-      const skill = SKILLS_CONFIG[skillId];
-      if (!skill || skill.type !== 'passive' || skill.effect.stat !== 'auraValue') continue;
-      const skillLvl = hero.skillLevels?.[skillId];
-      if (skillLvl) {
-        skillAuraFrac += AWAKENING_CONFIG.skillAuraFracBase + AWAKENING_CONFIG.skillAuraFracPerLevel * (skillLvl - 1);
-      } else if ((hero.level ?? 1) >= skill.unlockLevel) {
-        // Bridge until Phase 2 lands per-skill levels: fall back to the pre-Phase-1 flat gate.
-        skillAuraFrac += skill.effect.value;
-      }
-    }
-
+    const { auraFrac } = collectEffects(hero, {});
     const levelTerm = AWAKENING_CONFIG.levelScalePerLevel * ((hero.level ?? 1) - 1);
     const starTerm  = (AWAKENING_CONFIG.perStarAuraBonus ?? 0) * (hero.stars ?? 0);
-    return base * (1 + levelTerm + starTerm + skillAuraFrac);
+    return base * (1 + levelTerm + starTerm + auraFrac);
   }
 
   /** Aggregate aura bonuses for a squad's heroes plus HQ heroes (null squadId = all). */
   getCombatBonuses(squadId = null) {
-    let attackMult    = 1.0;
-    let defenseMult   = 1.0;
-    let lossReduction = 0;
-    let activeSkills  = []; // Active skill effects for CombatManager
+    let attackMult     = 1.0;
+    let defenseMult    = 1.0;
+    let lossReduction  = 0;
+    let postBattleHeal = 0;
+    let activeSkills   = []; // Active skill effects for CombatManager
 
     for (const hero of this._h._owned.values()) {
       const a = hero.assignment;
@@ -64,30 +53,12 @@ export class HeroCombat {
         if (cfg.aura.type === 'defense_boost') lossReduction += auraValue * 0.5;
       }
 
-      // Passive lossReduction from skills (iron_will, evasion, consecration)
-      for (const skillId of (cfg.skills ?? [])) {
-        const skill = SKILLS_CONFIG[skillId];
-        if (!skill || skill.type !== 'passive') continue;
-        if (hero.level < skill.unlockLevel) continue;
-        if (skill.effect.stat === 'lossReduction') lossReduction += skill.effect.value;
-      }
-
-      // Passive attack/defense squad bonuses
-      for (const skillId of (cfg.skills ?? [])) {
-        const skill = SKILLS_CONFIG[skillId];
-        if (!skill || skill.type !== 'passive') continue;
-        if (hero.level < skill.unlockLevel) continue;
-        if (skill.effect.stat === 'attack'  && skill.effect.scope === 'squad') attackMult  += skill.effect.value;
-        if (skill.effect.stat === 'defense' && skill.effect.scope === 'squad') defenseMult += skill.effect.value;
-      }
-
-      // Collect active skills for combat system hooks
-      for (const skillId of (cfg.skills ?? [])) {
-        const skill = SKILLS_CONFIG[skillId];
-        if (!skill || skill.type === 'passive') continue;
-        if (hero.level < skill.unlockLevel) continue;
-        activeSkills.push({ heroId: hero.heroId, skill });
-      }
+      const fx = collectEffects(hero, {});
+      attackMult     += fx.attackMult;
+      defenseMult    += fx.defenseMult;
+      lossReduction  += fx.lossReduction;
+      postBattleHeal += fx.postBattleHeal;
+      activeSkills.push(...fx.triggered);
     }
 
     // Active production buffs
@@ -95,7 +66,7 @@ export class HeroCombat {
     this._h._activeBuffs = this._h._activeBuffs.filter(b => b.endsAt > now);
     const buffMult = this._h._activeBuffs.reduce((acc, b) => acc + b.value, 0);
 
-    return { attackMult, defenseMult, lossReduction, activeSkills, productionBuffMult: buffMult };
+    return { attackMult, defenseMult, lossReduction, postBattleHeal, activeSkills, productionBuffMult: buffMult };
   }
 
   /** Hero aura bonuses by category (military/development/production) plus active timed buffs. */
