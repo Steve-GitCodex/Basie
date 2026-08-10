@@ -293,7 +293,7 @@ _simulateBattle(army, monster, modifier = null, squadId = null) {
         * (1 + (isFirstWave ? (tech.firstWaveBonus || 0) : 0) + waveFx.attackBonus);
       let currentDmg = dmgToPlayer;
       if (waveFx.evasion) currentDmg = 0;
-      if (waveFx.defenseBonus > 0) currentDmg *= (1 - waveFx.defenseBonus);
+      if (waveFx.defenseBonus > 0) currentDmg *= Math.max(0, 1 - waveFx.defenseBonus);
 
       const waveKillRounds = Math.ceil(waveHP / Math.max(1, currentAttack));
       const totalDmgTaken  = currentDmg * waveKillRounds * 0.3;
