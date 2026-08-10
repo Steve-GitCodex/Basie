@@ -527,6 +527,7 @@
 .chip-squad    { color: var(--clr-tier-rare);    background: var(--clr-tier-rare-muted); }
 .chip-building { color: var(--clr-success);      background: hsla(140,60%,15%,0.8); }
 .chip-idle     { color: var(--clr-text-muted);   background: transparent; }
+.chip-unowned  { color: var(--clr-text-muted);   background: transparent; }
 
 /* ── Recruitment section ── */
 .hero-recruit-section { margin-top: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }

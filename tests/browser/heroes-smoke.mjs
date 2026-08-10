@@ -210,5 +210,79 @@ await withPage(async ({ page, errors, origin }) => {
     ok: epicCardQtyAfter === epicCardQtyBefore - 1 && newlyOwned.length === 1,
   });
 
+  await page.evaluate(() => window.game.eventBus.emit('ui:navigateTo', 'heroes'));
+  await page.waitForSelector('#view-heroes:not(.hidden)', { timeout: 5000 });
+  await dismissOverlays(page);
+  await page.click('.heroes-tab[data-tab="assign"]');
+  await page.waitForSelector('.hero-board-row', { timeout: 5000 });
+
+  const i2Instance = await page.locator('.hero-board-row').first().getAttribute('data-instance');
+  await dismissOverlays(page);
+  await page.click(`.hero-board-row[data-instance="${i2Instance}"] .btn-board-assign`);
+  const i2FirstPick = await page.locator('.hero-board-pick').count();
+  if (i2FirstPick > 0) {
+    await dismissOverlays(page);
+    await page.click('.hero-board-pick >> nth=0');
+    await page.waitForTimeout(300);
+
+    await dismissOverlays(page);
+    await page.click(`.hero-board-row[data-instance="${i2Instance}"] .btn-board-assign`);
+    await page.waitForSelector(`.hero-board-row[data-instance="${i2Instance}"] .hero-board-picker`, { timeout: 5000 });
+
+    await page.click('.heroes-tab[data-tab="roster"]');
+    await page.click('.heroes-tab[data-tab="assign"]');
+    await page.waitForSelector('.hero-board-row', { timeout: 5000 });
+
+    const i2OccupiedBeforeRemove = await page.locator(`.hero-board-row[data-instance="${i2Instance}"].hero-board-row--occupied`).count();
+    await dismissOverlays(page);
+    await page.click(`.hero-board-row[data-instance="${i2Instance}"] .btn-board-remove`);
+    await page.waitForTimeout(300);
+    const i2OccupiedAfterRemove = await page.locator(`.hero-board-row[data-instance="${i2Instance}"].hero-board-row--occupied`).count();
+    checks.push({
+      label: 'I2: Remove after an open-picker tab round-trip actually updates the board',
+      ok: i2OccupiedBeforeRemove === 1 && i2OccupiedAfterRemove === 0,
+    });
+  } else {
+    checks.push({ label: 'I2: assign-picker tab round-trip (no assignable hero in sandbox — skipped)', ok: true });
+  }
+
+  await page.evaluate(() => window.game.eventBus.emit('ui:navigateTo', 'heroes'));
+  await page.waitForSelector('#view-heroes:not(.hidden)', { timeout: 5000 });
+  await dismissOverlays(page);
+
+  const c1HeroId = 'kaelenthorne';
+  await page.evaluate(() => window.game.inventory.addItem('xpcard_normal', 1));
+  await page.waitForTimeout(200);
+  const c1QtyBefore   = await page.evaluate(() => window.game.inventory.getQuantity('xpcard_normal'));
+  const c1HeroBefore  = await page.evaluate(id => {
+    const h = window.game.heroes.getRosterWithState().find(x => x.id === id);
+    return { xp: h?.xp ?? 0, level: h?.level ?? 0 };
+  }, c1HeroId);
+
+  await dismissOverlays(page);
+  await page.evaluate(() => window.game.eventBus.emit('ui:openInventory'));
+  await page.waitForSelector('#inventory-panel.open', { timeout: 5000 });
+  await page.click('.inv-tab[data-tab="boost"]');
+  await page.click('.inv-tile[data-item-id="xpcard_normal"]');
+  checks.push({ label: 'C1: xpcard is reachable in Inventory with a real action', ok: await page.locator('.inv-use-xp[data-item="xpcard_normal"]').count() === 1 });
+
+  await page.click('.inv-use-xp[data-item="xpcard_normal"]');
+  await page.waitForSelector('.inv-hero-picker', { timeout: 5000 });
+  await page.click(`.inv-pick-hero[data-hero="${c1HeroId}"]`);
+  await page.waitForTimeout(300);
+
+  const c1QtyAfter  = await page.evaluate(() => window.game.inventory.getQuantity('xpcard_normal'));
+  const c1HeroAfter = await page.evaluate(id => {
+    const h = window.game.heroes.getRosterWithState().find(x => x.id === id);
+    return { xp: h?.xp ?? 0, level: h?.level ?? 0 };
+  }, c1HeroId);
+  checks.push({
+    label: 'C1: xpcard is spent and grants real hero XP/level through the manager',
+    ok: c1QtyAfter === c1QtyBefore - 1 && (c1HeroAfter.xp > c1HeroBefore.xp || c1HeroAfter.level > c1HeroBefore.level),
+  });
+
+  await page.click('#inv-panel-close');
+  await page.waitForSelector('#inventory-panel:not(.open)', { timeout: 5000 });
+
   report('heroes-smoke', checks, errors);
 });

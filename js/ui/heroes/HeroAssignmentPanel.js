@@ -22,6 +22,7 @@ export class HeroAssignmentPanel {
 
   render() {
     if (!this._root) return;
+    this._openSlot = null;
     const rows = this._rows();
     const assigned = this._s.heroes.getTotalAssignedToBuildings();
     const available = this._s.heroes.getAvailableHeroSlots();

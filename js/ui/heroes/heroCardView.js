@@ -1,6 +1,6 @@
 import { eventBus } from '../../core/EventBus.js';
 import { heroArt } from '../icons/heroArt.js';
-import { TIER_CSS_SUFFIX } from '../uiUtils.js';
+import { TIER_CSS_SUFFIX, escapeHtml } from '../uiUtils.js';
 
 export const TIER_META = {
   normal:    { label: 'Normal',    symbol: '●', cssClass: 'hero-card--common' },
@@ -20,7 +20,7 @@ export function portraitHtml(hero, variant = 'thumb') {
 export function statusChipHtml(hero, { squadName } = {}) {
   if (!hero?.isOwned) return `<span class="hero-assignment-chip chip-unowned">Not recruited</span>`;
   if (hero.isInSquad) {
-    return `<span class="hero-assignment-chip chip-squad">${squadName ?? 'Squad'}</span>`;
+    return `<span class="hero-assignment-chip chip-squad">${escapeHtml(squadName ?? 'Squad')}</span>`;
   }
   if (hero.isInBuilding) {
     return `<span class="hero-assignment-chip chip-building">${hero.assignedBuilding ?? 'Stationed'}</span>`;

@@ -3,6 +3,67 @@
 > Most-updated file in the repo. Every session that changes code updates this file
 > (what landed, known issues, exact next steps). See the session protocol in `CLAUDE.md`.
 
+## Final whole-branch review fixes — Hero redesign Phase 2b (2026-08-09, latest)
+
+Fixed all findings from the final whole-branch review of Phase 2b on top of the
+Task 9 uncommitted work below. Full finding-by-finding writeup:
+`.superpowers/sdd/final-review-fixes-report.md`.
+
+- **C1** — `xp_card` items (`xpcard_normal/epic/legendary`, granted by 20% of
+  non-hero recruit pulls) were acquirable but had no Inventory tab, no action
+  branch, and no UI path to `HeroManager.applyXPCard` (which already worked).
+  Added `xp_card` to the Boost tab's types and reused the existing `xp_bundle`
+  hero-picker flow (`.inv-use-xp` / `_showHeroPicker`) verbatim — it was already
+  item-agnostic, so no new picker or manager logic was needed.
+- **I1** — a successful card recruit in `RecruitPanel._bindCards` was silent (only
+  the failure path notified). Added the `👑 Hero Recruited!` toast on success,
+  resolving the hero name from static `HEROES_CONFIG`.
+- **I2** — `HeroAssignmentPanel._openSlot` was only ever cleared by the hero-pick
+  handler, never by `render()`. A picker left open across a tab round-trip
+  (Assignments → Roster → Assignments) permanently deadened `patch()` — a
+  subsequent Remove succeeded in the manager but the board never visually
+  updated. Fixed by clearing `_openSlot` at the top of `render()`;
+  `patch()`'s own guard (for a picker open *without* a tab switch) is unaffected.
+- **I3** — `heroCardView.statusChipHtml` interpolated the player-typed `squadName`
+  into raw HTML. Routed through `escapeHtml` (`js/ui/uiUtils.js`); fixed the same
+  raw interpolation of `squad.name` in `js/ui/controllers/BarracksUI.js`'s
+  squad-modal title, and the last two remaining raw squad-name renders in
+  `js/ui/controllers/CombatUI.js` (legacy campaign squad dropdown) — same
+  player-typed value, same input. No unescaped squad-name path remains.
+- **M1** — deleted dead `.btn-summon-frags` CSS (no emitter anywhere in the tree).
+- **M2** — added the missing `.recruit-result--common` rule (normal tier — the
+  highest-volume pull — was rendering unstyled).
+- **M3** — added the missing `.chip-unowned` rule alongside its siblings in
+  `cards.css`.
+- **M4** — removed the duplicate `⚗️ Buff Activated!` toast fired directly from
+  `InventoryUI`'s `inv-use-buff` click handler; kept the `buff:activated`
+  event-driven listener, which also covers buffs activated from other sources.
+- **M5** — `InventoryBuffSection` now appends inside `.inv-panel-body` in both the
+  empty and non-empty render branches, so it always sits in the scrolling body.
+- **M6** — the Recruit tab's hero-card list now mirrors Inventory's disabled
+  "Owned"/"All Owned" treatment instead of always rendering a live button that
+  errors on click for an already-owned hero; ownership read from
+  `getRosterWithState()`'s `isOwned`, manager stays authoritative on the click.
+- **Docs** — corrected `heroPityDisclosure.js`'s real location
+  (`js/systems/hero/`, not `js/ui/heroes/`), the real `js/ui/heroes/` module count
+  (eight, not seven), `HeroesUI.js`'s real line count (77, not 78), the ADR's
+  misattributed `patch()` guard (video-only; the picker/reveal/exchange guards
+  belong to different owners), the stale staging list, and dropped the
+  `.btn-summon-frags` "rescued" claim per M1. Added a known-gaps line (both here
+  and `docs/30-roadmap.md`) for `HeroManager.convertFragments`/`unlockFromShards`
+  having no UI caller — pre-existing, flagged as a Phase 2c candidate.
+- **Tests** — appended two mutation-strong checks to `tests/browser/heroes-smoke.mjs`
+  (strict append, existing checks untouched): I2's tab-round-trip-then-Remove
+  repro, and C1's xpcard grant → spend → real manager-state assertion (item
+  consumed, hero XP/level increased).
+- **Verified:** `npm test` **449/449**, no regression. `check-comments.mjs` —
+  exactly **12 violations, all pre-existing**, zero added. `heroes-smoke`
+  **PASS, 38/38** (2 attempts — first hit the documented pre-existing
+  tutorial-state flakiness on an unrelated pre-existing check, not a new one).
+  `boot-smoke` **PASS** (1 attempt).
+- **Not committed (Steve commits himself).** See the staging note under the Task
+  9 section below for the exact `git status --short` file list.
+
 ## Hero redesign Phase 2b — Heroes Screen + Recruit Hall shipped, all 9 tasks (2026-08-09, latest)
 
 Executed the remainder of
@@ -13,11 +74,12 @@ independently task-reviewed clean. ADR 0028 records the full decision set —
 SDD ledger: `.superpowers/sdd/progress.md`.
 
 - **`#view-heroes` is the three-tab Hero Quarters interior, complete.** `HeroesUI.js`
-  went **581 → 78 lines**. Roster, hero detail, the Assignments board, and the Recruit
-  tab all live in `js/ui/heroes/` (`HeroRosterPanel.js`, `HeroDetailPanel.js`,
-  `HeroAssignmentPanel.js`, `RecruitPanel.js`, `stationBoard.js`,
-  `heroPityDisclosure.js`, `heroCardView.js`, `recruitReveal.js`,
-  `heroSquadLookup.js`). `GachaUI.js` (480 ln) and `css/components/gacha.css`
+  went **581 → 77 lines**. Roster, hero detail, the Assignments board, and the Recruit
+  tab all live across eight modules in `js/ui/heroes/` (`HeroRosterPanel.js`,
+  `HeroDetailPanel.js`, `HeroAssignmentPanel.js`, `RecruitPanel.js`, `stationBoard.js`,
+  `heroCardView.js`, `recruitReveal.js`, `heroSquadLookup.js`); the pity-disclosure
+  module (`heroPityDisclosure.js`) lives in `js/systems/hero/`, not `js/ui/heroes/`.
+  `GachaUI.js` (480 ln) and `css/components/gacha.css`
   (688 ln) are **deleted**; `ui:openGacha` no longer exists.
 - **The pity-disclosure fix (Task 2, the single most important decision of this
   phase) is now recorded in ADR 0028.** `HeroManager._pity[tier]` holds
@@ -97,10 +159,24 @@ SDD ledger: `.superpowers/sdd/progress.md`.
   asserted inert by `tests/unit/gameData.test.js`): `heroquarters` has no
   `statEffectMap` entry, so the Assignments board shows "no station bonus yet" for
   that slot; `PROD_BONUS_CONFIG.base.buildSpeed` has no consuming building.
-- **Not committed (Steve commits himself).** Stage only: `docs/40-active.md`,
-  `docs/30-roadmap.md`, `.gitignore`, `js/ui/controllers/InventoryUI.js`,
-  `css/components/inventory.css`, `tests/browser/heroes-smoke.mjs`. **ADR 0028 is
-  intentionally not staged** — it's gitignored, on-disk only, same as ADR 0027.
+- **Known gap, carried deliberately (found by the final whole-branch review):**
+  `HeroManager.convertFragments`/`unlockFromShards` (`js/systems/HeroManager.js:56-57`)
+  have **zero UI callers** anywhere — pre-existing, predates this phase (verified
+  against `843dd90`) — yet `HeroDetailPanel.js:78-87` renders an unowned hero's
+  "Fragment Progress" bar promising a conversion no button performs, and the Shard
+  Exchange lets a player mint `shard_<unownedHero>` that cannot currently be spent.
+  Flagged as a Phase 2c candidate, not fixed this session.
+- **Not committed (Steve commits himself).** `git status --short` at end of session:
+  a pre-staged deletion `D  .superpowers/sdd/progress.md` (Steve's own, keep on disk,
+  never restore it) plus modified/partially-staged working-tree changes across
+  `docs/30-roadmap.md`, `docs/40-active.md`, `js/ui/controllers/InventoryUI.js`,
+  `js/ui/controllers/BarracksUI.js`, `js/ui/heroes/HeroAssignmentPanel.js`,
+  `js/ui/heroes/RecruitPanel.js`, `js/ui/heroes/heroCardView.js`,
+  `css/components/inventory.css`, `css/components/heroes.css`,
+  `css/components/cards.css`, `tests/browser/heroes-smoke.mjs`. `.gitignore` is
+  **not** modified — it is itself self-ignored (`.gitignore:4`) and cannot be staged.
+  **ADR 0028 is intentionally not staged** — it's gitignored, on-disk only, same as
+  ADR 0027.
 - **Next step: Phase 2c — the 6-skill progression model** (parent design §5, 2b spec
   §10). The 2b detail panel already groups skills Passive/Support/Major, so 2c is
   data plus level-up controls, not a re-layout.

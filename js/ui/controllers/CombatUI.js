@@ -12,7 +12,7 @@
  */
 import { eventBus } from '../../core/EventBus.js';
 import { MONSTERS_CONFIG, UNITS_CONFIG } from '../../entities/GAME_DATA.js';
-import { RES_META, fmt, openModal, closeModal } from '../uiUtils.js';
+import { RES_META, fmt, openModal, closeModal, escapeHtml } from '../uiUtils.js';
 import { icon, iconFromEmoji } from '../icons.js';
 
 export class CombatUI {
@@ -254,11 +254,11 @@ export class CombatUI {
     const squads     = this._s.um.getSquads();
     const firstSquad = squads.length > 0 ? squads[0] : null;
     const squadDropdownTriggerText = firstSquad
-      ? `${firstSquad.name} (${firstSquad.units.reduce((a, u) => a + u.count, 0)} units)`
+      ? `${escapeHtml(firstSquad.name)} (${firstSquad.units.reduce((a, u) => a + u.count, 0)} units)`
       : 'No squads available';
     const squadDropdownOptions = squads.map((s, i) => {
       const unitCount = s.units.reduce((a, u) => a + u.count, 0);
-      return `<div class="squad-dropdown-option${i === 0 ? ' selected' : ''}" data-value="${s.id}">${s.name} <span class="squad-opt-units">(${unitCount} units)</span></div>`;
+      return `<div class="squad-dropdown-option${i === 0 ? ' selected' : ''}" data-value="${s.id}">${escapeHtml(s.name)} <span class="squad-opt-units">(${unitCount} units)</span></div>`;
     }).join('');
 
     area.innerHTML = `

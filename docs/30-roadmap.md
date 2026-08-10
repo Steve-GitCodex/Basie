@@ -242,7 +242,7 @@ unit-training/research jobs, and recruit tokens are sold in the shop and reward 
 (the token-acquisition gap from Phase 1 is closed).
 
 **Phase 2b is complete — all 9 tasks landed (2026-08-09), ADR 0028.**
-`#view-heroes` is now the three-tab Hero Quarters interior (`HeroesUI.js` 581 → 78 lines
+`#view-heroes` is now the three-tab Hero Quarters interior (`HeroesUI.js` 581 → 77 lines
 over modules in `js/ui/heroes/`): Roster, hero detail, the Assignments board, and the
 Recruit tab (with a working Shard Exchange) are all live. `GachaUI.js` +
 `css/components/gacha.css` are deleted; Inventory redirects to the Recruit tab instead
@@ -290,6 +290,12 @@ model retires entirely (interim anti-teleport guard dies with it).
 
 ## Backlog / nice-to-haves
 
+- [ ] **Phase 2c candidate, found by the final whole-branch review of Phase 2b:**
+  `HeroManager.convertFragments`/`unlockFromShards` have no UI caller anywhere
+  (pre-existing, predates Phase 2b) — `HeroDetailPanel`'s unowned-hero "Fragment
+  Progress" bar promises a conversion no button performs, and the Shard Exchange can
+  mint a shard for an unowned hero that then has no spend path. Needs either a real UI
+  hookup or the dead methods removed.
 - [ ] Region buff stacking UI (all active territory buffs in one place).
 - [ ] Multi-base / second city · [ ] mini-map / region jump-to.
 - [ ] AI difficulty scaling seam driven by player level + activity (Phase 4 prep).

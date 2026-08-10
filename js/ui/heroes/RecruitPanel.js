@@ -86,14 +86,31 @@ export class RecruitPanel {
     const universalCards = Object.values(INVENTORY_ITEMS)
       .filter(item => item.type === 'hero_card_universal')
       .map(item => ({ id: item.id, name: item.name }));
+    const ownedHeroIds = new Set(
+      this._s.heroes?.getRosterWithState?.().filter(h => h.isOwned).map(h => h.id) ?? []
+    );
     const owned = [...specificCards, ...universalCards]
       .map(e => ({ ...e, qty: this._s.inventory?.getQuantity(e.id) ?? 0 }))
       .filter(e => e.qty > 0);
     if (owned.length === 0) return `<div class="recruit-empty">No hero cards yet.</div>`;
-    return owned.map(({ id, name, qty }) => `
-      <button class="btn btn-gold btn-use-card" data-card="${escapeHtml(id)}">
+    return owned.map(({ id, name, qty }) => {
+      const itemCfg = INVENTORY_ITEMS[id];
+      let isOwned = false;
+      if (itemCfg?.type === 'hero_card') {
+        isOwned = !!itemCfg.targetHeroId && ownedHeroIds.has(itemCfg.targetHeroId);
+      } else if (itemCfg?.type === 'hero_card_universal') {
+        const heroesOfTier = Object.values(HEROES_CONFIG).filter(h => h.tier === itemCfg.targetTier);
+        isOwned = heroesOfTier.length > 0 && heroesOfTier.every(h => ownedHeroIds.has(h.id));
+      }
+      if (isOwned) {
+        const label = itemCfg?.type === 'hero_card_universal' ? 'All Owned' : 'Owned';
+        const title = itemCfg?.type === 'hero_card_universal' ? `All ${itemCfg.targetTier} heroes owned` : 'Owned';
+        return `<button class="btn btn-xs btn-ghost" disabled title="${title}">${escapeHtml(name)} — ${label}</button>`;
+      }
+      return `<button class="btn btn-gold btn-use-card" data-card="${escapeHtml(id)}">
         ${escapeHtml(name)} ×${qty}
-      </button>`).join('');
+      </button>`;
+    }).join('');
   }
 
   _exchangeHtml() {
@@ -174,6 +191,9 @@ export class RecruitPanel {
         if (!r.success) {
           eventBus.emit('ui:error');
           this._s.notifications?.show('warning', 'Cannot Recruit', r.reason);
+        } else {
+          const heroName = HEROES_CONFIG[r.heroId]?.name ?? r.heroId;
+          this._s.notifications?.show('success', '👑 Hero Recruited!', `${heroName} has joined your roster!`);
         }
       });
     });

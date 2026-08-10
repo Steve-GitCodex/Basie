@@ -230,6 +230,7 @@
   text-align: center;
 }
 
+.recruit-result--common { border-color: var(--clr-tier-common, #9ca3af); }
 .recruit-result--legendary { border-color: var(--clr-tier-legendary, #f59e0b); }
 .recruit-result--rare { border-color: var(--clr-tier-rare, #6366f1); }
 .recruit-result--error { border-color: var(--clr-danger, #ef4444); }
@@ -285,4 +286,3 @@
 .xp-qty-badge { font-size: 0.65rem; opacity: 0.8; }
 .hero-awaken-maxed { font-size: 0.85rem; color: #fbbf24; }
 .hero-skills-empty { font-size: 0.75rem; color: hsl(225,10%,38%); }
-.btn-summon-frags { width: 100%; font-size: 0.8rem; }

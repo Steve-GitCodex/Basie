@@ -2,7 +2,7 @@
 import { eventBus } from '../../core/EventBus.js';
 import { UNITS_CONFIG, BUILDINGS_CONFIG, HEROES_CONFIG, HERO_CLASSIFICATIONS } from '../../entities/GAME_DATA.js';
 import { icon, iconFromEmoji } from '../icons.js';
-import { TIER_CSS_SUFFIX } from '../uiUtils.js';
+import { TIER_CSS_SUFFIX, escapeHtml } from '../uiUtils.js';
 
 export class BarracksUI {
   /** @param {{ rm, um, heroes, inventory, notifications }} systems */
@@ -104,7 +104,7 @@ export class BarracksUI {
         <div class="sq-title">
           <span class="sq-title-icon">${icon('sword', 'icon--gold')}</span>
           <div>
-            <div class="sq-title-name">${squad.name}</div>
+            <div class="sq-title-name">${escapeHtml(squad.name)}</div>
             <div class="sq-title-sub">Barracks Lv.${level} · ${unitCount} units · ${squad.units.length} types</div>
           </div>
         </div>

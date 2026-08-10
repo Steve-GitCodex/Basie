@@ -16,7 +16,7 @@ const TABS = [
   { id: 'special',  label: `${icon('gift')} Special`,  types: ['hero_card', 'hero_card_universal', 'hero_fragment'] },
   { id: 'resource', label: `${icon('box')} Resource`, types: ['resource_bundle'] },
   { id: 'speedup',  label: `${icon('speedup')} Speedup`,  types: ['speed_boost'] },
-  { id: 'boost',    label: `${icon('flask-potion')} Boost`,    types: ['buff', 'xp_bundle'] },
+  { id: 'boost',    label: `${icon('flask-potion')} Boost`,    types: ['buff', 'xp_bundle', 'xp_card'] },
   { id: 'scroll',   label: `${icon('scroll')} Scroll`,   types: ['recruitment_scroll'] },
 ];
 
@@ -198,7 +198,7 @@ export class InventoryUI {
       </div>
       ${detailHtml}`;
 
-    panel.appendChild(this._buffSection.build());
+    panel.querySelector('.inv-panel-body').appendChild(this._buffSection.build());
     this._bindListeners(panel);
   }
 
@@ -265,8 +265,8 @@ export class InventoryUI {
         </div>`;
     }
 
-    // ── XP Bundles ───────────────────────────────────────────────────────
-    if (item.type === 'xp_bundle') {
+    // ── XP Bundles / XP Cards ──────────────────────────────────────────────
+    if (item.type === 'xp_bundle' || item.type === 'xp_card') {
       return `<button class="btn btn-xs btn-primary inv-use-xp" data-item="${item.id}">Apply</button>`;
     }
 
@@ -378,9 +378,6 @@ export class InventoryUI {
         if (!r.success) {
           eventBus.emit('ui:error');
           this._s.notifications?.show('warning', 'Cannot Activate', r.reason);
-        } else {
-          const mins = Math.round((r.durationMs ?? 0) / 60000);
-          this._s.notifications?.show('success', '⚗️ Buff Activated!', `+${((r.value ?? 0) * 100).toFixed(0)}% production for ${mins} min.`);
         }
       });
     });
