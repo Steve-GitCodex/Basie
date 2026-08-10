@@ -1,0 +1,82 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import {
+  SKILL_LEVEL_CAP, MAJOR_SKILL_LEVEL_CAP,
+  shardCostForSkillLevel, majorSkillCost,
+  levelCapFor, defaultLevelFor, effectValueAt,
+  reconcileSkillLevels, groupedSkillsFor,
+} from '../../js/systems/hero/heroSkills.js';
+import { SKILLS_CONFIG, HEROES_CONFIG } from '../../js/entities/GAME_DATA.js';
+
+test('a passive or support skill costs 29 shards to take from L1 to L10', () => {
+  let total = 0;
+  for (let l = 2; l <= SKILL_LEVEL_CAP; l++) total += shardCostForSkillLevel(l);
+  assert.equal(total, 29);
+});
+
+test('the five levelable skills on a hero cost 145 shards to max', () => {
+  let per = 0;
+  for (let l = 2; l <= SKILL_LEVEL_CAP; l++) per += shardCostForSkillLevel(l);
+  assert.equal(per * 5, 145);
+});
+
+test('the major track costs 68 shards across its five levels', () => {
+  let total = 0;
+  for (let l = 1; l <= MAJOR_SKILL_LEVEL_CAP; l++) total += majorSkillCost(l);
+  assert.equal(total, 68);
+});
+
+test('costs outside the track return 0 rather than NaN or undefined', () => {
+  assert.equal(shardCostForSkillLevel(1), 0);
+  assert.equal(shardCostForSkillLevel(11), 0);
+  assert.equal(majorSkillCost(0), 0);
+  assert.equal(majorSkillCost(6), 0);
+});
+
+test('passive effects scale 15% per level, support effects 10%', () => {
+  assert.equal(effectValueAt(SKILLS_CONFIG.iron_will, 0.08, 1), 0.08);
+  assert.ok(Math.abs(effectValueAt(SKILLS_CONFIG.iron_will, 0.08, 10) - 0.188) < 1e-9);
+  assert.ok(Math.abs(effectValueAt(SKILLS_CONFIG.charge, 0.20, 10) - 0.38) < 1e-9);
+});
+
+test('majors default to level 0 and cap at 5; others default to 1 and cap at 10', () => {
+  const major = Object.values(SKILLS_CONFIG).find(s => s.type === 'major');
+  assert.equal(defaultLevelFor(major), 0);
+  assert.equal(levelCapFor(major), MAJOR_SKILL_LEVEL_CAP);
+  assert.equal(defaultLevelFor(SKILLS_CONFIG.iron_will), 1);
+  assert.equal(levelCapFor(SKILLS_CONFIG.iron_will), SKILL_LEVEL_CAP);
+});
+
+test('reconcile fills missing entries with the per-type default', () => {
+  const out = reconcileSkillLevels('warlord', {});
+  assert.equal(out.iron_will, 1, 'a missing passive should default to 1');
+  assert.equal(out.last_stand, 0, 'a missing major should default to 0');
+});
+
+test('reconcile clamps over-cap levels and drops unknown ids', () => {
+  const out = reconcileSkillLevels('warlord', {
+    iron_will: 99, last_stand: 99, not_a_skill: 4, fireball: 3,
+  });
+  assert.equal(out.iron_will, SKILL_LEVEL_CAP);
+  assert.equal(out.last_stand, MAJOR_SKILL_LEVEL_CAP);
+  assert.equal(out.not_a_skill, undefined, 'unknown ids must be dropped');
+  assert.equal(out.fireball, undefined, 'skills not on this hero must be dropped');
+});
+
+test('grouping returns exactly 3 / 2 / 1 for every hero', () => {
+  for (const heroId of Object.keys(HEROES_CONFIG)) {
+    const hero = { heroId, level: 100, stars: 10, skillLevels: {} };
+    const g = groupedSkillsFor(heroId, hero);
+    assert.equal(g.passive.length, 3, `${heroId} passive group`);
+    assert.equal(g.support.length, 2, `${heroId} support group`);
+    assert.equal(g.major.length,   1, `${heroId} major group`);
+  }
+});
+
+test('a major is locked below star 5 and unlocked at star 5', () => {
+  const below = groupedSkillsFor('warlord', { heroId: 'warlord', level: 100, stars: 4, skillLevels: {} });
+  const at    = groupedSkillsFor('warlord', { heroId: 'warlord', level: 100, stars: 5, skillLevels: {} });
+  assert.equal(below.major[0].unlocked, false);
+  assert.equal(at.major[0].unlocked, true);
+});
