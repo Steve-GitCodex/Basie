@@ -387,3 +387,89 @@ test('getRosterWithState publishes a shard-based next-awaken cost instead', () =
   const entry2 = m.getRosterWithState().find(x => x.id === 'shadowblade');
   assert.equal(entry2.nextStarShardCost, 1);
 });
+
+// ── Task 6: shard-funded skill leveling ──
+
+test('leveling a skill spends the exact shard cost and raises the level', () => {
+  const m = makeHM();
+  m._recruitHero('warlord');
+  m._owned.get('warlord').level = 20;
+  m._inv._seed('shard_warlord', 10);
+
+  const before = m._inv.getQuantity('shard_warlord');
+  const res = m.levelUpSkill('warlord', 'iron_will');
+
+  assert.equal(res.success, true, res.reason);
+  assert.equal(res.level, 2);
+  assert.equal(m._inv.getQuantity('shard_warlord'), before - 1, 'L2 costs exactly 1 shard');
+  assert.equal(m._owned.get('warlord').skillLevels.iron_will, 2);
+});
+
+test('leveling fails with a reason when shards are short, and spends nothing', () => {
+  const m = makeHM();
+  m._recruitHero('warlord');
+  m._owned.get('warlord').level = 20;
+
+  const res = m.levelUpSkill('warlord', 'iron_will');
+  assert.equal(res.success, false);
+  assert.match(res.reason, /shard/i);
+  assert.equal(m._owned.get('warlord').skillLevels?.iron_will ?? 1, 1, 'level moved despite failure');
+});
+
+test('a locked skill cannot be leveled', () => {
+  const m = makeHM();
+  m._recruitHero('warlord');
+  m._owned.get('warlord').level = 1;
+  m._inv._seed('shard_warlord', 50);
+
+  const res = m.levelUpSkill('warlord', 'iron_will');
+  assert.equal(res.success, false);
+  assert.match(res.reason, /Lv\.?\s*20|locked/i);
+});
+
+test('a major cannot be leveled below star 5 but can at star 5', () => {
+  const m = makeHM();
+  m._recruitHero('warlord');
+  const h = m._owned.get('warlord');
+  h.level = 100; h.stars = 4;
+  m._inv._seed('shard_warlord', 100);
+
+  assert.equal(m.levelUpSkill('warlord', 'last_stand').success, false);
+  h.stars = 5;
+  const res = m.levelUpSkill('warlord', 'last_stand');
+  assert.equal(res.success, true, res.reason);
+  assert.equal(res.level, 1, 'the first purchase takes a major from 0 to 1');
+  assert.equal(m._inv.getQuantity('shard_warlord'), 100 - 5, 'major L1 costs 5 shards');
+});
+
+test('a capped skill reports at-cap rather than spending', () => {
+  const m = makeHM();
+  m._recruitHero('warlord');
+  const h = m._owned.get('warlord');
+  h.level = 20;
+  h.skillLevels = { iron_will: 10 };
+  m._inv._seed('shard_warlord', 50);
+
+  const res = m.levelUpSkill('warlord', 'iron_will');
+  assert.equal(res.success, false);
+  assert.match(res.reason, /max|cap/i);
+  assert.equal(m._inv.getQuantity('shard_warlord'), 50, 'shards were spent at cap');
+});
+
+test('deserialize sanitizes skillLevels — clamps, defaults and drops', () => {
+  const m = makeHM();
+  m.deserialize({
+    owned: {
+      warlord: {
+        heroId: 'warlord', level: 20, xp: 0, xpToNext: 100, stars: 0,
+        assignment: { type: 'none' },
+        skillLevels: { iron_will: 999, last_stand: 99, bogus_id: 3 },
+      },
+    },
+  });
+  const sl = m._owned.get('warlord').skillLevels;
+  assert.equal(sl.iron_will, 10, 'over-cap passive not clamped');
+  assert.equal(sl.last_stand, 5, 'over-cap major not clamped');
+  assert.equal(sl.bogus_id, undefined, 'unknown id survived load');
+  assert.equal(sl.battle_cry, 1, 'missing passive did not default to 1');
+});

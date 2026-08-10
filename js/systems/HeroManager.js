@@ -2,6 +2,7 @@
 import { eventBus }                       from '../core/EventBus.js';
 import {
   HEROES_CONFIG,
+  SKILLS_CONFIG,
   INVENTORY_ITEMS,
   GACHA_CONFIG,
   AWAKENING_CONFIG,
@@ -13,6 +14,14 @@ import { HeroAssignment }  from './hero/heroAssignment.js';
 import { HeroCombat }      from './hero/heroCombat.js';
 import { HeroEconomy }     from './hero/heroEconomy.js';
 import { pityDisclosure }  from './hero/heroPityDisclosure.js';
+import {
+  levelCapFor,
+  costToReach,
+  isUnlocked,
+  reconcileSkillLevels,
+  groupedSkillsFor,
+  MAJOR_SKILL_STAR_GATE,
+} from './hero/heroSkills.js';
 
 const MAX_HEROES_PER_SQUAD = 4;
 
@@ -70,6 +79,42 @@ export class HeroManager {
 
   getSkillsForHero(heroId)   { return this._progression.getSkillsForHero(heroId); }
   applySkillPassives(hero)   { return this._progression.applySkillPassives(hero); }
+
+  getSkillState(heroId) { return groupedSkillsFor(heroId, this._owned.get(heroId)); }
+
+  levelUpSkill(heroId, skillId) {
+    const hero    = this._owned.get(heroId);
+    const heroCfg = HEROES_CONFIG[heroId];
+    const skill   = SKILLS_CONFIG[skillId];
+    if (!hero || !heroCfg) return { success: false, reason: 'Hero not in roster.' };
+    if (!skill || !(heroCfg.skills ?? []).includes(skillId)) {
+      return { success: false, reason: 'This hero does not have that skill.' };
+    }
+    if (!isUnlocked(skill, hero)) {
+      return skill.type === 'major'
+        ? { success: false, reason: `Awaken to ${MAJOR_SKILL_STAR_GATE}★ to unlock this skill.` }
+        : { success: false, reason: `Unlocks at Lv.${skill.unlockLevel}.` };
+    }
+
+    hero.skillLevels = reconcileSkillLevels(heroId, hero.skillLevels);
+    const current = hero.skillLevels[skillId];
+    const cap     = levelCapFor(skill);
+    if (current >= cap) return { success: false, reason: 'Skill is at max level.' };
+
+    const next = current + 1;
+    const cost = costToReach(skill, next);
+    const shardId = `shard_${heroId}`;
+    if (!this._inv.hasItem(shardId, cost)) {
+      return { success: false, reason: `Need ${cost} Hero Shards (have ${this._inv.getQuantity(shardId)}).` };
+    }
+    this._inv.removeItem(shardId, cost);
+
+    hero.skillLevels[skillId] = next;
+    this.applySkillPassives(hero);
+    eventBus.emit('hero:skillLeveled', { heroId, skillId, level: next });
+    eventBus.emit('heroes:updated', this.getRosterWithState());
+    return { success: true, level: next };
+  }
 
   // =============================================
   // ASSIGNMENT — Squad (stored as barracks building assignment: squad_1 → barracks_0, …)
@@ -253,6 +298,7 @@ export class HeroManager {
         stars:      state.stars ?? 0,
         effectiveStats: state.effectiveStats ?? { ...cfg.stats },
         assignment,
+        skillLevels: reconcileSkillLevels(id, state.skillLevels),
       };
       if (hero.xp > hero.xpToNext) hero.xp = hero.xpToNext;
       this._owned.set(id, hero);
