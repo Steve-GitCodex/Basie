@@ -95,3 +95,18 @@ test('magic_amplify aura is treated like every other aura type (no x0.8 special-
   assert.ok(Math.abs((b.attackMult - 1) - expected) < 0.001, `attackMult got ${b.attackMult}`);
   assert.ok(Math.abs((b.defenseMult - 1) - expected) < 0.001, `defenseMult got ${b.defenseMult}`);
 });
+
+test('the schema migration does not change combat aggregation for a squad hero', () => {
+  const m = makeManager({ heroquartersLevel: 10 });
+  m._recruitHero('warlord');
+  const h = m._owned.get('warlord');
+  h.level = 20;
+  h.assignment = { type: 'building', buildingId: 'barracks_0' };
+
+  const bonus = m.getCombatBonuses();
+
+  assert.ok(bonus.lossReduction >= 0.08, 'iron_will lossReduction no longer applies');
+  const chargeEntry = bonus.activeSkills.find(e => e.skill.id === 'charge');
+  assert.ok(chargeEntry, 'charge is no longer collected as a triggered skill');
+  assert.equal(chargeEntry.skill.effect.attackBonus, 0.20, 'charge lost its magnitude');
+});

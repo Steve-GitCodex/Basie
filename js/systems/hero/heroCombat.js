@@ -84,7 +84,7 @@ export class HeroCombat {
       // Collect active skills for combat system hooks
       for (const skillId of (cfg.skills ?? [])) {
         const skill = SKILLS_CONFIG[skillId];
-        if (!skill || skill.type !== 'active') continue;
+        if (!skill || skill.type === 'passive') continue;
         if (hero.level < skill.unlockLevel) continue;
         activeSkills.push({ heroId: hero.heroId, skill });
       }

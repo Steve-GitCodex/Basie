@@ -106,8 +106,9 @@ export class HeroDetailPanel {
         : `<span class="hero-xp-hint">Buy Tomes from <strong>Shop</strong></span>`;
 
       const skillsHtml = (hero.skills ?? []).map(skill => {
-        const typeIcon  = skill.type === 'active' ? icon('lightning') : icon('xp', 'icon--glow');
-        const typeLabel = skill.type === 'active' ? 'Active' : 'Passive';
+        const typeIcon  = skill.type === 'passive' ? icon('xp', 'icon--glow') : icon('lightning');
+        const typeLabel = skill.type === 'passive' ? 'Passive'
+                        : skill.type === 'major'   ? 'Major' : 'Support';
         const locked    = !skill.unlocked;
         return `
           <div class="hero-skill-slot ${locked ? 'hero-skill-slot--locked' : `hero-skill-slot--${skill.type}`}"
