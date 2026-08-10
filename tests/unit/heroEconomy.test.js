@@ -80,10 +80,18 @@ test('training_speed and research_speed dev heroes wire to their non-resource ef
   assert.ok(map.researchSpeed > 0);
 });
 
-test('a hero stationed off their configured building type contributes nothing', () => {
+test('a hero stationed off their configured building type contributes no station bonus', () => {
   const m = makeManager();
   m._recruitHero('kaelenthorne');
   m.assignHeroToBuilding('kaelenthorne', 'quarry_0');
+  assert.equal(m.getHeroInstanceBonus('quarry_0'), 0.10,
+    'station term absent off-type; the 0.10 is scavenge, which pays wherever the hero is posted');
+});
+
+test('a hero with no production skills stationed off-type contributes nothing at all', () => {
+  const m = makeManager();
+  m._recruitHero('shadowblade');
+  m.assignHeroToBuilding('shadowblade', 'quarry_0');
   assert.equal(m.getHeroInstanceBonus('quarry_0'), 0);
 });
 
@@ -91,7 +99,7 @@ test('getInstanceBonus returns the per-instance resource bonus for the stationed
   const m = makeManager();
   m._recruitHero('kaelenthorne');
   m.assignHeroToBuilding('kaelenthorne', 'farm_0');
-  assert.equal(m.getHeroInstanceBonus('farm_0'), 0.15);
+  assert.equal(m.getHeroInstanceBonus('farm_0'), 0.15 + 0.10);
   assert.equal(m.getHeroInstanceBonus('farm_1'), 0, 'a different instance gets nothing');
 });
 
