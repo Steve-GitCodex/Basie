@@ -61,7 +61,9 @@ test('an unlocked aura-passive skill without skillLevels data still contributes 
 
   const b = m.getCombatBonuses();
   // 0.20 * (1 + 0.005*9 + 0.04*0 + 0.10) = 0.20 * 1.145 = 0.229
-  const expected = 0.20 * (1 + 0.005 * 9 + 0.10);
+  // Phase 2c's bulwark (unlockLevel 1, defense +10% scope squad) is always unlocked here
+  // and stacks flatly on top of the aura term via the squad-passive loop.
+  const expected = 0.20 * (1 + 0.005 * 9 + 0.10) + 0.10;
   assert.ok(Math.abs((b.defenseMult - 1) - expected) < 0.001, `defenseMult got ${b.defenseMult}`);
 });
 
@@ -73,7 +75,8 @@ test('an aura-passive skill below its unlockLevel contributes nothing', () => {
   hero.assignment = { type: 'building', buildingId: 'heroquarters_0' };
 
   const b = m.getCombatBonuses();
-  const expected = 0.20 * (1 + 0.005 * 8);
+  // bulwark (unlockLevel 1) is still active here, unlike holy_light (unlockLevel 10).
+  const expected = 0.20 * (1 + 0.005 * 8) + 0.10;
   assert.ok(Math.abs((b.defenseMult - 1) - expected) < 0.001, `defenseMult got ${b.defenseMult}`);
 });
 
@@ -83,8 +86,9 @@ test('magic_amplify aura is treated like every other aura type (no x0.8 special-
   m._recruitHero('paladin');       // Aldric, base 0.20 (defense_boost, no special-case)
   const vera   = m._owned.get('archsorceress');
   const aldric = m._owned.get('paladin');
-  // Levels stay below all passive skill unlock thresholds (5/10/20) so the test isolates
-  // the aura formula from unrelated squad-passive skill contributions.
+  // Levels stay below the 10/20 passive thresholds so the test isolates the aura formula
+  // from those; bulwark (unlockLevel 1) is unavoidably always active on Aldric and is
+  // added to defenseMult's expectation explicitly below.
   vera.level = 9; vera.stars = 3;
   aldric.level = 9; aldric.stars = 3;
   vera.assignment   = { type: 'building', buildingId: 'heroquarters_0' };
@@ -93,7 +97,7 @@ test('magic_amplify aura is treated like every other aura type (no x0.8 special-
   const b = m.getCombatBonuses();
   const expected = 0.20 * (1 + 0.005 * 8 + 0.04 * 3); // same base + same formula
   assert.ok(Math.abs((b.attackMult - 1) - expected) < 0.001, `attackMult got ${b.attackMult}`);
-  assert.ok(Math.abs((b.defenseMult - 1) - expected) < 0.001, `defenseMult got ${b.defenseMult}`);
+  assert.ok(Math.abs((b.defenseMult - 1) - (expected + 0.10)) < 0.001, `defenseMult got ${b.defenseMult}`);
 });
 
 test('the schema migration does not change combat aggregation for a squad hero', () => {

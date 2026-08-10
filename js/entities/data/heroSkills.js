@@ -20,6 +20,24 @@ export const SKILLS_CONFIG = {
     description: 'Reduces troop losses by 8% in every battle.',
     effect: { stat: 'lossReduction', value: 0.08 },
   },
+  commanding_presence: {
+    id: 'commanding_presence', name: 'Commanding Presence', type: 'passive',
+    slot: 1, domain: 'combat', unlockLevel: 1, icon: '🎖️',
+    description: 'Strengthens this hero\'s aura by 12%.',
+    effect: { stat: 'auraValue', value: 0.12 },
+  },
+  rally: {
+    id: 'rally', name: 'Rally', type: 'support',
+    slot: 2, domain: 'combat', unlockLevel: 15, icon: '🚩',
+    description: 'Every wave, units deal +8% damage.',
+    effect: { trigger: 'wave_start', attackBonus: 0.08 },
+  },
+  last_stand: {
+    id: 'last_stand', name: 'Last Stand', type: 'major',
+    slot: 1, domain: 'combat', unlockLevel: 1, icon: '🛡️',
+    description: 'While losing, units deal +30% damage and take 20% fewer losses.',
+    effect: { trigger: 'losing', attackBonus: 0.30, lossReduction: 0.20 },
+  },
 
   fireball: {
     id: 'fireball', name: 'Fireball', type: 'support', slot: 1, domain: 'combat',
@@ -41,6 +59,24 @@ export const SKILLS_CONFIG = {
     icon: '🔵',
     description: '+12% defense for all squad units.',
     effect: { stat: 'defense', value: 0.12, scope: 'squad' },
+  },
+  arcane_archive: {
+    id: 'arcane_archive', name: 'Arcane Archive', type: 'passive',
+    slot: 1, domain: 'research', unlockLevel: 1, icon: '📚',
+    description: 'Increases research speed by 8%.',
+    effect: { researchSpeed: 0.08 },
+  },
+  mana_surge: {
+    id: 'mana_surge', name: 'Mana Surge', type: 'support',
+    slot: 2, domain: 'combat', unlockLevel: 15, icon: '💠',
+    description: 'On the final wave, units deal +30% damage.',
+    effect: { trigger: 'final_wave', attackBonus: 0.30 },
+  },
+  cataclysm: {
+    id: 'cataclysm', name: 'Cataclysm', type: 'major',
+    slot: 1, domain: 'combat', unlockLevel: 1, icon: '🌋',
+    description: 'On battle start, units deal +40% damage for the first two rounds.',
+    effect: { trigger: 'battle_start', attackBonus: 0.40, duration: 2 },
   },
 
   shadowstep: {
@@ -64,6 +100,24 @@ export const SKILLS_CONFIG = {
     description: 'Reduces troop losses by 10% in every battle.',
     effect: { stat: 'lossReduction', value: 0.10 },
   },
+  killers_instinct: {
+    id: 'killers_instinct', name: "Killer's Instinct", type: 'passive',
+    slot: 1, domain: 'combat', unlockLevel: 1, icon: '🎯',
+    description: '+12% attack to all squad heroes.',
+    effect: { stat: 'attack', value: 0.12, scope: 'squad' },
+  },
+  throat_cut: {
+    id: 'throat_cut', name: 'Throat Cut', type: 'support',
+    slot: 2, domain: 'combat', unlockLevel: 15, icon: '🔪',
+    description: 'On the final wave, units deal +35% damage.',
+    effect: { trigger: 'final_wave', attackBonus: 0.35 },
+  },
+  no_witnesses: {
+    id: 'no_witnesses', name: 'No Witnesses', type: 'major',
+    slot: 1, domain: 'combat', unlockLevel: 1, icon: '🌫️',
+    description: 'On battle start, units deal +25% damage and evade losses for the first two rounds.',
+    effect: { trigger: 'battle_start', attackBonus: 0.25, duration: 2, evasion: true },
+  },
 
   divine_shield: {
     id: 'divine_shield', name: 'Divine Shield', type: 'support', slot: 1, domain: 'combat',
@@ -85,5 +139,97 @@ export const SKILLS_CONFIG = {
     icon: '🕊️',
     description: 'Reduces troop losses by 12% and restores 5% of lost units after battle.',
     effect: { stat: 'lossReduction', value: 0.12, postBattleHeal: 0.05 },
+  },
+  bulwark: {
+    id: 'bulwark', name: 'Bulwark', type: 'passive',
+    slot: 1, domain: 'combat', unlockLevel: 1, icon: '🧱',
+    description: '+10% defense for all squad units.',
+    effect: { stat: 'defense', value: 0.10, scope: 'squad' },
+  },
+  second_wind: {
+    id: 'second_wind', name: 'Second Wind', type: 'support',
+    slot: 2, domain: 'combat', unlockLevel: 15, icon: '🩹',
+    description: 'While losing, units take 15% fewer losses.',
+    effect: { trigger: 'losing', lossReduction: 0.15 },
+  },
+  aegis_of_the_faithful: {
+    id: 'aegis_of_the_faithful', name: 'Aegis of the Faithful', type: 'major',
+    slot: 1, domain: 'combat', unlockLevel: 1, icon: '🔰',
+    description: 'Every wave, incoming damage is reduced by 18% and 10% of lost units are restored after battle.',
+    effect: { trigger: 'wave_start', defenseBonus: 0.18, postBattleHeal: 0.10 },
+  },
+
+  signal_boost: {
+    id: 'signal_boost', name: 'Signal Boost', type: 'passive',
+    slot: 1, domain: 'research', unlockLevel: 1, icon: '📶',
+    description: 'Increases research speed by 10%.',
+    effect: { researchSpeed: 0.10 },
+  },
+  field_repairs: {
+    id: 'field_repairs', name: 'Field Repairs', type: 'passive',
+    slot: 2, domain: 'combat', unlockLevel: 10, icon: '🔧',
+    description: 'Reduces troop losses by 7% in every battle.',
+    effect: { stat: 'lossReduction', value: 0.07 },
+  },
+  spliced_optics: {
+    id: 'spliced_optics', name: 'Spliced Optics', type: 'passive',
+    slot: 3, domain: 'combat', unlockLevel: 20, icon: '👁️',
+    description: 'Strengthens this hero\'s aura by 10%.',
+    effect: { stat: 'auraValue', value: 0.10 },
+  },
+  emp_burst: {
+    id: 'emp_burst', name: 'EMP Burst', type: 'support',
+    slot: 1, domain: 'combat', unlockLevel: 5, icon: '⚡',
+    description: 'At battle start, reduces incoming damage by 25% for the first round.',
+    effect: { trigger: 'battle_start', defenseBonus: 0.25, duration: 1 },
+  },
+  overclock: {
+    id: 'overclock', name: 'Overclock', type: 'support',
+    slot: 2, domain: 'combat', unlockLevel: 15, icon: '⚙️',
+    description: 'Every wave, units deal +10% damage.',
+    effect: { trigger: 'wave_start', attackBonus: 0.10 },
+  },
+  static_ward: {
+    id: 'static_ward', name: 'Static Ward', type: 'major',
+    slot: 1, domain: 'combat', unlockLevel: 1, icon: '🔌',
+    description: 'While losing, reduces incoming damage by 25% and troop losses by 12%.',
+    effect: { trigger: 'losing', defenseBonus: 0.25, lossReduction: 0.12 },
+  },
+
+  scavenge: {
+    id: 'scavenge', name: 'Scavenge', type: 'passive',
+    slot: 1, domain: 'production', unlockLevel: 1, icon: '🎒',
+    description: 'Increases the stationed building\'s resource output by 10%.',
+    effect: { resourceOutput: 0.10 },
+  },
+  trail_marks: {
+    id: 'trail_marks', name: 'Trail Marks', type: 'passive',
+    slot: 2, domain: 'training', unlockLevel: 10, icon: '🗺️',
+    description: 'Increases training speed by 8%.',
+    effect: { trainingSpeed: 0.08 },
+  },
+  grit: {
+    id: 'grit', name: 'Grit', type: 'passive',
+    slot: 3, domain: 'combat', unlockLevel: 20, icon: '💪',
+    description: 'Reduces troop losses by 6% in every battle.',
+    effect: { stat: 'lossReduction', value: 0.06 },
+  },
+  cache_run: {
+    id: 'cache_run', name: 'Cache Run', type: 'support',
+    slot: 1, domain: 'combat', unlockLevel: 5, icon: '📦',
+    description: 'At battle start, units deal +15% damage for the first round.',
+    effect: { trigger: 'battle_start', attackBonus: 0.15, duration: 1 },
+  },
+  safe_route: {
+    id: 'safe_route', name: 'Safe Route', type: 'support',
+    slot: 2, domain: 'combat', unlockLevel: 15, icon: '🧭',
+    description: 'While losing, units take 12% fewer losses.',
+    effect: { trigger: 'losing', lossReduction: 0.12 },
+  },
+  wastelands_bounty: {
+    id: 'wastelands_bounty', name: "Wasteland's Bounty", type: 'major',
+    slot: 1, domain: 'production', unlockLevel: 1, icon: '🏆',
+    description: 'Increases the stationed building\'s resource output by 25% and training speed by 15%.',
+    effect: { resourceOutput: 0.25, trainingSpeed: 0.15 },
   },
 };
