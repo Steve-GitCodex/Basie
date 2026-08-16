@@ -129,3 +129,48 @@ test('HeroManager.applyXPCard delegates to HeroProgression', () => {
   const r = m.applyXPCard('xpcard_normal', 'shadowblade');
   assert.equal(r.success, true);
 });
+
+test('levelling a passive skill moves the hero effectiveStats, not just collectEffects', () => {
+  const m = makeManager({ heroquartersLevel: 10 });
+  m._recruitHero('warlord');
+  const hero = m._owned.get('warlord');
+  hero.level = 30;
+
+  m.applySkillPassives(hero);
+  const atL1 = hero.effectiveStats.attack;
+
+  hero.skillLevels = { ...(hero.skillLevels ?? {}), battle_cry: 10 };
+  m.applySkillPassives(hero);
+
+  assert.ok(hero.effectiveStats.attack > atL1,
+    `a maxed battle_cry must raise attack (was ${atL1}, still ${hero.effectiveStats.attack})`);
+});
+
+test('a passive below its unlock level contributes nothing to effectiveStats', () => {
+  const m = makeManager({ heroquartersLevel: 10 });
+  m._recruitHero('warlord');
+  const hero = m._owned.get('warlord');
+
+  hero.level = 1;
+  m.applySkillPassives(hero);
+  const locked = hero.effectiveStats.attack;
+
+  hero.level = 30;
+  m.applySkillPassives(hero);
+  assert.ok(hero.effectiveStats.attack > locked, 'battle_cry unlocks at Lv.10 and must then apply');
+});
+
+test('skill level reaches effectiveStats through the real level-up path', () => {
+  const m = makeManager({ heroquartersLevel: 10 });
+  m._recruitHero('warlord');
+  const hero = m._owned.get('warlord');
+  hero.level = 30;
+  m.applySkillPassives(hero);
+  const before = hero.effectiveStats.attack;
+
+  m._inv._seed('shard_warlord', 50);
+  assert.equal(m.levelUpSkill('warlord', 'battle_cry').success, true);
+
+  assert.ok(hero.effectiveStats.attack > before,
+    'buying a skill level must be visible in the stats the roster UI reads');
+});

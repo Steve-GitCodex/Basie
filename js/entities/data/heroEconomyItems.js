@@ -97,37 +97,37 @@ export const HERO_ECONOMY_ITEMS = {
   shard_warlord: {
     id: 'shard_warlord', type: 'hero_shard',
     name: 'Hero Shard: Marcus Kestrel', icon: '⚔️',
-    description: '8 shards unlock Marcus Kestrel outright; also spent on awakening stars.',
+    description: '8 shards unlock Marcus Kestrel outright; also spent on awakening stars and skill levels.',
     rarity: 'legendary', targetHeroId: 'warlord',
   },
   shard_archsorceress: {
     id: 'shard_archsorceress', type: 'hero_shard',
     name: 'Hero Shard: Vera Sable', icon: '🔮',
-    description: '8 shards unlock Vera Sable outright; also spent on awakening stars.',
+    description: '8 shards unlock Vera Sable outright; also spent on awakening stars and skill levels.',
     rarity: 'legendary', targetHeroId: 'archsorceress',
   },
   shard_shadowblade: {
     id: 'shard_shadowblade', type: 'hero_shard',
     name: 'Hero Shard: Kira Nightwhisper', icon: '🗡️',
-    description: '4 shards unlock Kira Nightwhisper outright; also spent on awakening stars.',
+    description: '4 shards unlock Kira Nightwhisper outright; also spent on awakening stars and skill levels.',
     rarity: 'common', targetHeroId: 'shadowblade',
   },
   shard_paladin: {
     id: 'shard_paladin', type: 'hero_shard',
     name: 'Hero Shard: Aldric Cross', icon: '✝️',
-    description: '6 shards unlock Aldric Cross outright; also spent on awakening stars.',
+    description: '6 shards unlock Aldric Cross outright; also spent on awakening stars and skill levels.',
     rarity: 'rare', targetHeroId: 'paladin',
   },
   shard_junovane: {
     id: 'shard_junovane', type: 'hero_shard',
     name: 'Hero Shard: Juno Vane', icon: '📡',
-    description: '6 shards unlock Juno Vane outright; also spent on awakening stars.',
+    description: '6 shards unlock Juno Vane outright; also spent on awakening stars and skill levels.',
     rarity: 'rare', targetHeroId: 'junovane',
   },
   shard_kaelenthorne: {
     id: 'shard_kaelenthorne', type: 'hero_shard',
     name: 'Hero Shard: Kaelen Thorne', icon: '🏹',
-    description: '4 shards unlock Kaelen Thorne outright; also spent on awakening stars.',
+    description: '4 shards unlock Kaelen Thorne outright; also spent on awakening stars and skill levels.',
     rarity: 'common', targetHeroId: 'kaelenthorne',
   },
   // ── Recruit Tokens (gacha currency, per tier) ──────────────────────────────

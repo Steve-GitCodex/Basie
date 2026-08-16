@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { resourceBonusFor, globalEffectBonus, skillBonusFor } from '../../js/systems/hero/heroProductionBonus.js';
-import { collectEffects } from '../../js/systems/hero/heroSkills.js';
+import { HeroManager } from '../../js/systems/HeroManager.js';
 
 const stationed = (heroId, buildingId, level = 1, stars = 0) => ({
   heroId, level, stars, assignment: { type: 'building', buildingId },
@@ -64,23 +64,38 @@ test('globalEffectBonus scales with level and stars', () => {
   assert.ok(Math.abs(map.trainingSpeed - 0.12 * 1.09 * 1.10) < 1e-9);
 });
 
-test('a hero in a bank yields resource output and zero combat contribution', () => {
-  const hero = {
+function managerWith(buildingId) {
+  const m = new HeroManager(
+    { canAfford: () => true, spend() {}, add() {}, getSnapshot: () => ({}) },
+    { getLevelOf: () => 10 },
+    { hasItem: () => false, removeItem: () => false, addItem: () => true, getQuantity: () => 0 },
+  );
+  m._owned.set('kaelenthorne', {
     heroId: 'kaelenthorne', level: 20, stars: 0, skillLevels: {},
-    assignment: { type: 'building', buildingId: 'bank_0' },
-  };
+    assignment: { type: 'building', buildingId },
+  });
+  return m;
+}
+
+test('a hero in a bank yields resource output and zero combat contribution', () => {
+  const m = managerWith('bank_0');
+  const hero = m._owned.get('kaelenthorne');
   assert.ok(resourceBonusFor(hero, 'bank') > 0, 'bank posting pays no resource bonus');
-  const combat = collectEffects(hero, { trigger: null });
-  assert.equal(combat.attackMult, 0, 'combat leaked from a bank posting');
+
+  const combat = m.getCombatBonuses();
+  assert.equal(combat.lossReduction, 0, 'grit leaked out of a bank posting');
+  assert.equal(combat.triggeredByEvent.losing.length, 0, 'safe_route leaked out of a bank posting');
 });
 
 test('the same hero in a barracks yields combat and zero resource output', () => {
-  const hero = {
-    heroId: 'kaelenthorne', level: 20, stars: 0, skillLevels: {},
-    assignment: { type: 'building', buildingId: 'barracks_0' },
-  };
+  const m = managerWith('barracks_0');
+  const hero = m._owned.get('kaelenthorne');
   assert.equal(resourceBonusFor(hero, 'bank'), 0, 'resource output paid from a barracks posting');
   assert.ok(globalEffectBonus([hero]).trainingSpeed > 0, 'trail_marks did not reach trainingSpeed');
+
+  const combat = m.getCombatBonuses();
+  assert.ok(combat.lossReduction > 0, 'grit did not pay from a barracks posting');
+  assert.ok(combat.triggeredByEvent.losing.length > 0, 'safe_route did not pay from a barracks posting');
 });
 
 test('a skill bonus composes with the station bonus instead of replacing it', () => {

@@ -58,3 +58,12 @@ test('every hero aura type is a known AURA_BUFF_CATEGORY key', () => {
       `${hero.id}'s aura type '${hero.aura.type}' is not in AURA_BUFF_CATEGORY`);
   }
 });
+
+test('shard descriptions name all three sinks', () => {
+  for (const heroId of Object.keys(HEROES_CONFIG)) {
+    const desc = INVENTORY_ITEMS[`shard_${heroId}`].description;
+    assert.match(desc, /unlock/i, `shard_${heroId} description omits the unlock sink`);
+    assert.match(desc, /awakening/i, `shard_${heroId} description omits the awakening sink`);
+    assert.match(desc, /skill/i, `shard_${heroId} description omits the skill-level sink`);
+  }
+});

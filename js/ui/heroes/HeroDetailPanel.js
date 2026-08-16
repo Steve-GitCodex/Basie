@@ -4,6 +4,7 @@ import { icon, iconFromEmoji } from '../icons.js';
 import { TIER_CSS_SUFFIX } from '../uiUtils.js';
 import { portraitHtml, statusChipHtml, TIER_META, videoHtml, bindPlayButton } from './heroCardView.js';
 import { squadNameForHero } from './heroSquadLookup.js';
+import { renderSkillSection, bindSkillSection } from './heroSkillSection.js';
 
 const AURA_LABELS = {
   attack_boost:  'Attack Boost',
@@ -38,11 +39,41 @@ export class HeroDetailPanel {
     if (lvl) lvl.textContent = `Lv.${hero.level}`;
     const chip = this._root.querySelector('.hero-assignment-chip');
     if (chip) chip.outerHTML = statusChipHtml(hero, { squadName: this._squadName(hero) });
-    if (this._root.querySelector('video')) return;
+    if (this._root.querySelector('video')) { this._patchSkills(); return; }
     this.render();
   }
 
   _hero() { return this._s.heroes.getRosterWithState().find(h => h.id === this._heroId) ?? null; }
+
+  _skillNameOf(hero, skillId) {
+    return Object.values(hero.skills ?? {}).flat().find(s => s.id === skillId)?.name ?? 'Skill';
+  }
+
+  _bindSkills(hero) {
+    const host = this._root.querySelector('.hero-skill-groups');
+    if (!host) return;
+    bindSkillSection(host, skillId => {
+      eventBus.emit('ui:click');
+      const name = this._skillNameOf(hero, skillId);
+      const r = this._s.heroes.levelUpSkill(hero.id, skillId);
+      if (!r.success) {
+        eventBus.emit('ui:error');
+        this._s.notifications?.show('warning', 'Cannot Level Up', r.reason);
+      } else {
+        this._s.notifications?.show('success', '⬆ Skill Leveled', `${name} is now L${r.level}.`);
+      }
+    });
+  }
+
+  _patchSkills() {
+    const host = this._root.querySelector('.hero-skill-groups');
+    const hero = this._hero();
+    if (!host || !hero) return;
+    host.innerHTML = renderSkillSection(hero.skills, hero);
+    this._bindSkills(hero);
+    const tally = this._root.querySelector('.hero-skill-shard-qty');
+    if (tally) tally.textContent = hero.shardQty ?? 0;
+  }
 
   _squadName(hero) { return squadNameForHero(hero, this._s.um); }
 
@@ -105,24 +136,7 @@ export class HeroDetailPanel {
             </button>`).join('')
         : `<span class="hero-xp-hint">Buy Tomes from <strong>Shop</strong></span>`;
 
-      const skillsHtml = (hero.skills ?? []).map(skill => {
-        const typeIcon  = skill.type === 'passive' ? icon('xp', 'icon--glow') : icon('lightning');
-        const typeLabel = skill.type === 'passive' ? 'Passive'
-                        : skill.type === 'major'   ? 'Major' : 'Support';
-        const locked    = !skill.unlocked;
-        return `
-          <div class="hero-skill-slot ${locked ? 'hero-skill-slot--locked' : `hero-skill-slot--${skill.type}`}"
-               data-skill-id="${skill.id}">
-            <span class="hero-skill-icon">${locked ? icon('lock') : (iconFromEmoji(skill.icon ?? '') || typeIcon)}</span>
-            <div class="hero-skill-info">
-              <span class="hero-skill-name">${skill.name}</span>
-              <span class="hero-skill-type hero-skill-type--${skill.type}">${typeLabel}</span>
-            </div>
-            ${locked
-              ? `<span class="hero-skill-unlock">Lv.${skill.unlockLevel}</span>`
-              : `<span class="hero-skill-active-badge">✓</span>`}
-          </div>`;
-      }).join('');
+      const skillsHtml = renderSkillSection(hero.skills, hero);
 
       const atMaxStars = hero.stars >= maxStars;
       const awakenHtml = atMaxStars
@@ -154,8 +168,8 @@ export class HeroDetailPanel {
           <div class="hero-xp-actions">${bundleHtml}</div>
         </div>
         <div class="hero-detail-section">
-          <div class="hero-detail-section-title">${icon('lightning')} Skills</div>
-          ${skillsHtml || '<span class="hero-skills-empty">No skills defined.</span>'}
+          <div class="hero-detail-section-title">${icon('lightning')} Skills <span class="hero-skill-shard-tally">${icon('star-burst', 'icon--gold')} <span class="hero-skill-shard-qty">${hero.shardQty ?? 0}</span> shards</span></div>
+          <div class="hero-skill-groups">${skillsHtml || '<span class="hero-skills-empty">No skills defined.</span>'}</div>
         </div>
         <div class="hero-detail-section">
           <div class="hero-detail-section-title">Assignment</div>
@@ -223,6 +237,7 @@ export class HeroDetailPanel {
       if (!r.success) { eventBus.emit('ui:error'); this._s.notifications?.show('warning', 'Cannot Awaken', r.reason); }
     });
 
+    this._bindSkills(hero);
     bindPlayButton(root);
   }
 }

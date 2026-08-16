@@ -6,6 +6,7 @@ import {
   AWAKENING_CONFIG,
   XP_CONFIG,
 } from '../../entities/GAME_DATA.js';
+import { reconcileSkillLevels, effectValueAt, isUnlocked, groupedSkillsFor } from './heroSkills.js';
 
 export class HeroProgression {
   constructor(hero) {
@@ -50,17 +51,9 @@ export class HeroProgression {
     return { success: true, xpAmount };
   }
 
-  /** Get skill configs for a hero annotated with unlock state. */
+  /** Skill configs for a hero grouped passive/support/major, annotated with level, unlock and cost state. */
   getSkillsForHero(heroId) {
-    const heroCfg = HEROES_CONFIG[heroId];
-    const hero    = this._h._owned.get(heroId);
-    if (!heroCfg) return [];
-    const level = hero?.level ?? 0;
-    return (heroCfg.skills ?? []).map(skillId => {
-      const skill = SKILLS_CONFIG[skillId];
-      if (!skill) return { id: skillId, name: skillId, unlocked: false };
-      return { ...skill, unlocked: level >= skill.unlockLevel };
-    });
+    return groupedSkillsFor(heroId, this._h._owned.get(heroId));
   }
 
   /** Recalculate effectiveStats for a hero based on level, stars, and unlocked passives. */
@@ -76,13 +69,14 @@ export class HeroProgression {
       speed:   cfg.stats.speed,
     };
 
+    const levels = reconcileSkillLevels(hero.heroId, hero.skillLevels);
     for (const skillId of (cfg.skills ?? [])) {
       const skill = SKILLS_CONFIG[skillId];
-      if (!skill || skill.type !== 'passive') continue;
-      if (hero.level < skill.unlockLevel) continue;
+      if (!skill || skill.type !== 'passive' || !isUnlocked(skill, hero)) continue;
       const fx = skill.effect;
-      if (fx.stat === 'attack' && fx.scope === 'squad') ef.attack = Math.floor(ef.attack * (1 + fx.value));
-      if (fx.stat === 'defense' && fx.scope === 'squad') ef.defense = Math.floor(ef.defense * (1 + fx.value));
+      const value = effectValueAt(skill, fx.value, levels[skillId]);
+      if (fx.stat === 'attack' && fx.scope === 'squad') ef.attack = Math.floor(ef.attack * (1 + value));
+      if (fx.stat === 'defense' && fx.scope === 'squad') ef.defense = Math.floor(ef.defense * (1 + value));
     }
 
     hero.effectiveStats = ef;

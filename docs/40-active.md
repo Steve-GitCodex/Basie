@@ -3,7 +3,258 @@
 > Most-updated file in the repo. Every session that changes code updates this file
 > (what landed, known issues, exact next steps). See the session protocol in `CLAUDE.md`.
 
-## Final whole-branch review fixes — Hero redesign Phase 2b (2026-08-09, latest)
+## Hero Phase 2c — COMPLETE, all 12 tasks (2026-08-15, latest)
+
+The 6-skill progression model is done. Tasks 1-9 landed as eleven commits
+`873ae4c`..`0a9e0a8`; **Tasks 10, 11 and 12 landed this session and are uncommitted.**
+Plan: `docs/superpowers/plans/2026-08-10-hero-phase2c-skill-progression.md` (untracked).
+**ADR 0029** (`docs/20-decisions/0029-hero-skill-progression-model.md`) records the full
+decision set. SDD ledger: `.superpowers/sdd/progress.md`.
+
+- **ADR 0029's tracking is deliberately undecided — Steve's call at commit time.** ADRs
+  0001-0026 are committed; 0027 and 0028 are on-disk only. `.gitignore` was **not** touched
+  for 0029, so `git add` tracks it and doing nothing leaves it untracked-but-visible. The
+  ADR carries a header note saying exactly this.
+- **Shard copy now names all three sinks** — the six `shard_<hero>` descriptions in
+  `heroEconomyItems.js` read "…unlock X outright; also spent on awakening stars **and skill
+  levels**." Pinned by a test that checks all three sinks appear for every hero, so the copy
+  cannot silently drift from the economy again.
+
+### Full verification (Task 12, run by the session owner — not relayed)
+
+| Check | Result |
+|---|---|
+| `npm test` | **525/525, 0 failing** (was 503 at Task 9) |
+| `check-comments.mjs` | **exactly 12 violations, all pre-existing**, zero in any 2c file |
+| `boot-smoke` | **PASS** (1 attempt) |
+| `heroes-smoke` | **PASS** (1 attempt) |
+| `tutorial-smoke` | **PASS** (1 attempt) |
+| `dev-smoke` | **PASS** except the known pre-existing unrelated `dev-anchor-nudger` `variantFile` failure carried since 2026-07-22 |
+
+### What stays knowingly inert after 2c (all Phase 2d)
+
+- `heroquarters` has no `statEffectMap` entry — the Assignments board shows "no station
+  bonus yet" for that slot.
+- `PROD_BONUS_CONFIG.base.buildSpeed` has no consuming building.
+- `XP_CONFIG.passiveXpPerProductionTick` / `passiveXpCapOffset` have **zero consumers** —
+  passive stationed XP is config-only, inert since Phase 1.
+- `aegis_of_the_faithful`'s `postBattleHeal` 0.10 — `collectEffects` short-circuits on
+  `fx.trigger` before reaching the `postBattleHeal` branch.
+
+### Next steps — Phase 2d (scoped, not planned)
+
+1. **Balance, and it needs Steve, not a subagent:** total loss reduction has **no ceiling**.
+   Triggered alone reaches 0.833; passives across five heroes ~1.01, so **zero-loss victories
+   are reachable today**. The `Math.max(0, …)` clamp at `CombatManager.js:339` is
+   behavior-neutral and *hides* this rather than capping it. Related: level-1 economy passives
+   are free value on recruit (two-hero workshop research went 0.24 → 0.42).
+2. Build the deferred effect kinds — `buildSpeed`, gather/march yield, construction cost,
+   storage cap — and give `heroquarters` a `statEffectMap` entry. The seam rule barred them
+   from 2c precisely so they'd be built, not faked.
+3. Wire passive stationed XP to its existing config.
+4. Fix `aegis_of_the_faithful`'s inert heal.
+5. **Unrelated but found here:** `notification:show` is a **dead event** — no listener
+   anywhere, so `MarketManager.js:137`'s "Daily prices have been reset" toast has never
+   reached a player. Either wire it into `NotificationManager` or delete the emit.
+6. **Still open in the backlog, untouched by 2c:** `HeroManager.convertFragments` /
+   `unlockFromShards` have zero UI callers, while `HeroDetailPanel` renders an unowned hero's
+   "Fragment Progress" bar promising a conversion no button performs.
+
+---
+
+**Task 11 (the skill UI) landed on top of Task 10 in the same session** — see the Task 10
+section below for that half.
+
+- **Skills now render as three labeled groups** (Passive → Support → Major) in the hero detail
+  panel, via new `js/ui/heroes/heroSkillSection.js`. Each unlocked row carries an
+  `L{n}/{cap}` pip, its scaled effect magnitude, and a shard-cost `⬆ N` button disabled when
+  the player cannot afford it. Locked rows show a **real** threshold — `Lv.{unlockLevel}` for
+  passive/support, `5★` for a major. **`Lv.undefined` is gone**, pinned by a browser check.
+- **Dormancy is per-effect, and it is domain logic, so it is not in the UI.** New pure module
+  `js/systems/hero/heroSkillActivation.js` (`skillEffectKinds` / `skillEffectActivation` /
+  `skillDormancy`), 8 unit tests. Combat effects pay only from a barracks or the Hero
+  Quarters; `resourceOutput` from any resource building; `trainingSpeed` from a barracks;
+  `researchSpeed` from the workshop. `wastelands_bounty` pays its resource half in a farm and
+  its training half in a barracks — the tests pin that the two halves **swap** with the
+  posting rather than the skill being one blanket state. `stationedTypeOf` is now exported
+  from `heroProductionBonus.js` so the gate is read from one place.
+- **Deviation from the plan's Step 1, deliberate.** The plan routed level-up through
+  `eventBus 'ui:levelUpSkill'` and surfaced failures via `eventBus 'notification:show'`.
+  `HeroManager` has **no** `eventBus.on` subscriptions to follow, and **`notification:show`
+  has zero listeners anywhere in the tree** — `MarketManager.js:137`'s emit is dead. Following
+  it literally would have made every rejection reason silent. Used the house idiom from the
+  sibling `.btn-awaken-shard` button in the same file instead: the panel calls
+  `heroes.levelUpSkill` directly and toasts through `notifications.show`.
+  **Finding, unfixed:** `notification:show` is a dead event — the Market's "Daily prices have
+  been reset" toast has never reached a player.
+- **Both Task 11 carry-forwards are closed, not carried further:**
+  1. `applySkillPassives` now scales by skill level (`effectValueAt` + `reconcileSkillLevels`)
+     and gates on `isUnlocked`. Buying a skill level now moves `effectiveStats`, which is what
+     the roster UI reads. Three tests appended; **verified discriminating** by reverting the
+     scaling in place — exactly two of the three fail.
+  2. The two vacuous "same hero, two postings" tests in `heroProductionBonus.test.js` now
+     assert through `HeroManager.getCombatBonuses` against `grit` and `safe_route`. **Verified
+     discriminating:** deleting the barracks/HQ gate in `heroCombat.js` now fails a test;
+     before this change it did not. Those two test bodies were **replaced, not appended to** —
+     a narrow ADR 0012 exception, recorded because they could not fail as written.
+- **`getSkillsForHero` now returns `groupedSkillsFor`'s shape** so the panel reads one source;
+  `HeroManager.getSkillState` delegates to it instead of duplicating the call.
+- **Video heroes no longer freeze the skills section.** `HeroDetailPanel.patch()` used to
+  return early whenever a `<video>` was present (Marcus, Juno) — it now patches
+  `.hero-skill-groups` in place, so the pip moves for them too.
+- **Verified:** `npm test` **524/524**. `check-comments.mjs` **12, all pre-existing**.
+  `heroes-smoke` **PASS with 4 new checks** (2 attempts — the first died on the pre-existing
+  `.btn-board-remove` step in the assignment block; that exact sequence was re-probed twice in
+  isolation with zero page errors and would not reproduce, second full run green).
+  `boot-smoke` **PASS**, `tutorial-smoke` **PASS** — the latter matters, this task rewrote
+  `#view-heroes` skill markup.
+
+## Hero Phase 2c — Task 10 of 12 (2026-08-15, same session)
+
+Executing `docs/superpowers/plans/2026-08-10-hero-phase2c-skill-progression.md`. Tasks 1-9
+landed as eleven commits `873ae4c`..`0a9e0a8` (each task-reviewed clean); **Task 10 landed
+this session and is uncommitted.** SDD ledger: `.superpowers/sdd/progress.md`. The section
+below is superseded on its "next step" line only — everything else in it still holds.
+
+- **Task 10 — reassignment is now explicit.** `assignHeroToBuilding`
+  (`js/systems/hero/heroAssignment.js`) rejects a hero who already holds a *different*
+  `buildingId` with `Already stationed at <name> — remove them first.`, inserted after the
+  same-slot early return and after the barracks eviction block so **eviction and same-slot
+  behavior are untouched**. All three call sites (`BuildingCards.js:386`,
+  `BarracksUI.js:316`, `HeroAssignmentPanel.js:117`) already surfaced `res.reason`, so no
+  new toast was added.
+- **Scope call Steve should eyeball:** the guard is building-agnostic, so a
+  `barracks_0 → barracks_1` **squad** move is now rejected too — the plan's tests only
+  covered the same-building slot swap. It follows from spec §2.3 ("a hero holds one
+  assignment at a time"), and it is pinned by its own test rather than left implicit, but it
+  is a real Barracks-screen UX change.
+- **One UI copy fix the guard forced:** `HeroAssignmentPanel`'s picker advertised
+  `moving from <X>` on already-stationed heroes — a promise the guard turns into a
+  guaranteed failure. Those rows now render **disabled** with `at <X> — remove first`
+  (the existing disabled-ghost idiom), plus one `.hero-board-pick:disabled` rule in
+  `heroes.css`.
+- **Verified this session:** `npm test` **513/513, 0 failing**. `check-comments.mjs` —
+  exactly **12 violations, all pre-existing** (`InventoryManager.js`, `QuestManager.js`,
+  `UnitManager.js`, `UIManager.js`), zero in any touched file. `heroes-smoke` **PASS**
+  (1 attempt), `boot-smoke` **PASS** (1 attempt).
+- **Tests:** six appended to `tests/unit/heroAssignment.test.js` (strict append, the existing
+  test untouched) — the plan's three, plus the cross-barracks rejection, a
+  reason-names-the-building assertion, and a same-slot-is-still-a-no-op regression pin.
+  Verified discriminating: the three reassignment tests failed red before the guard, the
+  three regression pins were green both before and after.
+- **Carried forward into Task 11 (the skill UI), from the ledger — both were real, and both
+  are now closed by Task 11 above:**
+  1. `applySkillPassives` (`js/systems/hero/heroProgression.js:79-88`) **ignores skill level
+     entirely** — only `collectEffects` scales. A hero's `effectiveStats` do not move when
+     the player buys a skill level, so a UI built on `getRosterWithState()` will look broken.
+     Same dual-mechanism shape as the old production-bonus gap.
+  2. `tests/unit/heroProductionBonus.test.js:67-84`'s "same hero, two postings" tests are
+     **vacuous** — they assert through `collectEffects`, which is posting-agnostic (the
+     barracks/HQ combat gate lives in `getCombatBonuses`), and Kaelen has no attack skill at
+     all. Delete the barracks gate in `heroCombat.js` and both stay green. Re-assert via
+     `getCombatBonuses`.
+- **Open balance question for Phase 2d (Steve's call, found by Task 8):** total loss
+  reduction has **no ceiling** — triggered alone reaches 0.833, passives across five heroes
+  ~1.01, so zero-loss victories are reachable today. The `Math.max(0, …)` clamp at
+  `CombatManager.js:339` is behavior-neutral and **hides** this rather than capping it.
+  Also still open from Task 8: `aegis_of_the_faithful`'s `postBattleHeal` 0.10 is inert
+  (`collectEffects` short-circuits on `fx.trigger` before the `postBattleHeal` branch).
+- **Still needs Steve, not a subagent:** whether **ADR 0029** is committed or gitignored
+  (0027/0028 are on-disk only).
+- **Not committed (Steve commits himself).** Dirty after both tasks: modified
+  `js/systems/HeroManager.js`, `js/systems/hero/heroAssignment.js`,
+  `js/systems/hero/heroProductionBonus.js`, `js/systems/hero/heroProgression.js`,
+  `js/ui/heroes/HeroAssignmentPanel.js`, `js/ui/heroes/HeroDetailPanel.js`,
+  `css/components/heroes.css`, `tests/browser/heroes-smoke.mjs`,
+  `tests/unit/heroAssignment.test.js`, `tests/unit/heroProductionBonus.test.js`,
+  `tests/unit/heroProgression.test.js`, `docs/30-roadmap.md`, `docs/40-active.md`; new
+  `js/systems/hero/heroSkillActivation.js`, `js/ui/heroes/heroSkillSection.js`,
+  `tests/unit/heroSkillActivation.test.js`.
+
+## Phase 2c designed + planned; superpowers folders cleaned (2026-08-10, earlier)
+
+**No game code changed this session.** Phase 2c is specced and planned; execution is
+deliberately deferred to a fresh session (Steve's call — subagent-driven development,
+12 tasks, wants the full context budget).
+
+- **Housekeeping — `.superpowers/` and `docs/superpowers/` cleaned.** `.superpowers/sdd/`
+  went **67 files / 1.8M → 4 files / 89K**: deleted 43 `review-*.diff` and all 20
+  `task-N-brief.md`/`task-N-report.md` from the completed Hero 0/1/2a/2b phases. **Kept**
+  `progress.md` (still staged-deleted, on disk, never restore it) and both
+  `final-review-fix-report.md` (Phase 1) / `final-review-fixes-report.md` (Phase 2b) — the
+  latter is cited by name in this file. Grepped `docs/` for references to anything deleted:
+  none. Separately, the **7 still-tracked files in `docs/superpowers/`** were
+  `git rm --cached`'d (kept on disk), so the folder is now consistently ignored per
+  `.gitignore:30`, matching the ADR 0027/0028 convention. Consequence: roadmap/handoff cite
+  plan and spec paths that dangle on a fresh clone — already true for the 2a/2b plans, now
+  uniform.
+- **Spec:** `docs/superpowers/specs/2026-08-10-hero-phase2c-skill-progression-design.md`
+  (untracked). **Plan:** `docs/superpowers/plans/2026-08-10-hero-phase2c-skill-progression.md`
+  (untracked, 12 tasks).
+- **Four defects found in the shipped tree while specing — read these before touching hero
+  code:**
+  1. **Six dangling skill ids, player-visible.** `junovane` references
+     `emp_burst`/`overclock`/`static_ward` and `kaelenthorne` references
+     `scavenge`/`trail_marks`/`grit` (`js/entities/data/heroes.js:99`, `:112`) — **none exist
+     in `SKILLS_CONFIG`**. `getSkillsForHero` degrades to `{ id, name: skillId, unlocked:
+     false }` with no `type`/`unlockLevel`, so `HeroDetailPanel.js:108-124` renders raw ids as
+     names and **`Lv.undefined`** badges for 2 of 6 heroes. Pre-existing since Phase 1.
+  2. **The 2b handoff's premise was wrong.** It claimed the detail panel "groups by Passive /
+     Support / Major already". It does not — it branches binary
+     `skill.type === 'active' ? 'Active' : 'Passive'`. 2c includes real UI work.
+  3. **`skillLevels` is half-built** — `heroCombat.js:21` reads it, nothing writes it.
+  4. **`effect.duration` is declared but never read.** `CombatManager.js:291` applies every
+     `battle_start` skill on `isFirstWave` regardless, so any `duration: 2` skill silently
+     behaves as `duration: 1`.
+  5. **Arithmetic error in the locked numbers spec.** §D enumerates
+     `shardCostForSkillLevel` as `1,1,2,2,3,3,4,4,5` (sums to 25) while claiming 29. The
+     formula `ceil(L/2)` gives `1,2,2,3,3,4,4,5,5` = **29**, matching its own 145/hero total.
+     Formula and totals are right; the written-out list is wrong. Corrected in the 2c spec.
+- **A third inert data gap, previously unrecorded:**
+  `XP_CONFIG.passiveXpPerProductionTick` and `passiveXpCapOffset` have **zero consumers** —
+  passive stationed XP is config-only. Deferred to Phase 2d. The known-inert list previously
+  named only `heroquarters` `statEffectMap` and `PROD_BONUS_CONFIG.base.buildSpeed`.
+- **Steve's design calls this session:**
+  1. **Assignment is the switch.** A building gains an effect only while a hero is assigned to
+     it, and a hero holds one assignment at a time — so the posting selects which of a hero's
+     six skills pay out. Kaelen in a bank → production on, combat off; the same hero in a
+     barracks → combat on, production off. Mixed combat/development skill sets are
+     **correct and intended**. **Gating is per-effect, not per-skill** — one skill may declare
+     effects for two postings and each activates in its own.
+  2. **Reassignment must be explicit.** `assignHeroToBuilding` (`heroAssignment.js:95`)
+     currently overwrites `hero.assignment` silently; it must reject a cross-building move
+     until the hero is removed. Folded into 2c as its own task.
+  3. **All hero progression currency comes from purchases and events.** 2c adds a
+     145-shard-per-hero sink and deliberately adds **no gameplay faucet**. This closes the
+     shard-income balance question rather than deferring it — grind is not an income source.
+  4. **Seam rule:** every effect authored in 2c must land on a hook already live in the tree;
+     kinds needing new plumbing (`buildSpeed`, gather yield, construction cost, storage cap)
+     are deferred to 2d and not authored. Enforced by a test, not by review.
+- **Verified this session:** nothing to verify — no code changed.
+- **Phase 2b is now committed.** Steve committed during this session: `1a34284`
+  ("docs: finalize hero redesign Phase 2b and cleanup legacy documentation", which carries
+  this session's `docs/superpowers/` untracking deletions) and `229f561`
+  ("fix(ui): resolve hero redesign phase 2b review findings"). The next section's
+  "not committed" note is historical — it has landed. Only `docs/30-roadmap.md` and
+  `docs/40-active.md` are dirty now (this handoff).
+- **Next step: execute the 2c plan in a fresh session** via
+  `superpowers:subagent-driven-development`. Ordering constraints are in the plan's
+  self-review section — Task 2 before 3, Task 4 before 5/6/7, Task 5 before 8, Task 6 before
+  11, Task 10 before 11's fourth browser check. **Two items need Steve, not a subagent:**
+  whether ADR 0029 is committed or gitignored (0027/0028 are on-disk only), and a deliberate
+  review of Task 7's exemption of the skill term from `globalEffectBonus`'s
+  `buildingBonus`-match guard (without it Kaelen's `trail_marks` can never pay out, since his
+  `buildingBonus` is `farm` while `trainingSpeed` lives on `barracks`).
+- **Still open, deliberately NOT in the 2c plan:** the roadmap backlog's Phase 2c candidate —
+  `HeroManager.convertFragments`/`unlockFromShards` (`js/systems/HeroManager.js:56-57`) have
+  zero UI callers, while `HeroDetailPanel.js:78-87` renders an unowned hero's "Fragment
+  Progress" bar promising a conversion no button performs, and the Shard Exchange can mint
+  `shard_<unownedHero>` with no spend path. It was raised at the start of this session and
+  then dropped out of scope during design — 2c is about skills, and this is a
+  fragment/unlock-flow gap. It stays open in the backlog and needs either a real UI hookup or
+  the dead methods removed.
+
+## Final whole-branch review fixes — Hero redesign Phase 2b (2026-08-09, earlier)
 
 Fixed all findings from the final whole-branch review of Phase 2b on top of the
 Task 9 uncommitted work below. Full finding-by-finding writeup:

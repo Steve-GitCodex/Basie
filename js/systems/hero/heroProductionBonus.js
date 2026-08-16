@@ -9,7 +9,7 @@ function scaleFor(hero) {
   return starMult * levelMult;
 }
 
-function stationedTypeOf(hero) {
+export function stationedTypeOf(hero) {
   if (hero?.assignment?.type !== 'building') return null;
   return hero.assignment.buildingId?.replace(/_\d+$/, '') ?? null;
 }

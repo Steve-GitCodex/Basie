@@ -19,7 +19,6 @@ import {
   costToReach,
   isUnlocked,
   reconcileSkillLevels,
-  groupedSkillsFor,
   MAJOR_SKILL_STAR_GATE,
 } from './hero/heroSkills.js';
 
@@ -80,7 +79,7 @@ export class HeroManager {
   getSkillsForHero(heroId)   { return this._progression.getSkillsForHero(heroId); }
   applySkillPassives(hero)   { return this._progression.applySkillPassives(hero); }
 
-  getSkillState(heroId) { return groupedSkillsFor(heroId, this._owned.get(heroId)); }
+  getSkillState(heroId) { return this._progression.getSkillsForHero(heroId); }
 
   levelUpSkill(heroId, skillId) {
     const hero    = this._owned.get(heroId);

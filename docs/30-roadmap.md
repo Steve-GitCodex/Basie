@@ -252,7 +252,39 @@ friendliness below is **done** (`heroSquadLookup.js` matches on `barracksInstanc
 Plan: `docs/superpowers/plans/2026-07-27-hero-phase2b-heroes-screen-recruit-hall.md`;
 ADR: `docs/20-decisions/0028-hero-quarters-screen-and-recruit-hall.md` (gitignored, not
 committed — same convention as ADR 0027); session detail in `docs/40-active.md`.
-**Next: Phase 2c — the 6-skill progression model.**
+
+**Phase 2c is designed and planned, not yet executed (2026-08-10).** Spec
+`docs/superpowers/specs/2026-08-10-hero-phase2c-skill-progression-design.md`, plan
+`docs/superpowers/plans/2026-08-10-hero-phase2c-skill-progression.md` (12 tasks, both
+untracked). Scope: 3 Passive / 2 Support / 1 Major per hero (6-skill hard cap), all 36 skills
+authored, shard leveling to L10, the Major track gated at star 5, four wave-loop triggers,
+per-effect contextual gating (assignment selects which skills pay out), explicit reassignment,
+and the skill UI. Closes a live bug — six skill ids referenced by Juno Vane and Kaelen Thorne
+do not exist in `SKILLS_CONFIG`, rendering as `Lv.undefined` for 2 of 6 heroes since Phase 1.
+
+**Phase 2c is COMPLETE — all 12 tasks (2026-08-15), ADR 0029.** All 36 skills authored
+(the six dangling ids are closed), `heroSkills.js` is the pure module, shard-funded skill
+leveling persists and reconciles, `heroCombat`'s three loops collapsed into one
+`collectEffects` pass, per-effect contextual gating is live (the posting selects which
+skills pay out, and one skill's two halves activate independently), four wave-loop triggers
+with real `duration` handling, the roster is re-classified, reassignment requires explicit
+removal, and the skill UI ships grouped rows with level-up controls and dormancy markers —
+`Lv.undefined` is gone. `gold_production` is **no longer inert**: the bank branch has a real
+payer. Verified: `npm test` 525/525, comment-lint 12 (all pre-existing), boot/heroes/tutorial
+smokes PASS, `dev-smoke` PASS except the pre-existing `dev-anchor-nudger` failure.
+ADR: `docs/20-decisions/0029-hero-skill-progression-model.md` — **its tracking (committed vs
+gitignored, as 0027/0028 are) is Steve's call at commit time; `.gitignore` was not touched.**
+
+**Phase 2d (scoped, not planned):** the effect kinds with no live consumer —
+`PROD_BONUS_CONFIG.base.buildSpeed`, gather/march yield, construction cost, storage cap — plus
+a `heroquarters` `statEffectMap` entry and **passive stationed XP**, whose config
+(`XP_CONFIG.passiveXpPerProductionTick`, `passiveXpCapOffset`) has been inert since Phase 1.
+**The balance item leads, and it needs Steve:** total loss reduction has no ceiling —
+triggered alone reaches 0.833, passives across five heroes ~1.01, so zero-loss victories are
+reachable today; the `Math.max(0, …)` clamp at `CombatManager.js:339` hides this rather than
+capping it. Also queued: `aegis_of_the_faithful`'s inert `postBattleHeal`, and the dead
+`notification:show` event (no listener anywhere, so `MarketManager.js:137`'s toast has never
+reached a player).
 
 ## UX friendliness
 

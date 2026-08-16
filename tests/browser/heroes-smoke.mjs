@@ -284,5 +284,80 @@ await withPage(async ({ page, errors, origin }) => {
   await page.click('#inv-panel-close');
   await page.waitForSelector('#inventory-panel:not(.open)', { timeout: 5000 });
 
+  await page.evaluate(() => {
+    window.game.eventBus.emit('ui:devSetBuildingLevel', { buildingId: 'heroquarters', level: 3 });
+    for (const id of ['warlord', 'archsorceress', 'paladin', 'junovane', 'shadowblade']) {
+      window.game.heroes.recruitHeroRecord(id);
+    }
+  });
+  await page.evaluate(() => window.game.eventBus.emit('ui:navigateTo', 'heroes'));
+  await page.waitForSelector('#view-heroes:not(.hidden)', { timeout: 5000 });
+  await dismissOverlays(page);
+  await page.click('.heroes-tab[data-tab="roster"]');
+  await page.waitForTimeout(200);
+
+  const heroIds = await page.evaluate(() =>
+    window.game.heroes.getRosterWithState().filter(h => h.isOwned).map(h => h.id));
+
+  let sawUndefinedLevel = false;
+  let allGroupsWellFormed = heroIds.length > 0;
+  for (const id of heroIds) {
+    await dismissOverlays(page);
+    await page.click(`.hero-roster-card[data-hero-id="${id}"]`);
+    await page.waitForSelector('.hero-skill-groups', { timeout: 5000 });
+    if (/Lv\.undefined/.test(await page.locator('#view-heroes').innerText())) sawUndefinedLevel = true;
+    const counts = await page.evaluate(() => ({
+      passive: document.querySelectorAll('.hero-skill-group--passive .hero-skill-slot').length,
+      support: document.querySelectorAll('.hero-skill-group--support .hero-skill-slot').length,
+      major:   document.querySelectorAll('.hero-skill-group--major .hero-skill-slot').length,
+    }));
+    if (counts.passive !== 3 || counts.support !== 2 || counts.major !== 1) allGroupsWellFormed = false;
+  }
+  checks.push({ label: 'no hero renders a Lv.undefined skill badge', ok: !sawUndefinedLevel });
+  checks.push({ label: 'every hero shows 3 passive, 2 support and 1 major skill row', ok: allGroupsWellFormed });
+
+  await page.evaluate(() => {
+    window.game.inventory.addItem('shard_kaelenthorne', 20);
+    window.game.heroes.awardHeroXP('kaelenthorne', 999999);
+  });
+  await dismissOverlays(page);
+  await page.click('.hero-roster-card[data-hero-id="kaelenthorne"]');
+  await page.waitForSelector('.hero-skill-groups', { timeout: 5000 });
+  const pipBefore = await page.locator('.hero-skill-slot[data-skill-id="scavenge"] .hero-skill-level-pip').innerText();
+  await page.click('.hero-skill-slot[data-skill-id="scavenge"] .skill-level-up');
+  await page.waitForTimeout(300);
+  const scavengeLevel = await page.evaluate(() =>
+    window.game.heroes._owned.get('kaelenthorne').skillLevels.scavenge);
+  const pipAfter = await page.locator('.hero-skill-slot[data-skill-id="scavenge"] .hero-skill-level-pip').innerText();
+  checks.push({
+    label: 'spending shards on a skill moves real manager state and re-renders the pip',
+    ok: pipBefore.trim() === 'L1/10' && scavengeLevel === 2 && pipAfter.trim() === 'L2/10',
+  });
+
+  const dormancyFor = async (buildingId) => {
+    await page.evaluate(id => {
+      window.game.heroes.unassignHeroFromBuilding('kaelenthorne');
+      window.game.heroes.assignHeroToBuilding('kaelenthorne', id);
+    }, buildingId);
+    await dismissOverlays(page);
+    await page.click('.hero-roster-card[data-hero-id="kaelenthorne"]');
+    await page.waitForSelector('.hero-skill-groups', { timeout: 5000 });
+    return page.evaluate(() => ({
+      resourceLive: !!document.querySelector('.hero-skill-slot[data-skill-id="scavenge"] .hero-skill-effect--live'),
+      combatLive:   !!document.querySelector('.hero-skill-slot[data-skill-id="grit"] .hero-skill-effect--live'),
+    }));
+  };
+
+  const inMine     = await dormancyFor('mine_0');
+  const inBarracks = await dormancyFor('barracks_0');
+  checks.push({
+    label: 'a resource posting marks production skills live and combat skills dormant',
+    ok: inMine.resourceLive === true && inMine.combatLive === false,
+  });
+  checks.push({
+    label: 'reassigning to a barracks swaps which skills read as dormant',
+    ok: inBarracks.combatLive === true && inBarracks.resourceLive === false,
+  });
+
   report('heroes-smoke', checks, errors);
 });

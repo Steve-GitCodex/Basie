@@ -68,6 +68,13 @@ export class HeroAssignment {
       return { success: false, reason: 'Already assigned to this slot.' };
     }
 
+    const current = hero.assignment;
+    if (current?.type === 'building' && current.buildingId !== buildingId) {
+      const currentType = current.buildingId.replace(/_\d+$/, '');
+      const currentName = BUILDINGS_CONFIG[currentType]?.name ?? currentType;
+      return { success: false, reason: `Already stationed at ${currentName} — remove them first.` };
+    }
+
     // Per-building capacity cap (from config) — for barracks, slot-aware so swapping is fine
     const heroCapacity = bldgCfg?.heroCapacity ?? 1;
     const heroesHere = this.getHeroesForBuilding(buildingId).filter(h => h.heroId !== heroId);

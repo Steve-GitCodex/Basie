@@ -102,10 +102,10 @@ export class HeroAssignmentPanel {
     picker.innerHTML = candidates.length === 0
       ? `<div class="hero-board-picker-empty">No available heroes. Recruit one first.</div>`
       : candidates.map(h => `
-          <button class="hero-board-pick" data-hero="${h.id}">
+          <button class="hero-board-pick" data-hero="${h.id}"${h.assignedBuilding ? ' disabled' : ''}>
             ${portraitHtml(h, 'thumb')}
             <span class="hero-board-pick-name">${h.name}</span>
-            ${h.assignedBuilding ? `<span class="hero-board-pick-note">moving from ${h.assignedBuilding}</span>` : ''}
+            ${h.assignedBuilding ? `<span class="hero-board-pick-note">at ${h.assignedBuilding} — remove first</span>` : ''}
           </button>`).join('');
     row.appendChild(picker);
 

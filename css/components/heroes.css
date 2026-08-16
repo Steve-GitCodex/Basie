@@ -129,6 +129,7 @@
 .hero-board-picker { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .hero-board-pick { display: flex; align-items: center; gap: var(--space-1); cursor: pointer; }
 .hero-board-pick .hero-portrait { width: 32px; }
+.hero-board-pick:disabled { cursor: not-allowed; opacity: 0.5; }
 
 /* ── Recruit tab ──────────────────────────────────────────────────── */
 
@@ -283,6 +284,38 @@
 .hero-skill-type--major { color: #bacc66; }
 .hero-skill-unlock { font-size: 0.65rem; color: hsl(225,10%,42%); flex-shrink: 0; }
 .hero-skill-active-badge { font-size: 0.75rem; color: #7ab143; font-weight: 700; flex-shrink: 0; }
+
+.hero-skill-groups { display: flex; flex-direction: column; gap: var(--space-3); }
+.hero-skill-group { display: flex; flex-direction: column; gap: var(--space-1); }
+.hero-skill-group-title {
+  font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+  color: hsl(225,10%,52%);
+}
+.hero-skill-group--passive .hero-skill-group-title { color: #a5b4fc; }
+.hero-skill-group--support .hero-skill-group-title { color: #fde68a; }
+.hero-skill-group--major .hero-skill-group-title { color: #bacc66; }
+
+.hero-skill-desc {
+  font-size: 0.68rem; color: hsl(225,10%,58%); display: block;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hero-skill-effects { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-top: 0.25rem; }
+.hero-skill-effect {
+  display: inline-flex; align-items: center; gap: 0.25rem;
+  font-size: 0.62rem; font-weight: 600;
+  padding: 0.1rem 0.4rem; border-radius: 6px;
+}
+.hero-skill-effect--live { color: #7ab143; background: rgba(122,177,67,0.12); }
+.hero-skill-effect--dormant { color: hsl(225,10%,48%); background: rgba(255,255,255,0.04); }
+.hero-skill-effect-req { font-style: normal; opacity: 0.75; font-weight: 400; }
+
+.hero-skill-actions { display: flex; align-items: center; gap: var(--space-1); flex-shrink: 0; }
+.hero-skill-level-pip {
+  font-size: 0.68rem; font-weight: 700; color: hsl(225,20%,80%);
+  padding: 0.1rem 0.35rem; border-radius: 6px; background: rgba(255,255,255,0.06);
+}
+.hero-skill-maxed { font-size: 0.62rem; font-weight: 700; color: #fbbf24; letter-spacing: 0.06em; }
+.hero-skill-shard-tally { font-size: 0.68rem; font-weight: 600; color: #fbbf24; margin-left: auto; }
 
 .hero-xp-hint { font-size: 0.75rem; color: hsl(225,10%,42%); }
 .xp-qty-badge { font-size: 0.65rem; opacity: 0.8; }
