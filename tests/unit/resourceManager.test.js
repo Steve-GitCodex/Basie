@@ -93,3 +93,10 @@ test('hero building production bonus is not applied globally (no double count)',
   assert.equal(rm._resources.iron.perSec, 10, 'per-instance hero scaling belongs to buildingEconomy, not here');
   assert.equal(rm._resources.money.perSec, 10, 'an unrelated resource must never be boosted by a hero bonus map');
 });
+
+test('lowering a cap below current stock never deletes resources', () => {
+  const rm = new ResourceManager();
+  rm._resources.wood.amount = 500;
+  rm.setCap('wood', 100);
+  assert.equal(rm._resources.wood.amount, 500);
+});

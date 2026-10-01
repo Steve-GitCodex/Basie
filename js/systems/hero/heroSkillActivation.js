@@ -19,7 +19,14 @@ const ECONOMY_EFFECT_LABELS = {
   resourceOutput: 'Resource output',
   trainingSpeed:  'Training speed',
   researchSpeed:  'Research speed',
+  buildSpeed:     'Build speed',
+  storageCap:     'Storage capacity',
+  constructionCost: 'Construction cost',
 };
+
+export function isPayingPosting(buildingType) {
+  return COMBAT_POSTING_TYPES.has(buildingType) || PROD_BONUS_CONFIG.statEffectMap[buildingType] != null;
+}
 
 const STRUCTURAL_EFFECT_KEYS = new Set(['trigger', 'duration', 'scope', 'stat', 'value']);
 

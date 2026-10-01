@@ -22,7 +22,17 @@ await withPage(async ({ page, errors, origin }) => {
 
   const resources = await page.evaluate(() => window.game.resources.getSnapshot());
 
+  await page.evaluate(() => import('/js/core/EventBus.js').then(m =>
+    m.eventBus.emit('notification:show', { type: 'info', title: 'Smoke Toast', message: 'route live' })));
+  const toastShown = await page
+    .waitForFunction(
+      () => [...document.querySelectorAll('.toast-title')].some(el => el.textContent.trim() === 'Smoke Toast'),
+      null,
+      { timeout: 3000 })
+    .then(() => true, () => false);
+
   report('boot-smoke', [
+    { label: 'notification:show renders a toast', ok: toastShown },
     { label: 'window.game exposed', ok: state.hasGame },
     { label: 'core managers registered', ok: state.managers.length === 4 },
     { label: 'base view is active', ok: state.baseViewActive },

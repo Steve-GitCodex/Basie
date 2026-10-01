@@ -7,6 +7,7 @@ import {
   skillEffectActivation,
   skillDormancy,
   activeSkillCountAt,
+  isPayingPosting,
 } from '../../js/systems/hero/heroSkillActivation.js';
 
 function heroAt(buildingId) {
@@ -108,4 +109,11 @@ test('a building that pays none of the hero\'s skills counts zero', () => {
 
 test('a hero without skills counts zero rather than throwing', () => {
   assert.equal(activeSkillCountAt({ assignment: { type: 'none' } }, 'farm'), 0);
+});
+
+test('isPayingPosting is true for heroquarters, storehouse and farm, false for house', () => {
+  assert.equal(isPayingPosting('heroquarters'), true);
+  assert.equal(isPayingPosting('storehouse'), true);
+  assert.equal(isPayingPosting('farm'), true);
+  assert.equal(isPayingPosting('house'), false);
 });

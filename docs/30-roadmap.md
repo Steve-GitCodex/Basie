@@ -277,11 +277,11 @@ smokes PASS, `dev-smoke` PASS except the pre-existing `dev-anchor-nudger` failur
 ADR: `docs/20-decisions/0029-hero-skill-progression-model.md` — **its tracking (committed vs
 gitignored, as 0027/0028 are) is Steve's call at commit time; `.gitignore` was not touched.**
 
-**Phase 2d (scoped, not planned):** the effect kinds with no live consumer —
+**Phase 2d — DONE 2026-10-01 (ADR 0031; see `docs/40-active.md`). Original scope:** the effect kinds with no live consumer —
 `PROD_BONUS_CONFIG.base.buildSpeed`, gather/march yield, construction cost, storage cap — plus
 a `heroquarters` `statEffectMap` entry and **passive stationed XP**, whose config
 (`XP_CONFIG.passiveXpPerProductionTick`, `passiveXpCapOffset`) has been inert since Phase 1.
-**The balance item leads, and it needs Steve:** total loss reduction has no ceiling —
+**The balance item (decided in ADR 0031):** total loss reduction has no ceiling —
 triggered alone reaches 0.833, passives across five heroes ~1.01, so zero-loss victories are
 reachable today; the `Math.max(0, …)` clamp at `CombatManager.js:339` hides this rather than
 capping it. Also queued: `aegis_of_the_faithful`'s inert `postBattleHeal`, and the dead
@@ -330,6 +330,15 @@ model retires entirely (interim anti-teleport guard dies with it).
   Progress" bar promises a conversion no button performs, and the Shard Exchange can
   mint a shard for an unowned hero that then has no spend path. Needs either a real UI
   hookup or the dead methods removed.
+- [ ] **Combat model rework (combat phase, not hero dev) — Steve's direction 2026-10-01:**
+  outcomes must depend on the matchup, not pooled totals. Core rule: **a hit only hurts if
+  attack beats the target's defense** — a 25-attack hit can't kill a 100-defense unit in one
+  hit, so a tier-1 swarm chips at a tier-5/10 enemy but can't trivialise it. Today
+  `_simulateBattle` pools all attack/defense/HP and subtracts *pooled* defense from wave
+  attack, so 10 tier-1 Footmen (def 100 total) take 1 dmg/round from the Mutant Alpha
+  (atk 45). Also wanted: losses weighted by tier (low tiers die first), and **hero strikes**
+  that land real kills. Heroes must be ready for it: hero data/skills should expose numbers
+  combat can consume, not bake combat assumptions in.
 - [ ] Region buff stacking UI (all active territory buffs in one place).
 - [ ] Multi-base / second city · [ ] mini-map / region jump-to.
 - [ ] AI difficulty scaling seam driven by player level + activity (Phase 4 prep).

@@ -1,4 +1,5 @@
 import { SKILLS_CONFIG, HEROES_CONFIG } from '../../entities/GAME_DATA.js';
+import { statEntry } from '../stats/statAggregator.js';
 
 export const SKILL_LEVEL_CAP = 10;
 export const MAJOR_SKILL_LEVEL_CAP = 5;
@@ -96,6 +97,15 @@ export function sumTriggeredEffects(entries) {
     if (fx.evasion) acc.evasion = true;
   }
   return acc;
+}
+
+export function triggeredStatEntries(entries, stat) {
+  const out = [];
+  for (const { skill, level } of (entries ?? [])) {
+    const value = effectValueAt(skill, skill?.effect?.[stat] ?? 0, level);
+    if (value) out.push(statEntry(stat, 'hero', value, skill.id));
+  }
+  return out;
 }
 
 export function bucketTriggeredByEvent(entries) {

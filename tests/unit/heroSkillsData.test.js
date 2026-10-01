@@ -52,6 +52,7 @@ const LIVE_EFFECT_KINDS = new Set([
   'attackBonus', 'defenseBonus', 'evasion',
   'money', 'food', 'wood', 'stone', 'iron',
   'trainingSpeed', 'researchSpeed',
+  'buildSpeed', 'storageCap', 'constructionCost',
 ]);
 
 const STRUCTURAL_EFFECT_KEYS = new Set(['trigger', 'duration', 'scope', 'stat', 'value']);
@@ -98,11 +99,11 @@ test('every authored effect kind lands on a hook that is live in the tree', () =
   }
 });
 
-test('buildSpeed stays unauthored — it has no consumer (spec 2.1)', () => {
-  assert.ok(PROD_BONUS_CONFIG.base.buildSpeed != null, 'buildSpeed config vanished');
+test('the only still-barred effect kinds are gather/march yield', () => {
   for (const skill of Object.values(SKILLS_CONFIG)) {
-    assert.ok(!effectKindsOf(skill).includes('buildSpeed'),
-      `${skill.id} declares buildSpeed, which has no consumer until Phase 2d`);
+    const kinds = effectKindsOf(skill);
+    assert.ok(!kinds.includes('gatherYield') && !kinds.includes('marchYield'),
+      `${skill.id} declares a gather/march yield effect, which has no consumer`);
   }
 });
 

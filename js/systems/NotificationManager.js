@@ -48,7 +48,8 @@ export class NotificationManager {
       this.show('success', '📜 Quest Complete!', `"${d.name}" — Rewards collected!`);
     });
     // Silent events
-    eventBus.on('resources:spent',     () => {/* silent */});
+    eventBus.on('notification:show',   (d) => { const { type = 'info', title, message } = d ?? {}; this.show(type, title, message); });
+    eventBus.on('resources:spent',    () => {/* silent */});
     eventBus.on('game:saved',          () => {/* silent */});
   }
 

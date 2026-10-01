@@ -6,6 +6,7 @@ import {
   shardCostForSkillLevel, majorSkillCost,
   levelCapFor, defaultLevelFor, effectValueAt,
   reconcileSkillLevels, groupedSkillsFor, collectEffects, sumTriggeredEffects,
+  triggeredStatEntries,
 } from '../../js/systems/hero/heroSkills.js';
 import { SKILLS_CONFIG, HEROES_CONFIG } from '../../js/entities/GAME_DATA.js';
 
@@ -142,4 +143,21 @@ test('sumTriggeredEffects folds every triggered magnitude kind', () => {
   assert.ok(Math.abs(out.defenseBonus - 0.25) < 1e-9);
   assert.ok(Math.abs(out.lossReduction - 0.32) < 1e-9);
   assert.equal(out.evasion, true);
+});
+
+test('triggeredStatEntries returns one entry per active skill carrying the stat', () => {
+  const entry = (id, level) => ({ heroId: 'x', skill: SKILLS_CONFIG[id], level });
+  const out = triggeredStatEntries([entry('second_wind', 10), entry('rally', 1)], 'lossReduction');
+  assert.equal(out.length, 1);
+  assert.equal(out[0].sourceId, 'second_wind');
+  assert.equal(out[0].category, 'hero');
+  assert.ok(Math.abs(out[0].value - 0.15 * 1.9) < 1e-9);
+});
+
+test('aegis_of_the_faithful heal reaches triggeredStatEntries, not collectEffects', () => {
+  const aegis = { heroId: 'paladin', skill: SKILLS_CONFIG.aegis_of_the_faithful, level: 1 };
+  assert.equal(triggeredStatEntries([aegis], 'postBattleHeal')[0].value, 0.10);
+
+  const paladin = { heroId: 'paladin', level: 100, stars: 5, skillLevels: { aegis_of_the_faithful: 1 } };
+  assert.ok(Math.abs(collectEffects(paladin, {}).postBattleHeal - 0.05) < 1e-9);
 });

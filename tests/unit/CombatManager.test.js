@@ -127,3 +127,116 @@ test('a levelled support scales its triggered magnitude inside the wave loop', (
   const l10 = roundsPerWave([entry('charge', 10)]);
   assert.ok(l10[0] < l1[0], 'levelling charge to 10 changed nothing in the battle');
 });
+
+const BIG_ARMY = [{ unitId: 'test_grunt', tier: 1, count: 1000 }];
+
+function makeCombatWithEntries(statEntries, entries = []) {
+  const triggeredByEvent = bucketTriggeredByEvent(entries);
+  const heroManager = {
+    getCombatBonuses: () => ({
+      attackMult: 1, defenseMult: 1, lossReduction: 0, postBattleHeal: 0,
+      statEntries, triggeredByEvent, activeSkills: triggeredByEvent.battle_start,
+      productionBuffMult: 0,
+    }),
+  };
+  const unitManager = { getSquad: () => ({ units: BIG_ARMY }), isSquadDeployed: () => false };
+  return new CombatManager(unitManager, {}, {}, heroManager, null);
+}
+
+function lossMonster(attack = 5000, waveCount = 3) {
+  return {
+    id: 'loss_target',
+    name: 'Loss Target',
+    waves: Array.from({ length: waveCount }, (_, i) => ({
+      name: `Wave ${i + 1}`, hp: 5000, count: 2, attack,
+    })),
+  };
+}
+
+const heroLoss = value => ({ stat: 'lossReduction', category: 'hero', value, sourceId: `hero_${value}` });
+const noEntries = () => ({ lossReduction: [], postBattleHeal: [] });
+
+function totalLost(combat, monster = lossMonster()) {
+  const result = combat._simulateBattle(BIG_ARMY, monster);
+  assert.equal(result.victory, true, 'loss fixtures must be victories');
+  return Object.values(result.losses).reduce((s, n) => s + n, 0);
+}
+
+function withTech(combat, lossReduction) {
+  combat._techBonuses = { lossReduction };
+  return combat;
+}
+
+test('stacked hero loss reduction far above 100% still leaves at least 10% of base losses', () => {
+  const base = totalLost(makeCombatWithEntries(noEntries()));
+  assert.ok(base > 0, 'base fixture must lose units');
+  const entries = {
+    lossReduction: Array.from({ length: 6 }, (_, i) => ({ ...heroLoss(0.5), sourceId: `h${i}` })),
+    postBattleHeal: [],
+  };
+  const lost = totalLost(withTech(makeCombatWithEntries(entries), 0.15));
+  assert.ok(lost > 0, 'losses vanished entirely');
+  assert.ok(lost >= Math.round(base * 0.10), `lost ${lost} fell below 10% of base ${base}`);
+});
+
+test('tech-only loss reduction is unchanged from the pre-2d formula', () => {
+  const { survivalRate } = makeCombatWithEntries(noEntries())._simulateBattle(BIG_ARMY, lossMonster());
+  const lost = totalLost(withTech(makeCombatWithEntries(noEntries()), 0.15));
+  assert.equal(lost, Math.round(1000 * Math.max(0.02, 1 - survivalRate) * 0.85));
+});
+
+test('aegis triggered heal restores losses after a victory', () => {
+  const without = totalLost(makeCombatWithEntries(noEntries()));
+  const withAegis = totalLost(makeCombatWithEntries(noEntries(), [entry('aegis_of_the_faithful', 1)]));
+  assert.ok(withAegis < without, `aegis did not restore losses (${withAegis} vs ${without})`);
+});
+
+test('a losing-trigger skill counts once per battle, not once per wave', () => {
+  const monster = lossMonster(20000, 8);
+  const probe = makeCombatWithEntries(noEntries())._simulateBattle(BIG_ARMY, monster);
+  assert.equal(probe.victory, true);
+  const losingWaves = probe.waveDetails.filter(d => d.playerHP < probe.initialPlayerHP * 0.4).length;
+  assert.ok(losingWaves >= 2, `fixture needs several losing waves, got ${losingWaves}`);
+
+  const triggered = totalLost(makeCombatWithEntries(noEntries(), [entry('second_wind')]), monster);
+  const single = totalLost(makeCombatWithEntries(
+    { lossReduction: [heroLoss(0.15)], postBattleHeal: [] }), monster);
+  assert.equal(triggered, single);
+});
+
+test('a triggered postBattleHeal alone restores losses after a victory', () => {
+  const healOnly = {
+    heroId: 'test_hero',
+    skill: { id: 'heal_probe', effect: { trigger: 'wave_start', postBattleHeal: 0.3 } },
+    level: 1,
+  };
+  const without = totalLost(makeCombatWithEntries(noEntries()));
+  const withHeal = totalLost(makeCombatWithEntries(noEntries(), [healOnly]));
+  assert.ok(withHeal < without, `heal probe did not restore losses (${withHeal} vs ${without})`);
+});
+
+function makeCombatWithBaseDefense(baseDefense) {
+  const heroManager = {
+    getCombatBonuses: () => ({
+      attackMult: 1, defenseMult: 1, baseDefense, lossReduction: 0, postBattleHeal: 0,
+      statEntries: noEntries(), triggeredByEvent: bucketTriggeredByEvent([]), activeSkills: [],
+      productionBuffMult: 0,
+    }),
+  };
+  const unitManager = { getSquad: () => ({ units: BIG_ARMY }), isSquadDeployed: () => false };
+  return new CombatManager(unitManager, {}, {}, heroManager, null);
+}
+
+test('baseDefense raises effective defense and lowers damage taken', () => {
+  const monster = lossMonster(5000);
+  const none = makeCombatWithBaseDefense(0)._simulateBattle(BIG_ARMY, monster).waveDetails[0].dmgReceived;
+  const boosted = makeCombatWithBaseDefense(0.25)._simulateBattle(BIG_ARMY, monster).waveDetails[0].dmgReceived;
+  assert.ok(none > 1, `fixture damage clamped to the minimum (${none})`);
+  assert.ok(boosted < none, `baseDefense did not reduce damage (${boosted} vs ${none})`);
+});
+
+test('Steel Armor at Lv4 (tech 0.60) reduces losses by 60% with no hero sources', () => {
+  const { survivalRate } = makeCombatWithEntries(noEntries())._simulateBattle(BIG_ARMY, lossMonster());
+  const lost = totalLost(withTech(makeCombatWithEntries(noEntries()), 0.60));
+  assert.equal(lost, Math.round(1000 * Math.max(0.02, 1 - survivalRate) * 0.40));
+});

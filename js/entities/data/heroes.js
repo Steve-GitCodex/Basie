@@ -159,6 +159,7 @@ export const XP_CONFIG = {
   tierMult: { normal: 1.0, epic: 1.25, legendary: 1.5 },
   combatXpPerBattle: 800,
   passiveXpPerProductionTick: 2,
+  passiveXpIntervalSec: 10,
 };
 
 export const PITY_CONFIG = {
@@ -189,7 +190,7 @@ export const PROD_BONUS_CONFIG = {
     resourceOutput: 0.15,
     trainingSpeed: 0.12,
     researchSpeed: 0.12,
-    buildSpeed: 0.12,
+    baseDefense: 0.10,
   },
   levelScalePerLevel: 0.01,
   starBonusPerStar: 0.02,
@@ -201,6 +202,10 @@ export const PROD_BONUS_CONFIG = {
     mine:       { stat: 'iron_production',  effect: 'iron' },
     barracks:   { stat: 'training_speed',   effect: 'trainingSpeed' },
     workshop:   { stat: 'research_speed',   effect: 'researchSpeed' },
+    heroquarters:      { stat: 'defense',           effect: 'baseDefense' },
+    construction_hall: { stat: 'build_speed',       effect: 'buildSpeed' },
+    storehouse:        { stat: 'storage_capacity',  effect: 'storageCap' },
+    townhall:          { stat: 'construction_cost', effect: 'constructionCost' },
   },
 };
 

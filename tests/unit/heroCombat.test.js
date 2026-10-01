@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { HeroManager } from '../../js/systems/HeroManager.js';
-import { INVENTORY_ITEMS } from '../../js/entities/GAME_DATA.js';
+import { INVENTORY_ITEMS, HEROES_CONFIG, SKILLS_CONFIG } from '../../js/entities/GAME_DATA.js';
 
 function stubRM() {
   return { canAfford: () => true, spend() {}, add() {}, getSnapshot: () => ({}) };
@@ -184,4 +184,72 @@ test('a duration-1 battle_start skill is scoped to the first wave only', () => {
     .find(e => e.skill.id === 'charge');
   assert.equal(charge.skill.effect.duration, 1,
     'charge must stay duration 1 — the wave filter relies on it');
+});
+
+test('getCombatBonuses tags each hero source as its own hero entry', () => {
+  const m = makeManager({ heroquartersLevel: 10 });
+  m._recruitHero('paladin');
+  const hero = m._owned.get('paladin');
+  hero.level = 20; hero.stars = 0;
+  hero.assignment = { type: 'building', buildingId: 'barracks_0' };
+
+  const entries = m.getCombatBonuses('squad_1').statEntries.lossReduction;
+  assert.deepEqual(entries.map(e => e.sourceId).sort(), ['paladin:aura', 'paladin:skills']);
+  assert.ok(entries.every(e => e.category === 'hero'));
+});
+
+test('getCombatBonuses lossReduction is the soft-capped hero total, never above 0.60', () => {
+  const m = makeManager({ heroquartersLevel: 10 });
+  const posts = {
+    warlord: 'barracks_0', paladin: 'barracks_0', junovane: 'heroquarters_0',
+    kaelenthorne: 'heroquarters_0', shadowblade: 'heroquarters_0',
+  };
+  for (const [id, buildingId] of Object.entries(posts)) {
+    m._recruitHero(id);
+    const hero = m._owned.get(id);
+    hero.level = 100; hero.stars = 10;
+    hero.skillLevels = Object.fromEntries(
+      HEROES_CONFIG[id].skills.map(s => [s, SKILLS_CONFIG[s].type === 'major' ? 5 : 10]));
+    hero.assignment = { type: 'building', buildingId };
+  }
+
+  const { lossReduction, statEntries } = m.getCombatBonuses('squad_1');
+  const raw = statEntries.lossReduction.reduce((s, e) => s + e.value, 0);
+  assert.ok(raw > 0.60, `raw sum ${raw} should exceed the cap for this test to mean anything`);
+  assert.ok(lossReduction <= 0.60, `got ${lossReduction}`);
+  assert.ok(lossReduction > 0.5, `got ${lossReduction}`);
+});
+
+test('a hero posted at Hero Quarters counts for every squad', () => {
+  const m = makeManager({ heroquartersLevel: 10 });
+  m._recruitHero('paladin');
+  const hero = m._owned.get('paladin');
+  hero.level = 20; hero.stars = 0;
+  hero.assignment = { type: 'building', buildingId: 'heroquarters_0' };
+
+  for (const squad of ['squad_1', 'squad_2']) {
+    const ids = m.getCombatBonuses(squad).statEntries.lossReduction.map(e => e.sourceId);
+    assert.ok(ids.includes('paladin:skills'), `${squad} missing the HQ hero`);
+  }
+});
+
+test('paladin posted at heroquarters yields baseDefense 0.10 at level 1, 0 stars', () => {
+  const m = makeManager({ heroquartersLevel: 10 });
+  m._recruitHero('paladin');
+  const hero = m._owned.get('paladin');
+  hero.level = 1; hero.stars = 0;
+  hero.assignment = { type: 'building', buildingId: 'heroquarters_0' };
+
+  const { baseDefense } = m.getCombatBonuses('squad_1');
+  assert.ok(Math.abs(baseDefense - 0.10) < 1e-9, `got ${baseDefense}`);
+});
+
+test('paladin in a barracks yields no baseDefense', () => {
+  const m = makeManager({ heroquartersLevel: 10 });
+  m._recruitHero('paladin');
+  const hero = m._owned.get('paladin');
+  hero.level = 1; hero.stars = 0;
+  hero.assignment = { type: 'building', buildingId: 'barracks_0' };
+
+  assert.equal(m.getCombatBonuses('squad_1').baseDefense, 0);
 });

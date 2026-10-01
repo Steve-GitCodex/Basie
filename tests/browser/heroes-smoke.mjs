@@ -123,6 +123,31 @@ await withPage(async ({ page, errors, origin }) => {
   } else {
     checks.push({ label: 'assign round trip (no owned hero in sandbox — skipped)', ok: true });
   }
+  checks.push({ label: 'board lists Hero Quarters as a post', ok: await page.locator('.hero-board-row[data-instance^="heroquarters_"]').count() > 0 });
+  checks.push({
+    label: 'board omits House and Cafeteria',
+    ok: await page.locator('.hero-board-row[data-instance^="house_"], .hero-board-row[data-instance^="cafeteria_"]').count() === 0,
+  });
+  await dismissOverlays(page);
+  const hqAssignButton = page.locator('.hero-board-row[data-instance^="heroquarters_"] .btn-board-assign');
+  if (await hqAssignButton.count() === 0) {
+    checks.push({ label: 'posting a hero to Hero Quarters succeeds (no assign button on the HQ row)', ok: false });
+  } else {
+    await hqAssignButton.first().click();
+    const enabledPick = page.locator('.hero-board-pick:not([disabled])');
+    if (await enabledPick.count() > 0) {
+      await dismissOverlays(page);
+      await enabledPick.first().click();
+      await page.waitForTimeout(300);
+      checks.push({ label: 'posting a hero to Hero Quarters succeeds', ok: await page.locator('.hero-board-row--occupied[data-instance^="heroquarters_"]').count() === 1 });
+      await dismissOverlays(page);
+      await page.click('.hero-board-row--occupied[data-instance^="heroquarters_"] .btn-board-remove');
+      await page.waitForTimeout(300);
+    } else {
+      checks.push({ label: 'posting a hero to Hero Quarters succeeds (no assignable hero in sandbox)', ok: false });
+    }
+  }
+
 
   await page.click('.heroes-tab[data-tab="recruit"]');
   await page.waitForSelector('.recruit-banner', { timeout: 5000 });

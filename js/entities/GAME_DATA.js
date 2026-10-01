@@ -31,6 +31,7 @@ export {
   SECTORS, SECTOR_IDS, CORE_RECT, sectorIdAt, coreContains, sectorName,
 } from './data/citySectors.js';
 export { WORLD_MAP } from './data/worldMap.js';
+export { STAT_RULES } from './data/statRules.js';
 
 /** logPersist: true writes the in-game log buffer to localStorage on unload (Ctrl+Shift+L opens it). */
 export const DEBUG_CONFIG = { logPersist: false };

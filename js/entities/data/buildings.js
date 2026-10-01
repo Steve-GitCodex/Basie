@@ -128,7 +128,7 @@ export const BUILDINGS_CONFIG = {
       { index: 0, condition: null },
       { index: 1, condition: { townhall: 5 } },
     ],
-    heroCapacity: 0,  // Can't hold heroes itself, but boosts storage efficiency
+    heroCapacity: 1,
   },
   well: {
     id: 'well', name: 'Well', icon: '🪣',
@@ -299,7 +299,7 @@ export const BUILDINGS_CONFIG = {
     category: 'military', requires: { barracks: 3, townhall: 4 },
     maxInstances: 1,
     instanceSlots: [{ index: 0, condition: null }],
-    heroCapacity: 0,  // can't hold heroes itself, but unlocks hero recruitment and provides hero slots for other buildings
+    heroCapacity: 1,
   },
   rallypoint: {
     id: 'rallypoint', name: 'Rally Point', icon: '🚩',
@@ -352,7 +352,7 @@ export const BUILDINGS_CONFIG = {
     category: 'core', requires: { townhall: 2 },
     maxInstances: 1,
     instanceSlots: [{ index: 0, condition: null }],
-    heroCapacity: 0,  // Can't hold heroes, but unlocks more build queues for faster construction
+    heroCapacity: 1,
   },
   infantryhall: {
     id: 'infantryhall', name: 'Infantry Hall', icon: '🗡️',

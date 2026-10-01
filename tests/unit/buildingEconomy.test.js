@@ -81,3 +81,14 @@ test('computeActiveRates works when getHeroInstanceBonus is absent', () => {
   const [entry] = buildingEconomy.computeActiveRates(buildings, ctx);
   assert.equal(entry.effects.food, BUILDINGS_CONFIG.farm.effects.food);
 });
+
+test('heroStorageBonus 0.2 raises finite caps by 20% and leaves diamond Infinity', () => {
+  const buildings = new Map([
+    ['townhall', [{ instanceId: 'townhall_0', level: 1 }]],
+  ]);
+  const base = buildingEconomy.computeStorageCaps(buildings, {});
+  const boosted = buildingEconomy.computeStorageCaps(buildings, {}, 0.2);
+  assert.ok(base.caps.wood > 0);
+  assert.equal(boosted.caps.wood, Math.floor(base.caps.wood * 1.2));
+  assert.equal(boosted.caps.diamond, Infinity);
+});

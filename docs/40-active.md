@@ -3,7 +3,53 @@
 > Most-updated file in the repo. Every session that changes code updates this file
 > (what landed, known issues, exact next steps). See the session protocol in `CLAUDE.md`.
 
-## Hero Quarters UI redesign — COMPLETE, all 9 tasks (2026-10-01, latest)
+## Hero Phase 2d — COMPLETE (2026-10-01, latest)
+
+All 11 tasks landed; **everything is uncommitted** ("tree is commit-ready"). Plan:
+`docs/superpowers/plans/2026-10-01-hero-phase2d-effect-seams-and-stat-caps.md`; **ADR 0031**
+(`docs/20-decisions/0031-stat-cap-pipeline.md`) records the stat-cap pipeline, the seven ADR 0012 test
+inversions and the three skill assignments. Rulings are recorded in ADR 0031 (SDD workspace deleted after the final review).
+
+- **What landed:** stat-cap pipeline (`js/entities/data/statRules.js`, `js/systems/stats/statAggregator.js`:
+  per-category soft caps, categories combine `1 - prod(1 - c)`, clamp to a `totalCap` < 1); hero combat entries
+  and Aegis triggered heal (`heroCombat`, `heroSkills.triggeredStatEntries`); `CombatManager` losses and
+  post-battle heal read the aggregate; economy globals soft-capped; `heroCapacity` 1 on `heroquarters` /
+  `construction_hall` / `storehouse` with new `statEffectMap` entries (heroquarters -> `baseDefense` 0.10,
+  construction_hall -> `buildSpeed`, storehouse -> `storageCap`, townhall -> `constructionCost`);
+  `base.buildSpeed` deleted; stationBoard filter + labels + `isPayingPosting`; `baseDefense` applied in
+  battle; `js/systems/building/heroBuildModifiers.js` wired through `BuildingManager` / `buildingEconomy`
+  (build time, storage cap, construction cost); skills `field_repairs` +buildSpeed 0.08, `scavenge`
+  +storageCap 0.10, `arcane_archive` +constructionCost 0.06; passive stationed XP
+  (`js/systems/hero/heroPassiveXp.js`, driven from `HeroManager.update`); `notification:show` now has a
+  listener (the MarketManager toast reaches players).
+- **Verification (2026-10-01):**
+
+| Check | Result |
+|---|---|
+| `npm test` | 607/607 pass |
+| `node scripts/check-comments.mjs` | 12 violations, all pre-existing |
+| `boot-smoke` | PASS |
+| `heroes-smoke` (+3 checks: board lists Hero Quarters, omits House/Cafeteria, posting to HQ succeeds) | PASS |
+| `tutorial-smoke` | PASS |
+| `dev-smoke` | PASS except the known `dev-anchor-nudger` "variantFile resolves the override-manifest key" failure; `dev-popup-muter` failed once ("quest toast silenced by default in dev") then passed on two reruns, so treat it as flaky |
+
+- **Notes for Steve:**
+  - `field_repairs` unlocks at hero Lv10, so Juno's build speed only pays from Lv10.
+  - Passive XP grants nothing below Hero Quarters level 3.
+  - Real max loss reduction today is 84% (`1 - 0.4 * 0.4`); `totalCap` 0.90 binds only once more categories
+    exist. Mid-game losses rise versus before (about 11% to 47% of base for the reference squad).
+  - **ADR 0031 tracking is Steve's call at commit time.**
+- **Known issues / deferred minors:** `mergeMaxBySource` cannot replace a NaN-valued held entry; unknown
+  stacking string throws a bare `TypeError`; aura entry pushed even at value 0; `sumTriggeredEffects`
+  `lossReduction` is now unread; `nextLevelBuildTime` hero branch untested and never applied VIP reduction
+  (pre-existing); `applyCostReduction` ceil float-overshoot risk; `baseDefense` cap not tested via
+  `getCombatBonuses`; losses round to whole troops so a tiny stack can lose 0 on an easy win (combat-model rework).
+  Minor test gaps: heal-discriminating aegis test, value-above-cap clamp. (The `heroes:updated` cap-recalc test landed in the final fix wave.)
+- **Next steps:** (1) skill-magnitude pass once the new loss curve is seen in play; (2) gather/march yield
+  stay barred (no seam) until designed; (3) combat-model rework (roadmap backlog) for the whole-troop
+  rounding and richer loss modelling.
+
+## Hero Quarters UI redesign — COMPLETE, all 9 tasks (2026-10-01)
 
 `#view-heroes` redesigned end to end; **everything is uncommitted** ("tree is commit-ready").
 Plan: `docs/superpowers/plans/2026-10-01-hero-quarters-ui-redesign.md`; spec
@@ -94,8 +140,16 @@ Stray, not ours: `AxeHero.png` (repo root, untracked).
 
 ### Next step — Phase 2d
 
-Spec `docs/superpowers/specs/2026-08-16-hero-phase2d-effect-seams-and-loss-ceiling-design.md` exists and
-**needs a plan** (writing-plans). The Phase 2d section below still lists its scope.
+**DONE 2026-10-01 — see "Hero Phase 2d — COMPLETE" at the top of this file.** The text below is the original plan note, kept for history.
+
+**Planned 2026-10-01, not started.** Plan `docs/superpowers/plans/2026-10-01-hero-phase2d-effect-seams-and-stat-caps.md`
+(11 tasks) implements the 2d spec **as amended by ADR 0031** (`docs/20-decisions/0031-stat-cap-pipeline.md`):
+the loss-ceiling balance call is decided — Steve chose a data-driven stat-cap pipeline (per-category soft
+caps + a `totalCap` < 1 per stat, extensible to future gear/vehicle categories) over the spec's D1/D2. Starting
+caps: hero lossReduction 0.60, tech 0.60, total 0.90. Steve's combat-model idea (per-hit attack vs defense,
+tier matchups, hero strikes) is parked in the roadmap backlog — combat phase, not hero dev.
+Plan-level picks to confirm with Steve when reviewing: new kinds authored on `field_repairs` (buildSpeed),
+`scavenge` (storageCap), `arcane_archive` (constructionCost).
 
 ---
 

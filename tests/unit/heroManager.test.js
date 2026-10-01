@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import { eventBus } from '../../js/core/EventBus.js';
 import { HeroManager } from '../../js/systems/HeroManager.js';
 import { GACHA_CONFIG, INVENTORY_ITEMS } from '../../js/entities/GAME_DATA.js';
 
@@ -472,4 +473,56 @@ test('deserialize sanitizes skillLevels — clamps, defaults and drops', () => {
   assert.equal(sl.last_stand, 5, 'over-cap major not clamped');
   assert.equal(sl.bogus_id, undefined, 'unknown id survived load');
   assert.equal(sl.battle_cry, 1, 'missing passive did not default to 1');
+});
+
+test('getRosterWithState carries an owned hero\'s skillLevels', () => {
+  const m = makeHM();
+  m._recruitHero('warlord');
+  m._owned.get('warlord').skillLevels = { charge: 3 };
+  const entry = m.getRosterWithState().find(x => x.id === 'warlord');
+  assert.deepEqual(entry.skillLevels, { charge: 3 });
+});
+
+test('update grants passive XP every 10 simulated seconds to a posted hero', () => {
+  const hm = new HeroManager(stubRM(), { getLevelOf: (id) => (id === 'heroquarters' ? 5 : 1) }, stubInv());
+  hm._owned.set('paladin', {
+    heroId: 'paladin', level: 1, xp: 0, xpToNext: 650, stars: 0,
+    effectiveStats: {},
+    assignment: { type: 'building', buildingId: 'heroquarters_0' },
+  });
+  for (let i = 0; i < 220; i++) hm.update(0.05);
+  assert.equal(hm._owned.get('paladin').xp, 2);
+  assert.ok(!('_passiveXpElapsed' in hm.serialize()));
+});
+
+function passiveRoster(xpToLevel = false) {
+  const hm = new HeroManager(stubRM(), { getLevelOf: (id) => (id === 'heroquarters' ? 5 : 1) }, stubInv());
+  const posts = { paladin: 'heroquarters_0', shadowblade: 'mine_0', kaelenthorne: 'farm_0' };
+  for (const [heroId, buildingId] of Object.entries(posts)) {
+    hm._owned.set(heroId, {
+      heroId, level: 1, xp: xpToLevel ? 649 : 0, xpToNext: 650, stars: 0,
+      effectiveStats: {}, assignment: { type: 'building', buildingId },
+    });
+  }
+  return hm;
+}
+
+function countHeroesUpdated(run) {
+  let count = 0;
+  const off = eventBus.on('heroes:updated', () => { count++; });
+  try { run(); } finally { off(); }
+  return count;
+}
+
+test('a passive XP tick with no level-up emits no heroes:updated', () => {
+  const hm = passiveRoster();
+  assert.equal(countHeroesUpdated(() => hm.update(10)), 0);
+  assert.equal(hm._owned.get('paladin').xp, 2);
+});
+
+test('a passive XP tick where a hero levels up emits heroes:updated exactly once', () => {
+  const hm = passiveRoster(true);
+  assert.equal(countHeroesUpdated(() => hm.update(10)), 1);
+  assert.equal(hm._owned.get('paladin').level, 2);
+  assert.equal(hm._owned.get('shadowblade').level, 2);
 });

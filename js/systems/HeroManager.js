@@ -7,6 +7,7 @@ import {
   GACHA_CONFIG,
   AWAKENING_CONFIG,
   FRAGMENTS_PER_SHARD,
+  XP_CONFIG,
 } from '../entities/GAME_DATA.js';
 import { HeroRecruitment } from './hero/heroRecruitment.js';
 import { HeroProgression } from './hero/heroProgression.js';
@@ -14,6 +15,7 @@ import { HeroAssignment }  from './hero/heroAssignment.js';
 import { HeroCombat }      from './hero/heroCombat.js';
 import { HeroEconomy }     from './hero/heroEconomy.js';
 import { pityDisclosure }  from './hero/heroPityDisclosure.js';
+import { drainPassiveXpTicks, passiveXpRecipients } from './hero/heroPassiveXp.js';
 import {
   levelCapFor,
   costToReach,
@@ -45,6 +47,7 @@ export class HeroManager {
 
     this._recruitment = new HeroRecruitment(this);
     this._progression = new HeroProgression(this);
+    this._passiveXpElapsed = 0;
     this._assignment  = new HeroAssignment(this);
     this._combat      = new HeroCombat(this);
     this._economy     = new HeroEconomy(this);
@@ -204,6 +207,7 @@ export class HeroManager {
         xp:               owned?.xp       ?? 0,
         xpToNext:         owned?.xpToNext ?? this._progression.xpToNext(1, cfg.tier),
         stars,
+        skillLevels:      owned?.skillLevels ?? {},
         effectiveStats:   owned?.effectiveStats ?? cfg.stats,
         assignment,
         isInSquad:        assignment.type === 'building' && !!assignment.buildingId?.startsWith('barracks_'),
@@ -238,7 +242,8 @@ export class HeroManager {
       .every(cfg => this._owned.has(cfg.id));
   }
 
-  update(_dt) {
+  update(dt) {
+    this._grantPassiveXp(dt);
     // Detect buff expiry and notify listeners
     const now = Date.now();
     const before = this._activeBuffs.length;
@@ -247,6 +252,14 @@ export class HeroManager {
       eventBus.emit('buffs:updated', this.getActiveBuffsWithRemaining());
       eventBus.emit('buffs:changed');
     }
+  }
+
+  _grantPassiveXp(dt) {
+    const { ticks, remainder } = drainPassiveXpTicks(this._passiveXpElapsed + dt, XP_CONFIG.passiveXpIntervalSec);
+    this._passiveXpElapsed = remainder;
+    if (!ticks) return;
+    const recipients = passiveXpRecipients(this._owned.values(), this._progression.levelCap());
+    this._progression.awardPassiveXP(recipients, ticks * XP_CONFIG.passiveXpPerProductionTick);
   }
 
   // =============================================

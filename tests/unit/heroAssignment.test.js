@@ -88,3 +88,17 @@ test('re-picking the slot a hero already holds is still a no-op, not a reassignm
   hm.assignHeroToBuilding('warlord', 'farm_0');
   assert.match(hm.assignHeroToBuilding('warlord', 'farm_0').reason, /already assigned to this slot/i);
 });
+
+test('a hero can now be posted to heroquarters, construction_hall and storehouse', () => {
+  for (const [heroId, building] of [['warlord', 'heroquarters_0'], ['paladin', 'construction_hall_0'], ['kaelenthorne', 'storehouse_0']]) {
+    const hm = makeHM();
+    hm._recruitHero(heroId);
+    assert.equal(hm.assignHeroToBuilding(heroId, building).success, true, building);
+  }
+});
+
+test('house still rejects a hero', () => {
+  const hm = makeHM();
+  hm._recruitHero('warlord');
+  assert.equal(hm.assignHeroToBuilding('warlord', 'house_0').success, false);
+});

@@ -63,8 +63,8 @@ export const SKILLS_CONFIG = {
   arcane_archive: {
     id: 'arcane_archive', name: 'Arcane Archive', type: 'passive',
     slot: 1, domain: 'research', unlockLevel: 1, icon: '📚',
-    description: 'Increases research speed by 8%.',
-    effect: { researchSpeed: 0.08 },
+    description: 'Increases research speed by 8%. Stationed in the Town Hall, also cuts construction costs by 6%.',
+    effect: { researchSpeed: 0.08, constructionCost: 0.06 },
   },
   mana_surge: {
     id: 'mana_surge', name: 'Mana Surge', type: 'support',
@@ -168,8 +168,8 @@ export const SKILLS_CONFIG = {
   field_repairs: {
     id: 'field_repairs', name: 'Field Repairs', type: 'passive',
     slot: 2, domain: 'combat', unlockLevel: 10, icon: '🔧',
-    description: 'Reduces troop losses by 7% in every battle.',
-    effect: { stat: 'lossReduction', value: 0.07 },
+    description: 'Reduces troop losses by 7% in every battle. Stationed in the Construction Hall, also speeds building by 8%.',
+    effect: { stat: 'lossReduction', value: 0.07, buildSpeed: 0.08 },
   },
   spliced_optics: {
     id: 'spliced_optics', name: 'Spliced Optics', type: 'passive',
@@ -199,8 +199,8 @@ export const SKILLS_CONFIG = {
   scavenge: {
     id: 'scavenge', name: 'Scavenge', type: 'passive',
     slot: 1, domain: 'production', unlockLevel: 1, icon: '🎒',
-    description: 'Increases the stationed building\'s resource output by 10%.',
-    effect: { resourceOutput: 0.10 },
+    description: 'Increases the stationed building\'s resource output by 10%. Stationed in the Storehouse, also raises storage capacity by 10%.',
+    effect: { resourceOutput: 0.10, storageCap: 0.10 },
   },
   trail_marks: {
     id: 'trail_marks', name: 'Trail Marks', type: 'passive',

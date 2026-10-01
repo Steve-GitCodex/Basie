@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 
 import { resourceBonusFor, globalEffectBonus, skillBonusFor } from '../../js/systems/hero/heroProductionBonus.js';
 import { HeroManager } from '../../js/systems/HeroManager.js';
+import { skillDormancy } from '../../js/systems/hero/heroSkillActivation.js';
+import { SKILLS_CONFIG } from '../../js/entities/GAME_DATA.js';
 
 const stationed = (heroId, buildingId, level = 1, stars = 0) => ({
   heroId, level, stars, assignment: { type: 'building', buildingId },
@@ -39,15 +41,15 @@ test('resourceBonusFor returns 0 for paladin — heroquarters has no statEffectM
   assert.equal(resourceBonusFor(stationed('paladin', 'heroquarters_0'), 'heroquarters'), 0);
 });
 
-test('globalEffectBonus sums trainingSpeed and researchSpeed across stationed heroes', () => {
+test('globalEffectBonus soft-caps researchSpeed across stationed heroes and passes trainingSpeed through', () => {
   const map = globalEffectBonus([
     stationed('warlord', 'barracks_0'),
     stationed('archsorceress', 'workshop_0'),
     stationed('junovane', 'workshop_1'),
   ]);
   assert.ok(Math.abs(map.trainingSpeed - 0.12) < 1e-9);
-  assert.ok(Math.abs(map.researchSpeed - (0.12 + 0.08 + 0.12 + 0.10)) < 1e-9,
-    'two workshop heroes stack additively, each station term plus their own research skill');
+  assert.ok(Math.abs(map.researchSpeed - 0.5 * (1 - (1 - 0.20 / 0.5) * (1 - 0.22 / 0.5))) < 1e-9,
+    'two workshop heroes soft-cap: each hero station term plus own research skill, under the 0.50 hero cap');
 });
 
 test('globalEffectBonus excludes resource heroes and unstationed heroes', () => {
@@ -132,4 +134,43 @@ test('wastelands_bounty pays its resource half in a farm and its training half i
   assert.equal(skillBonusFor(inFarm, 'farm', 'trainingSpeed'), 0, 'training half fired in a farm');
   assert.ok(skillBonusFor(inBarracks, 'barracks', 'trainingSpeed') > 0, 'training half dormant in a barracks');
   assert.equal(skillBonusFor(inBarracks, 'barracks', 'food'), 0, 'resource half fired in a barracks');
+});
+
+test('one hero on a global effect is unchanged by soft-capping', () => {
+  const map = globalEffectBonus([stationed('warlord', 'barracks_0')]);
+  assert.ok(Math.abs(map.trainingSpeed - 0.12) < 1e-9);
+});
+
+test('two research heroes stack below their additive sum and below the 0.50 cap', () => {
+  const a = globalEffectBonus([stationed('archsorceress', 'workshop_0')]).researchSpeed;
+  const b = globalEffectBonus([stationed('junovane', 'workshop_1')]).researchSpeed;
+  const both = globalEffectBonus([
+    stationed('archsorceress', 'workshop_0'),
+    stationed('junovane', 'workshop_1'),
+  ]).researchSpeed;
+  assert.ok(both < a + b, 'stacked value must be under the additive sum');
+  assert.ok(both <= 0.5);
+});
+
+test('juno at construction_hall pays buildSpeed 0.08 at skill level 1', () => {
+  const map = globalEffectBonus([stationed('junovane', 'construction_hall_0', 10)]);
+  assert.ok(Math.abs(map.buildSpeed - 0.08) < 1e-9);
+});
+
+test('kaelen at storehouse pays storageCap 0.10', () => {
+  const map = globalEffectBonus([stationed('kaelenthorne', 'storehouse_0')]);
+  assert.ok(Math.abs(map.storageCap - 0.10) < 1e-9);
+});
+
+test('vera at townhall pays constructionCost 0.06', () => {
+  const map = globalEffectBonus([stationed('archsorceress', 'townhall_0')]);
+  assert.ok(Math.abs(map.constructionCost - 0.06) < 1e-9);
+});
+
+test('kaelen at farm still pays scavenge resourceOutput and its storageCap stays dormant', () => {
+  const hero = stationed('kaelenthorne', 'farm_0');
+  assert.equal(resourceBonusFor(hero, 'farm'), 0.15 + 0.10);
+  const dormancy = skillDormancy(hero, SKILLS_CONFIG.scavenge);
+  assert.equal(dormancy.isPartlyDormant, true);
+  assert.equal(dormancy.entries.find(e => e.kind === 'storageCap').active, false);
 });

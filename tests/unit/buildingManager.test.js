@@ -399,3 +399,79 @@ test('adjacency is never serialized — it re-derives on load', () => {
   bm2.deserialize(saved);
   assert.equal(bm2.getAdjacency('farm_0').bonus, bm.getAdjacency('farm_0').bonus);
 });
+
+function heroBm({ spend, add, workers = 2 } = {}) {
+  const bm = makeManager(workers);
+  const rm = bm._rm;
+  if (spend) rm.spend = spend;
+  if (add) rm.add = add;
+  bm.setHeroManager({
+    getHeroGlobalEffects: () => ({ constructionCost: 0.25, buildSpeed: 0.5 }),
+    getBuildingHero: () => null,
+    getHeroInstanceBonus: () => 0,
+  });
+  return bm;
+}
+
+test('build spends the hero-reduced cost', () => {
+  const spent = [];
+  const plain = makeManager(2);
+  plain.build('farm', 0);
+  const fullCost = plain._buildQueue[0].cost;
+  const bm = heroBm({ spend: c => { spent.push(c); } });
+  bm.build('farm', 0);
+  const [key] = Object.keys(fullCost);
+  assert.equal(spent[0][key], Math.ceil(fullCost[key] * 0.75));
+  assert.deepEqual(bm._buildQueue[0].cost, spent[0]);
+});
+
+test('catalog and next-level cost match what build() spends', () => {
+  const spent = [];
+  const bm = heroBm({ spend: c => { spent.push(c); } });
+  const type = bm.getBuildingTypesWithInstances().find(t => t.id === 'farm');
+  const catalog = bm.getBuildablesCatalog().find(c => c.id === 'farm');
+  bm.build('farm', 0);
+  assert.deepEqual(type.instances[0].cost, spent[0]);
+  assert.deepEqual(catalog.cost, spent[0]);
+});
+
+test('cancelling a queued build refunds the reduced cost that was paid', () => {
+  const refunds = [];
+  const spent = [];
+  const bm = heroBm({ spend: c => { spent.push(c); }, add: c => { refunds.push(c); } });
+  bm.build('farm', 0);
+  bm.cancelBuild(0);
+  assert.deepEqual(refunds[0], spent[0]);
+});
+
+test('build time is divided by 1 + buildSpeed', () => {
+  const plain = makeManager(2);
+  plain.build('farm', 0);
+  const base = plain._buildQueue[0].buildTimeSec;
+  const bm = heroBm();
+  bm.build('farm', 0);
+  assert.equal(bm._buildQueue[0].buildTimeSec, Math.max(1, Math.floor(base / 1.5)));
+  const type = bm.getBuildingTypesWithInstances().find(t => t.id === 'farm');
+  assert.ok(type);
+});
+
+test('heroes:updated recalculates storage caps with the hero storage bonus', () => {
+  const bm = makeManager(1);
+  bm._buildings.set('townhall', [{ instanceId: 'townhall_0', level: 3 }]);
+  const heroGlobals = { storageCap: 0 };
+  bm.setHeroManager({
+    getHeroGlobalEffects: () => heroGlobals,
+    getBuildingHero: () => null,
+    getHeroInstanceBonus: () => 0,
+  });
+  let capturedWoodCap = null;
+  bm._rm.setCap = (res, cap) => { if (res === 'wood') capturedWoodCap = cap; };
+
+  eventBus.emit('heroes:updated', []);
+  const baseline = capturedWoodCap;
+  assert.ok(baseline > 0);
+
+  heroGlobals.storageCap = 0.3;
+  eventBus.emit('heroes:updated', []);
+  assert.ok(capturedWoodCap > baseline);
+});

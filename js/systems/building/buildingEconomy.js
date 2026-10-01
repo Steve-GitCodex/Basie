@@ -16,7 +16,7 @@ import { BUILDINGS_CONFIG } from '../../entities/GAME_DATA.js';
  * @param {{ storageCapacityBonus?: number }} [techBonuses]
  * @returns {{ caps: Object, popCap: number, foodStoreCap: number, waterStoreCap: number }}
  */
-function computeStorageCaps(buildings, techBonuses = {}) {
+function computeStorageCaps(buildings, techBonuses = {}, heroStorageBonus = 0) {
   // Base is zero — storageCap arrays on each building provide the full cap at their level
   const caps = { wood: 0, stone: 0, iron: 0, food: 0, water: 0, diamond: Infinity, money: 0 };
   let popCap       = 0;
@@ -58,7 +58,7 @@ function computeStorageCaps(buildings, techBonuses = {}) {
   }
 
   // Apply storageCapacityBonus from tech research (e.g. infrastructure tech)
-  const bonus = techBonuses.storageCapacityBonus;
+  const bonus = (techBonuses.storageCapacityBonus || 0) + heroStorageBonus;
   const finalCaps = {};
   for (const [res, cap] of Object.entries(caps)) {
     finalCaps[res] = (isFinite(cap) && bonus) ? Math.floor(cap * (1 + bonus)) : cap;

@@ -5,6 +5,8 @@ import {
   AURA_BUFF_CATEGORY,
 } from '../../entities/GAME_DATA.js';
 import { collectEffects, bucketTriggeredByEvent } from './heroSkills.js';
+import { statEntry, aggregate } from '../stats/statAggregator.js';
+import { globalEffectBonus } from './heroProductionBonus.js';
 
 export class HeroCombat {
   constructor(hero) { this._h = hero; }
@@ -22,8 +24,7 @@ export class HeroCombat {
   getCombatBonuses(squadId = null) {
     let attackMult     = 1.0;
     let defenseMult    = 1.0;
-    let lossReduction  = 0;
-    let postBattleHeal = 0;
+    const statEntries  = { lossReduction: [], postBattleHeal: [] };
     const triggered    = [];
 
     for (const hero of this._h._owned.values()) {
@@ -49,13 +50,19 @@ export class HeroCombat {
           case 'defense_boost': defenseMult += auraValue; break;
         }
         // defense_boost only gives lossReduction, not double-counted
-        if (cfg.aura.type === 'defense_boost') lossReduction += auraValue * 0.5;
+        if (cfg.aura.type === 'defense_boost') {
+          statEntries.lossReduction.push(statEntry('lossReduction', 'hero', auraValue * 0.5, `${hero.heroId}:aura`));
+        }
       }
 
       attackMult     += fx.attackMult;
       defenseMult    += fx.defenseMult;
-      lossReduction  += fx.lossReduction;
-      postBattleHeal += fx.postBattleHeal;
+      if (fx.lossReduction) {
+        statEntries.lossReduction.push(statEntry('lossReduction', 'hero', fx.lossReduction, `${hero.heroId}:skills`));
+      }
+      if (fx.postBattleHeal) {
+        statEntries.postBattleHeal.push(statEntry('postBattleHeal', 'hero', fx.postBattleHeal, `${hero.heroId}:skills`));
+      }
       triggered.push(...fx.triggered);
     }
 
@@ -67,7 +74,11 @@ export class HeroCombat {
     const triggeredByEvent = bucketTriggeredByEvent(triggered);
 
     return {
-      attackMult, defenseMult, lossReduction, postBattleHeal,
+      attackMult, defenseMult,
+      baseDefense:    globalEffectBonus([...this._h._owned.values()]).baseDefense ?? 0,
+      lossReduction:  aggregate('lossReduction', statEntries.lossReduction).total,
+      postBattleHeal: aggregate('postBattleHeal', statEntries.postBattleHeal).total,
+      statEntries,
       triggeredByEvent, activeSkills: triggeredByEvent.battle_start,
       productionBuffMult: buffMult,
     };

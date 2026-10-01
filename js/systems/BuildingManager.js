@@ -21,6 +21,7 @@ import {
 import { buildingRules } from './building/buildingRules.js';
 import { buildQueue } from './building/buildQueue.js';
 import { buildingEconomy } from './building/buildingEconomy.js';
+import { heroBuildModifiers } from './building/heroBuildModifiers.js';
 import { headquarters } from './building/headquarters.js';
 import { CafeteriaService } from './building/CafeteriaService.js';
 import { PlacementStore } from './building/placementStore.js';
@@ -121,7 +122,10 @@ export class BuildingManager {
    */
   setHeroManager(heroManager) {
     this._hm = heroManager;
-    eventBus.on('heroes:updated', () => this._notifyRates());
+    eventBus.on('heroes:updated', () => {
+      this._notifyRates();
+      this._recalculateAllCaps();
+    });
   }
 
   /**
@@ -392,7 +396,7 @@ export class BuildingManager {
 
     const pendingLevel = effectiveLevel + 1;
 
-    const cost = buildingRules.scaleCost(cfg.baseCost, cfg.costMultiplier, effectiveLevel);
+    const cost = this._heroCost(buildingRules.scaleCost(cfg.baseCost, cfg.costMultiplier, effectiveLevel));
     if (!this._rm.canAfford(cost)) return { success: false, reason: 'Insufficient resources.' };
 
     this._rm.spend(cost);
@@ -405,6 +409,7 @@ export class BuildingManager {
     if (this._vipBuildTimeReduction > 0) {
       buildTimeSec = Math.max(1, Math.floor(buildTimeSec * (1 - this._vipBuildTimeReduction)));
     }
+    buildTimeSec = heroBuildModifiers.applyBuildSpeed(buildTimeSec, this._heroGlobals().buildSpeed);
 
     if (!this._buildings.has(buildingId)) this._buildings.set(buildingId, []);
     const instArr = this._buildings.get(buildingId);
@@ -542,7 +547,7 @@ export class BuildingManager {
         const effectiveLevel = completedLevel + queuedCount;
         const activeForInst = queuedForInst.find(q => q.endsAt != null) ?? null;
         const isActivelyBuilding = activeForInst != null;
-        const nextCost = buildingRules.scaleCost(cfg.baseCost, cfg.costMultiplier, effectiveLevel);
+        const nextCost = this._heroCost(buildingRules.scaleCost(cfg.baseCost, cfg.costMultiplier, effectiveLevel));
         const reqCheck = buildingRules.checkRequirements(cfg.requires, this._rulesCtx);
         const lvlReqCheck = buildingRules.checkRequirements(cfg.levelRequirements?.[effectiveLevel + 1], this._rulesCtx);
         const finalReqMet = reqCheck.met && lvlReqCheck.met;
@@ -560,6 +565,9 @@ export class BuildingManager {
         if (rawNextBuildTime !== null && this._techBonuses.buildTimeReduction) {
           const reduction = Math.min(0.80, this._techBonuses.buildTimeReduction);
           nextLevelBuildTime = Math.max(1, Math.floor(rawNextBuildTime * (1 - reduction)));
+        }
+        if (nextLevelBuildTime !== null) {
+          nextLevelBuildTime = heroBuildModifiers.applyBuildSpeed(nextLevelBuildTime, this._heroGlobals().buildSpeed);
         }
 
         // Cafeteria depletion timer
@@ -855,7 +863,7 @@ export class BuildingManager {
           || buildingRules.collectMissing(cfg.requires, this._rulesCtx).join(', ')
           || 'Locked');
       const availableIdx = this._findAvailableInstance(cfg.id);
-      const cost = buildingRules.scaleCost(cfg.baseCost, cfg.costMultiplier, 0);
+      const cost = this._heroCost(buildingRules.scaleCost(cfg.baseCost, cfg.costMultiplier, 0));
       // Free placement always has room in the buildable rect; the packer seats it.
       const hasFreePlot = true;
       out.push({
@@ -1093,12 +1101,22 @@ export class BuildingManager {
    */
   _recalculateAllCaps() {
     const { caps, popCap, foodStoreCap, waterStoreCap } =
-      buildingEconomy.computeStorageCaps(this._buildings, this._techBonuses);
+      buildingEconomy.computeStorageCaps(this._buildings, this._techBonuses, this._heroGlobals().storageCap ?? 0);
 
     for (const [res, cap] of Object.entries(caps)) this._rm.setCap(res, cap);
     this._rm.setPopulationCap(popCap);
     this._rm.setFoodCapacity(foodStoreCap);
     this._rm.setWaterCapacity(waterStoreCap);
+  }
+
+  /** @private */
+  _heroGlobals() {
+    return this._hm?.getHeroGlobalEffects?.() ?? {};
+  }
+
+  /** @private */
+  _heroCost(cost) {
+    return heroBuildModifiers.applyCostReduction(cost, this._heroGlobals().constructionCost ?? 0);
   }
 
   /** @private */

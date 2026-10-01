@@ -91,6 +91,19 @@ export class HeroProgression {
     return { success: true };
   }
 
+  /** Grant XP to many heroes; broadcasts the roster once, and only when someone levelled up. */
+  awardPassiveXP(heroIds, amount) {
+    let leveledUp = false;
+    for (const id of heroIds) {
+      const hero = this._h._owned.get(id);
+      if (!hero) continue;
+      const before = hero.level;
+      this._applyXP(hero, HEROES_CONFIG[id], amount);
+      if (hero.level > before) leveledUp = true;
+    }
+    if (leveledUp) eventBus.emit('heroes:updated', this._h.getRosterWithState());
+  }
+
   /** Purchase and immediately apply an XP bundle to a hero using gold. */
   purchaseXPBundle(heroId, bundleId) {
     const hero = this._h._owned.get(heroId);

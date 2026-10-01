@@ -5,7 +5,7 @@ import {
   BUILDINGS_CONFIG, CATEGORY_ZONE,
   BUILD_RECT, inBounds, WORLD_MAP, MONSTERS_CONFIG,
   ACHIEVEMENTS_CONFIG, HEROES_CONFIG,
-  SHOP_CONFIG, INVENTORY_ITEMS, PROD_BONUS_CONFIG,
+  SHOP_CONFIG, INVENTORY_ITEMS, PROD_BONUS_CONFIG, STAT_RULES,
 } from '../../js/entities/GAME_DATA.js';
 
 const RESOURCE_KEYS = new Set(['wood', 'stone', 'iron', 'food', 'water', 'money']);
@@ -180,22 +180,30 @@ test('no retired recruitment scroll is still for sale', () => {
   }
 });
 
+const SKILL_PAID_EFFECTS = new Set(['buildSpeed', 'storageCap', 'constructionCost']);
+
 test('every statEffectMap entry resolves to a known PROD_BONUS_CONFIG base key', () => {
   const resourceEffects = new Set(['money', 'food', 'wood', 'stone', 'iron']);
   for (const [buildingType, entry] of Object.entries(PROD_BONUS_CONFIG.statEffectMap)) {
     if (resourceEffects.has(entry.effect)) continue;
+    if (SKILL_PAID_EFFECTS.has(entry.effect)) continue;
     assert.ok(PROD_BONUS_CONFIG.base[entry.effect] != null,
       `statEffectMap['${buildingType}'] maps to '${entry.effect}' with no base value`);
   }
 });
 
-test('paladin\'s buildingBonus is knowingly inert — heroquarters has no statEffectMap entry', () => {
+test('paladin\'s buildingBonus resolves to the heroquarters posting', () => {
   assert.equal(HEROES_CONFIG.paladin.buildingBonus.buildingType, 'heroquarters');
-  assert.equal(PROD_BONUS_CONFIG.statEffectMap.heroquarters, undefined,
-    'wiring this needs a balance number the numbers spec never defined — a future phase decides');
+  assert.equal(PROD_BONUS_CONFIG.statEffectMap.heroquarters.stat, HEROES_CONFIG.paladin.buildingBonus.stat);
 });
 
-const KNOWN_INERT_HERO_BUILDING_BONUSES = new Set(['paladin:heroquarters']);
+test('every skill-paid effect has no base value', () => {
+  for (const effect of SKILL_PAID_EFFECTS) {
+    assert.equal(PROD_BONUS_CONFIG.base[effect], undefined, effect);
+  }
+});
+
+const KNOWN_INERT_HERO_BUILDING_BONUSES = new Set();
 
 test('every hero buildingBonus resolves to a live statEffectMap stat, or is on the known-inert allowlist', () => {
   for (const hero of Object.values(HEROES_CONFIG)) {
@@ -206,5 +214,21 @@ test('every hero buildingBonus resolves to a live statEffectMap stat, or is on t
     const isAllowlisted = KNOWN_INERT_HERO_BUILDING_BONUSES.has(`${hero.id}:${bb.buildingType}`);
     assert.ok(isLive || isAllowlisted,
       `${hero.id}'s buildingBonus (${bb.buildingType} → ${bb.stat}) no longer resolves to a live PROD_BONUS_CONFIG effect and is not on the known-inert allowlist`);
+  }
+});
+
+test('every STAT_RULES stat has caps in (0, 1] and a totalCap in (0, 1)', () => {
+  for (const [stat, rule] of Object.entries(STAT_RULES)) {
+    assert.ok(rule.totalCap > 0 && rule.totalCap < 1, `${stat} totalCap ${rule.totalCap}`);
+    for (const [category, { cap }] of Object.entries(rule.categories)) {
+      assert.ok(cap > 0 && cap <= 1, `${stat}.${category} cap ${cap}`);
+    }
+  }
+});
+
+test('every non-resource statEffectMap effect has a STAT_RULES entry with a hero category', () => {
+  for (const { effect } of Object.values(PROD_BONUS_CONFIG.statEffectMap)) {
+    if (RESOURCE_KEYS.has(effect)) continue;
+    assert.ok(STAT_RULES[effect]?.categories.hero, `${effect} lacks a STAT_RULES hero category`);
   }
 });

@@ -11,7 +11,8 @@ import {
   DIFFICULTY_MODIFIERS, SURVIVAL_MONSTER,
 } from '../entities/GAME_DATA.js';
 import { BUILDINGS_CONFIG } from '../entities/GAME_DATA.js';
-import { sumTriggeredEffects } from './hero/heroSkills.js';
+import { sumTriggeredEffects, triggeredStatEntries } from './hero/heroSkills.js';
+import { aggregate, statEntry, mergeMaxBySource } from './stats/statAggregator.js';
 
 const MAX_BATTLE_LOG = 20;
 
@@ -221,6 +222,7 @@ _simulateBattle(army, monster, modifier = null, squadId = null) {
 
     playerTotalAttack  *= heroBonus.attackMult;
     playerTotalDefense *= heroBonus.defenseMult;
+    playerTotalDefense *= 1 + (heroBonus.baseDefense ?? 0);
 
     // Apply HQ-level combat bonuses
     if (this._bm) {
@@ -248,13 +250,11 @@ _simulateBattle(army, monster, modifier = null, squadId = null) {
     const buckets = heroBonus.triggeredByEvent
       ?? { battle_start: [], wave_start: [], final_wave: [], losing: [] };
 
-    // Post-battle heal from passive skills (e.g. consecration's postBattleHeal)
-    const postBattleHeal = heroBonus.postBattleHeal ?? 0;
-
     let remainingPlayerHP = playerTotalHP;
     let wavesSurvived = 0;
     let waveIndex = 0;
-    let triggeredLossReduction = 0;
+    const triggeredLoss = new Map();
+    const triggeredHeal = new Map();
     const waveDetails = [];
 
     for (const wave of waves) {
@@ -287,7 +287,8 @@ _simulateBattle(army, monster, modifier = null, squadId = null) {
       if (isLosing)    active.push(...buckets.losing);
 
       const waveFx = sumTriggeredEffects(active);
-      triggeredLossReduction = Math.max(triggeredLossReduction, waveFx.lossReduction);
+      mergeMaxBySource(triggeredLoss, triggeredStatEntries(active, 'lossReduction'));
+      mergeMaxBySource(triggeredHeal, triggeredStatEntries(active, 'postBattleHeal'));
 
       let currentAttack = playerTotalAttack
         * (1 + (isFirstWave ? (tech.firstWaveBonus || 0) : 0) + waveFx.attackBonus);
@@ -334,9 +335,17 @@ _simulateBattle(army, monster, modifier = null, squadId = null) {
 
     const victory     = remainingPlayerHP > 0;
     const survivalRate = Math.max(0, Math.min(1, remainingPlayerHP / playerTotalHP));
+    const lossReduction = aggregate('lossReduction', [
+      ...(heroBonus.statEntries?.lossReduction ?? []),
+      ...triggeredLoss.values(),
+      statEntry('lossReduction', 'tech', tech.lossReduction || 0, 'tech'),
+    ]).total;
+    const postBattleHeal = aggregate('postBattleHeal', [
+      ...(heroBonus.statEntries?.postBattleHeal ?? []),
+      ...triggeredHeal.values(),
+    ]).total;
     const baseLossRate = victory
-      ? Math.max(0.02, 1 - survivalRate)
-        * Math.max(0, 1 - heroBonus.lossReduction - triggeredLossReduction - (tech.lossReduction || 0))
+      ? Math.max(0.02, 1 - survivalRate) * (1 - lossReduction)
       : 0.5 + (1 - survivalRate) * 0.5;
 
     const losses = {};
@@ -346,7 +355,6 @@ _simulateBattle(army, monster, modifier = null, squadId = null) {
       if (lost > 0) losses[lossKey] = Math.min(lost, unit.count);
     }
 
-    // Post-battle heal: consecration restores a fraction of lost units
     if (victory && postBattleHeal > 0) {
       for (const [lossKey, lostCount] of Object.entries(losses)) {
         const restored = Math.floor(lostCount * postBattleHeal);

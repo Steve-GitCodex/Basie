@@ -1,4 +1,5 @@
 import { HEROES_CONFIG, PROD_BONUS_CONFIG, SKILLS_CONFIG } from '../../entities/GAME_DATA.js';
+import { aggregate, statEntry } from '../stats/statAggregator.js';
 import { reconcileSkillLevels, effectValueAt, isUnlocked } from './heroSkills.js';
 
 const RESOURCE_OUTPUT_EFFECTS = new Set(['money', 'food', 'wood', 'stone', 'iron']);
@@ -57,7 +58,7 @@ export function resourceBonusFor(hero, buildingType) {
 }
 
 export function globalEffectBonus(heroes) {
-  const map = {};
+  const entriesByEffect = {};
   for (const hero of heroes) {
     const buildingType = stationedTypeOf(hero);
     if (!buildingType) continue;
@@ -69,7 +70,14 @@ export function globalEffectBonus(heroes) {
       ? base * scaleFor(hero)
       : 0;
     const total = station + skillBonusFor(hero, buildingType, mapped.effect);
-    if (total !== 0) map[mapped.effect] = (map[mapped.effect] ?? 0) + total;
+    if (total === 0) continue;
+    (entriesByEffect[mapped.effect] ??= []).push(statEntry(mapped.effect, 'hero', total, hero.heroId));
+  }
+
+  const map = {};
+  for (const [effect, entries] of Object.entries(entriesByEffect)) {
+    const total = aggregate(effect, entries).total;
+    if (total !== 0) map[effect] = total;
   }
   return map;
 }
