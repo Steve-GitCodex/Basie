@@ -50,8 +50,7 @@ export function skillEffectKinds(skill) {
   return [...new Set(kinds)];
 }
 
-export function skillEffectActivation(hero, skill) {
-  const posting = stationedTypeOf(hero);
+export function skillEffectActivation(hero, skill, posting = stationedTypeOf(hero)) {
   const entries = [];
 
   for (const kind of skillEffectKinds(skill)) {
@@ -85,4 +84,12 @@ export function skillDormancy(hero, skill) {
     isFullyDormant: entries.length > 0 && dormant.length === entries.length,
     isPartlyDormant: dormant.length > 0 && dormant.length < entries.length,
   };
+}
+
+export function activeSkillCountAt(hero, buildingType) {
+  return Object.values(hero?.skills ?? {})
+    .flat()
+    .filter(skill => skill?.unlocked)
+    .filter(skill => skillEffectActivation(hero, skill, buildingType).some(entry => entry.active))
+    .length;
 }

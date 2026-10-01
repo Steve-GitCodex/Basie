@@ -3,6 +3,7 @@ import { HeroRosterPanel } from '../heroes/HeroRosterPanel.js';
 import { HeroDetailPanel } from '../heroes/HeroDetailPanel.js';
 import { HeroAssignmentPanel } from '../heroes/HeroAssignmentPanel.js';
 import { RecruitPanel } from '../heroes/RecruitPanel.js';
+import { stopClips } from '../heroes/heroCardView.js';
 
 const TABS = ['roster', 'recruit', 'assign'];
 
@@ -11,6 +12,7 @@ export class HeroesUI {
   constructor(systems) {
     this._s = systems;
     this._activeTab = 'roster';
+    this._detailOpen = false;
     this._tabs = null;
     this._panelEls = {};
     this._roster = new HeroRosterPanel(systems);
@@ -25,27 +27,34 @@ export class HeroesUI {
     if (!this._tabs || !this._panelEls.roster) return;
 
     this._roster.init(this._panelEls.roster);
-    this._detail.init(document.getElementById('heroes-detail-pane'));
+    this._detail.init(this._roster.detailHost());
     this._assign.init(this._panelEls.assign);
     this._recruit.init(this._panelEls.recruit);
-    this._roster.onSelect(heroId => this._detail.showHero(heroId));
+    this._roster.onSelect(heroId => this._openDetail(heroId));
+    this._detail.onBack(() => this._closeDetail());
+    this._detail.setOrder(() => this._roster.visibleHeroIds());
 
     this._tabs.querySelectorAll('.heroes-tab').forEach(btn => {
       btn.addEventListener('click', () => {
         eventBus.emit('ui:click');
+        if (btn.dataset.tab === 'roster' && this._activeTab === 'roster') this._closeDetail();
         this._showTab(btn.dataset.tab);
       });
     });
 
-    eventBus.on('ui:viewChanged',  v => {
-      if (v !== 'heroes') return;
+    eventBus.on('ui:viewChanged', v => {
       this._recruit.dismissReveal();
+      if (v !== 'heroes') return;
+      this._closeDetail();
       this._showTab(this._activeTab);
     });
     eventBus.on('ui:openHeroesTab', tab => {
       if (!TABS.includes(tab)) return;
-      this._activeTab = tab;
       this._showTab(tab);
+    });
+    eventBus.on('ui:openHeroDetail', heroId => {
+      this._showTab('roster');
+      this._openDetail(heroId);
     });
     eventBus.on('heroes:updated',    () => this._patchActive());
     eventBus.on('inventory:updated', () => this._patchActive());
@@ -53,19 +62,36 @@ export class HeroesUI {
     eventBus.on('hero:awakened', d => this._s.notifications?.show('success', '✨ Awakened!', `${d.name} is now ★${d.stars}!`));
   }
 
+  _openDetail(heroId) {
+    this._detailOpen = true;
+    this._roster.setMode('detail');
+    this._detail.showHero(heroId);
+    document.getElementById('game-main')?.scrollTo(0, 0);
+  }
+
+  _closeDetail() {
+    if (!this._detailOpen) return;
+    this._detailOpen = false;
+    stopClips(this._roster.detailHost());
+    this._roster.setMode('grid');
+    this._roster.render();
+  }
+
   _showTab(tab) {
     if (this._activeTab === 'recruit' && tab !== 'recruit') this._recruit.dismissReveal();
+    if (this._activeTab === 'roster' && tab !== 'roster') stopClips(this._roster.detailHost());
     this._activeTab = tab;
     for (const id of TABS) this._panelEls[id]?.classList.toggle('hidden', id !== tab);
     this._tabs?.querySelectorAll('.heroes-tab').forEach(b => {
       b.classList.toggle('heroes-tab--active', b.dataset.tab === tab);
     });
+    if (tab === 'roster' && this._detailOpen) { this._detail.render(); return; }
     this._panelFor(tab)?.render();
   }
 
   _patchActive() {
+    if (this._activeTab === 'roster' && this._detailOpen) { this._detail.patch(); return; }
     this._panelFor(this._activeTab)?.patch();
-    if (this._activeTab === 'roster') this._detail.patch();
   }
 
   _panelFor(tab) {

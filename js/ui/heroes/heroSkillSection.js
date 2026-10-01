@@ -23,27 +23,26 @@ function magnitudeHtml(skill, kind) {
 function effectRowsHtml(hero, skill) {
   return skillEffectActivation(hero, skill).map(entry => `
     <span class="hero-skill-effect hero-skill-effect--${entry.active ? 'live' : 'dormant'}">
-      ${entry.active ? '' : icon('lock')}
-      ${escapeHtml(entry.label)}${magnitudeHtml(skill, entry.kind)}
-      ${entry.active ? '' : `<em class="hero-skill-effect-req">active when ${escapeHtml(entry.requirement)}</em>`}
+      ${entry.active ? '● Active:' : '○ Dormant:'} ${escapeHtml(entry.label)}${magnitudeHtml(skill, entry.kind)}
+      ${entry.active ? '' : `<em class="hero-skill-effect-req">— active when ${escapeHtml(entry.requirement)}</em>`}
     </span>`).join('');
 }
 
 function lockThresholdHtml(skill) {
-  return skill.type === 'major'
-    ? `<span class="hero-skill-unlock">${MAJOR_SKILL_STAR_GATE}★</span>`
-    : `<span class="hero-skill-unlock">Lv.${skill.unlockLevel ?? 1}</span>`;
+  const label = skill.type === 'major' ? `${MAJOR_SKILL_STAR_GATE}★ Awakening` : `Hero Lv ${skill.unlockLevel ?? 1}`;
+  return `<span class="hero-skill-unlock">${icon('lock')} ${label}</span>`;
 }
 
 function levelControlsHtml(skill, shardQty) {
   const cap = levelCapFor(skill);
   const affordable = skill.nextCost > 0 && shardQty >= skill.nextCost;
+  const unit = skill.nextCost === 1 ? 'shard' : 'shards';
   const button = skill.atCap
     ? `<span class="hero-skill-maxed">MAX</span>`
-    : `<button class="btn btn-xs skill-level-up ${affordable ? 'btn-gold' : 'btn-ghost'}"
-               data-skill-id="${escapeHtml(skill.id)}" ${affordable ? '' : 'disabled'}
+    : `<button type="button" class="btn btn-xs skill-level-up ${affordable ? 'btn-primary' : 'hq-btn-secondary'}"
+               data-action="level-skill" data-skill-id="${escapeHtml(skill.id)}" ${affordable ? '' : 'disabled'}
                title="${affordable ? `Spend ${skill.nextCost} Hero Shards` : `Need ${skill.nextCost} Hero Shards (have ${shardQty})`}">
-         ⬆ ${skill.nextCost}
+         ⬆ ${skill.nextCost} ${unit}
        </button>`;
   return `<span class="hero-skill-level-pip">L${skill.level}/${cap}</span>${button}`;
 }
@@ -77,10 +76,4 @@ export function renderSkillSection(groups, hero) {
         ${skills.map(skill => skillRowHtml(hero, skill, shardQty)).join('')}
       </div>`;
   }).join('');
-}
-
-export function bindSkillSection(root, onLevelUp) {
-  root.querySelectorAll('.skill-level-up').forEach(btn => {
-    btn.addEventListener('click', e => onLevelUp(e.currentTarget.dataset.skillId));
-  });
 }

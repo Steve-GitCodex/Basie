@@ -1,4 +1,5 @@
 import { eventBus } from '../../core/EventBus.js';
+import { AWAKENING_CONFIG, BUILDINGS_CONFIG, SHARDS_TO_UNLOCK } from '../../entities/GAME_DATA.js';
 import { heroArt } from '../icons/heroArt.js';
 import { TIER_CSS_SUFFIX, escapeHtml } from '../uiUtils.js';
 
@@ -17,13 +18,20 @@ export function portraitHtml(hero, variant = 'thumb') {
   return `<img class="hero-portrait hero-portrait--${suffix} hero-portrait--${variant}" src="${src}" alt="${hero?.name ?? ''}" loading="lazy">`;
 }
 
+export const buildingNameOf = instanceId =>
+  BUILDINGS_CONFIG[String(instanceId).replace(/_\d+$/, '')]?.name ?? instanceId;
+
+export function stopClips(root) {
+  root?.querySelectorAll('video').forEach(v => v.pause());
+}
+
 export function statusChipHtml(hero, { squadName } = {}) {
   if (!hero?.isOwned) return `<span class="hero-assignment-chip chip-unowned">Not recruited</span>`;
   if (hero.isInSquad) {
     return `<span class="hero-assignment-chip chip-squad">${escapeHtml(squadName ?? 'Squad')}</span>`;
   }
   if (hero.isInBuilding) {
-    return `<span class="hero-assignment-chip chip-building">${hero.assignedBuilding ?? 'Stationed'}</span>`;
+    return `<span class="hero-assignment-chip chip-building">${escapeHtml(buildingNameOf(hero.assignedBuilding) ?? 'Stationed')}</span>`;
   }
   return `<span class="hero-assignment-chip chip-idle">○ Idle</span>`;
 }
@@ -56,4 +64,26 @@ export function bindPlayButton(rootEl) {
       video.play();
     });
   });
+}
+
+export function rarityClass(hero) {
+  return `hq-rarity--${hero?.tier ?? 'normal'}`;
+}
+
+export function starsHtml(stars) {
+  return Array.from({ length: AWAKENING_CONFIG.maxStars }, (_, i) =>
+    `<span class="hero-star ${i < stars ? 'hero-star--filled' : 'hero-star--empty'}">★</span>`).join('');
+}
+
+function progress(have, need) {
+  const pct = need > 0 ? Math.min(100, Math.round((have / need) * 100)) : 0;
+  return { have, need, pct, ready: need > 0 && have >= need };
+}
+
+export function shardProgress(hero) {
+  return progress(hero?.shardQty ?? 0, SHARDS_TO_UNLOCK[hero?.tier] ?? 0);
+}
+
+export function fragmentProgress(hero) {
+  return progress(hero?.fragmentQty ?? 0, hero?.fragmentsNeeded ?? 0);
 }

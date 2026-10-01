@@ -1,0 +1,169 @@
+.hero-squad-assign-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  width: 100%;
+  margin-bottom: var(--space-2);
+}
+
+.hero-squad-dropdown {
+  flex: 1;
+}
+
+.hero-squad-dropdown .squad-dropdown-trigger {
+  height: 36px;
+}
+
+.squad-dropdown-option.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+  cursor: default;
+}
+
+.hero-no-squads-hint {
+  padding: var(--space-3);
+  background: rgba(99,102,241,0.08);
+  border: 1px solid rgba(99,102,241,0.2);
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+  color: var(--clr-text-muted);
+  text-align: center;
+}
+
+.mt-2 { margin-top: var(--space-2); }
+
+@keyframes heroLevelGlow {
+  0%,100% { box-shadow: none; }
+  50%     { box-shadow: 0 0 14px 4px rgba(255,200,50,0.75), 0 0 28px 8px rgba(255,200,50,0.30); }
+}
+
+.hero-glow {
+  animation: heroLevelGlow 1.2s ease-in-out infinite;
+}
+
+@keyframes xpFloat {
+  0%   { transform: translateY(0);     opacity: 1; }
+  100% { transform: translateY(-30px); opacity: 0; }
+}
+
+.xp-float {
+  position: fixed;
+  z-index: var(--z-float);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--clr-gold, #f59e0b);
+  pointer-events: none;
+  animation: xpFloat 1.0s ease-out forwards;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+}
+
+.heroes-tabs {
+  display: flex;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--clr-border);
+  margin-bottom: var(--space-3);
+}
+
+.heroes-tab-panel {
+  min-height: var(--space-12);
+}
+
+.heroes-tab {
+  padding: var(--space-2) var(--space-4);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--clr-text-muted);
+  cursor: pointer;
+}
+
+.heroes-tab--active {
+  color: var(--clr-text-primary);
+  border-bottom-color: var(--clr-primary);
+}
+
+.hero-portrait--thumb { width: 100%; height: auto; object-fit: contain; }
+.hero-portrait--emoji { font-size: 2rem; }
+
+.hero-portrait--splash { width: 100%; max-height: 420px; object-fit: contain; }
+.hero-splash-video { position: relative; display: flex; justify-content: center; }
+.hero-play-btn {
+  padding: var(--space-2) var(--space-4);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.hero-splash-video-el { width: 100%; max-height: 420px; }
+.hero-backstory { font-style: italic; opacity: 0.85; }
+.hero-deploy-hint { font-size: 0.85em; opacity: 0.7; margin-top: var(--space-1); }
+
+#view-heroes {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-5) var(--dock-clearance);
+}
+
+#view-heroes .view-header h2 {
+  font-family: var(--font-heading);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+#view-heroes .heroes-tab {
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+#view-heroes .btn {
+  font-family: var(--font-heading);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hq-rarity--normal    { --rarity: var(--clr-rarity-normal);    --rarity-bg: var(--clr-rarity-normal-bg); }
+.hq-rarity--epic      { --rarity: var(--clr-rarity-epic);      --rarity-bg: var(--clr-rarity-epic-bg); }
+.hq-rarity--legendary { --rarity: var(--clr-rarity-legendary); --rarity-bg: var(--clr-rarity-legendary-bg); }
+
+.hq-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px 7px;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.hq-pill--rarity { color: var(--rarity); }
+.hq-pill--muted  { color: var(--clr-text-secondary); }
+
+.hq-bar {
+  display: block;
+  height: 5px;
+  background: var(--clr-bg-panel);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.hq-bar > i {
+  display: block;
+  height: 100%;
+  background: var(--rarity, var(--clr-primary));
+  transition: width 300ms ease;
+}
+.hq-bar--ready > i { background: var(--clr-success); }
+
+.hq-btn-secondary {
+  background: var(--clr-bg-panel);
+  color: var(--clr-text-primary);
+  border: 1px solid var(--clr-border-light);
+}
+.hq-btn-secondary:hover:not(:disabled) { background: var(--clr-bg-hover); }
+
+@media (max-width: 600px) {
+  #view-heroes { padding-left: var(--space-4); padding-right: var(--space-4); }
+}
+
+#view-heroes :focus-visible { outline: 2px solid var(--clr-primary); outline-offset: 2px; }

@@ -6,6 +6,7 @@ import {
   skillEffectKinds,
   skillEffectActivation,
   skillDormancy,
+  activeSkillCountAt,
 } from '../../js/systems/hero/heroSkillActivation.js';
 
 function heroAt(buildingId) {
@@ -69,4 +70,42 @@ test('a two-context skill reports per-effect state, not one state for the whole 
 test('the dormancy requirement names a real building the player can act on', () => {
   const [entry] = skillEffectActivation(heroAt('farm_0'), SKILLS_CONFIG.arcane_archive);
   assert.match(entry.requirement, /workshop/i);
+});
+
+function rosterHero(skills, buildingId = null) {
+  return { ...heroAt(buildingId), skills: { passive: skills, support: [], major: [] } };
+}
+
+const unlockedSkill = id => ({ ...SKILLS_CONFIG[id], unlocked: true });
+const lockedSkill   = id => ({ ...SKILLS_CONFIG[id], unlocked: false });
+
+test('an explicit posting overrides where the hero actually stands', () => {
+  const [entry] = skillEffectActivation(heroAt('farm_0'), SKILLS_CONFIG.grit, 'barracks');
+  assert.equal(entry.active, true);
+});
+
+test('omitting the posting still reads the hero\'s real assignment', () => {
+  assert.equal(skillEffectActivation(heroAt('barracks_0'), SKILLS_CONFIG.grit)[0].active, true);
+  assert.equal(skillEffectActivation(heroAt('farm_0'), SKILLS_CONFIG.grit)[0].active, false);
+});
+
+test('activeSkillCountAt counts only unlocked skills that pay at that building', () => {
+  const hero = rosterHero([unlockedSkill('scavenge'), unlockedSkill('grit'), lockedSkill('trail_marks')]);
+  assert.equal(activeSkillCountAt(hero, 'farm'), 1);
+  assert.equal(activeSkillCountAt(hero, 'barracks'), 1);
+});
+
+test('a skill with two payers counts once at either payer', () => {
+  const hero = rosterHero([unlockedSkill('wastelands_bounty')]);
+  assert.equal(activeSkillCountAt(hero, 'farm'), 1);
+  assert.equal(activeSkillCountAt(hero, 'barracks'), 1);
+});
+
+test('a building that pays none of the hero\'s skills counts zero', () => {
+  const hero = rosterHero([unlockedSkill('scavenge'), unlockedSkill('grit')]);
+  assert.equal(activeSkillCountAt(hero, 'workshop'), 0);
+});
+
+test('a hero without skills counts zero rather than throwing', () => {
+  assert.equal(activeSkillCountAt({ assignment: { type: 'none' } }, 'farm'), 0);
 });

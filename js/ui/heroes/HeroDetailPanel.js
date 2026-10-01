@@ -1,10 +1,14 @@
 import { eventBus } from '../../core/EventBus.js';
-import { AWAKENING_CONFIG, HERO_CLASSIFICATIONS } from '../../entities/GAME_DATA.js';
+import { HERO_CLASSIFICATIONS } from '../../entities/GAME_DATA.js';
 import { icon, iconFromEmoji } from '../icons.js';
-import { TIER_CSS_SUFFIX } from '../uiUtils.js';
-import { portraitHtml, statusChipHtml, TIER_META, videoHtml, bindPlayButton } from './heroCardView.js';
+import { escapeHtml } from '../uiUtils.js';
+import {
+  portraitHtml, statusChipHtml, TIER_META, videoHtml, bindPlayButton, rarityClass, starsHtml,
+} from './heroCardView.js';
 import { squadNameForHero } from './heroSquadLookup.js';
-import { renderSkillSection, bindSkillSection } from './heroSkillSection.js';
+import { detailNavHtml, neighbourIds } from './heroDetailNav.js';
+import { detailTabsHtml, selectDetailTab, patchDetailTabs } from './heroDetailTabs.js';
+import { unlockPathHtml } from './heroUnlockPath.js';
 
 const AURA_LABELS = {
   attack_boost:  'Attack Boost',
@@ -13,231 +17,223 @@ const AURA_LABELS = {
   defense_boost: 'Defense Boost',
 };
 
+const XP_BUNDLES = [
+  { id: 'xp_bundle_small',  label: 'Tome +250' },
+  { id: 'xp_bundle_medium', label: 'Tome +1K'  },
+  { id: 'xp_bundle_large',  label: 'Tome +5K'  },
+];
+
+const finite = (value, fallback) => (Number.isFinite(value) ? value : fallback);
+
+function statValues(hero) {
+  const stats = hero.effectiveStats ?? hero.stats;
+  return {
+    level:   `LV ${hero.level}`,
+    hp:      stats.hp.toLocaleString(),
+    attack:  String(stats.attack),
+    defense: String(stats.defense),
+  };
+}
+
+function xpText(hero) {
+  return `XP ${finite(hero.xp, 0).toLocaleString()} / ${finite(hero.xpToNext, 0).toLocaleString()}`;
+}
+
+function xpPct(hero) {
+  return Math.min(100, (finite(hero.xp, 0) / finite(hero.xpToNext, 1)) * 100);
+}
+
 export class HeroDetailPanel {
   constructor(systems) {
     this._s = systems;
     this._root = null;
     this._heroId = null;
+    this._tab = 'skills';
+    this._renderedId = null;
+    this._renderedOwned = null;
+    this._onBack = null;
+    this._order = () => [];
   }
 
-  init(rootEl) { this._root = rootEl; }
+  init(rootEl) {
+    this._root = rootEl;
+    rootEl.addEventListener('click', e => this._onClick(e));
+  }
 
-  showHero(heroId) { this._heroId = heroId; this.render(); }
+  onBack(cb) { this._onBack = cb; }
+
+  setOrder(fn) { this._order = fn; }
+
+  showHero(heroId) {
+    if (heroId !== this._heroId) this._tab = 'skills';
+    this._heroId = heroId;
+    this.render();
+  }
 
   render() {
     if (!this._root) return;
     const hero = this._hero();
-    if (!hero) { this._root.innerHTML = `<div class="heroes-detail-empty"><p>Select a hero to manage them</p></div>`; return; }
+    if (!hero) { this._root.innerHTML = ''; delete this._root.dataset.heroId; return; }
+    this._root.dataset.heroId = hero.id;
+    this._renderedId = hero.id;
+    this._renderedOwned = hero.isOwned;
     this._root.innerHTML = this._html(hero);
-    this._bind(hero);
+    bindPlayButton(this._root);
   }
 
   patch() {
     const hero = this._hero();
     if (!hero || !this._root) return;
-    const lvl = this._root.querySelector('.hero-detail-level-badge');
-    if (lvl) lvl.textContent = `Lv.${hero.level}`;
-    const chip = this._root.querySelector('.hero-assignment-chip');
-    if (chip) chip.outerHTML = statusChipHtml(hero, { squadName: this._squadName(hero) });
-    if (this._root.querySelector('video')) { this._patchSkills(); return; }
-    this.render();
+    if (hero.id !== this._renderedId || hero.isOwned !== this._renderedOwned) { this.render(); return; }
+
+    for (const [key, value] of Object.entries(statValues(hero))) {
+      const el = this._root.querySelector(`[data-stat="${key}"]`);
+      if (el) el.textContent = value;
+    }
+    const stars = this._root.querySelector('.hq-detail__stars');
+    if (stars) stars.innerHTML = starsHtml(hero.stars);
+    const xpLabel = this._root.querySelector('.hq-xp__text');
+    if (xpLabel) xpLabel.textContent = xpText(hero);
+    const xpFill = this._root.querySelector('.hq-bar--xp > i');
+    if (xpFill) xpFill.style.width = `${xpPct(hero)}%`;
+    const tomes = this._root.querySelector('.hq-xp__tomes');
+    if (tomes) tomes.innerHTML = this._tomesHtml();
+    const chip = this._root.querySelector('.hq-detail__chip');
+    if (chip) chip.innerHTML = statusChipHtml(hero, { squadName: this._squadName(hero) });
+    const unlock = this._root.querySelector('.hq-unlock');
+    if (unlock) unlock.outerHTML = unlockPathHtml(hero);
+    patchDetailTabs(this._root, hero);
   }
 
   _hero() { return this._s.heroes.getRosterWithState().find(h => h.id === this._heroId) ?? null; }
 
-  _skillNameOf(hero, skillId) {
-    return Object.values(hero.skills ?? {}).flat().find(s => s.id === skillId)?.name ?? 'Skill';
-  }
-
-  _bindSkills(hero) {
-    const host = this._root.querySelector('.hero-skill-groups');
-    if (!host) return;
-    bindSkillSection(host, skillId => {
-      eventBus.emit('ui:click');
-      const name = this._skillNameOf(hero, skillId);
-      const r = this._s.heroes.levelUpSkill(hero.id, skillId);
-      if (!r.success) {
-        eventBus.emit('ui:error');
-        this._s.notifications?.show('warning', 'Cannot Level Up', r.reason);
-      } else {
-        this._s.notifications?.show('success', '⬆ Skill Leveled', `${name} is now L${r.level}.`);
-      }
-    });
-  }
-
-  _patchSkills() {
-    const host = this._root.querySelector('.hero-skill-groups');
-    const hero = this._hero();
-    if (!host || !hero) return;
-    host.innerHTML = renderSkillSection(hero.skills, hero);
-    this._bindSkills(hero);
-    const tally = this._root.querySelector('.hero-skill-shard-qty');
-    if (tally) tally.textContent = hero.shardQty ?? 0;
-  }
-
   _squadName(hero) { return squadNameForHero(hero, this._s.um); }
 
+  _neighbourHeroes(heroId) {
+    const roster = this._s.heroes.getRosterWithState();
+    const { prev, next } = neighbourIds(this._order(), heroId);
+    return { prev: roster.find(h => h.id === prev) ?? null, next: roster.find(h => h.id === next) ?? null };
+  }
+
   _html(hero) {
-    const tierMeta = TIER_META[hero.tier] ?? TIER_META.normal;
-    const xpPct    = hero.isOwned ? Math.min(100, ((isFinite(hero.xp) ? hero.xp : 0) / (isFinite(hero.xpToNext) ? hero.xpToNext : 1)) * 100) : 0;
-
-    const statsHtml = `
-      <div class="hero-stat-grid">
-        <div class="hero-stat"><span class="hero-stat-icon">${icon('heart', 'icon--danger')}</span><span class="hero-stat-label">HP</span><span class="hero-stat-value">${(hero.effectiveStats?.hp ?? hero.stats.hp).toLocaleString()}</span></div>
-        <div class="hero-stat"><span class="hero-stat-icon">${icon('sword')}</span><span class="hero-stat-label">ATK</span><span class="hero-stat-value">${hero.effectiveStats?.attack ?? hero.stats.attack}</span></div>
-        <div class="hero-stat"><span class="hero-stat-icon">${icon('shield')}</span><span class="hero-stat-label">DEF</span><span class="hero-stat-value">${hero.effectiveStats?.defense ?? hero.stats.defense}</span></div>
-      </div>`;
-
-    const auraHtml = `
-      <div class="hero-aura-chip">
-        <span class="aura-icon">${icon('xp', 'icon--glow')}</span>
-        <span>${AURA_LABELS[hero.aura.type] ?? hero.aura.type} +${(hero.aura.value * 100).toFixed(0)}%</span>
-      </div>`;
-
-    let contentHtml = '';
-
-    if (!hero.isOwned) {
-      const fragPct = (hero.fragmentsNeeded ?? 0) > 0
-        ? Math.min(100, Math.round(((hero.fragmentQty ?? 0) / hero.fragmentsNeeded) * 100))
-        : 0;
-
-      contentHtml = `
-        <div class="hero-detail-section">
-          <div class="hero-detail-section-title">Recruitment</div>
-          <button class="btn btn-gold btn-goto-recruit w-full" data-hero="${hero.id}">Recruit in the Recruit Hall</button>
-        </div>
-        <div class="hero-detail-section">
-          <div class="hero-detail-section-title">Fragment Progress</div>
-          <div class="hero-detail-frag-bar-wrap">
-            <div class="hero-detail-frag-bar" style="width:${fragPct}%"></div>
-          </div>
-          <div class="hero-detail-frag-label">
-            <span>${icon('flask-potion')} ${hero.fragmentQty ?? 0} / ${hero.fragmentsNeeded ?? '?'} fragments</span>
-            <span>${fragPct}%</span>
-          </div>
-        </div>`;
-
-    } else {
-      const maxStars = AWAKENING_CONFIG.maxStars;
-      const starHtml = Array.from({ length: maxStars }, (_, i) =>
-        `<span class="hero-star ${i < hero.stars ? 'hero-star--filled' : 'hero-star--empty'}">${i < hero.stars ? '★' : '☆'}</span>`
-      ).join('');
-
-      const XP_BUNDLES = [
-        { id: 'xp_bundle_small',  label: '+250 XP' },
-        { id: 'xp_bundle_medium', label: '+1K XP'  },
-        { id: 'xp_bundle_large',  label: '+5K XP'  },
-      ];
-      const bundlesOwned = XP_BUNDLES.filter(b => (this._s.inventory?.getQuantity(b.id) ?? 0) > 0);
-      const bundleHtml = bundlesOwned.length > 0
-        ? bundlesOwned.map(b => `
-            <button class="btn btn-xs btn-xp-bundle btn-primary" data-hero="${hero.id}" data-bundle="${b.id}">
-              ${b.label} <span class="xp-qty-badge">×${this._s.inventory.getQuantity(b.id)}</span>
-            </button>`).join('')
-        : `<span class="hero-xp-hint">Buy Tomes from <strong>Shop</strong></span>`;
-
-      const skillsHtml = renderSkillSection(hero.skills, hero);
-
-      const atMaxStars = hero.stars >= maxStars;
-      const awakenHtml = atMaxStars
-        ? `<div class="hero-awaken-maxed">${icon('star-burst', 'icon--gold')} Fully Awakened!</div>`
-        : `<div class="hero-awaken-costs">
-            <button class="btn btn-xs btn-awaken-shard ${hero.canAwakenByShard ? 'btn-gold' : 'btn-ghost'}" data-hero="${hero.id}" ${!hero.canAwakenByShard ? 'disabled' : ''}>
-              ${icon('star-burst', 'icon--gold')} Shards (${hero.shardQty ?? 0}/${hero.nextStarShardCost ?? 0})
-            </button>
-          </div>`;
-
-      const assignmentStatusChip = statusChipHtml(hero, { squadName: this._squadName(hero) });
-
-      const deployHtml = `
-        <button class="btn btn-primary btn-deploy w-full" data-hero="${hero.id}">Deploy…</button>
-        <div class="hero-deploy-hint">Squad postings are managed in the Barracks.</div>`;
-
-      contentHtml = `
-        <div class="hero-detail-section">
-          <div class="hero-detail-section-title">${icon('star-burst', 'icon--gold')} Awakening — Star ${hero.stars}/${maxStars}</div>
-          <div class="hero-stars-row">${starHtml}</div>
-          ${awakenHtml}
-        </div>
-        <div class="hero-detail-section">
-          <div class="hero-detail-section-title">Experience — Lv.${hero.level}</div>
-          <div class="hero-xp-label">
-            <span>XP</span><span>${(isFinite(hero.xp) ? hero.xp : 0).toLocaleString()} / ${(isFinite(hero.xpToNext) ? hero.xpToNext : 0).toLocaleString()}</span>
-          </div>
-          <div class="progress-bar"><div class="progress-fill progress-fill-xp" style="width:${xpPct}%"></div></div>
-          <div class="hero-xp-actions">${bundleHtml}</div>
-        </div>
-        <div class="hero-detail-section">
-          <div class="hero-detail-section-title">${icon('lightning')} Skills <span class="hero-skill-shard-tally">${icon('star-burst', 'icon--gold')} <span class="hero-skill-shard-qty">${hero.shardQty ?? 0}</span> shards</span></div>
-          <div class="hero-skill-groups">${skillsHtml || '<span class="hero-skills-empty">No skills defined.</span>'}</div>
-        </div>
-        <div class="hero-detail-section">
-          <div class="hero-detail-section-title">Assignment</div>
-          ${assignmentStatusChip}
-          ${deployHtml}
-        </div>`;
-    }
-
-    const detailTierCssSuffix = TIER_CSS_SUFFIX[hero.tier] ?? 'common';
+    const { prev, next } = this._neighbourHeroes(hero.id);
     return `
-      <div class="heroes-detail-panel">
-        <div class="heroes-detail-hero-header heroes-detail-hero-header--${detailTierCssSuffix}">
+      <div class="hq-detail ${rarityClass(hero)}${hero.isOwned ? '' : ' hq-detail--locked'}">
+        <div class="hq-detail__art">
           ${portraitHtml(hero, 'splash')}
-          ${videoHtml(hero)}
-          <div class="hero-detail-header-info">
-            <div class="hero-detail-badges-row">
-              <div class="hero-tier-badge tier-badge-${detailTierCssSuffix}">${tierMeta.symbol} ${tierMeta.label}</div>
-              ${hero.classification ? `<div class="hero-class-badge class-${hero.classification}">${iconFromEmoji(HERO_CLASSIFICATIONS[hero.classification]?.icon ?? '') || icon('sword')} ${(HERO_CLASSIFICATIONS[hero.classification]?.label ?? hero.classification)}</div>` : ''}
-            </div>
-            <div class="hero-detail-name">${hero.name}</div>
-            <div class="hero-detail-title-sub">${hero.title}</div>
-          </div>
-          ${hero.isOwned ? `<div class="hero-detail-level-badge">Lv.${hero.level}</div>` : ''}
+          <div class="hq-detail__nav">${detailNavHtml(prev, next)}</div>
+          <div class="hq-detail__clip">${videoHtml(hero)}</div>
         </div>
-        <div class="hero-detail-body">
-          <p class="hero-description">${hero.description}</p>
-          ${hero.backstory ? `<p class="hero-backstory">${hero.backstory}</p>` : ''}
-          ${statsHtml}
-          ${auraHtml}
-          <div class="hero-detail-sections">${contentHtml}</div>
+        <div class="hq-detail__info">
+          ${this._headerHtml(hero)}
+          ${this._statsHtml(hero)}
+          ${hero.isOwned ? this._xpHtml(hero) : unlockPathHtml(hero)}
+          ${detailTabsHtml(hero, this._tab)}
+          ${hero.isOwned ? this._footerHtml(hero) : ''}
         </div>
       </div>`;
   }
 
-  _bind(hero) {
-    const root = this._root;
+  _headerHtml(hero) {
+    const meta = TIER_META[hero.tier] ?? TIER_META.normal;
+    const cls = HERO_CLASSIFICATIONS[hero.classification];
+    return `
+      <div class="hq-detail__head">
+        <div class="hq-detail__pills">
+          <span class="hq-pill hq-pill--rarity">${meta.label}</span>
+          ${cls ? `<span class="hq-pill hq-pill--muted">${iconFromEmoji(cls.icon ?? '') || icon('sword')} ${escapeHtml(cls.label)}</span>` : ''}
+        </div>
+        <h3 class="hq-detail__name">${escapeHtml(hero.name)}</h3>
+        <div class="hq-detail__title">${escapeHtml(hero.title ?? '')}${hero.isOwned ? '' : ' · Not recruited'}</div>
+        ${hero.isOwned ? `<div class="hq-detail__stars">${starsHtml(hero.stars)}</div>` : ''}
+      </div>`;
+  }
 
-    root.querySelector('.btn-goto-recruit')?.addEventListener('click', () => {
-      eventBus.emit('ui:click');
-      eventBus.emit('ui:openHeroesTab', 'recruit');
-    });
+  _statsHtml(hero) {
+    const v = statValues(hero);
+    const stat = (key, label) => `<div class="hq-stat"><b class="hq-stat__value" data-stat="${key}">${v[key]}</b><span class="hq-stat__label">${label}</span></div>`;
+    return `
+      <div class="hq-stats">
+        ${hero.isOwned ? stat('level', 'Level') : ''}
+        ${stat('hp', 'HP')}
+        ${stat('attack', 'Attack')}
+        ${stat('defense', 'Defense')}
+        <span class="hq-aura">${icon('xp', 'icon--glow')} ${AURA_LABELS[hero.aura.type] ?? hero.aura.type} +${(hero.aura.value * 100).toFixed(0)}%</span>
+      </div>`;
+  }
 
-    root.querySelector('.btn-deploy')?.addEventListener('click', e => {
-      eventBus.emit('ui:click');
-      eventBus.emit('heroes:deployRequest', { heroId: e.currentTarget.dataset.hero });
-      eventBus.emit('ui:openHeroesTab', 'assign');
-    });
+  _xpHtml(hero) {
+    return `
+      <div class="hq-xp">
+        <div class="hq-xp__row">
+          <span class="hq-xp__text">${xpText(hero)}</span>
+          <span class="hq-xp__tomes">${this._tomesHtml()}</span>
+        </div>
+        <span class="hq-bar hq-bar--xp"><i style="width:${xpPct(hero)}%"></i></span>
+      </div>`;
+  }
 
-    root.querySelectorAll('.btn-xp-bundle').forEach(btn => {
-      btn.addEventListener('click', e => {
-        eventBus.emit('ui:click');
-        const r = this._s.inventory.useItem(e.currentTarget.dataset.bundle, { heroId: e.currentTarget.dataset.hero });
-        if (!r.success) {
-          eventBus.emit('ui:error');
-          this._s.notifications?.show('warning', 'Cannot Apply', r.reason);
-        } else {
-          this._s.notifications?.show('success', '📖 XP Applied!', `+${r.xpAmount?.toLocaleString() ?? '?'} XP applied!`);
-        }
-      });
-    });
+  _tomesHtml() {
+    const owned = XP_BUNDLES
+      .map(b => ({ ...b, qty: this._s.inventory?.getQuantity(b.id) ?? 0 }))
+      .filter(b => b.qty > 0);
+    if (owned.length === 0) return `<span class="hero-xp-hint">Buy Tomes from the <strong>Shop</strong></span>`;
+    return owned.map(b => `
+      <button type="button" class="btn btn-xs hq-btn-secondary btn-xp-bundle" data-action="tome" data-bundle="${b.id}">
+        ${b.label} <span class="xp-qty-badge">×${b.qty}</span>
+      </button>`).join('');
+  }
 
-    root.querySelector('.btn-awaken-shard')?.addEventListener('click', e => {
-      eventBus.emit('ui:click');
-      const r = this._s.heroes.awakenHero(e.currentTarget.dataset.hero);
-      if (!r.success) { eventBus.emit('ui:error'); this._s.notifications?.show('warning', 'Cannot Awaken', r.reason); }
-    });
+  _footerHtml(hero) {
+    return `
+      <div class="hq-detail__footer">
+        <span class="hq-detail__posted">Posted: <span class="hq-detail__chip">${statusChipHtml(hero, { squadName: this._squadName(hero) })}</span></span>
+        <span class="hero-deploy-hint">Squad leaders are posted in the Barracks.</span>
+        <button type="button" class="btn btn-primary btn-deploy" data-action="change-post">Change post</button>
+      </div>`;
+  }
 
-    this._bindSkills(hero);
-    bindPlayButton(root);
+  _onClick(e) {
+    const el = e.target.closest('[data-action]');
+    if (!el || !this._root.contains(el) || el.disabled) return;
+    const hero = this._hero();
+    if (!hero) return;
+    eventBus.emit('ui:click');
+    const handlers = {
+      'nav-back':     () => this._onBack?.(),
+      'nav-go':       () => this.showHero(el.dataset.heroId),
+      'tab':          () => { this._tab = el.dataset.tab; selectDetailTab(this._root, this._tab); },
+      'tome':         () => this._useTome(hero, el.dataset.bundle),
+      'awaken':       () => this._report(this._s.heroes.awakenHero(hero.id), 'Cannot Awaken'),
+      'level-skill':  () => this._levelSkill(hero, el.dataset.skillId),
+      'change-post':  () => {
+        eventBus.emit('heroes:deployRequest', { heroId: hero.id });
+        eventBus.emit('ui:openHeroesTab', 'assign');
+      },
+      'convert':      () => this._report(this._s.heroes.convertFragments(hero.id), 'Cannot Convert', '✦ Hero Shard Made', `Fragments became a ${hero.name} Hero Shard.`),
+      'unlock':       () => this._report(this._s.heroes.unlockFromShards(hero.id), 'Cannot Unlock', '👑 Hero Recruited!', `${hero.name} has joined your roster!`),
+      'goto-recruit': () => eventBus.emit('ui:openHeroesTab', 'recruit'),
+    };
+    handlers[el.dataset.action]?.();
+  }
+
+  _useTome(hero, bundleId) {
+    const r = this._s.inventory.useItem(bundleId, { heroId: hero.id });
+    this._report(r, 'Cannot Apply', '📖 XP Applied!', `+${r.xpAmount?.toLocaleString() ?? '?'} XP applied!`);
+  }
+
+  _levelSkill(hero, skillId) {
+    const name = Object.values(hero.skills ?? {}).flat().find(s => s.id === skillId)?.name ?? 'Skill';
+    const r = this._s.heroes.levelUpSkill(hero.id, skillId);
+    this._report(r, 'Cannot Level Up', '⬆ Skill Leveled', `${name} is now L${r.level}.`);
+  }
+
+  _report(result, failTitle, successTitle, successMessage) {
+    if (!result?.success) {
+      eventBus.emit('ui:error');
+      this._s.notifications?.show('warning', failTitle, result?.reason ?? 'Something went wrong.');
+      return;
+    }
+    if (successTitle) this._s.notifications?.show('success', successTitle, successMessage);
   }
 }

@@ -3,7 +3,103 @@
 > Most-updated file in the repo. Every session that changes code updates this file
 > (what landed, known issues, exact next steps). See the session protocol in `CLAUDE.md`.
 
-## Hero Phase 2c — COMPLETE, all 12 tasks (2026-08-15, latest)
+## Hero Quarters UI redesign — COMPLETE, all 9 tasks (2026-10-01, latest)
+
+`#view-heroes` redesigned end to end; **everything is uncommitted** ("tree is commit-ready").
+Plan: `docs/superpowers/plans/2026-10-01-hero-quarters-ui-redesign.md`; spec
+`docs/superpowers/specs/2026-10-01-hero-quarters-ui-redesign-design.md` (gitignored). **ADR 0030**
+(`docs/20-decisions/0030-hero-quarters-visual-system.md`) records the decisions. SDD ledger:
+`.superpowers/sdd/progress.md`.
+
+- **ADR 0030 tracking is Steve's call at commit time** (0027-0029 are on-disk only; same note style as 0029).
+- **What landed:** T1 `heroSkillActivation` seam (+6 tests); T2 `pullPlan.js` (+10); T3 `heroes.css` split
+  into six per-screen `heroes-*.css` + Oswald `--font-heading` / `--clr-rarity-*` / `--dock-clearance` tokens;
+  T4 portrait-card roster gallery (`hq-card`); T5 full-screen hero detail (`HeroDetailPanel`,
+  `heroDetailTabs.js`, `heroDetailNav.js` +4 tests, `heroUnlockPath.js`; sticky art column);
+  T6 Recruit Hall rework; T7 `pullSequencer.js` pull sequence + spotlight; T8 Assignments board;
+  T9 dead-CSS cleanup + ADR + this handoff.
+- **Final fix wave (review follow-ups):** (1) hero clips pause on leaving the detail, the Roster tab or the
+  recruit reveal (`stopClips`; regression smoke 'leaving a hero stops their clip'; detail nav now sits above a
+  playing clip so Back stays clickable); (2) muted text on detail rules (dormant effect, unlock, stat label,
+  inactive tab) now uses `--clr-text-secondary` for AA contrast; (3) `#view-heroes :focus-visible` outline,
+  tab/tabpanel ids + `aria-controls`/`aria-labelledby`, spotlight Continue is focused; (4) the detail footer
+  chip names the building via `buildingNameOf` (now in `heroCardView.js`) instead of "mine_0" (smoke
+  'the detail footer names the post, not its id'); (5) `RecruitPanel._pull` sets `_revealing` before the
+  roll loop so multi-pull inventory events no longer patch the hidden banners.
+- **Deferred follow-ups:** dedupe tier labels / `rarityClass` use / progress maths / repeated portrait-fill
+  CSS; split `heroes-smoke.mjs` (over 400 lines); smoke coverage for Pull again, View hero, multi-spotlight
+  skip and the tome/awaken routes; unit tests for `rarityClass`/`shardProgress`/`fragmentProgress` in
+  `tests/unit/heroCardView.test.js`.
+- **Dead CSS:** `cards.css` 1853 -> 1403 lines (450 deleted, no insertions): every `hero-roster-*`,
+  `hero-detail-*` (card-era), `heroes-split-layout`/`-roster-pane`/`-detail-*`/`-section-label*`,
+  `hero-stat-*`, `hero-xp-*`, `hero-bonus-*`, `hero-aura-chip`, `hero-level-*`, `hero-tier-badge`,
+  `hero-squad-badge`, `hero-assign-section/-buttons`, `hero-awaken-costs`, `hero-recruit-section`,
+  `hero-inventory-btn`. Each re-grepped in `js/`, `index.html` and every other CSS file: zero refs.
+  Kept on purpose (protected or still live): `.hero-portrait`, `.hero-card*` (incl. dead-looking
+  `--squad`/`--building`/`-header`/`-req`/`-tier-stripe`/`-title-block`/`-ready-pill`), `.hero-control-bar`/
+  `-right`, `.tier-pill*`, `.hero-assignment-chip`, `.chip-*`, `.tier-filter-bar`. Barracks squad modal +
+  hero picker screenshotted before/after: identical apart from toast/tutorial-glow timing in the dimmed background.
+- **Dropped from the spec:** "Duplicate -> Shard" card label. `isDuplicate` is `true` for every non-hero
+  grant in `heroRecruitment.js`, so it cannot identify a duplicate hero.
+- **Deviations:** `ui:success` has no SoundManager listener, so the spotlight reuses the flip's `ui:click`
+  (no new sound event). The art column is sticky: `.hq-detail` uses `overflow: clip`, not `hidden`
+  (`hidden` makes sticky inert; a smoke check guards it). The pull sequence is also cancelled on leaving the
+  Heroes view (`HeroesUI` `ui:viewChanged`; discriminating smoke check). 0-slot board message reads
+  "Build the Hero Quarters to open slots".
+- **"Hero slots: 0 / 0" root cause (T8):** the Hero Quarters was under construction or never built (the
+  original screenshot's build had been refused for unmet prerequisites). Probe with prerequisites met:
+  queue 1, level 0, slots 0, then level 1, slots 5 after draining. Not a defect.
+- **Smoke selector updates (ADR 0012 note; markup changed, no check's meaning changed):**
+  `.hero-roster-card` -> `.hq-card`; card clicks go through `openHero()`; pull clicks are followed by
+  `finishPull()`; pity regex is now `/guaranteed in \d+ pulls?/` after pluralising "1 pull".
+
+### Full verification (Task 9)
+
+| Check | Result |
+|---|---|
+| `npm test` | **545/545, 0 failing** (was 525: +6 heroSkillActivation, +10 pullPlan, +4 heroDetailNav) |
+| `check-comments.mjs` | **exactly 12, all pre-existing**, none in any heroes file |
+| `boot-smoke` | **PASS** |
+| `heroes-smoke` | **PASS** (70 checks) |
+| `tutorial-smoke` | **PASS** |
+| `dev-smoke` | **PASS** except the known pre-existing `dev-anchor-nudger` `variantFile` failure |
+| Line gate | every `js/ui/heroes/*.js`, `HeroesUI.js`, `heroes-*.css` < 400 (max 291 CSS / 271 JS) |
+
+boot-smoke ("city canvas rendered pixels") and tutorial-smoke (spotlight) each failed once on a first run
+during this work and passed on re-run; unrelated to heroes.
+
+### Known issues / follow-ups
+
+- `tests/browser/heroes-smoke.mjs` is ~520 lines, over the ~400 guideline. Split it into sibling smoke files
+  as a follow-up (suite is additive; not split here).
+- Open Minors from review (ledger has detail): no smoke for tome/awaken/change-post/goto-recruit routes,
+  Pull again / View hero / multi-spotlight skip, open-Odds surviving a patch, or two pickers; pull buttons
+  innerHTML rebuild drops focus; `_pityPct` unclamped; reduced motion loses new-hero cues; 560px phone
+  single stage even without a spotlight; no tests for `rarityClass`/`shardProgress`/`fragmentProgress`.
+- Visual sign-off: desktop 1440x900 and phone 390x844 for roster, owned/unowned detail, recruit, assign all read
+  as intended (large art, Oswald caps, rarity colours, nothing under the dock). The global right-hand queue
+  sidebar/lightning tab overlaps the desktop roster's right edge in the sandbox: pre-existing, not Hero Quarters.
+
+### Dirty files (all uncommitted)
+
+Modified: `css/base/variables.css`, `css/components/cards.css`, `index.html`,
+`js/systems/hero/heroSkillActivation.js`, `js/ui/controllers/HeroesUI.js`,
+`js/ui/heroes/{HeroAssignmentPanel,HeroDetailPanel,HeroRosterPanel,RecruitPanel,heroCardView,heroSkillSection,recruitReveal}.js`,
+`tests/browser/heroes-smoke.mjs`, `tests/unit/heroSkillActivation.test.js`, `docs/30-roadmap.md`, `docs/40-active.md`.
+Deleted: `css/components/heroes.css`.
+New: `css/components/heroes-{assign,base,detail,pull,recruit,roster}.css`,
+`js/ui/heroes/{heroDetailNav,heroDetailTabs,heroUnlockPath,pullPlan,pullSequencer}.js`,
+`tests/unit/{heroDetailNav,pullPlan}.test.js`, `docs/20-decisions/0030-hero-quarters-visual-system.md`.
+Stray, not ours: `AxeHero.png` (repo root, untracked).
+
+### Next step — Phase 2d
+
+Spec `docs/superpowers/specs/2026-08-16-hero-phase2d-effect-seams-and-loss-ceiling-design.md` exists and
+**needs a plan** (writing-plans). The Phase 2d section below still lists its scope.
+
+---
+
+## Hero Phase 2c — COMPLETE, all 12 tasks (2026-08-15)
 
 The 6-skill progression model is done. Tasks 1-9 landed as eleven commits
 `873ae4c`..`0a9e0a8`; **Tasks 10, 11 and 12 landed this session and are uncommitted.**

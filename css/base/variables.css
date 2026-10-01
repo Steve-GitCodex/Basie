@@ -56,6 +56,7 @@
   --font-display:    'Orbitron', 'Outfit', sans-serif;
   --font-mono:       'JetBrains Mono', monospace;
   --font-body:       'Outfit', sans-serif;
+  --font-heading:    'Oswald', 'Outfit', sans-serif;
 
   --text-xs:   0.625rem;  /* 10px */
   --text-sm:   0.75rem;   /* 12px */
@@ -84,6 +85,7 @@
    * ========================================= */
   --header-height:     48px;
   --bottom-nav-height: 64px;
+  --dock-clearance:    calc(58px + var(--space-3) * 2 + env(safe-area-inset-bottom, 0px));
   --sidebar-width:     220px;   /* kept for legacy refs during transition */
   --sidebar-collapsed: 60px;
   --radius-sm:         4px;
@@ -117,6 +119,12 @@
   --clr-tier-legendary:       hsl(18, 88%, 55%);
   --clr-tier-legendary-muted: hsl(18, 60%, 18%);
   --clr-tier-legendary-glow:  hsla(18, 88%, 55%, 0.35);
+  --clr-rarity-normal:       hsl(35, 8%, 62%);
+  --clr-rarity-normal-bg:    hsl(30, 15%, 15%);
+  --clr-rarity-epic:         hsl(275, 45%, 62%);
+  --clr-rarity-epic-bg:      hsl(275, 25%, 16%);
+  --clr-rarity-legendary:    hsl(32, 90%, 55%);
+  --clr-rarity-legendary-bg: hsl(32, 45%, 17%);
 
   /* =========================================
    * TRANSITIONS

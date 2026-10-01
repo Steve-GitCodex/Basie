@@ -1,104 +1,53 @@
 import { HEROES_CONFIG, INVENTORY_ITEMS } from '../../entities/GAME_DATA.js';
 import { icon, iconFromEmoji } from '../icons.js';
-import { TIER_CSS_SUFFIX, escapeHtml } from '../uiUtils.js';
-import { portraitHtml, videoHtml, bindPlayButton } from './heroCardView.js';
+import { escapeHtml } from '../uiUtils.js';
+import { portraitHtml, TIER_META } from './heroCardView.js';
 
 const OUTCOME_META = {
-  hero:     { icon: icon('crown'),        label: 'Hero Recruited' },
+  hero:     { icon: icon('crown'),                    label: 'Hero' },
   shard:    { icon: icon('star-burst', 'icon--gold'), label: 'Hero Shard' },
-  fragment: { icon: icon('flask-potion'), label: 'Hero Fragment' },
-  xp:       { icon: icon('xp'),           label: 'XP Card' },
-  overflow: { icon: icon('box'),          label: 'Tier Shards' },
+  fragment: { icon: icon('flask-potion'),             label: 'Hero Fragment' },
+  xp:       { icon: icon('xp'),                       label: 'XP Card' },
+  overflow: { icon: icon('box'),                      label: 'Tier Shards' },
 };
 
-export function recruitReveal(rootEl, results, { onDone } = {}) {
-  rootEl.innerHTML = `
-    <div class="recruit-reveal">
-      <div class="recruit-reveal-cards">${results.map(r => resultCardHtml(r)).join('')}</div>
-      <button class="btn btn-primary recruit-reveal-done">Continue</button>
-    </div>`;
-  bindPlayButton(rootEl);
-  rootEl.querySelector('.recruit-reveal-done')?.addEventListener('click', () => onDone?.());
-}
+const tierLabel = tier => TIER_META[tier]?.label ?? '';
 
-function resultCardHtml(result) {
+export function resultCardHtml(result) {
   const meta = OUTCOME_META[result.outcome] ?? { icon: icon('x-circle'), label: 'Unknown' };
-
   if (result.grantFailed) {
     return `
       <div class="recruit-result-card recruit-result--error">
-        ${icon('warning')}
-        <div class="recruit-result-name">${meta.label}</div>
-        <div class="recruit-result-sub">${escapeHtml(result.reason ?? 'Grant failed.')}</div>
+        <span class="recruit-result-generic-icon">${icon('warning')}</span>
+        <span class="recruit-result-name">${meta.label}</span>
+        <span class="recruit-result-sub">${escapeHtml(result.reason ?? 'Grant failed.')}</span>
       </div>`;
   }
-
-  switch (result.outcome) {
-    case 'hero':      return heroResultHtml(result, meta);
-    case 'shard':     return heroCurrencyResultHtml(result, meta);
-    case 'fragment':  return heroCurrencyResultHtml(result, meta);
-    case 'xp':        return itemResultHtml(result, meta);
-    case 'overflow':  return overflowResultHtml(result, meta);
-    default:
-      return `
-        <div class="recruit-result-card">
-          ${icon('x-circle')}
-          <div class="recruit-result-name">Unknown Outcome</div>
-        </div>`;
-  }
+  if (result.outcome === 'hero') return heroFaceHtml(result);
+  return itemFaceHtml(result, meta);
 }
 
-function heroResultHtml(result, meta) {
-  const heroCfg = HEROES_CONFIG[result.heroId];
-  const tierCss = TIER_CSS_SUFFIX[heroCfg?.tier] ?? 'common';
-  const title = result.isDuplicate ? `${icon('warning')} Duplicate Hero!` : meta.label + '!';
+function heroFaceHtml(result) {
+  const cfg = HEROES_CONFIG[result.heroId];
   return `
-    <div class="recruit-result-card recruit-result--${tierCss}">
-      <div class="recruit-result-title">${title}</div>
-      ${portraitHtml(heroCfg, 'splash')}
-      ${videoHtml(heroCfg)}
-      <div class="recruit-result-name">${heroCfg?.name ?? result.heroId}</div>
-      <div class="recruit-result-sub">${heroCfg?.title ?? ''}</div>
-      ${result.isDuplicate
-        ? `<div class="recruit-result-notice recruit-result-notice--warning">Already owned — a duplicate card was added for Awakening.</div>`
-        : `<div class="recruit-result-notice recruit-result-notice--info">Hero joined your roster! Visit the Roster tab to manage them.</div>`}
+    <div class="recruit-result-card recruit-result--hero">
+      ${result.isDuplicate ? '' : '<span class="recruit-result-tag">New</span>'}
+      <span class="recruit-result-art">${portraitHtml(cfg, 'splash')}</span>
+      <span class="recruit-result-name">${escapeHtml(cfg?.name ?? result.heroId)}</span>
+      <span class="recruit-result-sub recruit-result-sub--rarity">${tierLabel(cfg?.tier)} hero</span>
     </div>`;
 }
 
-function heroCurrencyResultHtml(result, meta) {
+function itemFaceHtml(result, meta) {
+  const itemCfg = result.itemId ? INVENTORY_ITEMS[result.itemId] : null;
   const heroCfg = result.heroId ? HEROES_CONFIG[result.heroId] : null;
-  const itemCfg = result.itemId ? INVENTORY_ITEMS[result.itemId] : null;
-  const tier = result.tier ?? heroCfg?.tier ?? 'normal';
-  const tierCss = TIER_CSS_SUFFIX[tier] ?? 'common';
+  const sub = result.outcome === 'overflow'
+    ? 'Maxed hero — converted to tier shards'
+    : heroCfg ? `For ${heroCfg.name}` : (itemCfg?.description ?? tierLabel(result.tier));
   return `
-    <div class="recruit-result-card recruit-result--${tierCss}">
-      <div class="recruit-result-title">${meta.label}</div>
-      <div class="recruit-result-generic-icon">${iconFromEmoji(itemCfg?.icon ?? '') || meta.icon}</div>
-      <div class="recruit-result-name">${itemCfg?.name ?? meta.label}</div>
-      ${heroCfg ? `<div class="recruit-result-sub">For ${heroCfg.name}</div>` : ''}
-    </div>`;
-}
-
-function itemResultHtml(result, meta) {
-  const itemCfg = result.itemId ? INVENTORY_ITEMS[result.itemId] : null;
-  const tierCss = TIER_CSS_SUFFIX[result.tier] ?? 'common';
-  return `
-    <div class="recruit-result-card recruit-result--${tierCss}">
-      <div class="recruit-result-title">${meta.label}</div>
-      <div class="recruit-result-generic-icon">${iconFromEmoji(itemCfg?.icon ?? '') || meta.icon}</div>
-      <div class="recruit-result-name">${itemCfg?.name ?? meta.label}</div>
-      <div class="recruit-result-sub">${itemCfg?.description ?? ''}</div>
-    </div>`;
-}
-
-function overflowResultHtml(result, meta) {
-  const itemCfg = result.itemId ? INVENTORY_ITEMS[result.itemId] : null;
-  const tierCss = TIER_CSS_SUFFIX[result.tier] ?? 'common';
-  return `
-    <div class="recruit-result-card recruit-result--${tierCss}">
-      <div class="recruit-result-title">${meta.label}</div>
-      <div class="recruit-result-generic-icon">${iconFromEmoji(itemCfg?.icon ?? '') || meta.icon}</div>
-      <div class="recruit-result-name">${itemCfg?.name ?? meta.label}</div>
-      <div class="recruit-result-sub">Maxed hero — converted to tier shards.</div>
+    <div class="recruit-result-card">
+      <span class="recruit-result-generic-icon">${iconFromEmoji(itemCfg?.icon ?? '') || meta.icon}</span>
+      <span class="recruit-result-name">${escapeHtml(itemCfg?.name ?? meta.label)}</span>
+      <span class="recruit-result-sub">${escapeHtml(sub)}</span>
     </div>`;
 }

@@ -226,6 +226,8 @@ sprite generation.
 
 ## Current focus — Hero recruitment + management redesign
 
+- [x] Hero Quarters UI redesign (ADR 0030) — done 2026-10-01
+
 **Next feature of record (Steve, 2026-07-20).** Chosen ahead of Phase 4: the AI is not an
 `AIManager` shell but authoring actual opponents — capabilities, behaviours, and
 **personalities** — which is a design project before it is a code project, and materially
@@ -322,7 +324,7 @@ model retires entirely (interim anti-teleport guard dies with it).
 
 ## Backlog / nice-to-haves
 
-- [ ] **Phase 2c candidate, found by the final whole-branch review of Phase 2b:**
+- [x] **Phase 2c candidate, found by the final whole-branch review of Phase 2b:** (done 2026-10-01: wired via the unowned hero detail's How-to-recruit path, ADR 0030)
   `HeroManager.convertFragments`/`unlockFromShards` have no UI caller anywhere
   (pre-existing, predates Phase 2b) — `HeroDetailPanel`'s unowned-hero "Fragment
   Progress" bar promises a conversion no button performs, and the Shard Exchange can
