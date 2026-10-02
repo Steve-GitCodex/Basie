@@ -9,8 +9,12 @@ export const MONSTERS_CONFIG = {
     description: 'A disorganized rabble of scavengers. A good first target.',
     difficulty: 1,
     waves: [
-      { name: 'Scav Runners',   hp: 200,  attack: 8,  count: 5 },
-      { name: 'Scav Brawlers',  hp: 350,  attack: 12, count: 8 },
+      { name: 'Scav Runners', stacks: [
+        { name: 'Scav Runners', tier: 1, type: 'infantry', row: 'front', hp: 200, attack: 8, count: 5 },
+      ] },
+      { name: 'Scav Brawlers', stacks: [
+        { name: 'Scav Brawlers', tier: 2, type: 'infantry', row: 'front', hp: 350, attack: 12, count: 8 },
+      ] },
     ],
     rewards: { money: 150, wood: 50, xp: 100 },
     maxRewardedWins: 5,
@@ -21,8 +25,10 @@ export const MONSTERS_CONFIG = {
     description: 'Organized raiders preying on nearby settlements. Bring them to justice.',
     difficulty: 2,
     waves: [
-      { name: 'Raider Scouts',   hp: 280,  attack: 10, count: 6 },
-      { name: 'Raider Gunners',  hp: 450,  attack: 18, count: 5 },
+      { name: 'Raider Ambush', stacks: [
+        { name: 'Raider Scouts', tier: 2, type: 'cavalry', row: 'front', hp: 280, attack: 10, count: 6 },
+        { name: 'Raider Gunners', tier: 2, type: 'ranged', row: 'back', hp: 450, attack: 18, count: 5 },
+      ] },
     ],
     rewards: { money: 250, wood: 80, xp: 200 },
     maxRewardedWins: 5,
@@ -33,9 +39,13 @@ export const MONSTERS_CONFIG = {
     description: 'A savage party of mutants. Dangerous in groups.',
     difficulty: 3,
     waves: [
-      { name: 'Mutant Brutes',   hp: 500,  attack: 20, count: 6 },
-      { name: 'Mutant Howlers',  hp: 300,  attack: 35, count: 3, specialAbility: 'heal', abilityValue: 0.2 },
-      { name: 'Mutant Alpha',    hp: 1200, attack: 45, count: 1 },
+      { name: 'Mutant Pack', stacks: [
+        { name: 'Mutant Brutes', tier: 3, type: 'infantry', row: 'front', hp: 500, attack: 20, count: 6 },
+        { name: 'Mutant Howlers', tier: 3, type: 'ranged', row: 'back', hp: 300, attack: 35, count: 3, specialAbility: 'heal', abilityValue: 0.2 },
+      ] },
+      { name: 'Mutant Alpha', stacks: [
+        { name: 'Mutant Alpha', tier: 5, type: 'infantry', row: 'front', hp: 1200, attack: 45, count: 1 },
+      ] },
     ],
     rewards: { money: 400, stone: 100, xp: 300 },
     maxRewardedWins: 4,
@@ -47,9 +57,13 @@ export const MONSTERS_CONFIG = {
     description: 'A hulking crew blockades the only pass. Their armor takes a beating and keeps coming.',
     difficulty: 4,
     waves: [
-      { name: 'Bridge Bruisers', hp: 900,  attack: 30, count: 4 },
-      { name: 'Ironclads',       hp: 1400, attack: 50, count: 2, specialAbility: 'heal', abilityValue: 0.25 },
-      { name: 'Warboss',         hp: 2500, attack: 70, count: 1, specialAbility: 'heal', abilityValue: 0.15 },
+      { name: 'Bridge Blockade', stacks: [
+        { name: 'Bridge Bruisers', tier: 4, type: 'infantry', row: 'front', hp: 900, attack: 30, count: 4 },
+        { name: 'Ironclads', tier: 5, type: 'infantry', row: 'mid', hp: 1400, attack: 50, count: 2, defense: 60, specialAbility: 'heal', abilityValue: 0.25 },
+      ] },
+      { name: 'Warboss', stacks: [
+        { name: 'Warboss', tier: 6, type: 'infantry', row: 'front', hp: 2500, attack: 70, count: 1, specialAbility: 'heal', abilityValue: 0.15 },
+      ] },
     ],
     rewards: { money: 600, stone: 150, xp: 480 },
     maxRewardedWins: 4,
@@ -61,9 +75,13 @@ export const MONSTERS_CONFIG = {
     description: 'Shambling hordes of the infected. They feel no pain and never stop.',
     difficulty: 5,
     waves: [
-      { name: 'Feral Ghouls',    hp: 400,  attack: 25, count: 15 },
-      { name: 'Bloated Walkers', hp: 800,  attack: 40, count: 8 },
-      { name: 'Plague Bearer',   hp: 600,  attack: 80, count: 1, specialAbility: 'revive', abilityValue: 0.3 },
+      { name: 'Ghoul Shamblers', stacks: [
+        { name: 'Feral Ghouls', tier: 4, type: 'infantry', row: 'front', hp: 400, attack: 25, count: 15 },
+        { name: 'Bloated Walkers', tier: 5, type: 'infantry', row: 'mid', hp: 800, attack: 40, count: 8 },
+      ] },
+      { name: 'Plague Bearer', stacks: [
+        { name: 'Plague Bearer', tier: 6, type: 'ranged', row: 'front', hp: 600, attack: 80, count: 1, specialAbility: 'revive', abilityValue: 0.3 },
+      ] },
     ],
     rewards: { money: 800, iron: 100, xp: 600 },
     maxRewardedWins: 3,
@@ -75,9 +93,13 @@ export const MONSTERS_CONFIG = {
     description: 'Armored hulks out of the frozen wastes. Slow but devastating.',
     difficulty: 6,
     waves: [
-      { name: 'Frostbitten Thralls', hp: 700,  attack: 35, count: 10 },
-      { name: 'Cryo Medic',          hp: 500,  attack: 60, count: 2, specialAbility: 'heal', abilityValue: 0.2 },
-      { name: 'Coldsteel Titan',     hp: 4000, attack: 120, count: 1 },
+      { name: 'Frostbitten Host', stacks: [
+        { name: 'Frostbitten Thralls', tier: 5, type: 'infantry', row: 'front', hp: 700, attack: 35, count: 10 },
+        { name: 'Cryo Medic', tier: 6, type: 'ranged', row: 'back', hp: 500, attack: 60, count: 2, specialAbility: 'heal', abilityValue: 0.2 },
+      ] },
+      { name: 'Coldsteel Titan', stacks: [
+        { name: 'Coldsteel Titan', tier: 7, type: 'infantry', row: 'front', hp: 4000, attack: 120, count: 1 },
+      ] },
     ],
     rewards: { money: 1200, stone: 300, iron: 80, xp: 900 },
     maxRewardedWins: 3,
@@ -89,9 +111,13 @@ export const MONSTERS_CONFIG = {
     description: 'A reactor breach has flooded the zone with hostiles. Seal it before all is lost.',
     difficulty: 7,
     waves: [
-      { name: 'Rad Swarm',      hp: 300,  attack: 30, count: 20 },
-      { name: 'Hazmat Knights', hp: 1500, attack: 70, count: 4 },
-      { name: 'Reactor Fiend',  hp: 3000, attack: 120, count: 1, specialAbility: 'aoe_blast', abilityValue: 0.5 },
+      { name: 'Meltdown Vanguard', stacks: [
+        { name: 'Rad Swarm', tier: 5, type: 'cavalry', row: 'front', hp: 300, attack: 30, count: 20 },
+        { name: 'Hazmat Knights', tier: 6, type: 'infantry', row: 'mid', hp: 1500, attack: 70, count: 4 },
+      ] },
+      { name: 'Reactor Fiend', stacks: [
+        { name: 'Reactor Fiend', tier: 8, type: 'siege', row: 'front', hp: 3000, attack: 120, count: 1, specialAbility: 'aoe_blast', abilityValue: 0.5 },
+      ] },
     ],
     rewards: { money: 2000, iron: 300, stone: 500, xp: 1200 },
     maxRewardedWins: 3,
@@ -103,8 +129,12 @@ export const MONSTERS_CONFIG = {
     description: 'A monstrous behemoth broods over its kill-ground. Prepare well.',
     difficulty: 8,
     waves: [
-      { name: 'Behemoth Spawn', hp: 600,  attack: 50, count: 6 },
-      { name: 'Elder Behemoth', hp: 8000, attack: 200, count: 1, specialAbility: 'aoe_blast', abilityValue: 0.4 },
+      { name: 'Behemoth Spawn', stacks: [
+        { name: 'Behemoth Spawn', tier: 7, type: 'cavalry', row: 'front', hp: 600, attack: 50, count: 6 },
+      ] },
+      { name: 'Elder Behemoth', stacks: [
+        { name: 'Elder Behemoth', tier: 9, type: 'cavalry', row: 'front', hp: 8000, attack: 200, count: 1, specialAbility: 'aoe_blast', abilityValue: 0.4 },
+      ] },
     ],
     rewards: { money: 5000, iron: 500, xp: 2000 },
     maxRewardedWins: 2,
@@ -116,9 +146,13 @@ export const MONSTERS_CONFIG = {
     description: 'A brutal fighting pit where captured warriors are chained to fight until they drop.',
     difficulty: 9,
     waves: [
-      { name: 'Pit Fighters',     hp: 2000, attack: 100, count: 5 },
-      { name: 'Chained Champions',hp: 4000, attack: 180, count: 2, specialAbility: 'revive', abilityValue: 0.4 },
-      { name: 'Pit Warlord',      hp: 10000, attack: 250, count: 1, specialAbility: 'aoe_blast', abilityValue: 0.45 },
+      { name: 'Pit Gauntlet', stacks: [
+        { name: 'Pit Fighters', tier: 8, type: 'infantry', row: 'front', hp: 2000, attack: 100, count: 5 },
+        { name: 'Chained Champions', tier: 9, type: 'infantry', row: 'mid', hp: 4000, attack: 180, count: 2, specialAbility: 'revive', abilityValue: 0.4 },
+      ] },
+      { name: 'Pit Warlord', stacks: [
+        { name: 'Pit Warlord', tier: 10, type: 'infantry', row: 'front', hp: 10000, attack: 250, count: 1, specialAbility: 'aoe_blast', abilityValue: 0.45 },
+      ] },
     ],
     rewards: { money: 10000, iron: 1000, stone: 1500, xp: 5000 },
     maxRewardedWins: 1,
@@ -130,9 +164,13 @@ export const MONSTERS_CONFIG = {
     description: 'The ultimate threat. A world-ending colossus of pure destruction.',
     difficulty: 10,
     waves: [
-      { name: 'Doom Swarm',     hp: 1000, attack: 60,  count: 20 },
-      { name: 'Colossus Limb',  hp: 5000, attack: 150, count: 2 },
-      { name: 'The Colossus',   hp: 15000, attack: 300, count: 1, specialAbility: 'aoe_blast', abilityValue: 0.6 },
+      { name: 'Doom Host', stacks: [
+        { name: 'Doom Swarm', tier: 8, type: 'cavalry', row: 'front', hp: 1000, attack: 60, count: 20 },
+        { name: 'Colossus Limb', tier: 9, type: 'siege', row: 'back', hp: 5000, attack: 150, count: 2 },
+      ] },
+      { name: 'The Colossus', stacks: [
+        { name: 'The Colossus', tier: 10, type: 'infantry', row: 'front', hp: 15000, attack: 300, count: 1, specialAbility: 'aoe_blast', abilityValue: 0.6 },
+      ] },
     ],
     rewards: { money: 15000, iron: 2000, xp: 8000 },
     maxRewardedWins: 1,
@@ -155,8 +193,8 @@ export const CAMPAIGNS_CONFIG = [
 ];
 
 /**
- * Difficulty scaling applied on top of encounter modifiers in _simulateBattle().
- * enemyHpMult / enemyAtkMult scale raw enemy wave stats.
+ * Difficulty scaling applied on top of encounter modifiers when enemy stacks are built.
+ * enemyHpMult / enemyAtkMult scale raw enemy stack stats.
  * resourceRate multiplies all passive resource production rates.
  */
 export const DIFFICULTY_MODIFIERS = {
@@ -174,15 +212,18 @@ export const SURVIVAL_MONSTER = {
   name:        'Survival Wave',
   icon:        '🌊',
   description: 'An endless escalating stream of enemies. How long can you hold?',
-  // Base wave — HP and attack are multiplied by _survivalMult each wave
-  baseWave: { name: 'Survival Enemies', hp: 350, attack: 18, count: 8 },
+  // Stack hp/attack scale by _survivalMult; count grows 2% per survival wave
+  baseWave: {
+    name: 'Survival Enemies',
+    stacks: [{ name: 'Survival Enemies', tier: 2, type: 'infantry', row: 'front', hp: 350, attack: 18, count: 8 }],
+  },
   rewards: { money: 80, xp: 50 },
   maxRewardedWins: Infinity,
 };
 
 /**
  * Random encounter modifiers that can be rolled when a player enters a stage.
- * Each modifier tweaks wave stats before _simulateBattle() runs.
+ * waveTransform is applied to each enemy stack before the battle resolves.
  * chance: 0–1 probability that any given stage roll produces this modifier
  *         (they are mutually exclusive; ~25% chance of no modifier total).
  */

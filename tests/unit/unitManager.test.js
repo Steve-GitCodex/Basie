@@ -126,3 +126,87 @@ test('_trainMultiplier is unchanged when no hero manager is present', () => {
   um._hm = null;
   assert.ok(Number.isFinite(um._trainMultiplier()));
 });
+
+test('a new slot defaults to its unit type\'s row', () => {
+  const { um, squadId } = makeSquadWithReserve(10);
+  assert.equal(um.getSquadRows(squadId).get('infantry_t1'), 'front');
+});
+
+test('setSlotRow rejects an unknown row', () => {
+  const { um, squadId } = makeSquadWithReserve(10);
+  assert.equal(um.setSlotRow(squadId, 0, 'flank').success, false);
+  assert.equal(um.setSlotRow('nope', 0, 'back').success, false);
+  assert.equal(um.getSquadRows(squadId).get('infantry_t1'), 'front');
+});
+
+test('a slot keeps its row when its unit type changes', () => {
+  const { um, squadId } = makeSquadWithReserve(10);
+  assert.ok(um.setSlotRow(squadId, 0, 'back').success);
+  um._reserve.set('ranged_t1', 5);
+  assert.ok(um.assignToSquad(squadId, 'ranged', 5, 1, 0).success);
+  assert.equal(um.getSquadRows(squadId).get('ranged_t1'), 'back');
+  assert.equal(um.getSquadRows(squadId).has('infantry_t1'), false);
+});
+
+test('a row set on an empty slot survives clearing and refilling', () => {
+  const { um, squadId } = makeSquadWithReserve(10);
+  um.clearSlotUnits(squadId, 0);
+  um.setSlotRow(squadId, 0, 'mid');
+  assert.ok(um.assignToSquad(squadId, 'infantry', 10, 1, 0).success);
+  assert.equal(um.getSquadRows(squadId).get('infantry_t1'), 'mid');
+});
+
+test('the lowest slot index decides the row of a shared tierKey', () => {
+  const { um, squadId } = makeSquadWithReserve(10);
+  um._reserve.set('infantry_t1', 10);
+  um.assignToSquad(squadId, 'infantry', 10, 1, 1);
+  um.setSlotRow(squadId, 0, 'mid');
+  um.setSlotRow(squadId, 1, 'back');
+  assert.equal(um.getSquadRows(squadId).get('infantry_t1'), 'mid');
+});
+
+test('slot rows and the wounded pool survive serialize/deserialize', () => {
+  const { um, squadId } = makeSquadWithReserve(10);
+  um.setSlotRow(squadId, 0, 'back');
+  um.setSlotRow(squadId, 3, 'mid');
+  um._onUnitsWounded({ squadId, wounded: { infantry_t1: 4 } });
+  const data = JSON.parse(JSON.stringify(um.serialize()));
+  const fresh = new UnitManager(stubRM(), stubBM());
+  fresh.deserialize(data);
+  assert.equal(fresh.getSquadRows(squadId).get('infantry_t1'), 'back');
+  assert.equal(fresh.getSquad(squadId).slotRows.get(3), 'mid');
+  assert.deepEqual(fresh.getWounded(), { infantry_t1: 4 });
+});
+
+test('a save without slotRows or wounded loads with defaults', () => {
+  const { um, squadId } = makeSquadWithReserve(10);
+  const data = JSON.parse(JSON.stringify(um.serialize()));
+  delete data.wounded;
+  delete data.squads[squadId].slotRows;
+  const fresh = new UnitManager(stubRM(), stubBM());
+  fresh.deserialize(data);
+  assert.equal(fresh.getSquadRows(squadId).get('infantry_t1'), 'front');
+  assert.deepEqual(fresh.getWounded(), {});
+});
+
+test('combat:unitsWounded adds to the wounded pool', async () => {
+  const { eventBus } = await import('../../js/core/EventBus.js');
+  const { um, squadId } = makeSquadWithReserve(10);
+  eventBus.emit('combat:unitsWounded', { squadId, wounded: { infantry_t1: 6 } });
+  eventBus.emit('combat:unitsWounded', { squadId, wounded: { infantry_t1: 2 } });
+  assert.deepEqual(um.getWounded(), { infantry_t1: 8 });
+});
+
+test('ui:setSlotRow sets the slot row', async () => {
+  const { eventBus } = await import('../../js/core/EventBus.js');
+  const { um, squadId } = makeSquadWithReserve(10);
+  eventBus.emit('ui:setSlotRow', { squadId, slotIndex: 0, row: 'back' });
+  assert.equal(um.getSquadRows(squadId).get('infantry_t1'), 'back');
+  assert.equal(um.getSlotRow(squadId, 0), 'back');
+});
+
+test('getSlotRow falls back to the unit default, then front', () => {
+  const { um, squadId } = makeSquadWithReserve(10);
+  assert.equal(um.getSlotRow(squadId, 0), 'front');
+  assert.equal(um.getSlotRow(squadId, 2), 'front');
+});

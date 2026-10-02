@@ -180,3 +180,54 @@ test('scouting a POI that is neither ruin nor outpost is spent', () => {
   const out = resolveArrival({ type: 'scout' }, { id: 'camp_a', type: 'camp' }, { worldMapManager: fakeWorld() });
   assert.equal(out.outcome, 'spent');
 });
+
+function capturing(result = { victory: true }) {
+  const args = [];
+  return { args, resolveMarchBattle: (...a) => { args.push(a); return result; } };
+}
+
+test('stronghold and outpost battles are structure fights', () => {
+  for (const [march, poi] of [
+    [{ type: 'attack', squadId: 's1' }, { id: 'sh', type: 'stronghold', monsterId: 'troll' }],
+    [{ type: 'scout', squadId: 's1' }, { id: 'op', type: 'outpost', garrison: 'goblin' }],
+  ]) {
+    const cm = capturing();
+    resolveArrival(march, poi, { worldMapManager: fakeWorld(), combatManager: cm });
+    assert.equal(cm.args[0][3].structure, true);
+  }
+});
+
+test('camp, ruin garrison and boss battles are field fights', () => {
+  const cases = [
+    [{ type: 'attack', squadId: 's1' }, { id: 'c', type: 'camp', monsterId: 'goblin_camp' }],
+    [{ type: 'scout', squadId: 's1' }, { id: 'r', type: 'ruin', garrison: 'goblin' }],
+    [{ type: 'attack', squadId: 's1' }, { id: 'b', type: 'world_boss', monsterId: 'dragon' }],
+  ];
+  for (const [march, poi] of cases) {
+    const cm = capturing();
+    resolveArrival(march, poi, { worldMapManager: fakeWorld(), combatManager: cm });
+    assert.equal(cm.args[0][3].structure, false);
+  }
+});
+
+test('battle results carry casualties', () => {
+  const result = { victory: true, dead: { t1: 3 }, wounded: { t1: 2 } };
+  const expected = { dead: { t1: 3 }, wounded: { t1: 2 } };
+  const cm = capturing(result);
+  const camp = { id: 'c', type: 'camp', monsterId: 'm' };
+  const boss = { id: 'b', type: 'world_boss', monsterId: 'm' };
+  const ruin = { id: 'r', type: 'ruin', garrison: 'g', reward: { kind: 'resource', resource: 'wood', amount: 1 } };
+  const outpost = { id: 'o', type: 'outpost', garrison: 'g' };
+  const ctx = { worldMapManager: fakeWorld(), combatManager: cm };
+  assert.deepEqual(resolveArrival({ type: 'attack', squadId: 's' }, camp, ctx).casualties, expected);
+  assert.deepEqual(resolveArrival({ type: 'attack', squadId: 's' }, boss, ctx).casualties, expected);
+  assert.deepEqual(resolveArrival({ type: 'scout', squadId: 's' }, ruin, ctx).casualties, expected);
+  assert.deepEqual(resolveArrival({ type: 'scout', squadId: 's' }, outpost, ctx).casualties, expected);
+});
+
+test('a lost battle still reports casualties', () => {
+  const cm = capturing({ victory: false, dead: { t1: 4 }, wounded: {} });
+  const out = resolveArrival({ type: 'attack', squadId: 's' }, { id: 'c', type: 'camp', monsterId: 'm' },
+    { worldMapManager: fakeWorld(), combatManager: cm });
+  assert.deepEqual(out.casualties, { dead: { t1: 4 }, wounded: {} });
+});

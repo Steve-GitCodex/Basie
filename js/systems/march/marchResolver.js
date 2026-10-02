@@ -17,6 +17,15 @@ import { rollLoot } from '../world/worldBoss.js';
 
 const ATTACK_DWELL_MS = 1500;
 
+function _fight(combatManager, march, monsterId, poi, milMult) {
+  const structure = poi.type === 'stronghold' || poi.type === 'outpost';
+  return combatManager.resolveMarchBattle(march.squadId, monsterId, milMult, { structure });
+}
+
+function _casualties(battle) {
+  return { dead: battle?.dead ?? {}, wounded: battle?.wounded ?? {} };
+}
+
 export function resolveArrival(march, poi, ctx) {
   // Target may have been removed (map edit / node depletion cull) while the army
   // was in transit. Abort cleanly — the squad turns around empty rather than
@@ -47,13 +56,13 @@ function _attack(march, poi, ctx) {
     return { outcome: 'no_combat', payload: {}, dwellMs: ATTACK_DWELL_MS };
   }
   const milMult = militaryMult(worldMapManager.activeBuffs());
-  const result = combatManager.resolveMarchBattle(march.squadId, poi.monsterId, milMult);
+  const result = _fight(combatManager, march, poi.monsterId, poi, milMult);
   if (result?.victory) {
     worldMapManager.markHostileCleared(poi.id);
     if (poi.capturesRegion) worldMapManager.captureRegion(poi.capturesRegion);
-    return { outcome: 'victory', payload: result.loot ?? {}, dwellMs: ATTACK_DWELL_MS };
+    return { outcome: 'victory', payload: result.loot ?? {}, dwellMs: ATTACK_DWELL_MS, casualties: _casualties(result) };
   }
-  return { outcome: 'defeat', payload: {}, dwellMs: ATTACK_DWELL_MS };
+  return { outcome: 'defeat', payload: {}, dwellMs: ATTACK_DWELL_MS, casualties: _casualties(result) };
 }
 
 /**
@@ -69,15 +78,15 @@ function _boss(march, poi, { worldMapManager, combatManager }) {
     return { outcome: 'no_combat', payload: {}, dwellMs: ATTACK_DWELL_MS };
   }
   const milMult = militaryMult(worldMapManager.activeBuffs());
-  const result = combatManager.resolveMarchBattle(march.squadId, poi.monsterId, milMult);
+  const result = _fight(combatManager, march, poi.monsterId, poi, milMult);
   if (result?.victory) {
     worldMapManager.markBossDefeated(poi.id);
     const drop = rollLoot(poi.lootTable);
     const { payload, grants } = _ruinReward(drop); // reuses the kind→reward mapping
     // Fold in any base combat loot alongside the rare drop.
-    return { outcome: 'boss_victory', payload: { ...(result.loot ?? {}), ...payload }, grants, dwellMs: ATTACK_DWELL_MS };
+    return { outcome: 'boss_victory', payload: { ...(result.loot ?? {}), ...payload }, grants, dwellMs: ATTACK_DWELL_MS, casualties: _casualties(result) };
   }
-  return { outcome: 'defeat', payload: {}, dwellMs: ATTACK_DWELL_MS };
+  return { outcome: 'defeat', payload: {}, dwellMs: ATTACK_DWELL_MS, casualties: _casualties(result) };
 }
 
 /** Scout marches resolve by POI: ruins run an expedition, outposts are captured. */
@@ -97,15 +106,17 @@ function _expedition(march, poi, { worldMapManager, combatManager }) {
   if (worldMapManager.getPOIState(poi.id)?.looted) {
     return { outcome: 'spent', payload: {}, dwellMs: ATTACK_DWELL_MS };
   }
+  let casualties = null;
   // Optional token garrison — a defeat aborts the expedition (ruin stays unlooted).
   if (poi.garrison && typeof combatManager?.resolveMarchBattle === 'function') {
     const milMult = militaryMult(worldMapManager.activeBuffs());
-    const battle = combatManager.resolveMarchBattle(march.squadId, poi.garrison, milMult);
-    if (!battle?.victory) return { outcome: 'defeat', payload: {}, dwellMs: ATTACK_DWELL_MS };
+    const battle = _fight(combatManager, march, poi.garrison, poi, milMult);
+    if (!battle?.victory) return { outcome: 'defeat', payload: {}, dwellMs: ATTACK_DWELL_MS, casualties: _casualties(battle) };
+    casualties = _casualties(battle);
   }
   worldMapManager.markRuinLooted(poi.id);
   const { payload, grants } = _ruinReward(poi.reward);
-  return { outcome: 'explored', payload, grants, dwellMs: poi.expeditionMs ?? ATTACK_DWELL_MS };
+  return { outcome: 'explored', payload, grants, dwellMs: poi.expeditionMs ?? ATTACK_DWELL_MS, ...(casualties && { casualties }) };
 }
 
 /**
@@ -117,13 +128,15 @@ function _capture(march, poi, { worldMapManager, combatManager }) {
   if (worldMapManager.outpostOwner(poi.id) === 'player') {
     return { outcome: 'held', payload: {}, dwellMs: ATTACK_DWELL_MS };
   }
+  let casualties = null;
   if (poi.garrison && typeof combatManager?.resolveMarchBattle === 'function') {
     const milMult = militaryMult(worldMapManager.activeBuffs());
-    const battle = combatManager.resolveMarchBattle(march.squadId, poi.garrison, milMult);
-    if (!battle?.victory) return { outcome: 'defeat', payload: {}, dwellMs: ATTACK_DWELL_MS };
+    const battle = _fight(combatManager, march, poi.garrison, poi, milMult);
+    if (!battle?.victory) return { outcome: 'defeat', payload: {}, dwellMs: ATTACK_DWELL_MS, casualties: _casualties(battle) };
+    casualties = _casualties(battle);
   }
   worldMapManager.captureOutpost(poi.id);
-  return { outcome: 'captured', payload: {}, dwellMs: ATTACK_DWELL_MS };
+  return { outcome: 'captured', payload: {}, dwellMs: ATTACK_DWELL_MS, ...(casualties && { casualties }) };
 }
 
 /** Translate a ruin's declarative reward into { payload (resources), grants }. */

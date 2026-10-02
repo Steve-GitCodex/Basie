@@ -60,6 +60,6 @@ function _trainAndSquad(um, bm) {
   let guard = 100;
   while (um.getTrainingQueueDepthForBuilding('infantryhall') > 0 && guard-- > 0) um.update(TICK_DT);
 
-  const squad = um.createSquad('Dev Squad');
+  const squad = um.createSquad('Squad 1', 'barracks_0');
   if (squad.success) um.assignToSquad(squad.squadId, 'infantry', 4, 1);
 }

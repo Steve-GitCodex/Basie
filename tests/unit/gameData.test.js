@@ -6,6 +6,7 @@ import {
   BUILD_RECT, inBounds, WORLD_MAP, MONSTERS_CONFIG,
   ACHIEVEMENTS_CONFIG, HEROES_CONFIG,
   SHOP_CONFIG, INVENTORY_ITEMS, PROD_BONUS_CONFIG, STAT_RULES,
+  SURVIVAL_MONSTER, COMBAT_RULES, UNITS_CONFIG,
 } from '../../js/entities/GAME_DATA.js';
 
 const RESOURCE_KEYS = new Set(['wood', 'stone', 'iron', 'food', 'water', 'money']);
@@ -231,4 +232,28 @@ test('every non-resource statEffectMap effect has a STAT_RULES entry with a hero
     if (RESOURCE_KEYS.has(effect)) continue;
     assert.ok(STAT_RULES[effect]?.categories.hero, `${effect} lacks a STAT_RULES hero category`);
   }
+});
+
+const allMonsterWaves = [
+  ...Object.values(MONSTERS_CONFIG).flatMap((m) => m.waves.map((w) => ({ id: m.id, wave: w }))),
+  { id: SURVIVAL_MONSTER.id, wave: SURVIVAL_MONSTER.baseWave },
+];
+
+test('every monster stack has a valid tier, type and row', () => {
+  for (const { id, wave } of allMonsterWaves) {
+    assert.ok(Array.isArray(wave.stacks) && wave.stacks.length >= 1, `${id}/${wave.name} has no stacks`);
+    for (const s of wave.stacks) {
+      const label = `${id}/${wave.name}/${s.name}`;
+      assert.ok(Number.isInteger(s.tier) && s.tier >= 1 && s.tier <= 10, `${label} tier`);
+      assert.ok(s.type in UNITS_CONFIG, `${label} type '${s.type}'`);
+      assert.ok(COMBAT_RULES.ROWS.includes(s.row), `${label} row '${s.row}'`);
+      assert.ok(s.hp > 0 && s.attack > 0 && s.count > 0, `${label} hp/attack/count`);
+    }
+  }
+});
+
+test('MONSTER_TIERS has ten ascending defense values', () => {
+  const defenses = COMBAT_RULES.MONSTER_TIERS.map((t) => t.defense);
+  assert.equal(defenses.length, 10);
+  for (let i = 1; i < defenses.length; i++) assert.ok(defenses[i] > defenses[i - 1], `tier ${i + 1} ascends`);
 });

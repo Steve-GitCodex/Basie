@@ -5,16 +5,60 @@
 > Keep it to current state: replace finished sections with a short summary — history lives in
 > git (`git log -p docs/40-active.md`) and decisions live in `docs/20-decisions/`.
 
-## Current state (2026-10-01)
+## Current state (2026-10-02)
 
-- Branch `Working_Branch`. Hero Quarters UI (`1ef23ab`) and Phase 2d (`c0ba036`) committed. **Uncommitted:**
-  the docs cleanup + the dev dashboard / dev slots work below. Tree is commit-ready.
-- Baseline: `npm test` **657/657**; `node scripts/check-comments.mjs` **12 violations, all pre-existing**;
-  boot / world / tutorial / dev-dashboard / launcher smokes PASS; dev-smoke PASS except the known `dev-anchor-nudger`
-  "variantFile resolves the override-manifest key" failure (also fails on clean `c0ba036`: `variantFile`
-  returns `townhall_L3.png`, the test expects `townhall_S<n>.png`).
+- Branch `Working_Branch`. Hero Quarters UI (`1ef23ab`), Phase 2d (`c0ba036`) and the dev launcher / dashboard
+  (`d727368`) are committed. **Uncommitted:** the combat resolver below. Tree is commit-ready.
+- Baseline: `npm test` **747/747**; `node scripts/check-comments.mjs` **12 violations, all pre-existing**;
+  boot / world / tutorial / combat / heroes smokes PASS; dev-smoke PASS except the known `dev-anchor-nudger`
+  ("variantFile resolves the override-manifest key"; fails on clean `d727368` too). `dev-anchor-nudger-from-world`
+  flake fixed 2026-10-02 (it now waits for the city loading overlay).
 
-## Basie dev launcher — COMPLETE (2026-10-01, latest)
+## Dev mode multi-instance fixes — COMPLETE (2026-10-02, latest)
+
+- **Level switcher only reached copy #1:** the switcher listed building *types* and its event had no
+  `instanceIndex`, so `devSetLevel` defaulted to instance 0. It also filled its list once at startup, so buildings
+  built later never showed up. It now lists instances (`Barracks #1`, `Barracks #2`, values `barracks_0`…),
+  refreshes the list on focus/pointerdown, and sends `instanceIndex`. A building click
+  (`BuildingsUI` → `dev:buildingSelected`) now carries `instanceIndex` too.
+- **Barracks #1 "No squad available":** the dev preset created its squad with no `barracksInstanceId`. That unbound
+  squad used the only slot (`maxSquads` = built barracks), so `BarracksUI._squadForInstance(0)` couldn't create one.
+  The preset now calls `createSquad('Squad 1', 'barracks_0')`. **Dev slots saved before this fix still hold the unbound
+  squad: use Reset slot.**
+- Regression test: the `dev-multi-instance` block in `tests/browser/dev-smoke.mjs` (6 checks). The two older
+  switcher checks now use `townhall_0`. The `dev-anchor-nudger-from-world` flake is fixed: the test now waits for
+  `#city-loading` to hide, because the loading overlay was intercepting the drag (4/4 clean runs).
+- **Still intermittent (not from this work):** `boot-smoke` "city canvas rendered pixels" failed 1 of 3 runs, most
+  likely the same loading race.
+
+## Combat resolver — COMPLETE (2026-10-02)
+
+ADR 0034 (`docs/20-decisions/0034-shared-combat-resolver.md`), design page `docs/10-design/combat.md`, spec
+`docs/superpowers/specs/2026-10-02-combat-resolver-design.md`, research `docs/research/combat-model.md`.
+
+- **What landed:** pure `js/systems/combat/` (`seededRng`, `hitMath`, `targeting`, `casualties`, `resolveBattle`,
+  `battleSides`, `combatInputs`); `js/entities/data/combatRules.js`; all monsters rewritten to wave stack lineups with
+  tiers; `CombatManager` is a ~308-line adapter (`attack`, `resolveMarchBattle` with `structure`, `estimateBattle`);
+  hero strikers; `UnitManager` slot rows + wounded pool; `marchResolver` and the march toast carry dead and wounded;
+  CombatUI estimate badge + round playback (`js/ui/combat/`); Barracks Front/Mid/Back toggle + Wounded chip
+  (`js/ui/barracks/`); `tests/browser/combat-smoke.mjs` (11 checks).
+- **Rulings (full list in ADR 0034):** R2 one stack per tierKey, lowest slot's row wins; R3 campaign stage wave list moved
+  to stack shape; R4 a row wiped mid-round loses later damage aimed at it; R5 mutual wipe on the final wave = defeat;
+  R6 first-wave triggers on the first non-empty wave, structure bonus attacker-only, `losing` vs attacker start HP;
+  R7 attack bonuses inside `hitDamage`; R8 combat type = `UNITS_CONFIG` key; R9 test file named after its module.
+- **Deferred minors:** `counterMult` throws if its 3rd arg is omitted; `splitCasualties` has no defaults and relies on
+  lossReduction < 1; `resolveBattle` seed has no default or guard; `heroHits` damage/targetId computed at planning time
+  (may overstate); no tests for `firstWaveBonus` / structure / `final_wave` / `wave_start` windows; out-of-range monster
+  tier throws (a data test guards it); `wavesCleared` counts an all-zero skipped wave as not cleared; difficulty guard uses
+  truthiness (`Object.hasOwn` is stricter); `setSlotRow` doesn't validate slotIndex; `stackSummary` / `battleResultHtml`
+  untested; `plural()` misnamed; empty-rounds wave still sleeps; `battle-wave-counter` re-queried; lunge timeouts survive
+  skip; hero hit lines show no hero name; wave summary repeats the name when stack name equals wave name; the toggle's
+  `setRow` is unused; the wounded chip has no smoke assertion beyond presence; `UnitManager.js` (~957) is still a god file.
+- **Verification:** unit **747/747**; combat-smoke PASS (row persists across reload, estimate badge `~N%`, squad loses
+  exactly dead + wounded, wounded pool updated); boot / world / tutorial / heroes smokes PASS; check-comments 12 (baseline).
+- **Note:** no migrations (no-legacy): old dev saves with the previous combat shapes may misbehave; reset the slot.
+
+## Basie dev launcher — COMPLETE (2026-10-01)
 
 ADR 0033. `run.bat` → `node scripts/launcher/launch.mjs [dev [slot]] [--no-open] [--port N]`. The modules
 are `staticFiles`, `logView`, `watcher`, `server`, `hotkeys`, `browser`, `launch` and `client/bridge.js`.
@@ -62,7 +106,7 @@ case, and `tests/browser/dev-dashboard-smoke.mjs` (12 checks).
 - The hero redesign is **complete** (Phases 0, 1, 2a, 2b, 2c, 2d + Hero Quarters UI; ADRs 0026–0031).
   Completed specs/plans under `docs/superpowers/` were deleted 2026-10-01; their decisions are in those ADRs.
 
-## Hero Phase 2d — COMPLETE (2026-10-01, latest)
+## Hero Phase 2d — COMPLETE (2026-10-01)
 
 ADR 0031 (`docs/20-decisions/0031-stat-cap-pipeline.md`) records the stat-cap pipeline, all rulings,
 the eight ADR 0012 test inversions and the three skill assignments.
@@ -114,9 +158,8 @@ new-hero cues. The desktop queue sidebar overlapping the roster's right edge is 
 
 ## Next steps
 
-1. **Commit** the docs cleanup (Steve), then play a few battles to feel the new loss curve.
-2. **Combat-model rework** (roadmap backlog, Steve's direction): per-hit attack vs defense (25 atk can't
-   one-shot 100 def), tier matchups, tier-weighted losses, hero strikes. Start with a brainstorming session;
-   first open question is giving monsters a tier.
-3. **Skill-magnitude pass** after the combat rework (retuning before it would be wasted).
-4. Gather/march yield hero effect stays barred until the march balance pass.
+1. **Commit** (Steve), then play battles to feel the new curve.
+2. **Balance pass** on `COMBAT_RULES` and the monster tiers; both are live first-pass values.
+3. **Skill-magnitude pass** (hero skills), after the balance pass.
+4. **Hospital** (heals the wounded pool) when wanted. Open decision: `lossReduction` (Steel Armor, loss-cut skills) keeps no troops until wounded can heal; interim rule vs. hospital first (ADR 0034).
+5. Gather/march yield hero effect stays barred until the march balance pass.

@@ -1,20 +1,20 @@
-/**
- * CombatManager.js — Phase 4
- * Adds repeatable monster fights with diminishing returns:
- *  - Tracks victory count per monster
- *  - Full rewards for first N wins (monster.maxRewardedWins)
- *  - 10% rewards thereafter (still beatable, just no more full loot)
- */
 import { eventBus } from '../core/EventBus.js';
 import {
-  MONSTERS_CONFIG, UNITS_CONFIG, CAMPAIGNS_CONFIG, ENCOUNTER_MODIFIERS,
+  MONSTERS_CONFIG, CAMPAIGNS_CONFIG, ENCOUNTER_MODIFIERS,
   DIFFICULTY_MODIFIERS, SURVIVAL_MONSTER,
 } from '../entities/GAME_DATA.js';
 import { BUILDINGS_CONFIG } from '../entities/GAME_DATA.js';
-import { sumTriggeredEffects, triggeredStatEntries } from './hero/heroSkills.js';
-import { aggregate, statEntry, mergeMaxBySource } from './stats/statAggregator.js';
+import { COMBAT_RULES } from '../entities/data/combatRules.js';
+import { resolveBattle } from './combat/resolveBattle.js';
+import {
+  battleSides, survivalMonster, squadLosses, wavesCleared, summarizeEstimate,
+} from './combat/combatInputs.js';
 
 const MAX_BATTLE_LOG = 20;
+const REDUCED_REWARD_SHARE = 0.1;
+
+const freshSeed = () => Date.now() % 2147483647;
+const isEmpty = (map) => Object.keys(map).length === 0;
 
 export class CombatManager {
   constructor(unitManager, userManager, resourceManager, heroManager, buildingManager) {
@@ -31,361 +31,113 @@ export class CombatManager {
     /** @type {Map<string, object|null>} monsterId → rolled encounter modifier */
     this._pendingModifiers = new Map();
     eventBus.on('resources:bonusChanged', b => { this._techBonuses = b || {}; });
-    // Difficulty — kept in sync with SettingsManager via event
     this._difficulty = 'normal';
     eventBus.on('settings:changed', s => {
-      if (s.difficulty) this._difficulty = s.difficulty;
+      if (DIFFICULTY_MODIFIERS[s.difficulty]) this._difficulty = s.difficulty;
     });
-    // Game mode — set by GameEngine.setGameMode()
     this._gameMode = 'campaign';
     eventBus.on('game:modeChanged', ({ mode }) => { this._gameMode = mode; });
-    // Survival mode state
     this._survivalWave = 0;
     this._survivalMult = 1.0;
   }
 
   update(dt) {}
 
-  attack(monsterId, squadId) {
-    // Survival mode uses a dynamic monster built from SURVIVAL_MONSTER base
-    const isSurvival = (this._gameMode === 'survival' && monsterId === 'survival_wave');
-    const monster = isSurvival
-      ? this._buildSurvivalMonster()
-      : MONSTERS_CONFIG[monsterId];
+  attack(monsterId, squadId, { seed = freshSeed() } = {}) {
+    const isSurvival = this._isSurvival(monsterId);
+    const monster = this._monsterFor(monsterId);
     if (!monster) return { success: false, reason: 'Unknown target.' };
 
     const squadData = this._um.getSquad(squadId);
-    const army = squadData ? squadData.units : [];
-    if (army.length === 0) return { success: false, reason: 'You have no units to send.' };
+    if (!squadData?.units.length) return { success: false, reason: 'You have no units to send.' };
     if (this._um.isSquadDeployed?.(squadId)) return { success: false, reason: 'That squad is away on a march.' };
 
-    // Consume the pending encounter modifier (if any) — not used in survival
     const modifier = isSurvival ? null : (this._pendingModifiers.get(monsterId) ?? null);
     if (!isSurvival) this._pendingModifiers.delete(monsterId);
 
     eventBus.emit('combat:started', { monsterId, monster });
 
-    const result = this._simulateBattle(army, monster, modifier, squadId);
+    const report = this._fight(squadId, monster, { modifier, seed });
+    const { dead, wounded, victory } = report;
 
-    // Determine if this win still yields full rewards
     const victoryCount = this._victoryCounts[monsterId] ?? 0;
     const maxRewarded  = monster.maxRewardedWins ?? 999;
-    const isFullReward = result.victory && (isSurvival || victoryCount < maxRewarded);
-    const isReduced    = result.victory && !isFullReward;
+    const isFullReward = victory && (isSurvival || victoryCount < maxRewarded);
+    const isReduced    = victory && !isFullReward;
+    const rewards = victory ? this._scaleRewards(monster.rewards, isFullReward) : null;
 
-    // Scale rewards
-    let rewards = null;
-    if (result.victory) {
-      rewards = {};
-      for (const [k, v] of Object.entries(monster.rewards)) {
-        rewards[k] = isFullReward ? v : Math.max(1, Math.floor(v * 0.1));
-      }
-    }
-
-    // Log entry
     this._battleLog.unshift({
       timestamp: Date.now(),
       monster: monster.name,
       icon: monster.icon,
       monsterId,
-      squadName: squadData?.name ?? 'Unknown Squad',
-      result: result.victory ? 'Victory' : 'Defeat',
+      squadName: squadData.name ?? 'Unknown Squad',
+      result: victory ? 'Victory' : 'Defeat',
       rewards,
       reducedReward: isReduced,
-      wavesSurvived: result.wavesSurvived,
+      wavesSurvived: wavesCleared(report),
       totalWaves: monster.waves.length,
       modifier: modifier ? { id: modifier.id, name: modifier.name, icon: modifier.icon } : null,
+      rulesVersion: report.rulesVersion,
+      seed,
+      dead,
+      wounded,
     });
     if (this._battleLog.length > MAX_BATTLE_LOG) this._battleLog.pop();
 
-    // Apply losses
-    if (result.losses && Object.keys(result.losses).length) {
-      this._um.removeUnitsFromSquad(squadId, result.losses);
-    }
+    this._applyCasualties(squadId, report);
 
-    if (result.victory) {
+    if (victory) {
       if (!isSurvival) this._victoryCounts[monsterId] = victoryCount + 1;
-      // Resources delivered via mail attachment — MailManager hears combat:victory below.
       this._user.addXP(rewards.xp ?? 0);
-      this._hm?.awardBattleXP(Math.floor((monster.rewards.xp ?? 100) * 0.5), squadId);
-      eventBus.emit('combat:victory', { monsterId, rewards, losses: result.losses, reducedReward: isReduced });
-
-      // Survival: escalate for next wave
-      if (isSurvival) {
-        this._survivalWave++;
-        this._survivalMult = parseFloat((this._survivalMult * 1.05).toFixed(4));
-        eventBus.emit('survival:waveCompleted', {
-          wave: this._survivalWave,
-          mult: this._survivalMult,
-        });
-      }
+      this._hm.awardBattleXP(Math.floor((monster.rewards.xp ?? 100) * 0.5), squadId);
+      eventBus.emit('combat:victory', { monsterId, rewards, dead, wounded, reducedReward: isReduced });
+      if (isSurvival) this._advanceSurvival();
     } else {
-      eventBus.emit('combat:defeat', { monsterId, losses: result.losses });
-
-      // Survival: session ends on defeat
-      if (isSurvival) {
-        const finalScore = this._survivalWave;
-        this._user.setWaveHighScore?.(finalScore);
-        eventBus.emit('survival:ended', { score: finalScore });
-        this._survivalWave = 0;
-        this._survivalMult = 1.0;
-      }
+      eventBus.emit('combat:defeat', { monsterId, dead, wounded });
+      if (isSurvival) this._endSurvival();
     }
 
     eventBus.emit('combat:logUpdated', this._battleLog);
-    return { success: true, result, rewards, reducedReward: isReduced, modifier };
+    return { success: true, report, rewards, reducedReward: isReduced, modifier };
   }
 
-  /**
-   * Resolve a world-map march battle: a squad attacks a POI's garrison. Unlike
-   * attack(), loot is RETURNED to the caller (MarchManager carries it home and
-   * credits it on the army's return) rather than delivered via mail — so it must
-   * NOT emit combat:victory (that would double-grant through MailManager).
-   * @returns {{ victory:boolean, losses:object, loot:object }}
-   */
-  resolveMarchBattle(squadId, monsterId, milMult = 1) {
-    const monster   = MONSTERS_CONFIG[monsterId];
-    const squadData = this._um.getSquad(squadId);
-    const army      = squadData ? squadData.units : [];
-    if (!monster || army.length === 0) return { victory: false, losses: {}, loot: {} };
-
-    const modifier = milMult > 1 ? { playerAttackMult: milMult } : null;
-    const result = this._simulateBattle(army, monster, modifier, squadId);
-
-    if (result.losses && Object.keys(result.losses).length) {
-      this._um.removeUnitsFromSquad(squadId, result.losses);
+  /** Loot returns to MarchManager; emitting combat:victory here would double-grant via MailManager. */
+  resolveMarchBattle(squadId, monsterId, milMult = 1, { structure = false, seed = freshSeed() } = {}) {
+    const monster = MONSTERS_CONFIG[monsterId];
+    if (!monster || !this._um.getSquad(squadId)?.units.length) {
+      return { victory: false, dead: {}, wounded: {}, loot: {}, report: null };
     }
 
-    let loot = {};
-    if (result.victory) {
+    const report = this._fight(squadId, monster, { milMult, structure, seed });
+    const { victory, dead, wounded } = report;
+    this._applyCasualties(squadId, report);
+
+    const loot = {};
+    if (victory) {
       for (const [k, v] of Object.entries(monster.rewards)) {
-        if (k === 'xp') { this._user.addXP(v); continue; } // xp credited now; not carried as cargo
+        if (k === 'xp') { this._user.addXP(v); continue; }
         loot[k] = v;
       }
-      this._hm?.awardBattleXP(Math.floor((monster.rewards.xp ?? 100) * 0.5), squadId);
+      this._hm.awardBattleXP(Math.floor((monster.rewards.xp ?? 100) * 0.5), squadId);
     }
 
     eventBus.emit('combat:marchResolved', {
-      monsterId, victory: result.victory, loot, losses: result.losses,
-      wavesSurvived: result.wavesSurvived,
+      monsterId, victory, loot, dead, wounded, wavesSurvived: wavesCleared(report),
     });
-    return { victory: result.victory, losses: result.losses ?? {}, loot };
+    return { victory, dead, wounded, loot, report };
   }
 
-  /**
-   * Build a survival-mode monster from the base template, scaled by the current
-   * _survivalMult.  Called each time the player enters a survival fight.
-   * @private
-   */
-  _buildSurvivalMonster() {
-    const base = SURVIVAL_MONSTER.baseWave;
-    const m    = this._survivalMult;
-    return {
-      ...SURVIVAL_MONSTER,
-      waves: [
-        {
-          name:    `${base.name} (Wave ${this._survivalWave + 1})`,
-          hp:      Math.round(base.hp     * m),
-          attack:  Math.round(base.attack * m),
-          count:   Math.round(base.count  * (1 + (this._survivalWave * 0.02))),
-        },
-      ],
-    };
-  }
-
-_simulateBattle(army, monster, modifier = null, squadId = null) {
-    // Apply difficulty modifiers to wave stats
-    const diffMod = DIFFICULTY_MODIFIERS[this._difficulty ?? 'normal'] ?? DIFFICULTY_MODIFIERS.normal;
-
-    const heroBonus = this._hm?.getCombatBonuses(squadId) ?? { attackMult: 1, defenseMult: 1, lossReduction: 0 };
-    const tech = this._techBonuses || {};
-
-    let playerTotalAttack  = 0;
-    let playerTotalDefense = 0;
-    let playerTotalHP      = 0;
-
-    for (const unit of army) {
-      // Resolve stats from tier config if available, fall back to top-level stats for legacy data
-      const baseCfg = UNITS_CONFIG[unit.unitId] ?? {};
-      const tier    = unit.tier ?? 1;
-      const tierCfg = baseCfg.tiers?.[tier - 1];
-      const stats   = tierCfg?.stats ?? baseCfg.stats ?? { attack: 10, defense: 5, hp: 100 };
-
-      let uAttack  = stats.attack  * (1 + (tech.attackBonus  || 0));
-      let uDefense = stats.defense + (tech.defenseBonus || 0);
-      let uHp      = stats.hp      * (1 + (tech.hpBonus      || 0));
-
-      playerTotalAttack  += uAttack  * unit.count;
-      playerTotalDefense += uDefense * unit.count;
-      playerTotalHP      += uHp      * unit.count;
+  estimateBattle(squadId, monsterId) {
+    const monster = this._monsterFor(monsterId);
+    if (!monster || !this._um.getSquad(squadId)?.units.length) return { winChance: 0, avgDead: 0, avgWounded: 0 };
+    const modifier = this._isSurvival(monsterId) ? null : this.getPendingModifier(monsterId);
+    const { attacker, defender } = this._sidesFor(squadId, monster, { modifier });
+    const reports = [];
+    for (let seed = 1; seed <= COMBAT_RULES.ESTIMATE_RUNS; seed++) {
+      reports.push(resolveBattle(attacker, defender, { seed, rulesVersion: COMBAT_RULES.RULES_VERSION }));
     }
-
-    playerTotalAttack  *= heroBonus.attackMult;
-    playerTotalDefense *= heroBonus.defenseMult;
-    playerTotalDefense *= 1 + (heroBonus.baseDefense ?? 0);
-
-    // Apply HQ-level combat bonuses
-    if (this._bm) {
-      const hqBenefits = this._bm.getHQBenefits();
-      if (hqBenefits.attackBonus > 0)  playerTotalAttack  *= (1 + hqBenefits.attackBonus);
-      if (hqBenefits.defenseBonus > 0) playerTotalDefense *= (1 + hqBenefits.defenseBonus);
-    }
-
-    // Apply modifier player-side multipliers
-    if (modifier?.playerAttackMult) playerTotalAttack *= modifier.playerAttackMult;
-    if (modifier?.playerHpMult)     playerTotalHP     *= modifier.playerHpMult;
-
-    // Apply encounter modifier to wave stats
-    const modifiedWaves = modifier?.waveTransform
-      ? monster.waves.map(modifier.waveTransform)
-      : monster.waves;
-
-    // Apply difficulty scaling (always applied, including to survival waves)
-    const waves = modifiedWaves.map(w => ({
-      ...w,
-      hp:     Math.round(w.hp     * diffMod.enemyHpMult),
-      attack: Math.round(w.attack * diffMod.enemyAtkMult),
-    }));
-
-    const buckets = heroBonus.triggeredByEvent
-      ?? { battle_start: [], wave_start: [], final_wave: [], losing: [] };
-
-    let remainingPlayerHP = playerTotalHP;
-    let wavesSurvived = 0;
-    let waveIndex = 0;
-    const triggeredLoss = new Map();
-    const triggeredHeal = new Map();
-    const waveDetails = [];
-
-    for (const wave of waves) {
-      if (remainingPlayerHP <= 0) break;
-
-      let waveHP  = wave.hp    * wave.count;
-      const waveAtk = wave.attack * wave.count;
-
-      // heal: enemy regenerates a fraction of its max HP before fighting
-      if (wave.specialAbility === 'heal') {
-        const healAmount = waveHP * (wave.abilityValue ?? 0.2);
-        waveHP = Math.round(waveHP + healAmount);
-      }
-
-      const rawDamage = Math.max(1, waveAtk - playerTotalDefense * 0.5);
-      let dmgToPlayer = rawDamage;
-
-      if (wave.specialAbility === 'aoe_blast') {
-        dmgToPlayer += remainingPlayerHP * (wave.abilityValue ?? 0.3);
-      }
-
-      const isFirstWave = (wavesSurvived === 0);
-      const isFinalWave = (waveIndex === waves.length - 1);
-      const isLosing    = remainingPlayerHP < playerTotalHP * 0.4;
-
-      const active = buckets.battle_start
-        .filter(e => waveIndex < (e.skill.effect?.duration ?? 1))
-        .concat(buckets.wave_start);
-      if (isFinalWave) active.push(...buckets.final_wave);
-      if (isLosing)    active.push(...buckets.losing);
-
-      const waveFx = sumTriggeredEffects(active);
-      mergeMaxBySource(triggeredLoss, triggeredStatEntries(active, 'lossReduction'));
-      mergeMaxBySource(triggeredHeal, triggeredStatEntries(active, 'postBattleHeal'));
-
-      let currentAttack = playerTotalAttack
-        * (1 + (isFirstWave ? (tech.firstWaveBonus || 0) : 0) + waveFx.attackBonus);
-      let currentDmg = dmgToPlayer;
-      if (waveFx.evasion) currentDmg = 0;
-      if (waveFx.defenseBonus > 0) currentDmg *= Math.max(0, 1 - waveFx.defenseBonus);
-
-      const waveKillRounds = Math.ceil(waveHP / Math.max(1, currentAttack));
-      const totalDmgTaken  = currentDmg * waveKillRounds * 0.3;
-
-      remainingPlayerHP = Math.max(0, remainingPlayerHP - totalDmgTaken);
-      wavesSurvived++;
-
-      waveDetails.push({
-        waveIndex,
-        wave: wave.name,
-        playerHP: Math.max(0, Math.round(remainingPlayerHP)),
-        dmgReceived: Math.round(totalDmgTaken),
-        rounds: waveKillRounds,
-        ability: wave.specialAbility ?? null,
-        waveHP,
-      });
-
-      // revive: spawn a weakened second pass of this wave
-      if (wave.specialAbility === 'revive' && remainingPlayerHP > 0) {
-        const revivedHP    = Math.round(waveHP * (wave.abilityValue ?? 0.3));
-        const revivedAtk   = waveAtk;
-        const revRounds    = Math.ceil(revivedHP / Math.max(1, currentAttack));
-        const revDmgTaken  = Math.max(1, revivedAtk - playerTotalDefense * 0.5) * revRounds * 0.3;
-        remainingPlayerHP  = Math.max(0, remainingPlayerHP - revDmgTaken);
-        waveDetails.push({
-          waveIndex,
-          wave: `${wave.name} (Revived)`,
-          playerHP: Math.max(0, Math.round(remainingPlayerHP)),
-          dmgReceived: Math.round(revDmgTaken),
-          rounds: revRounds,
-          ability: 'revive_spawned',
-          waveHP: revivedHP,
-        });
-      }
-
-      waveIndex++;
-    }
-
-    const victory     = remainingPlayerHP > 0;
-    const survivalRate = Math.max(0, Math.min(1, remainingPlayerHP / playerTotalHP));
-    const lossReduction = aggregate('lossReduction', [
-      ...(heroBonus.statEntries?.lossReduction ?? []),
-      ...triggeredLoss.values(),
-      statEntry('lossReduction', 'tech', tech.lossReduction || 0, 'tech'),
-    ]).total;
-    const postBattleHeal = aggregate('postBattleHeal', [
-      ...(heroBonus.statEntries?.postBattleHeal ?? []),
-      ...triggeredHeal.values(),
-    ]).total;
-    const baseLossRate = victory
-      ? Math.max(0.02, 1 - survivalRate) * (1 - lossReduction)
-      : 0.5 + (1 - survivalRate) * 0.5;
-
-    const losses = {};
-    for (const unit of army) {
-      const lossKey = unit.tierKey ?? unit.unitId; // prefer tierKey ('infantry_t1'), fall back for legacy
-      const lost    = Math.round(unit.count * baseLossRate);
-      if (lost > 0) losses[lossKey] = Math.min(lost, unit.count);
-    }
-
-    if (victory && postBattleHeal > 0) {
-      for (const [lossKey, lostCount] of Object.entries(losses)) {
-        const restored = Math.floor(lostCount * postBattleHeal);
-        if (restored > 0) {
-          losses[lossKey] = Math.max(0, lostCount - restored);
-          if (losses[lossKey] === 0) delete losses[lossKey];
-        }
-      }
-    }
-
-    return { victory, losses, wavesSurvived, waveDetails, survivalRate, initialPlayerHP: playerTotalHP };
-  }
-
-  /**
-   * Estimates squad survival against a monster without side effects.
-   * Safe to call from UI before committing an attack.
-   * @param {string} squadId
-   * @param {string} monsterId
-   * @returns {{ survivalPct: number, victory: boolean, likelyTooWeak: boolean }}
-   */
-  estimateSurvival(squadId, monsterId) {
-    // For survival_wave, use the current dynamically built monster
-    const monster = monsterId === 'survival_wave'
-      ? this._buildSurvivalMonster()
-      : MONSTERS_CONFIG[monsterId];
-    const squadData = this._um.getSquad(squadId);
-    const army      = squadData?.units ?? [];
-    if (!monster || army.length === 0) return { survivalPct: 0, victory: false, likelyTooWeak: true };
-    const result = this._simulateBattle(army, monster, null);
-    const pct = Math.round(result.survivalRate * 100);
-    return { survivalPct: pct, victory: result.victory, likelyTooWeak: pct < 30 };
+    return summarizeEstimate(reports);
   }
 
   /**
@@ -496,5 +248,61 @@ _simulateBattle(army, monster, modifier = null, squadId = null) {
     this._victoryCounts = data.victoryCounts ?? {};
     this._survivalWave  = data.survivalWave  ?? 0;
     this._survivalMult  = data.survivalMult  ?? 1.0;
+  }
+
+  _isSurvival(monsterId) {
+    return this._gameMode === 'survival' && monsterId === 'survival_wave';
+  }
+
+  _monsterFor(monsterId) {
+    return this._isSurvival(monsterId) ? this._buildSurvivalMonster() : MONSTERS_CONFIG[monsterId];
+  }
+
+  _buildSurvivalMonster() {
+    return survivalMonster(SURVIVAL_MONSTER, this._survivalWave, this._survivalMult);
+  }
+
+  _sidesFor(squadId, monster, { milMult = 1, modifier = null } = {}) {
+    return battleSides({
+      units: this._um.getSquad(squadId).units,
+      slotRows: this._um.getSquadRows(squadId),
+      heroBonus: this._hm.getCombatBonuses(squadId),
+      tech: this._techBonuses,
+      hq: this._bm?.getHQBenefits?.() ?? {},
+      milMult,
+      modifier,
+      monster,
+      difficulty: DIFFICULTY_MODIFIERS[this._difficulty],
+    });
+  }
+
+  _fight(squadId, monster, { milMult = 1, modifier = null, structure = false, seed }) {
+    const { attacker, defender } = this._sidesFor(squadId, monster, { milMult, modifier });
+    return resolveBattle(attacker, defender, { seed, rulesVersion: COMBAT_RULES.RULES_VERSION, structure });
+  }
+
+  _applyCasualties(squadId, { dead, wounded }) {
+    const losses = squadLosses({ dead, wounded });
+    if (!isEmpty(losses)) this._um.removeUnitsFromSquad(squadId, losses);
+    if (!isEmpty(wounded)) eventBus.emit('combat:unitsWounded', { squadId, wounded });
+  }
+
+  _scaleRewards(rewards, isFullReward) {
+    return Object.fromEntries(Object.entries(rewards).map(([k, v]) =>
+      [k, isFullReward ? v : Math.max(1, Math.floor(v * REDUCED_REWARD_SHARE))]));
+  }
+
+  _advanceSurvival() {
+    this._survivalWave++;
+    this._survivalMult = parseFloat((this._survivalMult * 1.05).toFixed(4));
+    eventBus.emit('survival:waveCompleted', { wave: this._survivalWave, mult: this._survivalMult });
+  }
+
+  _endSurvival() {
+    const finalScore = this._survivalWave;
+    this._user.setWaveHighScore?.(finalScore);
+    eventBus.emit('survival:ended', { score: finalScore });
+    this._survivalWave = 0;
+    this._survivalMult = 1.0;
   }
 }

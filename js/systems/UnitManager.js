@@ -5,6 +5,8 @@
  * has 10 tiers. Reserve and queue keys use the format "infantry_t1", "ranged_t3", etc.
  */
 import { eventBus } from '../core/EventBus.js';
+import { WoundedPool } from './units/woundedPool.js';
+import { defaultRowFor, isValidRow, resolveSquadRows, serializeSlotRows, deserializeSlotRows } from './units/squadRows.js';
 import { UNITS_CONFIG, BUILDINGS_CONFIG, UNIT_TIER_REQUIREMENTS } from '../entities/GAME_DATA.js';
 
 export class UnitManager {
@@ -35,6 +37,38 @@ export class UnitManager {
     // Sandbox mode: near-instant train times
     this._gameMode = 'campaign';
     eventBus.on('game:modeChanged', ({ mode }) => { this._gameMode = mode; });
+    this._wounded = new WoundedPool();
+    eventBus.on('combat:unitsWounded', payload => this._onUnitsWounded(payload));
+    eventBus.on('ui:setSlotRow', ({ squadId, slotIndex, row }) => this.setSlotRow(squadId, slotIndex, row));
+  }
+
+  _onUnitsWounded({ wounded }) {
+    this._wounded.add(wounded);
+    eventBus.emit('army:updated');
+  }
+
+  getWounded() { return this._wounded.get(); }
+
+  getSquadRows(squadId) {
+    const squad = this._squads.get(squadId);
+    if (!squad) return new Map();
+    return resolveSquadRows(squad.slotUnits ?? new Map(), squad.slotRows ?? new Map(), tierKey => this._parseTierKey(tierKey).unitId);
+  }
+
+  getSlotRow(squadId, slotIndex) {
+    const squad = this._squads.get(squadId);
+    const stored = squad?.slotRows.get(slotIndex);
+    if (stored) return stored;
+    return defaultRowFor(this.getSlotUnit(squadId, slotIndex)?.unitId);
+  }
+
+  setSlotRow(squadId, slotIndex, row) {
+    const squad = this._squads.get(squadId);
+    if (!squad) return { success: false, reason: 'Squad not found' };
+    if (!isValidRow(row)) return { success: false, reason: 'Invalid row' };
+    squad.slotRows.set(slotIndex, row);
+    eventBus.emit('army:updated');
+    return { success: true };
   }
 
   setHeroManager(hm) { this._hm = hm; }
@@ -575,7 +609,7 @@ export class UnitManager {
       return { success: false, reason: `Squad limit reached (${maxSquads}). Build another Barracks to unlock a new squad slot.` };
     }
     const id = 'squad_' + this._squadCounter++;
-    this._squads.set(id, { id, name, barracksInstanceId, units: new Map(), slotUnitLinks: new Map(), slotUnits: new Map() });
+    this._squads.set(id, { id, name, barracksInstanceId, units: new Map(), slotUnitLinks: new Map(), slotUnits: new Map(), slotRows: new Map() });
     eventBus.emit('army:updated');
     return { success: true, squadId: id };
   }
@@ -718,6 +752,7 @@ export class UnitManager {
     squad.units.set(tierKey, (squad.units.get(tierKey) ?? 0) + count);
 
     if (slotIndex !== null) {
+      if (!squad.slotRows.has(slotIndex)) squad.slotRows.set(slotIndex, defaultRowFor(unitId));
       if (!squad.slotUnits) squad.slotUnits = new Map();
       const prev = squad.slotUnits.get(slotIndex);
       squad.slotUnits.set(slotIndex, { tierKey, count: (prev?.tierKey === tierKey ? prev.count : 0) + count });
@@ -825,9 +860,11 @@ export class UnitManager {
         slotUnits: Object.fromEntries(
           [...(squad.slotUnits ?? new Map()).entries()].map(([k, v]) => [String(k), v])
         ),
+        slotRows: serializeSlotRows(squad.slotRows),
       };
     }
     return {
+      wounded:      this._wounded.serialize(),
       reserve:      Object.fromEntries(this._reserve),
       squads:       serializedSquads,
       squadCounter: this._squadCounter,
@@ -885,10 +922,11 @@ export class UnitManager {
             if (v && v.tierKey) slotUnits.set(Number(k), { tierKey: migrateKey(v.tierKey) ?? v.tierKey, count: v.count ?? 0 });
           }
         }
-        this._squads.set(id, { id: s.id, name: s.name, barracksInstanceId: s.barracksInstanceId ?? null, units, slotUnitLinks, slotUnits });
+        this._squads.set(id, { id: s.id, name: s.name, barracksInstanceId: s.barracksInstanceId ?? null, units, slotUnitLinks, slotUnits, slotRows: deserializeSlotRows(s.slotRows) });
       }
     }
     this._squadCounter = data.squadCounter ?? 1;
+    this._wounded.deserialize(data.wounded);
 
     this._queues = new Map();
     if (data.queues) {

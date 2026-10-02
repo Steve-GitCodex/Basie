@@ -69,6 +69,9 @@ overlays that eat clicks (story dialog, tutorial blocker, `#modal-overlay`,
 - `dev-dashboard-smoke.mjs` — `?dev=smoke` (ADR 0032): preset saved to the slot, dev
   progress survives a refresh, real save untouched, tools mount in the panel, backtick
   hide persists, Reset slot re-runs the preset.
+- `combat-smoke.mjs` — `?dev=combatsmoke` (ADR 0034): seeds a squad slot, sets its row to Back and checks it
+  survives a reload, then runs campaign stage 1 (estimate badge, skip, result) and asserts the squad lost
+  exactly the log entry's dead + wounded and the wounded pool holds the wounded.
 - `launcher-smoke.mjs` — spawns the Basie launcher itself on :8124 (ADR 0033): bridge injected,
   page + logManager errors reach the terminal, CSS hot-swaps in place, JS change reloads a dev tab
   but only shows a note on a normal tab.
@@ -78,5 +81,5 @@ Both exit non-zero on failure, so a session can gate on them.
 ## Not covered yet
 
 Save/load round-trip through `SaveManager`, the tutorial contract, march dispatch
-end-to-end (a fresh guest save has no squads), and combat resolution. Add them here
+end-to-end (a fresh guest save has no squads). Add them here
 as they get exercised rather than re-probing from a scratchpad.

@@ -382,3 +382,27 @@
   color: var(--clr-primary);
   font-weight: 500;
 }
+
+.battle-row-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  max-width: 140px;
+}
+
+.battle-row-bar {
+  height: 4px;
+  background: var(--clr-border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.battle-row-fill {
+  height: 100%;
+  background: var(--clr-primary);
+  transition: width 0.6s ease;
+}
+
+.battle-row-bar--mid .battle-row-fill  { opacity: 0.75; }
+.battle-row-bar--back .battle-row-fill { opacity: 0.5; }

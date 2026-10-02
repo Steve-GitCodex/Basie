@@ -8,8 +8,19 @@ import { collectEffects, bucketTriggeredByEvent } from './heroSkills.js';
 import { statEntry, aggregate } from '../stats/statAggregator.js';
 import { globalEffectBonus } from './heroProductionBonus.js';
 
+const bySlot = (a, b) => (a.slotIndex ?? Infinity) - (b.slotIndex ?? Infinity);
+
 export class HeroCombat {
   constructor(hero) { this._h = hero; }
+
+  _strikerFor(hero, cfg) {
+    return {
+      heroId: hero.heroId,
+      slotIndex: hero.assignment.slotIndex ?? null,
+      attack: hero.effectiveStats?.attack ?? cfg.stats.attack,
+      level: hero.level,
+    };
+  }
 
   _auraValueFor(hero, cfg, auraFrac = 0) {
     const base = cfg.aura?.value ?? 0;
@@ -26,6 +37,7 @@ export class HeroCombat {
     let defenseMult    = 1.0;
     const statEntries  = { lossReduction: [], postBattleHeal: [] };
     const triggered    = [];
+    const strikers     = [];
 
     for (const hero of this._h._owned.values()) {
       const a = hero.assignment;
@@ -39,6 +51,7 @@ export class HeroCombat {
       const cfg = HEROES_CONFIG[hero.heroId];
       if (!cfg) continue;
 
+      if (isSquadHero) strikers.push(this._strikerFor(hero, cfg));
       const fx = collectEffects(hero, {});
       const auraValue = this._auraValueFor(hero, cfg, fx.auraFrac);
 
@@ -80,6 +93,7 @@ export class HeroCombat {
       postBattleHeal: aggregate('postBattleHeal', statEntries.postBattleHeal).total,
       statEntries,
       triggeredByEvent, activeSkills: triggeredByEvent.battle_start,
+      strikers: strikers.sort(bySlot),
       productionBuffMult: buffMult,
     };
   }

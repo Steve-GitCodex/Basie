@@ -3207,3 +3207,26 @@ body.sheet-open #more-fab { display: none !important; }
   padding: 2px var(--space-2);
 }
 .sq-rename-input:focus { outline: none; box-shadow: var(--shadow-primary); }
+
+.slot-row-toggle {
+  display: flex;
+  gap: 2px;
+  padding: var(--space-1) var(--space-2);
+  border-top: 1px solid var(--clr-border-light);
+}
+.slot-row-toggle__btn {
+  flex: 1;
+  font-size: var(--text-xs);
+  padding: 2px 0;
+  color: var(--clr-text-secondary);
+  background: var(--clr-bg-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.slot-row-toggle__btn--active {
+  color: var(--clr-gold);
+  border-color: var(--clr-gold);
+  background: var(--clr-bg-elevated);
+}
+.sq-stat--wounded { cursor: help; }

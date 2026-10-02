@@ -359,7 +359,7 @@ model retires entirely (interim anti-teleport guard dies with it).
   Progress" bar promises a conversion no button performs, and the Shard Exchange can
   mint a shard for an unowned hero that then has no spend path. Needs either a real UI
   hookup or the dead methods removed.
-- [ ] **Combat model rework (combat phase, not hero dev) — Steve's direction 2026-10-01:**
+- [x] **Combat model rework (combat phase, not hero dev) — Steve's direction 2026-10-01** — done 2026-10-02, ADR 0034, `docs/10-design/combat.md` (balance pass follows). Original brief:
   outcomes must depend on the matchup, not pooled totals. Core rule: **a hit only hurts if
   attack beats the target's defense** — a 25-attack hit can't kill a 100-defense unit in one
   hit, so a tier-1 swarm chips at a tier-5/10 enemy but can't trivialise it. Today

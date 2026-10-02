@@ -253,3 +253,29 @@ test('paladin in a barracks yields no baseDefense', () => {
 
   assert.equal(m.getCombatBonuses('squad_1').baseDefense, 0);
 });
+
+test('squad heroes become strikers in slot order', () => {
+  const m = makeManager({ heroquartersLevel: 10 });
+  m._recruitHero('warlord');
+  m._recruitHero('paladin');
+  const warlord = m._owned.get('warlord');
+  const paladin = m._owned.get('paladin');
+  warlord.level = 7;
+  warlord.assignment = { type: 'building', buildingId: 'barracks_0', slotIndex: 2 };
+  paladin.assignment = { type: 'building', buildingId: 'barracks_0', slotIndex: 0 };
+  m._recruitHero('shadowblade');
+  m._owned.get('shadowblade').assignment = { type: 'building', buildingId: 'barracks_1', slotIndex: 1 };
+
+  const { strikers } = m.getCombatBonuses('squad_1');
+  assert.deepEqual(strikers.map(s => s.heroId), ['paladin', 'warlord']);
+  assert.deepEqual(strikers.map(s => s.slotIndex), [0, 2]);
+  assert.equal(strikers[1].level, 7);
+  assert.equal(strikers[1].attack, warlord.effectiveStats?.attack ?? HEROES_CONFIG.warlord.stats.attack);
+});
+
+test('HQ heroes never strike', () => {
+  const m = makeManager({ heroquartersLevel: 10 });
+  m._recruitHero('paladin');
+  m._owned.get('paladin').assignment = { type: 'building', buildingId: 'heroquarters_0' };
+  assert.deepEqual(m.getCombatBonuses('squad_1').strikers, []);
+});

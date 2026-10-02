@@ -2,49 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { CombatManager } from '../../js/systems/CombatManager.js';
+import { eventBus } from '../../js/core/EventBus.js';
 import { SKILLS_CONFIG } from '../../js/entities/GAME_DATA.js';
 import { bucketTriggeredByEvent, sumTriggeredEffects } from '../../js/systems/hero/heroSkills.js';
 
-const ARMY = [{ unitId: 'test_grunt', tier: 1, count: 10 }];
-
-function makeMonster(waveCount = 3) {
-  return {
-    id: 'test_target',
-    name: 'Test Target',
-    waves: Array.from({ length: waveCount }, (_, i) => ({
-      name: `Wave ${i + 1}`, hp: 5000, count: 2, attack: 1,
-    })),
-  };
-}
+const SEED = 12345;
 
 function entry(skillId, level = 1) {
   return { heroId: 'test_hero', skill: SKILLS_CONFIG[skillId], level };
 }
-
-function makeCombat(entries = []) {
-  const triggeredByEvent = bucketTriggeredByEvent(entries);
-  const heroManager = {
-    getCombatBonuses: () => ({
-      attackMult: 1, defenseMult: 1, lossReduction: 0, postBattleHeal: 0,
-      triggeredByEvent, activeSkills: triggeredByEvent.battle_start,
-      productionBuffMult: 0,
-    }),
-  };
-  const unitManager = { getSquad: () => ({ units: ARMY }), isSquadDeployed: () => false };
-  return new CombatManager(unitManager, {}, {}, heroManager, null);
-}
-
-function roundsPerWave(entries, waveCount = 3) {
-  const result = makeCombat(entries)._simulateBattle(ARMY, makeMonster(waveCount));
-  return result.waveDetails.map(d => d.rounds);
-}
-
-test('a battle with no triggered skills is the control baseline', () => {
-  const result = makeCombat()._simulateBattle(ARMY, makeMonster());
-  assert.equal(result.waveDetails.length, 3, 'all three waves should resolve');
-  assert.equal(result.victory, true, 'the control fixture must survive, or the probes are invalid');
-  assert.ok(result.waveDetails.every(d => d.rounds > 0));
-});
 
 test('summed defenseBonus above 1.0 is reachable from real config magnitudes', () => {
   const worstCase = sumTriggeredEffects([
@@ -55,188 +21,157 @@ test('summed defenseBonus above 1.0 is reachable from real config magnitudes', (
     `the clamp fixture is no longer a worst case — got ${worstCase.defenseBonus}`);
 });
 
-test('an over-100% defenseBonus never heals the player or deals negative damage', () => {
-  const entries = [
-    entry('divine_shield', 10), entry('emp_burst', 10),
-    entry('aegis_of_the_faithful', 1), entry('static_ward', 1),
-  ];
-  assert.ok(sumTriggeredEffects(entries.filter(e => e.skill.effect.trigger !== 'losing'))
-    .defenseBonus > 1.0, 'the reachable (non-losing) subset must still exceed 1.0');
-
-  const result = makeCombat(entries)._simulateBattle(ARMY, makeMonster());
-  const startHP = result.initialPlayerHP;
-
-  for (const detail of result.waveDetails) {
-    assert.ok(detail.dmgReceived >= 0,
-      `wave ${detail.waveIndex} took negative damage (${detail.dmgReceived})`);
-    assert.ok(detail.playerHP <= Math.round(startHP),
-      `wave ${detail.waveIndex} left HP at ${detail.playerHP}, above the starting ${startHP}`);
-  }
-  assert.ok(result.survivalRate <= 1, `survivalRate ${result.survivalRate} exceeded 1`);
+const unitEntry = (unitId, tier, count) => ({
+  unitId, tier, tierKey: `${unitId}_t${tier}`, count, category: unitId === 'infantry' ? 'melee' : unitId,
 });
 
-test('a duration-1 battle_start skill contributes on wave 0 only', () => {
-  const base = roundsPerWave([]);
-  const withCharge = roundsPerWave([entry('charge')]);
-
-  assert.ok(withCharge[0] < base[0], 'charge did not apply on the first wave');
-  assert.equal(withCharge[1], base[1], 'a duration-1 skill leaked into wave 1');
-  assert.equal(withCharge[2], base[2], 'a duration-1 skill leaked into wave 2');
-});
-
-test('a duration-2 battle_start skill contributes on waves 0 and 1 only', () => {
-  const base = roundsPerWave([]);
-  const withCataclysm = roundsPerWave([entry('cataclysm')]);
-
-  assert.equal(SKILLS_CONFIG.cataclysm.effect.duration, 2, 'cataclysm must stay duration 2');
-  assert.ok(withCataclysm[0] < base[0], 'cataclysm did not apply on wave 0');
-  assert.ok(withCataclysm[1] < base[1], 'cataclysm did not apply on wave 1');
-  assert.equal(withCataclysm[2], base[2], 'a duration-2 skill leaked into wave 2');
-});
-
-test('a battle_start skill is applied exactly once per applicable wave', () => {
-  const base    = roundsPerWave([]);
-  const once    = roundsPerWave([entry('charge')]);
-  const twice   = roundsPerWave([entry('charge'), entry('charge')]);
-
-  assert.ok(once[0] < base[0], 'the probe is invalid — charge had no effect');
-  assert.ok(twice[0] < once[0], 'the probe is invalid — a doubled bucket must be distinguishable');
-  assert.ok(once[0] > twice[0], 'charge was applied twice on the first wave');
-});
-
-test('a wave_start skill contributes on every wave', () => {
-  const base = roundsPerWave([]);
-  const withRally = roundsPerWave([entry('rally')]);
-
-  for (const [i, rounds] of withRally.entries()) {
-    assert.ok(rounds < base[i], `rally did not apply on wave ${i}`);
-  }
-});
-
-test('a final_wave skill contributes on the last wave only', () => {
-  const base = roundsPerWave([]);
-  const withNova = roundsPerWave([entry('mana_surge')]);
-
-  assert.equal(withNova[0], base[0], 'a final_wave skill leaked into wave 0');
-  assert.equal(withNova[1], base[1], 'a final_wave skill leaked into wave 1');
-  assert.ok(withNova[2] < base[2], 'mana_surge did not apply on the final wave');
-});
-
-test('a levelled support scales its triggered magnitude inside the wave loop', () => {
-  const l1  = roundsPerWave([entry('charge', 1)]);
-  const l10 = roundsPerWave([entry('charge', 10)]);
-  assert.ok(l10[0] < l1[0], 'levelling charge to 10 changed nothing in the battle');
-});
-
-const BIG_ARMY = [{ unitId: 'test_grunt', tier: 1, count: 1000 }];
-
-function makeCombatWithEntries(statEntries, entries = []) {
-  const triggeredByEvent = bucketTriggeredByEvent(entries);
-  const heroManager = {
-    getCombatBonuses: () => ({
-      attackMult: 1, defenseMult: 1, lossReduction: 0, postBattleHeal: 0,
-      statEntries, triggeredByEvent, activeSkills: triggeredByEvent.battle_start,
-      productionBuffMult: 0,
-    }),
-  };
-  const unitManager = { getSquad: () => ({ units: BIG_ARMY }), isSquadDeployed: () => false };
-  return new CombatManager(unitManager, {}, {}, heroManager, null);
-}
-
-function lossMonster(attack = 5000, waveCount = 3) {
+function neutralBonuses() {
+  const triggeredByEvent = bucketTriggeredByEvent([]);
   return {
-    id: 'loss_target',
-    name: 'Loss Target',
-    waves: Array.from({ length: waveCount }, (_, i) => ({
-      name: `Wave ${i + 1}`, hp: 5000, count: 2, attack,
-    })),
+    attackMult: 1, defenseMult: 1, baseDefense: 0, lossReduction: 0, postBattleHeal: 0,
+    statEntries: { lossReduction: [], postBattleHeal: [] },
+    triggeredByEvent, activeSkills: triggeredByEvent.battle_start, strikers: [], productionBuffMult: 0,
   };
 }
 
-const heroLoss = value => ({ stat: 'lossReduction', category: 'hero', value, sourceId: `hero_${value}` });
-const noEntries = () => ({ lossReduction: [], postBattleHeal: [] });
-
-function totalLost(combat, monster = lossMonster()) {
-  const result = combat._simulateBattle(BIG_ARMY, monster);
-  assert.equal(result.victory, true, 'loss fixtures must be victories');
-  return Object.values(result.losses).reduce((s, n) => s + n, 0);
-}
-
-function withTech(combat, lossReduction) {
-  combat._techBonuses = { lossReduction };
-  return combat;
-}
-
-test('stacked hero loss reduction far above 100% still leaves at least 10% of base losses', () => {
-  const base = totalLost(makeCombatWithEntries(noEntries()));
-  assert.ok(base > 0, 'base fixture must lose units');
-  const entries = {
-    lossReduction: Array.from({ length: 6 }, (_, i) => ({ ...heroLoss(0.5), sourceId: `h${i}` })),
-    postBattleHeal: [],
+function makeCombat(units) {
+  const squad = { name: 'Test Squad', units: units.map((u) => ({ ...u })) };
+  const removed = [];
+  const bonusCalls = [];
+  const unitManager = {
+    getSquad: () => squad,
+    getSquadRows: () => new Map(),
+    isSquadDeployed: () => false,
+    removeUnitsFromSquad: (squadId, losses) => {
+      removed.push({ squadId, losses });
+      for (const unit of squad.units) unit.count -= losses[unit.tierKey] ?? 0;
+    },
   };
-  const lost = totalLost(withTech(makeCombatWithEntries(entries), 0.15));
-  assert.ok(lost > 0, 'losses vanished entirely');
-  assert.ok(lost >= Math.round(base * 0.10), `lost ${lost} fell below 10% of base ${base}`);
-});
-
-test('tech-only loss reduction is unchanged from the pre-2d formula', () => {
-  const { survivalRate } = makeCombatWithEntries(noEntries())._simulateBattle(BIG_ARMY, lossMonster());
-  const lost = totalLost(withTech(makeCombatWithEntries(noEntries()), 0.15));
-  assert.equal(lost, Math.round(1000 * Math.max(0.02, 1 - survivalRate) * 0.85));
-});
-
-test('aegis triggered heal restores losses after a victory', () => {
-  const without = totalLost(makeCombatWithEntries(noEntries()));
-  const withAegis = totalLost(makeCombatWithEntries(noEntries(), [entry('aegis_of_the_faithful', 1)]));
-  assert.ok(withAegis < without, `aegis did not restore losses (${withAegis} vs ${without})`);
-});
-
-test('a losing-trigger skill counts once per battle, not once per wave', () => {
-  const monster = lossMonster(20000, 8);
-  const probe = makeCombatWithEntries(noEntries())._simulateBattle(BIG_ARMY, monster);
-  assert.equal(probe.victory, true);
-  const losingWaves = probe.waveDetails.filter(d => d.playerHP < probe.initialPlayerHP * 0.4).length;
-  assert.ok(losingWaves >= 2, `fixture needs several losing waves, got ${losingWaves}`);
-
-  const triggered = totalLost(makeCombatWithEntries(noEntries(), [entry('second_wind')]), monster);
-  const single = totalLost(makeCombatWithEntries(
-    { lossReduction: [heroLoss(0.15)], postBattleHeal: [] }), monster);
-  assert.equal(triggered, single);
-});
-
-test('a triggered postBattleHeal alone restores losses after a victory', () => {
-  const healOnly = {
-    heroId: 'test_hero',
-    skill: { id: 'heal_probe', effect: { trigger: 'wave_start', postBattleHeal: 0.3 } },
-    level: 1,
-  };
-  const without = totalLost(makeCombatWithEntries(noEntries()));
-  const withHeal = totalLost(makeCombatWithEntries(noEntries(), [healOnly]));
-  assert.ok(withHeal < without, `heal probe did not restore losses (${withHeal} vs ${without})`);
-});
-
-function makeCombatWithBaseDefense(baseDefense) {
   const heroManager = {
-    getCombatBonuses: () => ({
-      attackMult: 1, defenseMult: 1, baseDefense, lossReduction: 0, postBattleHeal: 0,
-      statEntries: noEntries(), triggeredByEvent: bucketTriggeredByEvent([]), activeSkills: [],
-      productionBuffMult: 0,
-    }),
+    getCombatBonuses: (squadId) => { bonusCalls.push(squadId); return neutralBonuses(); },
+    awardBattleXP: () => {},
   };
-  const unitManager = { getSquad: () => ({ units: BIG_ARMY }), isSquadDeployed: () => false };
-  return new CombatManager(unitManager, {}, {}, heroManager, null);
+  const userManager = { addXP: () => {}, setWaveHighScore: () => {} };
+  const combat = new CombatManager(unitManager, userManager, {}, heroManager, null);
+  return { combat, squad, removed, bonusCalls };
 }
 
-test('baseDefense raises effective defense and lowers damage taken', () => {
-  const monster = lossMonster(5000);
-  const none = makeCombatWithBaseDefense(0)._simulateBattle(BIG_ARMY, monster).waveDetails[0].dmgReceived;
-  const boosted = makeCombatWithBaseDefense(0.25)._simulateBattle(BIG_ARMY, monster).waveDetails[0].dmgReceived;
-  assert.ok(none > 1, `fixture damage clamped to the minimum (${none})`);
-  assert.ok(boosted < none, `baseDefense did not reduce damage (${boosted} vs ${none})`);
+function recordEvents(names, run) {
+  const seen = [];
+  const handlers = names.map((name) => [name, (data) => seen.push({ name, data })]);
+  for (const [name, fn] of handlers) eventBus.on(name, fn);
+  try { run(); } finally { for (const [name, fn] of handlers) eventBus.off(name, fn); }
+  return seen;
+}
+
+const total = (map) => Object.values(map).reduce((sum, n) => sum + n, 0);
+
+test('attack applies dead and wounded and emits combat:unitsWounded', () => {
+  const { combat, squad, removed } = makeCombat([unitEntry('infantry', 1, 80)]);
+  let result;
+  const seen = recordEvents(['combat:unitsWounded', 'combat:victory'], () => {
+    result = combat.attack('orc_warband', 'squad_1', { seed: SEED });
+  });
+  const { report } = result;
+  assert.equal(result.success, true);
+  assert.equal(report.victory, true);
+  assert.equal(report.seed, SEED);
+  assert.ok(total(report.dead) + total(report.wounded) > 0, 'fixture must take casualties');
+
+  const expected = {};
+  for (const map of [report.dead, report.wounded]) {
+    for (const [key, n] of Object.entries(map)) expected[key] = (expected[key] ?? 0) + n;
+  }
+  assert.deepEqual(removed, [{ squadId: 'squad_1', losses: expected }]);
+  assert.equal(squad.units[0].count, 80 - total(expected));
+
+  const wounded = seen.find((e) => e.name === 'combat:unitsWounded');
+  assert.deepEqual(wounded.data, { squadId: 'squad_1', wounded: report.wounded });
+  const victory = seen.find((e) => e.name === 'combat:victory').data;
+  assert.deepEqual(victory.dead, report.dead);
+  assert.deepEqual(victory.wounded, report.wounded);
+  assert.equal('losses' in victory, false);
+
+  const log = combat.getBattleLog()[0];
+  assert.equal(log.seed, SEED);
+  assert.equal(log.rulesVersion, report.rulesVersion);
+  assert.deepEqual(log.dead, report.dead);
+  assert.deepEqual(log.wounded, report.wounded);
 });
 
-test('Steel Armor at Lv4 (tech 0.60) reduces losses by 60% with no hero sources', () => {
-  const { survivalRate } = makeCombatWithEntries(noEntries())._simulateBattle(BIG_ARMY, lossMonster());
-  const lost = totalLost(withTech(makeCombatWithEntries(noEntries()), 0.60));
-  assert.equal(lost, Math.round(1000 * Math.max(0.02, 1 - survivalRate) * 0.40));
+test('a defeat emits combat:defeat with dead and wounded', () => {
+  const { combat } = makeCombat([unitEntry('infantry', 1, 5)]);
+  let result;
+  const seen = recordEvents(['combat:defeat', 'combat:victory'], () => {
+    result = combat.attack('chaos_titan', 'squad_1', { seed: SEED });
+  });
+  assert.equal(result.report.victory, false);
+  assert.equal(result.rewards, null);
+  assert.deepEqual(seen.map((e) => e.name), ['combat:defeat']);
+  assert.deepEqual(seen[0].data.dead, result.report.dead);
+  assert.deepEqual(seen[0].data.wounded, result.report.wounded);
+  assert.equal(total(result.report.dead) + total(result.report.wounded), 5);
+});
+
+test('resolveMarchBattle honours milMult below 1', () => {
+  const full = makeCombat([unitEntry('infantry', 1, 50)]).combat
+    .resolveMarchBattle('squad_1', 'goblin_camp', 1, { seed: SEED });
+  const half = makeCombat([unitEntry('infantry', 1, 50)]).combat
+    .resolveMarchBattle('squad_1', 'goblin_camp', 0.5, { seed: SEED });
+  assert.ok(Math.abs(half.report.initial.attacker[0].attack - full.report.initial.attacker[0].attack / 2) < 1e-9);
+  assert.deepEqual(full.dead, full.report.dead);
+  assert.deepEqual(full.wounded, full.report.wounded);
+});
+
+test('structure fights boost siege', () => {
+  const defenderLosses = (structure) => {
+    const { report } = makeCombat([unitEntry('siege', 1, 3)]).combat
+      .resolveMarchBattle('squad_1', 'orc_warband', 1, { structure, seed: SEED });
+    const before = report.initial.defender[0].reduce((sum, s) => sum + s.hpPool, 0);
+    const after = report.waves[0].rounds[0].defender.reduce((sum, s) => sum + s.hpPool, 0);
+    return before - after;
+  };
+  assert.ok(defenderLosses(true) > defenderLosses(false));
+});
+
+test('estimateBattle uses the squad\'s own heroes', () => {
+  const { combat, bonusCalls } = makeCombat([unitEntry('infantry', 1, 50)]);
+  combat.estimateBattle('squad_2', 'goblin_camp');
+  assert.ok(bonusCalls.length > 0);
+  assert.ok(bonusCalls.every((id) => id === 'squad_2'), `called with ${bonusCalls}`);
+});
+
+test('estimateBattle is side-effect free', () => {
+  const { combat, squad, removed } = makeCombat([unitEntry('infantry', 1, 200)]);
+  let estimate;
+  const seen = recordEvents(
+    ['combat:started', 'combat:victory', 'combat:defeat', 'combat:unitsWounded', 'combat:logUpdated', 'combat:marchResolved'],
+    () => { estimate = combat.estimateBattle('squad_1', 'goblin_camp'); },
+  );
+  assert.equal(squad.units[0].count, 200);
+  assert.deepEqual(removed, []);
+  assert.deepEqual(seen, []);
+  assert.deepEqual(combat.getBattleLog(), []);
+  assert.ok(estimate.winChance >= 0 && estimate.winChance <= 1);
+  assert.ok(estimate.avgDead >= 0 && estimate.avgWounded >= 0);
+  assert.deepEqual(combat.estimateBattle('squad_1', 'goblin_camp'), estimate);
+});
+
+test('Steel Armor 0.60 moves more fallen into wounded than none', () => {
+  const woundedShare = (lossReduction) => {
+    const { combat } = makeCombat([unitEntry('infantry', 1, 80)]);
+    combat._techBonuses = { lossReduction };
+    const { report } = combat.attack('orc_warband', 'squad_1', { seed: SEED });
+    return total(report.wounded) / total(report.fallen);
+  };
+  assert.ok(woundedShare(0.6) > woundedShare(0));
+});
+
+test('an unknown difficulty setting is ignored and battles stay on normal', () => {
+  const { combat } = makeCombat([unitEntry('infantry', 1, 80)]);
+  eventBus.emit('settings:changed', { difficulty: 'bogus' });
+  const result = combat.attack('orc_warband', 'squad_1', { seed: SEED });
+  const normal = makeCombat([unitEntry('infantry', 1, 80)]).combat.attack('orc_warband', 'squad_1', { seed: SEED });
+  assert.equal(result.success, true);
+  assert.deepEqual(result.report.initial.defender, normal.report.initial.defender);
 });

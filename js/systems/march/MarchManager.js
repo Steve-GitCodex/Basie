@@ -107,6 +107,7 @@ export class MarchManager {
       loadCap: loadCapacity(squad),
       payload: {},
       grants: null,
+      casualties: null,
       outcome: null,
     };
     this._marches.push(march);
@@ -126,6 +127,7 @@ export class MarchManager {
         const res = resolveArrival(m, poi, { worldMapManager: this._wm, combatManager: this._cm });
         m.payload = res.payload ?? {};
         m.grants = res.grants ?? null;
+        m.casualties = res.casualties ?? null;
         m.outcome = res.outcome;
         m.phase = 'acting';
         m.actUntil = now + (res.dwellMs ?? 0);
@@ -162,6 +164,7 @@ export class MarchManager {
         const res = resolveArrival(m, poi, { worldMapManager: this._wm, combatManager: this._cm });
         m.payload  = res.payload ?? {};
         m.grants   = res.grants ?? null;
+        m.casualties = res.casualties ?? null;
         m.outcome  = res.outcome;
         m.phase    = 'acting';
         m.actUntil = m.arriveAt + (res.dwellMs ?? 0); // cascade from arriveAt, not real-now
@@ -200,7 +203,7 @@ export class MarchManager {
     return {
       id: m.id, type: m.type, squadId: m.squadId, targetPoiId: m.targetPoiId,
       phase: m.phase, arriveAt: m.arriveAt, actUntil: m.actUntil, returnAt: m.returnAt,
-      outcome: m.outcome, payload: m.payload, grants: m.grants,
+      outcome: m.outcome, payload: m.payload, grants: m.grants, casualties: m.casualties ?? null,
     };
   }
 

@@ -192,12 +192,21 @@ export class WorldMapUI {
 
   _announceArrival(m) {
     const name = this._wm.getPOI(m.targetPoiId)?.name ?? '';
-    if (m.outcome === 'victory') this._notify?.show?.('success', '⚔️ Victory', name);
-    else if (m.outcome === 'boss_victory') this._notify?.show?.('success', '🐲 Boss slain', name);
-    else if (m.outcome === 'defeat') this._notify?.show?.('warning', '💀 Defeat', name);
-    else if (m.outcome === 'explored') this._notify?.show?.('success', '🗿 Ruin explored', name);
-    else if (m.outcome === 'captured') this._notify?.show?.('success', '🚩 Outpost captured', name);
+    const fallen = name + this._casualtyText(m.casualties);
+    if (m.outcome === 'victory') this._notify?.show?.('success', '⚔️ Victory', fallen);
+    else if (m.outcome === 'boss_victory') this._notify?.show?.('success', '🐲 Boss slain', fallen);
+    else if (m.outcome === 'defeat') this._notify?.show?.('warning', '💀 Defeat', fallen);
+    else if (m.outcome === 'explored') this._notify?.show?.('success', '🗿 Ruin explored', fallen);
+    else if (m.outcome === 'captured') this._notify?.show?.('success', '🚩 Outpost captured', fallen);
     else if (m.outcome === 'closed') this._notify?.show?.('warning', '⏳ Window closed', `${name} — the boss had retreated`);
+  }
+
+  _casualtyText(casualties) {
+    const sum = (map) => Object.values(map ?? {}).reduce((a, n) => a + n, 0);
+    const parts = [];
+    if (sum(casualties?.dead)) parts.push(`${sum(casualties.dead)} dead`);
+    if (sum(casualties?.wounded)) parts.push(`${sum(casualties.wounded)} wounded`);
+    return parts.length ? ` — ${parts.join(', ')}` : '';
   }
 
   _announceComplete(m) {

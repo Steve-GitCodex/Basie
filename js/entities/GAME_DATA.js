@@ -32,6 +32,7 @@ export {
 } from './data/citySectors.js';
 export { WORLD_MAP } from './data/worldMap.js';
 export { STAT_RULES } from './data/statRules.js';
+export { COMBAT_RULES } from './data/combatRules.js';
 
 /** logPersist: true writes the in-game log buffer to localStorage on unload (Ctrl+Shift+L opens it). */
 export const DEBUG_CONFIG = { logPersist: false };

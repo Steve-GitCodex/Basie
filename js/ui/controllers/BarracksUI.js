@@ -3,6 +3,7 @@ import { eventBus } from '../../core/EventBus.js';
 import { UNITS_CONFIG, BUILDINGS_CONFIG, HEROES_CONFIG, HERO_CLASSIFICATIONS } from '../../entities/GAME_DATA.js';
 import { icon, iconFromEmoji } from '../icons.js';
 import { TIER_CSS_SUFFIX, escapeHtml } from '../uiUtils.js';
+import { createSlotRowToggle } from '../barracks/slotRowToggle.js';
 
 export class BarracksUI {
   /** @param {{ rm, um, heroes, inventory, notifications }} systems */
@@ -117,6 +118,7 @@ export class BarracksUI {
         <span class="sq-stat" title="Attack multiplier">${icon('sword')} ×${bonuses.attackMult.toFixed(2)}</span>
         <span class="sq-stat" title="Defense multiplier">${icon('shield')} ×${bonuses.defenseMult.toFixed(2)}</span>
         ${bonuses.lossReduction > 0 ? `<span class="sq-stat" title="Casualty reduction">${icon('heart', 'icon--success')} -${(bonuses.lossReduction * 100).toFixed(0)}%</span>` : ''}
+        <span class="sq-stat sq-stat--wounded" data-tooltip="Hospital coming — wounded can't be healed yet">Army wounded: ${this._woundedTotal()}</span>
         <span class="sq-stat sq-stat--score" title="Combat score">${icon('star-burst', 'icon--gold')} ${score.toLocaleString()}</span>
       </div>
       <div class="sq-tiles" id="sq-tiles"></div>`;
@@ -135,6 +137,10 @@ export class BarracksUI {
     for (let i = 0; i < MAX_SLOTS; i++) {
       tilesEl.appendChild(this._buildTile(squad, instId, level, i, squadSlots[i]));
     }
+  }
+
+  _woundedTotal() {
+    return Object.values(this._s.um?.getWounded?.() ?? {}).reduce((sum, n) => sum + n, 0);
   }
 
   _page(dir) {
@@ -227,6 +233,12 @@ export class BarracksUI {
       this._openUnitTypePicker(squad.id, slotIndex, tile, classCfg);
     });
     tile.appendChild(unitHalf);
+
+    const toggle = createSlotRowToggle({
+      row: this._s.um.getSlotRow(squad.id, slotIndex),
+      onPick: row => eventBus.emit('ui:setSlotRow', { squadId: squad.id, slotIndex, row }),
+    });
+    tile.appendChild(toggle.el);
 
     return tile;
   }

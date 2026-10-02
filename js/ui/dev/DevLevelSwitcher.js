@@ -1,11 +1,10 @@
-/**
- * DevLevelSwitcher.js
- * Dev-only floating widget (`?dev` sessions only): force any already-placed
- * building instance to any level, to eyeball a sprite's per-level anchor/scale
- * in-game without grinding a real upgrade.
- */
 import { eventBus } from '../../core/EventBus.js';
 import { BUILDINGS_CONFIG } from '../../entities/GAME_DATA.js';
+
+const splitInstanceId = (instanceId) => {
+  const cut = instanceId.lastIndexOf('_');
+  return { buildingId: instanceId.slice(0, cut), instanceIndex: Number(instanceId.slice(cut + 1)) };
+};
 
 export class DevLevelSwitcher {
   init(buildingManager, mount) {
@@ -16,20 +15,28 @@ export class DevLevelSwitcher {
     this._levelSelect    = this._el.querySelector('[data-dev-level]');
     this._status         = this._el.querySelector('[data-dev-status]');
 
-    this._populateBuildings();
+    this._refreshInstances();
+    for (const evt of ['focus', 'pointerdown']) {
+      this._buildingSelect.addEventListener(evt, () => this._refreshInstances());
+    }
     this._buildingSelect.addEventListener('change', () => this._populateLevels());
     this._levelSelect.addEventListener('change', () => this._apply());
     this._populateLevels();
 
-    // Clicking a building in the base view snaps this menu to it (shared selection).
-    eventBus.on('dev:buildingSelected', ({ buildingId }) => this._selectBuilding(buildingId));
+    eventBus.on('dev:buildingSelected', ({ buildingId, instanceIndex = 0 }) =>
+      this._selectInstance(`${buildingId}_${instanceIndex}`));
   }
 
-  _selectBuilding(buildingId) {
-    if (!buildingId || this._buildingSelect.value === buildingId) return;
-    if (![...this._buildingSelect.options].some(o => o.value === buildingId)) return;
-    this._buildingSelect.value = buildingId;
+  _selectInstance(instanceId) {
+    if (this._buildingSelect.value === instanceId) return;
+    this._refreshInstances();
+    if (!this._hasOption(instanceId)) return;
+    this._buildingSelect.value = instanceId;
     this._populateLevels();
+  }
+
+  _hasOption(instanceId) {
+    return [...this._buildingSelect.options].some(o => o.value === instanceId);
   }
 
   _buildEl() {
@@ -44,28 +51,33 @@ export class DevLevelSwitcher {
     return el;
   }
 
-  _populateBuildings() {
-    const placedIds = [...new Set(
-      this._bm.getPlacementRects().map(r => r.buildingId),
-    )].sort();
-    this._buildingSelect.innerHTML = placedIds
-      .map(id => `<option value="${id}">${BUILDINGS_CONFIG[id]?.name ?? id}</option>`)
+  _refreshInstances() {
+    const keep = this._buildingSelect.value;
+    const rects = this._bm.getPlacementRects()
+      .slice()
+      .sort((a, b) => a.buildingId.localeCompare(b.buildingId) || a.instanceIndex - b.instanceIndex);
+    this._buildingSelect.innerHTML = rects
+      .map(r => `<option value="${r.instanceId}">${BUILDINGS_CONFIG[r.buildingId]?.name ?? r.buildingId} #${r.instanceIndex + 1}</option>`)
       .join('');
+    if (keep && this._hasOption(keep)) this._buildingSelect.value = keep;
   }
 
   _populateLevels() {
-    const id = this._buildingSelect.value;
-    const maxLevel = BUILDINGS_CONFIG[id]?.maxLevel ?? 1;
-    const current = this._bm.getLevelOf(id);
+    const instanceId = this._buildingSelect.value;
+    if (!instanceId) { this._levelSelect.innerHTML = ''; return; }
+    const { buildingId } = splitInstanceId(instanceId);
+    const maxLevel = BUILDINGS_CONFIG[buildingId]?.maxLevel ?? 1;
+    const current = this._bm.getInstanceLevelOf(instanceId);
     this._levelSelect.innerHTML = Array.from({ length: maxLevel }, (_, i) => i + 1)
       .map(lvl => `<option value="${lvl}" ${lvl === current ? 'selected' : ''}>Lv.${lvl}</option>`)
       .join('');
   }
 
   _apply() {
-    const buildingId = this._buildingSelect.value;
+    const instanceId = this._buildingSelect.value;
+    const { buildingId, instanceIndex } = splitInstanceId(instanceId);
     const level = Number(this._levelSelect.value);
-    eventBus.emit('ui:devSetBuildingLevel', { buildingId, level });
-    this._status.textContent = `set ${buildingId} → Lv.${level}`;
+    eventBus.emit('ui:devSetBuildingLevel', { buildingId, instanceIndex, level });
+    this._status.textContent = `set ${instanceId} → Lv.${level}`;
   }
 }

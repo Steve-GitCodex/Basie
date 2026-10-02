@@ -1,0 +1,16 @@
+export const COMBAT_RULES = Object.freeze({
+  RULES_VERSION: 1,
+  COUNTERS: Object.freeze({ infantry: 'cavalry', cavalry: 'ranged', ranged: 'infantry' }),
+  COUNTER_MULT: 1.15,
+  SIEGE_VS_STRUCTURE_MULT: 1.5,
+  DEFAULT_ROW: Object.freeze({ infantry: 'front', cavalry: 'mid', ranged: 'back', siege: 'back' }),
+  ROWS: Object.freeze(['front', 'mid', 'back']),
+  VARIANCE: 0.10,
+  ROUND_CAP: 30,
+  TIER_TARGET_WEIGHT: Object.freeze([10, 9, 8, 7, 6, 5, 4, 3, 2, 1]),
+  WOUNDED_SHARE: Object.freeze({ victory: 0.40, defeat: 0.20 }),
+  HERO_STRIKE: Object.freeze({ factor: 10, perLevel: 0.03 }),
+  LOSING_THRESHOLD: 0.40,
+  ESTIMATE_RUNS: 20,
+  MONSTER_TIERS: Object.freeze([10, 15, 20, 28, 38, 50, 66, 85, 110, 145].map((defense) => Object.freeze({ defense }))),
+});

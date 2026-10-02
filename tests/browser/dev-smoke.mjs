@@ -38,7 +38,7 @@ await withPage(async ({ page, errors, origin }) => {
     const buildingSelect = widget?.querySelector('[data-dev-building]');
     const levelSelect = widget?.querySelector('[data-dev-level]');
     const before = window.game.buildings.getLevelOf('townhall');
-    buildingSelect.value = 'townhall';
+    buildingSelect.value = 'townhall_0';
     buildingSelect.dispatchEvent(new Event('change'));
     levelSelect.value = '2';
     levelSelect.dispatchEvent(new Event('change'));
@@ -112,7 +112,7 @@ await withPage(async ({ page, errors, origin }) => {
     // Clicking a building syncs the level-switcher dropdown (shared selection).
     g.eventBus.emit('dev:buildingSelected', { buildingId: 'townhall' });
     const switcherSynced =
-      document.querySelector('.dev-level-switcher [data-dev-building]')?.value === 'townhall';
+      document.querySelector('.dev-level-switcher [data-dev-building]')?.value === 'townhall_0';
 
     const slot = city._slots.find(s => s.buildingId === 'townhall' && s.level > 0);
     const w0 = city._spriteBox(slot).width;
@@ -152,7 +152,8 @@ await withPage(async ({ page, errors, origin }) => {
 
   await page.evaluate(() => window.game.eventBus.emit('ui:navigateTo', 'base'));
   await page.waitForFunction(() => !!window.game.city?._slots?.length, null, { timeout: 10_000 });
-  await page.waitForTimeout(800);
+  await page.waitForFunction(() => document.getElementById('city-loading')?.classList.contains('hidden'),
+    null, { timeout: 15_000 });
   const target = await page.evaluate(() => {
     const c = window.game.city, cam = c._camera, rect = c._canvas.getBoundingClientRect();
     const slot = c._slots.find(s => s.buildingId === 'townhall' && s.level > 0);
@@ -177,5 +178,53 @@ await withPage(async ({ page, errors, origin }) => {
     { label: 'precondition: city not built yet on the world view', ok: !cityExistedAtToggle },
     { label: 'Building mode stays on when toggled before the city exists', ok: staysOnFromWorld },
     { label: 'dragging the sprite on the base view then moves its anchor', ok: Math.abs(axAfter - target.ax) > 1 },
+  ], errors);
+});
+
+await withPage(async ({ page, errors, origin }) => {
+  await page.goto(`${origin}/index.html?dev=multi-instance`, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => !!window.game?.eventBus && !!document.querySelector('[data-dev-building]'), null, { timeout: 20_000 });
+  await page.waitForTimeout(800);
+
+  const squadState = await page.evaluate(() => {
+    window.game.eventBus.emit('ui:openSquads', { buildingId: 'barracks', instanceIndex: 0 });
+    const sheet = document.querySelector('#squad-sheet')?.innerText ?? '';
+    return {
+      boundToFirstBarracks: window.game.units.getSquads().some(s => s.barracksInstanceId === 'barracks_0'),
+      modalShowsSquad: !sheet.includes('No squad available'),
+    };
+  });
+
+  const second = await page.evaluate(() => {
+    const bm = window.game.buildings;
+    const type = bm.getBuildingTypesWithInstances().find(t => t.unlockedInstanceCount >= 2);
+    const drain = () => { let guard = 200; while (bm.getBuildQueue().length && guard--) bm.update(300); };
+    if (bm.getInstanceLevelOf(`${type.id}_0`) < 1) { bm.build(type.id, 0); drain(); }
+    const r = bm.build(type.id, 1);
+    drain();
+    return { id: type.id, built: r.success, levels: [bm.getInstanceLevelOf(`${type.id}_0`), bm.getInstanceLevelOf(`${type.id}_1`)] };
+  });
+
+  const switched = await page.evaluate(({ id, from }) => {
+    const bm = window.game.buildings;
+    const buildingSelect = document.querySelector('[data-dev-building]');
+    buildingSelect.dispatchEvent(new Event('focus'));
+    const listed = [...buildingSelect.options].map(o => o.value);
+    buildingSelect.value = `${id}_1`;
+    buildingSelect.dispatchEvent(new Event('change'));
+    const levelSelect = document.querySelector('[data-dev-level]');
+    const target = String(from + 1);
+    levelSelect.value = target;
+    levelSelect.dispatchEvent(new Event('change'));
+    return { listed, target: Number(target), levels: [bm.getInstanceLevelOf(`${id}_0`), bm.getInstanceLevelOf(`${id}_1`)] };
+  }, { id: second.id, from: second.levels[1] });
+
+  report('dev-multi-instance', [
+    { label: 'dev squad is bound to the first Barracks', ok: squadState.boundToFirstBarracks },
+    { label: 'Barracks #1 squad modal opens with a squad', ok: squadState.modalShowsSquad },
+    { label: `precondition: a second ${second.id} was built`, ok: second.built && second.levels[1] >= 1 },
+    { label: 'switcher lists the newly built second instance', ok: switched.listed.includes(`${second.id}_1`) },
+    { label: 'switching instance #2 changes instance #2', ok: switched.levels[1] === switched.target },
+    { label: 'switching instance #2 leaves instance #1 alone', ok: switched.levels[0] === second.levels[0] },
   ], errors);
 });

@@ -1,19 +1,12 @@
-/**
- * CombatUI.js
- * Renders: campaign world map, campaign detail panel, battle modal with
- * animation (using real CombatManager waveDetails), battle log.
- *
- * Key fixes vs old UIManager:
- *  - Campaign stage availability comes from CombatManager.getCampaignStagesWithState()
- *  - Battle animation now plays back the real combat result (waveDetails)
- *    instead of running fabricated damage numbers
- *  - The "empty squad" guard is still here (action validation), but squad
- *    selection validation belongs in the UI layer.
- */
 import { eventBus } from '../../core/EventBus.js';
 import { MONSTERS_CONFIG, UNITS_CONFIG } from '../../entities/GAME_DATA.js';
 import { RES_META, fmt, openModal, closeModal, escapeHtml } from '../uiUtils.js';
 import { icon, iconFromEmoji } from '../icons.js';
+import { estimateBadge } from '../combat/estimateBadge.js';
+import { playbackSteps } from '../combat/playbackSteps.js';
+import { BattlePlayback } from '../combat/BattlePlayback.js';
+import { waveSummary } from '../combat/stackSummary.js';
+import { battleResultHtml } from '../combat/battleResultHtml.js';
 
 export class CombatUI {
   /**
@@ -203,7 +196,7 @@ export class CombatUI {
         id:    'survival_wave',
         name:  `Survival Wave ${survState.wave + 1}`,
         icon:  icon('lightning', 'icon--danger icon--xl'),
-        waves: [{ name: 'Survival Enemies', hp: 0, attack: 0, count: 0 }], // placeholder for wave count display
+        waves: [{ name: 'Survival Enemies', stacks: [] }],
       };
       this._openBattleArena(proxy, squadId);
     });
@@ -236,7 +229,7 @@ export class CombatUI {
     ).join('');
 
     const wavesHtml = monster.waves.map((w, i) =>
-      `<div class="campaign-wave-row"><div class="campaign-wave-dot"></div><span>Wave ${i + 1}: ${w.name} (×${w.count}) — ${icon('heart', 'icon--danger')}${w.hp} ${icon('sword')}${w.attack}${w.specialAbility ? ` ${icon('lightning')}${w.specialAbility}` : ''}</span></div>`
+      `<div class="campaign-wave-row"><div class="campaign-wave-dot"></div><span>${waveSummary(w, i)}</span></div>`
     ).join('');
 
     const victoryInfo = prog.victories > 0
@@ -321,13 +314,10 @@ export class CombatUI {
     // Helper: update readiness badge based on selected squad
     const updateReadiness = (squadId) => {
       const badgeArea = document.getElementById('readiness-badge-area');
-      if (!badgeArea || !squadId || !this._s.cm.estimateSurvival) return;
-      const est = this._s.cm.estimateSurvival(squadId, stage.monsterId);
-      if (!est) { badgeArea.innerHTML = ''; return; }
-      const cls       = est.likelyTooWeak ? 'weak' : est.survivalPct < 60 ? 'risky' : 'ready';
-      const statusIco = est.likelyTooWeak ? icon('warning') : est.survivalPct < 60 ? icon('lightning') : icon('check', 'icon--success');
-      const lbl       = est.victory ? 'Victory likely' : `~${Math.round(est.survivalPct)}% survival`;
-      badgeArea.innerHTML = `<span class="readiness-badge ${cls}">${statusIco} ${lbl}</span>`;
+      if (!badgeArea || !squadId) return;
+      const { cls, label } = estimateBadge(this._s.cm.estimateBattle(squadId, stage.monsterId));
+      const statusIco = cls === 'weak' ? icon('warning') : cls === 'risky' ? icon('lightning') : icon('check', 'icon--success');
+      badgeArea.innerHTML = `<span class="readiness-badge ${cls}">${statusIco} ${label}</span>`;
     };
 
     // Initial readiness check
@@ -352,20 +342,16 @@ export class CombatUI {
       return;
     }
 
-    // Readiness check — warn player if survival estimate is very low
-    if (this._s.cm.estimateSurvival) {
-      const est = this._s.cm.estimateSurvival(squadId, monster.id);
-      if (est?.likelyTooWeak) {
-        // Show a warning confirmation before opening the arena
-        this._showReadinessWarning(monster, squadId, Math.round(est.survivalPct));
-        return;
-      }
+    const est = this._s.cm.estimateBattle(squadId, monster.id);
+    if (estimateBadge(est).cls === 'weak') {
+      this._showReadinessWarning(monster, squadId, Math.round(est.winChance * 100));
+      return;
     }
 
     this._openBattleArena(monster, squadId);
   }
 
-  _showReadinessWarning(monster, squadId, survivalPct) {
+  _showReadinessWarning(monster, squadId, winPct) {
     const overlay = document.getElementById('modal-overlay');
     const content = document.getElementById('modal-content');
     if (!overlay || !content) return;
@@ -377,7 +363,7 @@ export class CombatUI {
         <div style="text-align:center;padding:var(--space-6) var(--space-4)">
           <div style="font-size:3rem;margin-bottom:var(--space-3)">${icon('skull', 'icon--xl icon--danger')}</div>
           <p style="color:var(--clr-warning);font-weight:700;font-size:var(--text-lg);margin-bottom:var(--space-2)">
-            ~${survivalPct}% estimated survival
+            ~${winPct}% estimated win chance
           </p>
           <p style="color:var(--clr-text-secondary);margin-bottom:var(--space-5)">
             Your squad may be too weak for <strong>${monster.name}</strong>. You'll almost certainly be defeated — but nothing stops you from trying.
@@ -438,158 +424,40 @@ export class CombatUI {
     this._runBattleAnimation(monster, squadId);
   }
 
-  /**
-   * Calls CombatManager.attack() immediately for the real result,
-   * then plays the animation back using the real waveDetails.
-   * The skip button aborts the animation and jumps straight to the result.
-   */
   async _runBattleAnimation(monster, squadId) {
-    const feed      = document.getElementById('battle-feed');
-    const phpB      = document.getElementById('player-hp-bar');
-    const ehpB      = document.getElementById('enemy-hp-bar');
-    const pSprite   = document.getElementById('player-sprite');
-    const eSprite   = document.getElementById('enemy-sprite');
-    const wvCounter = document.getElementById('battle-wave-counter');
+    const result = this._s.cm.attack(monster.id, squadId);
+    const playback = new BattlePlayback({
+      feed:         document.getElementById('battle-feed'),
+      playerBar:    document.getElementById('player-hp-bar'),
+      enemyBar:     document.getElementById('enemy-hp-bar'),
+      playerSprite: document.getElementById('player-sprite'),
+      enemySprite:  document.getElementById('enemy-sprite'),
+      waveCounter:  document.getElementById('battle-wave-counter'),
+    }, this._s.sound);
 
     let skipped = false;
     document.getElementById('btn-battle-skip')?.addEventListener('click', () => { skipped = true; });
 
-    const sleep   = ms => skipped ? Promise.resolve() : new Promise(r => setTimeout(r, ms));
-    const addLine = (text, cls = '') => {
-      if (!feed) return;
-      const d = document.createElement('div');
-      d.className = `battle-line ${cls}`;
-      d.textContent = text;
-      feed.appendChild(d);
-      feed.scrollTop = feed.scrollHeight;
-    };
-
-    // Run the real battle FIRST so the animation reflects actual outcomes
-    const result          = this._s.cm.attack(monster.id, squadId);
-    const waveDetails     = result.result?.waveDetails ?? [];
-    const initialPlayerHP = result.result?.initialPlayerHP ?? 1;
-    const modifier        = result.modifier ?? null;
-
-    // Show modifier banner in feed if applicable
-    if (modifier) {
-      addLine(`Modifier: ${modifier.name} — ${modifier.description}`, 'system');
-      await sleep(600);
+    if (result.modifier) {
+      playback.addLine(`Modifier: ${result.modifier.name} — ${result.modifier.description}`, 'system');
     }
+    const steps = result.success ? playbackSteps(result.report) : [];
+    await playback.play(steps, { isSkipped: () => skipped });
+    if (!skipped) await new Promise(r => setTimeout(r, 800));
 
-    // Animate all waves using real wave data (no cap)
-    for (let i = 0; i < waveDetails.length; i++) {
-      if (skipped) break;
-      const detail   = waveDetails[i];
-      const waveIdx  = detail.waveIndex ?? (i % monster.waves.length);
-      const waveCfg  = monster.waves[waveIdx];
-      const waveName = detail.wave ?? waveCfg?.name ?? `Wave ${i + 1}`;
-
-      // Wave counter
-      if (wvCounter) {
-        wvCounter.style.display = 'block';
-        wvCounter.textContent   = `Wave ${i + 1} / ${waveDetails.length}`;
-      }
-
-      // Revive sub-entries get their own compact animation
-      if (detail.ability === 'revive_spawned') {
-        await sleep(600);
-        addLine(`👻 ${waveName} — rises from the dead!`, 'turn');
-        const revivedPct = waveCfg
-          ? Math.round((detail.waveHP / (waveCfg.hp * waveCfg.count)) * 100)
-          : 30;
-        if (ehpB) ehpB.style.width = `${revivedPct}%`;
-        await sleep(700);
-
-        pSprite?.classList.add('sprite-attack-player');
-        if (ehpB) ehpB.style.width = '0%';
-        const playerPct2 = Math.max(0, Math.round((detail.playerHP / initialPlayerHP) * 100));
-        if (phpB) phpB.style.width = `${playerPct2}%`;
-        addLine(`Your forces put it down again! Your HP: ${playerPct2}%`, 'hit');
-        setTimeout(() => {
-          pSprite?.classList.remove('sprite-attack-player');
-          eSprite?.classList.add('sprite-hit');
-          setTimeout(() => eSprite?.classList.remove('sprite-hit'), 350);
-        }, 200);
-        if (detail.playerHP <= 0) break;
-        continue;
-      }
-
-      await sleep(900);
-      const countLabel = waveCfg ? ` (×${waveCfg.count})` : '';
-      addLine(`── Wave ${i + 1}: ${waveName}${countLabel} ──`, 'turn');
-
-      // Heal event (enemy regenerated before the round)
-      if (detail.ability === 'heal') {
-        await sleep(400);
-        addLine(`💚 ${waveName} regenerates HP before combat!`, 'heal');
-      }
-
-      // Player strikes — enemy HP drains to 0
-      await sleep(500);
-      pSprite?.classList.add('sprite-attack-player');
-      this._s.sound?.hit();
-      if (ehpB) ehpB.style.width = '0%';
-      addLine(`Your forces crush ${waveName}!`, 'hit');
-      setTimeout(() => {
-        pSprite?.classList.remove('sprite-attack-player');
-        eSprite?.classList.add('sprite-hit');
-        setTimeout(() => eSprite?.classList.remove('sprite-hit'), 350);
-      }, 200);
-
-      await sleep(700);
-
-      // Enemy strikes — player HP drain
-      eSprite?.classList.add('sprite-attack-enemy');
-      this._s.sound?.hit();
-      const playerPct = Math.max(0, Math.round((detail.playerHP / initialPlayerHP) * 100));
-      if (phpB) phpB.style.width = `${playerPct}%`;
-      addLine(`${waveName} deals ${detail.dmgReceived} damage! Your HP: ${playerPct}%`, 'hit');
-
-      if (detail.ability === 'aoe_blast') {
-        await sleep(400);
-        addLine(`💥 ${waveName} unleashes AOE Blast!`, 'turn');
-      }
-
-      setTimeout(() => {
-        eSprite?.classList.remove('sprite-attack-enemy');
-        pSprite?.classList.add('sprite-hit');
-        setTimeout(() => pSprite?.classList.remove('sprite-hit'), 350);
-      }, 200);
-
-      if (detail.playerHP <= 0) break;
-    }
-
-    await sleep(800);
-
-    // Hide arena, show result
+    const wvCounter = document.getElementById('battle-wave-counter');
     if (wvCounter) wvCounter.style.display = 'none';
     const arenaEl = document.getElementById('battle-arena');
     if (arenaEl) arenaEl.style.display = 'none';
     const resultArea = document.getElementById('battle-result-area');
-    if (resultArea) {
+    if (resultArea && result.success) {
+      const final = steps.at(-1);
       resultArea.style.display = 'block';
-
-      if (result.success) {
-        const victory   = result.result?.victory;
-        const rewards   = result.rewards;
-        const isReduced = result.reducedReward;
-        const rewardChips = rewards && victory
-          ? Object.entries(rewards).map(([r, v], i) =>
-              `<div class="battle-reward-chip" style="animation-delay:${0.2 + i * 0.1}s">${RES_META[r]?.icon ?? ''} +${fmt(v)} ${r}</div>`
-            ).join('')
-          : '';
-
-        resultArea.innerHTML = `
-          <div class="battle-result">
-            <span class="battle-result-icon">${victory ? icon('star-burst', 'icon--gold icon--appear') : icon('skull', 'icon--danger icon--appear')}</span>
-            <div class="battle-result-title ${victory ? 'victory' : 'defeat'}">${victory ? 'Victory!' : 'Defeated!'}</div>
-            <p style="color:var(--clr-text-secondary)">${victory
-              ? (isReduced ? `${icon('warning', 'icon--warning')} Reduced loot — no more full rewards from this encounter.` : 'Your forces triumphed!')
-              : 'Your forces were overwhelmed. Regroup and try again!'}</p>
-            ${rewards && victory ? `<div class="battle-rewards">${rewardChips}</div>` : ''}
-          </div>`;
-        if (victory) this._spawnConfetti();
-      }
+      resultArea.innerHTML = battleResultHtml({
+        victory: final.victory, rewards: result.rewards, reducedReward: result.reducedReward,
+        dead: final.dead, wounded: final.wounded,
+      });
+      if (final.victory) this._spawnConfetti();
     }
 
     document.getElementById('battle-actions').innerHTML = `<button class="btn btn-primary" id="btn-battle-close">Continue</button>`;
