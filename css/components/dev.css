@@ -1,50 +1,108 @@
-.dev-widget {
+.dev-dashboard__toggle {
   position: fixed;
   left: 12px;
+  bottom: 12px;
   z-index: var(--z-float);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
   background: rgba(20, 20, 20, 0.85);
   border: 1px solid #555;
-  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  opacity: 0.55;
+}
+
+.dev-dashboard__toggle:hover,
+.dev-dashboard__toggle--active {
+  opacity: 1;
+}
+
+.dev-dashboard {
+  position: fixed;
+  left: 12px;
+  bottom: 52px;
+  z-index: var(--z-float);
+  width: min(380px, calc(100vw - 24px));
+  max-height: 70vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  background: rgba(20, 20, 20, 0.92);
+  border: 1px solid #555;
+  border-radius: 8px;
   color: #fff;
   font-size: 12px;
+}
+
+.dev-dashboard[hidden] {
+  display: none;
+}
+
+.dev-dashboard button,
+.dev-dashboard select {
+  padding: 2px 8px;
+  background: #333;
+  border: 1px solid #666;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.dev-dashboard button:hover {
+  background: #444;
+}
+
+.dev-dashboard__section > summary {
+  cursor: pointer;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.dev-dashboard__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.dev-dashboard__status {
+  opacity: 0.65;
+}
+
+.dev-dashboard__tools {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dev-widget {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid #444;
+  border-radius: 6px;
 }
 
 .dev-widget select {
   font-size: 12px;
 }
 
-.dev-level-switcher {
-  bottom: 12px;
+.dev-widget label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
 }
 
 .dev-level-switcher [data-dev-status] {
   opacity: 0.7;
-}
-
-.dev-popup-muter {
-  bottom: 52px;
-}
-
-.dev-popup-muter label {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-}
-
-.dev-anchor-nudger {
-  bottom: 92px;
-}
-
-.dev-anchor-nudger label {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
 }
 
 .dev-anchor-nudger [data-nudge-readout] {
@@ -60,17 +118,6 @@
 .dev-anchor-nudger .dev-nudge-btns {
   display: flex;
   gap: 4px;
-}
-
-.dev-sprite-source {
-  bottom: 132px;
-}
-
-.dev-sprite-source label {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
 }
 
 .dev-nudge-overlay {

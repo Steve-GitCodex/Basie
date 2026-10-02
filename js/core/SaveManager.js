@@ -1,29 +1,20 @@
-/**
- * SaveManager.js
- * Handles reading/writing game state to localStorage (offline-first).
- * Designed to be extensible — swap the storage backend to Firestore
- * by replacing the read/write methods here.
- */
 import { eventBus } from './EventBus.js';
 
 const SAVE_KEY = 'basie_game_state';
 const AUTOSAVE_INTERVAL_MS = 30_000; // 30 seconds
 
 export class SaveManager {
-  constructor(storage = localStorage) {
+  constructor(storage = localStorage, saveKey = SAVE_KEY) {
     this.name = 'SaveManager';
     this._storage = storage;
+    this._key = saveKey;
     this._autosaveTimer = null;
     this._isWiping = false;
   }
 
-  /**
-   * Load raw game state from localStorage.
-   * @returns {object|null}
-   */
   load() {
     try {
-      const raw = this._storage.getItem(SAVE_KEY);
+      const raw = this._storage.getItem(this._key);
       if (!raw) return null;
       const state = JSON.parse(raw);
       console.log('[SaveManager] Game state loaded successfully.');
@@ -34,15 +25,11 @@ export class SaveManager {
     }
   }
 
-  /**
-   * Save the provided game state object to localStorage.
-   * @param {object} state
-   */
   save(state) {
     if (this._isWiping) return;
     try {
       state.lastSavedTimestamp = Date.now();
-      this._storage.setItem(SAVE_KEY, JSON.stringify(state));
+      this._storage.setItem(this._key, JSON.stringify(state));
       eventBus.emit('game:saved', { timestamp: state.lastSavedTimestamp });
     } catch (e) {
       console.error('[SaveManager] Failed to save state:', e);
@@ -51,10 +38,6 @@ export class SaveManager {
     }
   }
 
-  /**
-   * Start auto-saving by calling the provided getter function every interval.
-   * @param {Function} getStateFn - Returns the current game state object.
-   */
   startAutosave(getStateFn) {
     this.stopAutosave();
     this._autosaveTimer = setInterval(() => {
@@ -69,41 +52,28 @@ export class SaveManager {
     this._autosaveTimer = null;
   }
 
-  /**
-   * Return the parsed save object directly from localStorage without triggering
-   * the full load pipeline. Returns null if no save exists or parsing fails.
-   * @returns {object|null}
-   */
   getLocalRawSave() {
     try {
-      const raw = this._storage.getItem(SAVE_KEY);
+      const raw = this._storage.getItem(this._key);
       return raw ? JSON.parse(raw) : null;
     } catch (e) {
       return null;
     }
   }
 
-  /**
-   * Returns true if a save game exists in localStorage.
-   * @returns {boolean}
-   */
   hasSave() {
-    return !!this._storage.getItem(SAVE_KEY);
+    return !!this._storage.getItem(this._key);
   }
 
   wipe() {
     this._isWiping = true;
-    this._storage.removeItem(SAVE_KEY);
+    this._storage.removeItem(this._key);
     eventBus.emit('game:wiped');
     console.log('[SaveManager] Save data wiped.');
     this._isWiping = false;
   }
 
-  /**
-   * Permanently blocks save() for the remaining lifetime of this page. Callers
-   * that wipe and then reload must use this, or the beforeunload handler
-   * re-saves live in-memory state over the wipe.
-   */
+  // Wipe-then-reload callers need this, or beforeunload re-saves live state over the wipe.
   suppressSaves() {
     this._isWiping = true;
   }

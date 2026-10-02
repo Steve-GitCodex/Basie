@@ -1,22 +1,16 @@
-/**
- * devSession.js
- * One-shot developer boot preset, activated by the `?dev` query flag. It skips the
- * auth screen, tutorial, and new-game modal, then drives the real manager APIs to
- * a state that unlocks the World map (HQ Lv.3 + Rally Point) so the map can be
- * eyeballed without a from-scratch playthrough.
- *
- * A dev session is ephemeral: main.js never persists it, so the player's real
- * localStorage save is untouched. Everything here uses public manager methods and
- * drains sandbox build/train queues synchronously via manual update() ticks — no
- * hand-crafted save state, so it can never drift from the serialize format.
- *
- * @see docs/20-decisions/0014-dev-session-flag.md
- */
+// @see docs/20-decisions/0014-dev-session-flag.md
+// @see docs/20-decisions/0032-dev-dashboard-and-slots.md
+import { sanitizeSlotName } from './devSlots.js';
+
 const RES_KEYS = ['wood', 'stone', 'iron', 'food', 'water', 'money'];
 const TICK_DT = 300;
 
 export function isDevSession() {
   return new URLSearchParams(location.search).has('dev');
+}
+
+export function devSlotName() {
+  return sanitizeSlotName(new URLSearchParams(location.search).get('dev'));
 }
 
 export function runDevSession({ engine, userManager, resourceManager, buildingManager, unitManager, eventBus, logManager }) {

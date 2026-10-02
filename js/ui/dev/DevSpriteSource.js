@@ -7,9 +7,9 @@
  * dev session.
  */
 export class DevSpriteSource {
-  init() {
+  init(mount) {
     this._el = this._buildEl();
-    document.body.appendChild(this._el);
+    mount.appendChild(this._el);
     this._toggle = this._el.querySelector('[data-sprite-ai]');
     this._toggle.checked = !!window.game?.city?._assets?.aiEnabled;
     this._toggle.addEventListener('change', () => this._apply());

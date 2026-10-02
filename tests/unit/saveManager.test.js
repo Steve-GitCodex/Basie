@@ -80,3 +80,14 @@ test('a non-quota save error also emits game:saveFailed with a distinct reason',
   assert.ok(failedPayload);
   assert.equal(failedPayload.reason, 'unknown');
 });
+
+test('a SaveManager with a custom key never reads or writes the default save', () => {
+  const storage = makeMemoryStorage();
+  const real = new SaveManager(storage);
+  const dev = new SaveManager(storage, 'basie_dev_save:world');
+  real.save({ who: 'real' });
+  assert.equal(dev.load(), null);
+  dev.save({ who: 'dev' });
+  dev.wipe();
+  assert.equal(real.load().who, 'real');
+});

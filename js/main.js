@@ -35,14 +35,13 @@ import { UIManager }           from './ui/UIManager.js';
 import { TimerService }        from './ui/TimerService.js';
 import { TooltipService }      from './ui/TooltipService.js';
 import { FirebaseDataManager, IS_CONFIGURED } from './core/FirebaseDataManager.js';
-import { isDevSession, runDevSession } from './core/devSession.js';
-import { DevLevelSwitcher } from './ui/dev/DevLevelSwitcher.js';
-import { DevPopupMuter } from './ui/dev/DevPopupMuter.js';
-import { DevAnchorNudger } from './ui/dev/DevAnchorNudger.js';
-import { DevSpriteSource } from './ui/dev/DevSpriteSource.js';
+import { isDevSession, devSlotName, runDevSession } from './core/devSession.js';
+import { devSlotKey } from './core/devSlots.js';
+import { DevDashboard } from './ui/dev/DevDashboard.js';
 import { devMute } from './core/devMute.js';
 
 const DEV = isDevSession();
+const DEV_SLOT = DEV ? devSlotName() : null;
 
 // =============================================
 // INSTANTIATE SYSTEMS
@@ -57,7 +56,7 @@ window.addEventListener('unhandledrejection', e =>
   logManager.log('promise', e.reason?.message ?? String(e.reason), 'error'));
 
 const engine              = new GameEngine(logManager);
-const saveManager         = new SaveManager();
+const saveManager         = DEV ? new SaveManager(localStorage, devSlotKey(DEV_SLOT)) : new SaveManager();
 const firebaseDataManager = new FirebaseDataManager(saveManager);
 
 const userManager      = new UserManager();
@@ -416,7 +415,7 @@ function initAuthScreen() {
 // LAUNCH
 // =============================================
 function launchGame(authScreen, gameShell, externalState = null) {
-  const savedState    = DEV ? null : (externalState ?? saveManager.load());
+  const savedState    = externalState ?? saveManager.load();
   const lastTimestamp = savedState?.lastSavedTimestamp ?? null;
 
   applyGameState(savedState);
@@ -567,15 +566,10 @@ function launchGame(authScreen, gameShell, externalState = null) {
     setTimeout(sendWelcomeMail, 1000);
   }
 
-  // A dev session is ephemeral — never persist it so the real localStorage save survives.
-  if (!DEV) {
-    saveManager.startAutosave(getGameState);
-    // Save immediately whenever the build queue changes so items aren't lost on refresh
-    eventBus.on('building:queueUpdated', () => saveManager.save(getGameState()));
-    // Trigger save immediately after any shop purchase
-    eventBus.on('game:purchaseComplete', () => saveManager.save(getGameState()));
-  }
-  
+  saveManager.startAutosave(getGameState);
+  eventBus.on('building:queueUpdated', () => saveManager.save(getGameState()));
+  eventBus.on('game:purchaseComplete', () => saveManager.save(getGameState()));
+
   // Wire automation purchases to BuildingManager
   eventBus.on('automation:purchased', (data) => {
     if (data.automation === 'cafeteriaRestock') {
@@ -589,7 +583,7 @@ function launchGame(authScreen, gameShell, externalState = null) {
     if (slotType === 'research') techManager.grantShopResearchSlot();
   });
   
-  if (!DEV) window.addEventListener('beforeunload', () => saveManager.save(getGameState()));
+  window.addEventListener('beforeunload', () => saveManager.save(getGameState()));
 
   new TimerService().init();
   new TooltipService().init();
@@ -599,11 +593,11 @@ function launchGame(authScreen, gameShell, externalState = null) {
   const startEngine = () => {
     if (DEV) {
       engine.start();
-      runDevSession({ engine, userManager, resourceManager, buildingManager, unitManager, eventBus, logManager });
-      new DevLevelSwitcher().init(buildingManager);
-      new DevPopupMuter().init();
-      new DevAnchorNudger().init();
-      new DevSpriteSource().init();
+      if (!savedState) {
+        runDevSession({ engine, userManager, resourceManager, buildingManager, unitManager, eventBus, logManager });
+        saveManager.save(getGameState());
+      }
+      new DevDashboard().init({ slot: DEV_SLOT, saveManager, getGameState, buildingManager });
       return;
     }
 
@@ -649,6 +643,7 @@ function launchGame(authScreen, gameShell, externalState = null) {
     march:      marchManager,
     sound:      soundManager,
     settings:   settingsManager,
+    log:        logManager,
     eventBus,   // exposed for debugging/automation (watch/emit EventBus traffic)
   };
 

@@ -8,10 +8,10 @@ import { eventBus } from '../../core/EventBus.js';
 import { BUILDINGS_CONFIG } from '../../entities/GAME_DATA.js';
 
 export class DevLevelSwitcher {
-  init(buildingManager) {
+  init(buildingManager, mount) {
     this._bm = buildingManager;
     this._el = this._buildEl();
-    document.body.appendChild(this._el);
+    mount.appendChild(this._el);
     this._buildingSelect = this._el.querySelector('[data-dev-building]');
     this._levelSelect    = this._el.querySelector('[data-dev-level]');
     this._status         = this._el.querySelector('[data-dev-status]');

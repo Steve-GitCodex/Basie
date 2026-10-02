@@ -14,7 +14,7 @@ const TOGGLES = [
 ];
 
 export class DevPopupMuter {
-  init() {
+  init(mount) {
     const el = document.createElement('div');
     el.className = 'dev-widget dev-popup-muter';
     el.innerHTML = `
@@ -26,7 +26,7 @@ export class DevPopupMuter {
         </label>
       `).join('')}
     `;
-    document.body.appendChild(el);
+    mount.appendChild(el);
 
     el.querySelectorAll('[data-dev-mute]').forEach(input => {
       input.addEventListener('change', () => devMute.toggle(input.dataset.devMute));

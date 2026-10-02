@@ -99,5 +99,5 @@ export function report(name, checks, errors) {
   for (const e of errors) console.error(`  ✖ ${e}`);
   const failed = failures.length > 0 || errors.length > 0;
   console.log(failed ? `${name}: FAIL` : `${name}: PASS`);
-  process.exitCode = failed ? 1 : 0;
+  if (failed) process.exitCode = 1;
 }

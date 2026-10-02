@@ -66,6 +66,12 @@ overlays that eat clicks (story dialog, tutorial blocker, `#modal-overlay`,
 - `dev-smoke.mjs` — boots `?dev` (ADR 0014) and asserts the preset lands in sandbox
   at HQ Lv.3 with the Rally Point built and a march-ready squad, on the world map,
   without touching a pre-seeded real save.
+- `dev-dashboard-smoke.mjs` — `?dev=smoke` (ADR 0032): preset saved to the slot, dev
+  progress survives a refresh, real save untouched, tools mount in the panel, backtick
+  hide persists, Reset slot re-runs the preset.
+- `launcher-smoke.mjs` — spawns the Basie launcher itself on :8124 (ADR 0033): bridge injected,
+  page + logManager errors reach the terminal, CSS hot-swaps in place, JS change reloads a dev tab
+  but only shows a note on a normal tab.
 
 Both exit non-zero on failure, so a session can gate on them.
 

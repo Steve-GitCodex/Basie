@@ -116,6 +116,13 @@ sprite generation.
   the real build/train APIs to sandbox HQ Lv.3 + Rally Point + a march-ready squad).
   Ephemeral: never persisted, so the real save is untouched. Covered by
   `tests/browser/dev-smoke.mjs`. Removes the from-scratch tax on eyeballing gated views.
+- [x] **Dev dashboard + persistent dev slots** (2026-10-01, ADR 0032) — `?dev=<slot>`
+  persists per slot (`basie_dev_save:<slot>`, real save still untouched); one hideable
+  panel (🛠 / backtick) holds Session (switch/new/save/reset slot) + the four dev tools.
+  Covered by `tests/browser/dev-dashboard-smoke.mjs`.
+- [x] **Basie dev launcher** (2026-10-01, ADR 0033) — `run.bat` → `scripts/launcher/`: page-load
+  log summaries + missing files, browser errors in the terminal, hotkeys (normal/dev/new slot/tests),
+  dev-tab auto-reload + CSS hot-swap. Covered by `tests/browser/launcher-smoke.mjs` + 3 unit files.
 - [x] **Concurrent build workers** (2026-07-18, ADR 0016) — build queue went from
   one-at-a-time to N concurrent workers over a shared FIFO queue (workers =
   `getMaxBuildSlots()`, +2 waiting buffer). New `js/systems/building/buildQueue.js`
@@ -123,7 +130,8 @@ sprite generation.
   legacy saves fan out on load. Fixes the `applyOffline` `elapsedSec` ReferenceError.
   Tests: `buildQueue.test.js` (7) + `buildingManager.test.js` (13).
 - [~] **Systems bug audit** — most managers are bugged / roughly built (owner's
-  assessment). **Started 2026-07-20; plan of record: `docs/systems-audit-plan.md`.**
+  assessment). **Started 2026-07-20** (plan + findings docs retired 2026-10-01; full text in git
+  history, open items carried into **Audit residue** below).
   Three prongs: (A) five parallel specialist static reviews over the untested manager
   clusters, (B) a `persistence.test.js` round-trip harness across all 16 serializing
   managers, (C) empirical browser loop verification. Rationale for not just verifying:
@@ -131,7 +139,7 @@ sprite generation.
   ~3,900 ln of gameplay managers (Hero 832, Unit 800, Technology 446, Combat 429) carry
   **zero unit tests**, and no manager has a serialize/deserialize round-trip test despite
   ADR 0002 making silent state-drop the highest-severity bug class.
-  **Prong A complete (2026-07-20) — findings: `docs/audit-findings.md`.** 12 load-bearing
+  **Prong A complete (2026-07-20).** 12 load-bearing
   defects, 3 of them independently found by two reviewers each. Headline: `SaveManager.wipe()`
   permanently latches saving off, and guest→account registration hits it without a reload —
   all progress after registering is lost from both stores. Also: storage-tech caps dropped
@@ -139,9 +147,34 @@ sprite generation.
   their multiplier, unit duplication via dual-tracked squad state, and 40% of gacha scroll
   rolls grant nothing (dangling item ids).
   **All 12 load-bearing defects FIXED 2026-07-20** — verified `npm test` 301/301, zero new
-  comment-lint violations. Wrong-but-contained + future-trap findings remain open in
-  `audit-findings.md`, as do 7 deferred design calls. Browser smokes not yet re-run.
-  Prongs B (persistence round-trip harness) and C (loop verification) not yet started.
+  comment-lint violations. Wrong-but-contained + future-trap findings and the deferred
+  design calls remain open (below). Prongs B (persistence round-trip harness) and C (loop
+  verification) not yet started.
+
+  **Audit residue (open, as found 2026-07-20 — line refs stale, re-grep; not re-verified since):**
+  - *Wrong-but-contained:* difficulty never restored on load (`SettingsManager` only emits on
+    `set()`, combat stays `'normal'`); challenge daily/weekly reset adds seconds as ms (needs
+    16.7h continuous play); quest prereq gating drops progress instead of banking it; tutorial
+    `waitFor` double-increment window (500ms) on `'train'`/`'quest'`; welcome mail's 500 `gold`
+    destroyed (`gold` isn't a resource key); universal speed-ups need caller `queueType`;
+    `addItem` returns `undefined` on success and rejection; daily login streak uses UTC;
+    `_reapplyRates` replays a stale snapshot (self-corrects).
+  - *Future traps:* `milMult < 1` debuffs discarded (guard `> 1` — fix before Phase 4 authors
+    debuffs); event objectives `produce_iron`/`gather_wood` have no writer; Market `tradeBonus`
+    dead (at ≥ 0.112 wood↔stone cycle mints resources); `concurrentSlots` authored but never
+    read; `purchaseXPBundle` references nonexistent `gold`; story `rewards`/`unlocksQuestIds`
+    dead data; no save `version` field (BuildingManager infers legacy from a missing key);
+    mail trash write-only; `spend()` unguarded on unknown zero-valued keys; debug `clearSave()`
+    calls a nonexistent `clear`; `_trainMultiplier` logic duplicated across call sites.
+  - *Kept consequences of the fixes:* already-inflated VIP slot saves are not clawed back;
+    over-cap gains are wasted but stock is never reduced (`_addCapped`; `setCap` doesn't clamp);
+    `wipeAllData()` must call `SaveManager.suppressSaves()` or `beforeunload` re-saves.
+  - *Design calls for Steve:* `defense_boost` aura feeds both `defenseMult` and `lossReduction`
+    (double-count?); `cancelTrain` refunds 100%; `concurrentSlots` — implement parallel training
+    or delete; daily resets are UTC; VIP tracks diamonds received, not spent; story chapter
+    `rewards` — grant or delete; hero passive attack/defense applied to own stats and squad-wide.
+  - *Resolved since:* the loss-rate floor item (ADR 0031 caps reduction < 1); the hero
+    production-bonus residue (Phase 2a per-instance `resourceBonusFor`).
 
   **Findings so far (world/march code review, 2026-07-15):**
   - [x] **Crash:** an in-flight march whose target POI is removed dereferenced
@@ -251,14 +284,10 @@ Recruit tab (with a working Shard Exchange) are all live. `GachaUI.js` +
 of spending recruitment items directly, and the production-buff block is rehomed onto
 the Inventory panel. The `assignedBuilding` string-parsing cleanup listed under UX
 friendliness below is **done** (`heroSquadLookup.js` matches on `barracksInstanceId`).
-Plan: `docs/superpowers/plans/2026-07-27-hero-phase2b-heroes-screen-recruit-hall.md`;
 ADR: `docs/20-decisions/0028-hero-quarters-screen-and-recruit-hall.md` (gitignored, not
 committed — same convention as ADR 0027); session detail in `docs/40-active.md`.
 
-**Phase 2c is designed and planned, not yet executed (2026-08-10).** Spec
-`docs/superpowers/specs/2026-08-10-hero-phase2c-skill-progression-design.md`, plan
-`docs/superpowers/plans/2026-08-10-hero-phase2c-skill-progression.md` (12 tasks, both
-untracked). Scope: 3 Passive / 2 Support / 1 Major per hero (6-skill hard cap), all 36 skills
+**Phase 2c (12 tasks; spec/plan retired 2026-10-01, decisions in ADR 0029).** Scope: 3 Passive / 2 Support / 1 Major per hero (6-skill hard cap), all 36 skills
 authored, shard leveling to L10, the Major track gated at star 5, four wave-loop triggers,
 per-effect contextual gating (assignment selects which skills pay out), explicit reassignment,
 and the skill UI. Closes a live bug — six skill ids referenced by Juno Vane and Kaelen Thorne
@@ -301,7 +330,7 @@ reached a player).
 
 ## Cross-cutting reworks
 
-### Base layout rework — free placement (ADR 0022, `docs/base-layout-plan.md`)
+### Base layout rework — free placement (ADR 0022)
 
 Supersedes the previously bundled build-menu/placement/tutorial rework: the plot
 model retires entirely (interim anti-teleport guard dies with it).

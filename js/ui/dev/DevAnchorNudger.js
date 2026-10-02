@@ -22,12 +22,12 @@ const ANGLE_FINE = 0.25;
 const ANGLE_MAX = 45;
 
 export class DevAnchorNudger {
-  init() {
+  init(mount) {
     this._selectedId = null;
     this._editing = false;
     this._drag = null;
     this._el = this._buildEl();
-    document.body.appendChild(this._el);
+    mount.appendChild(this._el);
     this._readout = this._el.querySelector('[data-nudge-readout]');
     this._toggle = this._el.querySelector('[data-nudge-toggle]');
 
@@ -79,27 +79,24 @@ export class DevAnchorNudger {
   }
 
   _setEditing(on) {
-    const city = this._city();
-    const canvas = city?._canvas;
-    if (on && !canvas) { this._toggle.checked = false; return; }
     this._editing = on;
     if (on) {
-      canvas.addEventListener('pointerdown', this._onDown, true);
+      window.addEventListener('pointerdown', this._onDown, true);
       window.addEventListener('pointermove', this._onMove, true);
       window.addEventListener('pointerup', this._onUp, true);
-      canvas.addEventListener('wheel', this._onWheel, { capture: true, passive: false });
+      window.addEventListener('wheel', this._onWheel, { capture: true, passive: false });
       this._raf = requestAnimationFrame(this._loop);
+      this._updateReadout();
     } else {
       this._teardown();
     }
   }
 
   _teardown() {
-    const canvas = this._city()?._canvas;
-    canvas?.removeEventListener('pointerdown', this._onDown, true);
+    window.removeEventListener('pointerdown', this._onDown, true);
     window.removeEventListener('pointermove', this._onMove, true);
     window.removeEventListener('pointerup', this._onUp, true);
-    canvas?.removeEventListener('wheel', this._onWheel, true);
+    window.removeEventListener('wheel', this._onWheel, true);
     if (this._raf) cancelAnimationFrame(this._raf);
     this._raf = null;
     this._drag = null;
@@ -133,8 +130,13 @@ export class DevAnchorNudger {
     return r && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
   }
 
+  _isOnCity(e) {
+    const canvas = this._city()?._canvas;
+    return !!canvas && e.target === canvas;
+  }
+
   _down(e) {
-    if (!this._pointInSprite(e.clientX, e.clientY)) return; // fall through → camera pan
+    if (!this._isOnCity(e) || !this._pointInSprite(e.clientX, e.clientY)) return; // fall through → camera pan
     const a = this._anchor();
     if (!a) return;
     e.stopPropagation();
@@ -158,7 +160,7 @@ export class DevAnchorNudger {
 
   // Plain wheel = scale; Alt+wheel = rotate (tilt in-plane); Ctrl+wheel = skew.
   _wheel(e) {
-    if (!this._pointInSprite(e.clientX, e.clientY)) return; // fall through → camera zoom
+    if (!this._isOnCity(e) || !this._pointInSprite(e.clientX, e.clientY)) return; // fall through → camera zoom
     const slot = this._slot();
     const a = this._anchor();
     if (!slot || !a) return;
@@ -188,8 +190,8 @@ export class DevAnchorNudger {
     const city = this._city();
     const slot = this._slot();
     const canvas = city?._canvas;
-    if (!canvas || !slot) return;
-    const rect = canvas.getBoundingClientRect();
+    const rect = canvas?.getBoundingClientRect();
+    if (!slot || !rect?.width) { this._overlay?.remove(); this._overlay = null; return; }
     let ov = this._overlay;
     if (!ov) {
       ov = this._overlay = document.createElement('canvas');

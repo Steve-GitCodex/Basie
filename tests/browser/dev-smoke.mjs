@@ -140,3 +140,42 @@ await withPage(async ({ page, errors, origin }) => {
     { label: 'variantFile resolves the override-manifest key', ok: nudgeState.fileOk },
   ], errors);
 });
+
+await withPage(async ({ page, errors, origin }) => {
+  await page.goto(`${origin}/index.html?dev=nudge-from-world`, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => !!window.game?.eventBus && !!document.querySelector('[data-nudge-toggle]'), null, { timeout: 20_000 });
+  await page.waitForTimeout(800);
+
+  const cityExistedAtToggle = await page.evaluate(() => !!window.game.city?._canvas);
+  await page.click('[data-nudge-toggle]');
+  const staysOnFromWorld = await page.isChecked('[data-nudge-toggle]');
+
+  await page.evaluate(() => window.game.eventBus.emit('ui:navigateTo', 'base'));
+  await page.waitForFunction(() => !!window.game.city?._slots?.length, null, { timeout: 10_000 });
+  await page.waitForTimeout(800);
+  const target = await page.evaluate(() => {
+    const c = window.game.city, cam = c._camera, rect = c._canvas.getBoundingClientRect();
+    const slot = c._slots.find(s => s.buildingId === 'townhall' && s.level > 0);
+    const b = c._spriteBox(slot);
+    let p = cam.worldToScreen((b.left + b.right) / 2, (b.top + b.bottom) / 2);
+    cam.panBy(rect.width * 0.6 - p.x, rect.height * 0.5 - p.y);
+    p = cam.worldToScreen((b.left + b.right) / 2, (b.top + b.bottom) / 2);
+    window.game.eventBus.emit('dev:buildingSelected', { buildingId: 'townhall' });
+    return { x: p.x + rect.left, y: p.y + rect.top, ax: c._assets.anchor('townhall', slot.level).ax };
+  });
+  await page.mouse.move(target.x, target.y);
+  await page.mouse.down();
+  await page.mouse.move(target.x + 40, target.y + 20, { steps: 5 });
+  await page.mouse.up();
+  const axAfter = await page.evaluate(() => {
+    const c = window.game.city;
+    const slot = c._slots.find(s => s.buildingId === 'townhall' && s.level > 0);
+    return c._assets.anchor('townhall', slot.level).ax;
+  });
+
+  report('dev-anchor-nudger-from-world', [
+    { label: 'precondition: city not built yet on the world view', ok: !cityExistedAtToggle },
+    { label: 'Building mode stays on when toggled before the city exists', ok: staysOnFromWorld },
+    { label: 'dragging the sprite on the base view then moves its anchor', ok: Math.abs(axAfter - target.ax) > 1 },
+  ], errors);
+});
