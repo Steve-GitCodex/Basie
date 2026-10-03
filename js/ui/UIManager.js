@@ -13,7 +13,7 @@
  *   CombatUI       — campaign map, battle modal & animation, battle log
  *   ResearchUI     — tech tree + achievements panel
  *   QuestsUI       — quest cards + quest-completion modal
- *   MarketUI       — trade cards
+ *   TradingPostUI  — Supply/Market/Premium shell
  *   MailUI         — inbox modal
  *   SettingsUI     — settings modal
  */
@@ -24,11 +24,13 @@ import { HeroesUI }     from './controllers/HeroesUI.js';
 import { CombatUI }     from './controllers/CombatUI.js';
 import { ResearchUI }   from './controllers/ResearchUI.js';
 import { QuestsUI }     from './controllers/QuestsUI.js';
-import { MarketUI }     from './controllers/MarketUI.js';
 import { MailUI }       from './controllers/MailUI.js';
 import { SettingsUI }   from './controllers/SettingsUI.js';
 import { InventoryUI }  from './controllers/InventoryUI.js';
-import { ShopUI }       from './controllers/ShopUI.js';
+import { TradingPostUI } from './trading/TradingPostUI.js';
+import { PremiumTab } from './trading/PremiumTab.js';
+import { SupplyTab } from './trading/SupplyTab.js';
+import { MarketTab } from './trading/MarketTab.js';
 import { MilitaryUI }   from './controllers/MilitaryUI.js';
 import { ChallengesUI } from './controllers/ChallengesUI.js';
 import { EventsUI }     from './controllers/EventsUI.js';
@@ -107,14 +109,20 @@ export class UIManager {
       notifications: systems.notifications,
     });
 
-    this._shop = new ShopUI({
+    this._tradingPostSystems = {
       rm:            systems.rm,
       bm:            systems.bm,
+      um:            systems.um,
       tech:          systems.tech,
       inventory:     systems.inventory,
-      notifications: systems.notifications,
+      heroes:        systems.heroes,
       user:          systems.user,
-    });
+      shop:          systems.shop,
+      trader:        systems.trader,
+      market:        systems.market,
+      notifications: systems.notifications,
+    };
+    this._tradingPost = new TradingPostUI(this._tradingPostSystems);
 
     this._combat = new CombatUI({
       cm:            systems.cm,
@@ -135,12 +143,6 @@ export class UIManager {
     this._quests = new QuestsUI({
       quest:         systems.quest,
       story:         systems.story,
-      notifications: systems.notifications,
-    });
-
-    this._market = new MarketUI({
-      rm:            systems.rm,
-      market:        systems.market,
       notifications: systems.notifications,
     });
 
@@ -192,10 +194,15 @@ export class UIManager {
     this._combat.init();
     this._research.init();
     this._quests.init();
-    this._market.init();
     this._mail.init();
     this._settings.init();
-    this._shop.init();
+    this._tradingPost.init();
+    this._tradingPost.registerTab({ id: 'supply',  label: 'Supply',  presenter: new SupplyTab(this._tradingPostSystems) });
+    this._tradingPost.registerTab({
+      id: 'market', label: 'Market', presenter: new MarketTab(this._tradingPostSystems),
+      lock: () => (this._tradingPostSystems.bm.getHQLevel() < 2 ? 'Upgrade HQ to Level 2' : null),
+    });
+    this._tradingPost.registerTab({ id: 'premium', label: 'Premium', presenter: new PremiumTab(this._tradingPostSystems) });
     this._challenges.init();
     this._events.init();
     this._world.init();
@@ -260,7 +267,6 @@ export class UIManager {
     // BarracksUI, MilitaryUI, ResearchUI & HeroesUI are modal/tab-driven — no initial render.
     this._combat.render();
     this._quests.render();
-    this._market.render();
 
     // ── Group 8: Notification hover-pause ───────────────────────────────────────
     const notifEl = document.getElementById('notification-container');

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:hsl(30,10%,5%);--surf:hsl(30,9%,8%);--elev:hsl(30,8%,11%);--panel:hsl(30,8%,14%);--bd:hsl(30,10%,18%);--bdl:hsl(30,10%,27%);
+    --or:hsl(32,90%,55%);--orm:hsl(32,55%,18%);--tx:hsl(35,15%,93%);--tx2:hsl(35,10%,62%);--tx3:hsl(35,8%,42%);
+    --ok:hsl(90,45%,48%);--warn:hsl(45,90%,58%);--dia:hsl(190,70%,60%);--diam:hsl(192,45%,14%)}
+  *{box-sizing:border-box}
+  body{margin:0;background:#1b1916;color:var(--tx);font-family:Outfit,sans-serif;padding:24px 32px 60px}
+  h1{font:700 22px Oswald;letter-spacing:.04em;margin:0 0 4px} .sub{color:var(--tx2);margin:0 0 18px;font-size:14px;max-width:1000px}
+  .opt{border:2px solid transparent;border-radius:10px;padding:14px;margin-bottom:22px;background:#24211d;cursor:pointer}
+  .opt.selected{border-color:var(--or)} .opt h2{font:700 16px Oswald;letter-spacing:.05em;margin:0 0 4px} .opt h2 b{color:var(--or)}
+  .opt p.d{margin:0 0 12px;color:var(--tx2);font-size:13px;max-width:1000px}
+  .wrap{display:grid;grid-template-columns:1fr 250px;gap:14px}
+  .notes{font-size:12px;color:var(--tx2);line-height:1.45} .notes div{margin-bottom:9px} .notes b{color:var(--tx)}
+  .screen{background:var(--bg);border:1px solid var(--bd);border-radius:6px;height:520px;overflow:hidden;position:relative;font-size:12px}
+  .hd{display:flex;align-items:center;gap:20px;padding:10px 18px;border-bottom:1px solid var(--bd);background:linear-gradient(var(--surf),var(--bg))}
+  .hd .t{font:700 15px Oswald;letter-spacing:.08em;text-transform:uppercase}
+  .tab{color:var(--tx3);font-weight:600;font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+  .tab.on{color:var(--tx);box-shadow:inset 0 -2px var(--or);padding-bottom:4px}
+  .wallet{margin-left:auto;display:flex;gap:10px;font:700 13px Oswald}
+  .wallet span{background:var(--elev);border:1px solid var(--bd);padding:4px 10px;border-radius:4px}
+  .m{color:var(--or)} .dm{color:var(--dia)}
+  .pill{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:3px;border:1px solid currentColor}
+  .btn{background:linear-gradient(var(--or),hsl(30,88%,42%));color:#1a1108;font:700 13px Oswald;letter-spacing:.06em;border:0;padding:7px 12px;border-radius:4px;white-space:nowrap}
+  .btn.dia{background:linear-gradient(hsl(190,70%,55%),hsl(195,70%,38%));color:#061316}
+  .btn.g{background:var(--panel);color:var(--tx);border:1px solid var(--bdl)}
+  .lbl{font:700 11px Oswald;letter-spacing:.12em;text-transform:uppercase;color:var(--tx2);margin:0 0 8px}
+  .body{padding:12px 16px}
+  .sim{display:flex;align-items:center;gap:8px;background:hsl(45,40%,10%);border:1px solid hsl(45,50%,28%);color:var(--warn);border-radius:4px;padding:6px 10px;font-size:11px;margin-bottom:12px}
+  .vip{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;background:var(--surf);border:1px solid var(--bd);border-radius:6px;padding:10px 14px;margin-bottom:14px}
+  .vip .badge{font:700 18px Oswald;color:var(--or)} .bar{height:7px;background:var(--panel);border-radius:4px;overflow:hidden} .bar i{display:block;height:100%;width:62%;background:linear-gradient(90deg,var(--or),hsl(45,90%,58%))}
+  .packs{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+  .pack{background:linear-gradient(var(--diam),var(--elev) 60%);border:1px solid hsl(192,30%,22%);border-radius:6px;padding:10px;display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center;position:relative}
+  .pack.best{border-color:var(--dia);box-shadow:0 0 0 1px var(--dia),0 0 18px hsl(190,70%,30%)}
+  .pack .gem{font-size:30px;filter:drop-shadow(0 0 10px hsl(190,80%,45%))} .pack .amt{font:700 20px Oswald;color:var(--dia)}
+  .pack .bonus{font-size:10.5px;color:var(--ok);font-weight:700} .pack small{color:var(--tx2);font-size:10.5px}
+  .pack .ribbon{position:absolute;top:-8px;left:50%;transform:translateX(-50%);background:var(--dia);color:#061316;font:700 9px Oswald;letter-spacing:.1em;padding:2px 8px;border-radius:3px}
+  .pack .btn{width:100%}
+  .spend{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:14px}
+  .row{background:var(--elev);border:1px solid var(--bd);border-radius:5px;padding:9px 11px;display:flex;align-items:center;gap:10px}
+  .row b{display:block;font-size:12px} .row small{color:var(--tx2);font-size:10.5px} .row .btn{margin-left:auto}
+  /* checkout sheet */
+  .shade{position:absolute;inset:0;background:hsla(30,10%,3%,.72);display:flex;align-items:center;justify-content:center}
+  .sheet{width:340px;background:var(--surf);border:1px solid var(--bdl);border-radius:8px;padding:16px;box-shadow:0 20px 50px #000}
+  .sheet h3{font:700 16px Oswald;letter-spacing:.06em;margin:0 0 10px;display:flex;justify-content:space-between}
+  .line{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bd);color:var(--tx2)} .line b{color:var(--tx)}
+  .steps{display:flex;gap:6px;margin:12px 0}
+  .steps span{flex:1;text-align:center;font-size:10px;padding:4px 0;border-radius:3px;background:var(--panel);color:var(--tx3)} .steps span.on{background:var(--diam);color:var(--dia)}
+</style></head><body>
+<h1>PREMIUM — real-money packs, simulated purchase</h1>
+<p class="sub">Packs and prices stay, so the screen looks like the finished product, but the checkout is a simulated one. When the Phase 7 backend lands, only the checkout step changes.</p>
+
+<div class="opt" data-choice="premium" onclick="toggleSelect(this)">
+  <h2><b>A</b> · Premium tab</h2>
+  <p class="d">Diamond packs on top, VIP progress above them, diamond spends (queue slots, instant finish) below.</p>
+  <div class="wrap">
+  <div class="screen">
+    <div class="hd"><span class="t">Trading Post</span><span class="tab">Supply</span><span class="tab">Exchange</span><span class="tab">Trader</span><span class="tab on">💎 Premium</span><span class="wallet"><span class="m">🪙 12,480</span><span class="dm">💎 42</span></span></div>
+    <div class="body">
+      <div class="sim">⚠ Test mode: purchases are simulated. No payment is taken.</div>
+      <div class="vip"><span class="badge">⭐ VIP I</span><div><div class="bar"><i></i></div><small style="color:var(--tx2)">1,240 / 2,000 to <b style="color:var(--tx)">VIP II</b> · −5% build, train &amp; research time</small></div><button class="btn g">Perks ›</button></div>
+      <p class="lbl">Diamonds</p>
+      <div class="packs">
+        <div class="pack"><div class="gem">💎</div><div class="amt">100</div><small>Starter</small><div class="bonus">&nbsp;</div><button class="btn dia">$0.99</button></div>
+        <div class="pack best"><span class="ribbon">POPULAR</span><div class="gem">💎</div><div class="amt">500</div><small>Explorer</small><div class="bonus">&nbsp;</div><button class="btn dia">$4.99</button></div>
+        <div class="pack"><div class="gem">💎</div><div class="amt">1,000</div><small>Commander</small><div class="bonus">reaches VIP II</div><button class="btn dia">$9.99</button></div>
+        <div class="pack"><div class="gem">💎💎</div><div class="amt">2,500</div><small>Warlord</small><div class="bonus">+25% vs Starter</div><button class="btn dia">$19.99</button></div>
+        <div class="pack"><div class="gem">💎💎💎</div><div class="amt">5,000</div><small>Conqueror</small><div class="bonus">+25% vs Starter</div><button class="btn dia">$39.99</button></div>
+      </div>
+      <p class="lbl" style="margin-top:14px">Permanent unlocks &amp; diamond spends</p>
+      <div class="spend" style="margin-top:0">
+        <div class="row"><span style="font-size:20px">🏗️</span><div><b>Build queue +1</b><small>Permanent</small></div><button class="btn dia">💎 800</button></div>
+        <div class="row"><span style="font-size:20px">🔬</span><div><b>Research queue +1</b><small>Permanent</small></div><button class="btn dia">💎 800</button></div>
+        <div class="row" style="border-color:var(--or)"><span style="font-size:20px">🍽️</span><div><b>Cafeteria auto-restock</b><small>Permanent · refills every 60s from reserves</small></div><button class="btn dia">💎 5</button></div>
+        <div class="row"><span style="font-size:20px">⏩</span><div><b>Instant finish</b><small>One job</small></div><button class="btn dia">💎 8</button></div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div><b>Persistent test-mode strip</b> (yellow). Honest and visible, but it's a single line, not a nag on every card.</div>
+    <div><b>Value labels are real maths.</b> Today's tiers 1–3 are exactly linear (~100 💎 per $); only 2,500 and 5,000 give +25%. So the config's "Best Value" flag on the 500 pack is wrong; it should say "Popular", or the bonus should move. If you want packs to <i>feel</i> premium, the larger ones need genuine bonus diamonds (e.g. 2,500 → 2,750). That's a data change, not UI.</div>
+    <div><b>VIP bar on top</b> ties purchases to their payoff. Data snag: VIP today counts diamonds <i>received</i>, not spent (an open audit item). Decide which before this goes live.</div>
+  </div>
+  </div>
+</div>
+
+<div class="opt" data-choice="checkout" onclick="toggleSelect(this)">
+  <h2><b>B</b> · Simulated checkout sheet</h2>
+  <p class="d">Same shape as a real store sheet (summary → confirm → receipt), so swapping in a real payment provider later only replaces the confirm step.</p>
+  <div class="screen" style="height:330px">
+    <div class="shade">
+      <div class="sheet">
+        <h3>CHECKOUT <span style="color:var(--tx3);cursor:pointer">✕</span></h3>
+        <div class="steps"><span>Pack</span><span class="on">Confirm</span><span>Receipt</span></div>
+        <div class="line"><span>Explorer pack</span><b>💎 500</b></div>
+        <div class="line"><span>VIP progress</span><b>1,240 → 1,740</b></div>
+        <div class="line"><span>Price</span><b>$4.99</b></div>
+        <div class="sim" style="margin:12px 0">⚠ Simulated: no payment is taken.</div>
+        <div style="display:flex;gap:8px"><button class="btn g" style="flex:1">Cancel</button><button class="btn dia" style="flex:2">Confirm (simulated)</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>

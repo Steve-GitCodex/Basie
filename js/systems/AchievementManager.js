@@ -51,7 +51,7 @@ export class AchievementManager {
     // New triggers
     eventBus.on('user:levelUp',      d  => this._progressSet('user_level', d?.level ?? 1));
     eventBus.on('dailyLogin:claimed', d  => this._progressSet('login_streak', d?.streak ?? 1));
-    eventBus.on('market:traded',     () => this._progress('market_trade'));
+    eventBus.on('market:exchanged',     () => this._progress('market_trade'));
   }
 
   _progress(trigger, amount = 1) {

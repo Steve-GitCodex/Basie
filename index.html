@@ -40,6 +40,11 @@
   <link rel="stylesheet" href="css/components/research.css" />
   <link rel="stylesheet" href="css/components/icons.css" />
   <link rel="stylesheet" href="css/components/hud.css" />
+  <link rel="stylesheet" href="css/components/trading-post.css" />
+  <link rel="stylesheet" href="css/components/trading-supply.css" />
+  <link rel="stylesheet" href="css/components/trading-premium.css" />
+  <link rel="stylesheet" href="css/components/trading-exchange.css" />
+  <link rel="stylesheet" href="css/components/trading-trader.css" />
   <link rel="stylesheet" href="css/components/dev.css" />
 </head>
 <body>
@@ -331,12 +336,11 @@
           </div>
         </section>
 
-        <!-- ECONOMY GROUP VIEW (sub-tabs: Market | Shop) -->
+        <!-- ECONOMY GROUP VIEW (single sub-view: Trading Post) -->
         <section class="view hidden" id="view-economy">
           <!-- Sub-tab navigation -->
           <div class="sub-tab-bar" data-group="economy">
-            <button class="sub-tab-btn" data-sub-view="market" data-group="economy"><span class="icon icon--money"></span> Market</button>
-            <button class="sub-tab-btn" data-sub-view="shop"   data-group="economy"><span class="icon icon--gift"></span> Shop</button>
+            <button class="sub-tab-btn" data-sub-view="trading" data-group="economy"><span class="icon icon--money"></span> Trading Post</button>
           </div>
           <!-- Locked-state card -->
           <div class="sub-view-locked hidden" id="sub-locked-economy">
@@ -346,21 +350,8 @@
               <p class="locked-reason"></p>
             </div>
           </div>
-          <!-- Sub-view: Market content -->
-          <div class="sub-view hidden" id="sub-view-market">
-            <div class="view-header">
-              <h2><span class="icon icon--money"></span> Market</h2>
-              <p class="view-subtitle">Trade resources at market rates — prices rise with repeated purchases</p>
-            </div>
-            <div class="buildings-grid" id="market-grid"></div>
-          </div>
-          <!-- Sub-view: Shop content -->
-          <div class="sub-view hidden" id="sub-view-shop">
-            <div class="view-header">
-              <h2><span class="icon icon--gift"></span> Shop</h2>
-              <p class="view-subtitle">Purchase hero cards, XP bundles, and premium items</p>
-            </div>
-            <div id="shop-container" class="shop-container"></div>
+          <div class="sub-view hidden" id="sub-view-trading">
+            <div id="trading-post-root"></div>
           </div>
         </section>
 

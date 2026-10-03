@@ -210,3 +210,16 @@ test('getSlotRow falls back to the unit default, then front', () => {
   assert.equal(um.getSlotRow(squadId, 0), 'front');
   assert.equal(um.getSlotRow(squadId, 2), 'front');
 });
+
+test('train emits unit:trainingStarted on success', async () => {
+  const { eventBus } = await import('../../js/core/EventBus.js');
+  const bm = { ...stubBM(), getLevelOf: () => 1 };
+  const um = new UnitManager(stubRM(), bm);
+  const seen = [];
+  const handler = payload => seen.push(payload);
+  eventBus.on('unit:trainingStarted', handler);
+  const r = um.train('infantry', 2, 1);
+  eventBus.off('unit:trainingStarted', handler);
+  assert.equal(r.success, true, r.reason);
+  assert.deepEqual(seen, [{ unitId: 'infantry', count: 2, tier: 1 }]);
+});

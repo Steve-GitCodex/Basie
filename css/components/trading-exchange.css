@@ -1,0 +1,124 @@
+.tp-exchange {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 560px;
+  padding: var(--space-4);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  background: var(--clr-bg-surface);
+}
+
+.tp-exchange__chips {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.tp-exchange__chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-2) var(--space-1);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--clr-bg-panel);
+  min-width: 0;
+  color: var(--clr-text-primary);
+  cursor: pointer;
+}
+
+.tp-exchange__chip small {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-xs);
+  color: var(--clr-text-muted);
+}
+
+.tp-exchange__chip--on {
+  border-color: var(--clr-primary);
+  background: var(--clr-primary-muted);
+}
+
+.tp-exchange__chip:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.tp-exchange__slider {
+  width: 100%;
+  accent-color: var(--clr-primary);
+}
+
+.tp-exchange__scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+  color: var(--clr-text-muted);
+}
+
+.tp-exchange__readout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  font-family: var(--font-heading);
+  font-size: var(--text-lg);
+}
+
+.tp-exchange__get {
+  color: var(--clr-success);
+}
+
+.tp-exchange__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.tp-exchange__rate,
+.tp-exchange__hint {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--clr-text-secondary);
+}
+
+.tp-exchange__hint {
+  color: var(--clr-text-muted);
+}
+
+.tp-exchange__meter {
+  display: flex;
+  gap: 3px;
+  margin: var(--space-1) 0;
+}
+
+.tp-exchange__seg {
+  flex: 1;
+  min-width: 18px;
+  height: 5px;
+  border-radius: 2px;
+  background: var(--clr-bg-panel);
+}
+
+.tp-exchange__seg--on {
+  background: var(--clr-success);
+}
+
+.tp-exchange__seg--warn {
+  background: var(--clr-primary);
+}
+
+.tp-exchange__storage {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--clr-text-muted);
+}
+
+.tp-exchange__storage[hidden] {
+  display: none;
+}

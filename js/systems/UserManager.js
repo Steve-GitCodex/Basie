@@ -48,7 +48,8 @@ export class UserManager {
     eventBus.on('quest:completed',   ()  => this.incrementStat('questsCompleted'));
     eventBus.on('tech:researched',   ()  => this.incrementStat('researchCompleted'));
     eventBus.on('hero:recruited',    ()  => this.incrementStat('heroesRecruited'));
-    eventBus.on('market:traded',     ()  => this.incrementStat('marketTradesTotal'));
+    eventBus.on('market:exchanged',     ()  => this.incrementStat('marketTradesTotal'));
+    eventBus.on('resources:spent',   c   => { if (c?.diamond) this.spendDiamonds(c.diamond); });
     // Track cumulative earnings silently (high-frequency — no UI event emitted)
     eventBus.on('resources:added',   r   => {
       if (r?.money) this._profile.stats.moneyEarned += r.money;

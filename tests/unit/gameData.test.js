@@ -7,7 +7,15 @@ import {
   ACHIEVEMENTS_CONFIG, HEROES_CONFIG,
   SHOP_CONFIG, INVENTORY_ITEMS, PROD_BONUS_CONFIG, STAT_RULES,
   SURVIVAL_MONSTER, COMBAT_RULES, UNITS_CONFIG,
+  DIAMOND_PACKAGES, findShopEntry,
+  TRADER_POOL, FEATURED_ENTRY_IDS,
 } from '../../js/entities/GAME_DATA.js';
+
+const allShopEntries = () => [
+  ...SHOP_CONFIG.supply.flatMap(c => c.items),
+  ...SHOP_CONFIG.premium.packs,
+  ...SHOP_CONFIG.premium.unlocks,
+];
 
 const RESOURCE_KEYS = new Set(['wood', 'stone', 'iron', 'food', 'water', 'money']);
 
@@ -152,20 +160,15 @@ test('hall_of_heroes achievement unlock count matches hero roster size', () => {
 });
 
 test('every shop entry references a real inventory item', () => {
-  for (const section of SHOP_CONFIG) {
-    for (const entry of section.items ?? []) {
-      if (!entry.itemId) continue;
-      assert.ok(INVENTORY_ITEMS[entry.itemId],
-        `shop section '${section.id}' sells unknown item '${entry.itemId}'`);
-    }
+  for (const entry of allShopEntries()) {
+    if (!entry.itemId) continue;
+    assert.ok(INVENTORY_ITEMS[entry.itemId], `shop sells unknown item '${entry.itemId}'`);
   }
 });
 
 test('every recruit token has at least one acquisition path', () => {
   const sold = new Set();
-  for (const section of SHOP_CONFIG) {
-    for (const entry of section.items ?? []) if (entry.itemId) sold.add(entry.itemId);
-  }
+  for (const entry of allShopEntries()) if (entry.itemId) sold.add(entry.itemId);
   for (const tier of ['normal', 'epic', 'legendary']) {
     assert.ok(sold.has(`token_${tier}`),
       `token_${tier} is unreachable — no player can enter the hero economy`);
@@ -173,11 +176,9 @@ test('every recruit token has at least one acquisition path', () => {
 });
 
 test('no retired recruitment scroll is still for sale', () => {
-  for (const section of SHOP_CONFIG) {
-    for (const entry of section.items ?? []) {
-      assert.ok(!String(entry.itemId ?? '').startsWith('scroll_'),
-        `retired item '${entry.itemId}' is still on sale and always fails on use`);
-    }
+  for (const entry of allShopEntries()) {
+    assert.ok(!String(entry.itemId ?? '').startsWith('scroll_'),
+      `retired item '${entry.itemId}' is still on sale and always fails on use`);
   }
 });
 
@@ -256,4 +257,49 @@ test('MONSTER_TIERS has ten ascending defense values', () => {
   const defenses = COMBAT_RULES.MONSTER_TIERS.map((t) => t.defense);
   assert.equal(defenses.length, 10);
   for (let i = 1; i < defenses.length; i++) assert.ok(defenses[i] > defenses[i - 1], `tier ${i + 1} ascends`);
+});
+
+test('every SHOP_CONFIG entry has a unique entryId and resolves to an INVENTORY_ITEMS id or DIAMOND_PACKAGES id', () => {
+  const seen = new Set();
+  const packageIds = new Set(DIAMOND_PACKAGES.map(p => p.id));
+  for (const entry of allShopEntries()) {
+    assert.ok(entry.entryId, 'entry missing entryId');
+    assert.ok(!seen.has(entry.entryId), `duplicate entryId '${entry.entryId}'`);
+    seen.add(entry.entryId);
+    const ok = entry.itemId ? INVENTORY_ITEMS[entry.itemId] : packageIds.has(entry.diamondPackageId);
+    assert.ok(ok, `entry '${entry.entryId}' resolves to nothing`);
+  }
+});
+
+test('SHOP_CONFIG.supply category ids are exactly heroes, speedups, resources, boosts', () => {
+  assert.deepEqual(SHOP_CONFIG.supply.map(c => c.id).sort(), ['boosts', 'heroes', 'resources', 'speedups']);
+});
+
+test('the 500 diamond pack is badged Popular and no entry says Best Value', () => {
+  const pack = findShopEntry('diamonds_500');
+  assert.equal(pack.badge, 'Popular');
+  for (const entry of allShopEntries()) {
+    assert.notEqual(entry.badge, 'Best Value');
+    if (entry.entryId !== 'diamonds_500') assert.notEqual(entry.badge, 'Popular');
+  }
+});
+
+test('cafeteria_automation costs 200 diamonds and sits in premium.unlocks', () => {
+  const entry = SHOP_CONFIG.premium.unlocks.find(e => e.entryId === 'cafeteria_automation');
+  assert.ok(entry);
+  assert.equal(entry.diamondCost, 200);
+});
+
+test('every TRADER_POOL item exists in INVENTORY_ITEMS and has a worth or a Supply moneyCost', () => {
+  for (const row of TRADER_POOL) {
+    assert.ok(INVENTORY_ITEMS[row.itemId], `trader pool item '${row.itemId}' unknown`);
+    assert.ok(row.weight > 0, `${row.itemId} weight`);
+    const supply = SHOP_CONFIG.supply.flatMap(c => c.items).find(e => e.itemId === row.itemId);
+    assert.ok(row.worth > 0 || supply?.moneyCost > 0, `${row.itemId} has no worth`);
+  }
+});
+
+test('FEATURED_ENTRY_IDS all resolve via findShopEntry', () => {
+  assert.equal(FEATURED_ENTRY_IDS.length, 3);
+  for (const id of FEATURED_ENTRY_IDS) assert.ok(findShopEntry(id), `featured '${id}' unresolved`);
 });

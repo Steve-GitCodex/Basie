@@ -49,12 +49,7 @@ export const TAB_UNLOCK_CONDITIONS = {
   economy:  { type: 'group_any' },
 
   // ── Sub-tabs: Economy ─────────────────────────────────────────────────────
-  'sub:market': {
-    type: 'hq_level',
-    level: 2,
-    label: 'Upgrade HQ to Level 2',
-  },
-  'sub:shop': { type: 'always' },
+  'sub:trading': { type: 'always' },
 
   // ── Sub-tabs: Quests ──────────────────────────────────────────────────────
   'sub:quests':     { type: 'always' },
@@ -85,8 +80,7 @@ export const TAB_GROUPS = {
   },
   economy: {
     subTabs: [
-      { id: 'market', label: '🏪 Market', viewId: 'market' },
-      { id: 'shop',   label: '🛒 Shop',   viewId: 'shop'   },
+      { id: 'trading', label: 'Trading Post', viewId: 'trading' },
     ],
   },
 };

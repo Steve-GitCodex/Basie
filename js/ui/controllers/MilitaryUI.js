@@ -449,7 +449,7 @@ export class MilitaryUI {
         </div>`;
       picker.querySelector('.speedup-goto-shop')?.addEventListener('click', () => {
         picker.remove();
-        eventBus.emit('ui:navigate', { tab: 'shop' });
+        eventBus.emit('ui:openTradingTab', { tab: 'supply' });
       });
     } else {
       const title = document.createElement('div');

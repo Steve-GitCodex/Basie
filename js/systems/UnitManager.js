@@ -342,6 +342,7 @@ export class UnitManager {
     this._queues.set(requiredBldg, buildingQueue);
 
     eventBus.emit('unit:queueUpdated', this.getAllQueues());
+    eventBus.emit('unit:trainingStarted', { unitId, count, tier });
     return { success: true };
   }
 

@@ -7,14 +7,57 @@
 
 ## Current state (2026-10-02)
 
-- Branch `Working_Branch`. Hero Quarters UI (`1ef23ab`), Phase 2d (`c0ba036`) and the dev launcher / dashboard
-  (`d727368`) are committed. **Uncommitted:** the combat resolver below. Tree is commit-ready.
-- Baseline: `npm test` **747/747**; `node scripts/check-comments.mjs` **12 violations, all pre-existing**;
-  boot / world / tutorial / combat / heroes smokes PASS; dev-smoke PASS except the known `dev-anchor-nudger`
-  ("variantFile resolves the override-manifest key"; fails on clean `d727368` too). `dev-anchor-nudger-from-world`
-  flake fixed 2026-10-02 (it now waits for the city loading overlay).
+- Branch `Working_Branch`. The combat resolver is committed (`74cf629`). **Uncommitted:** the Trading Post below
+  (new files under `js/systems/trading/`, `js/ui/trading/`, `css/components/trading-*.css`; `ShopUI`/`MarketUI` deleted).
+  Tree is commit-ready.
+- Baseline: `npm test` **847/847**; `node scripts/check-comments.mjs` **12 violations, all pre-existing**;
+  trading / boot / tutorial / world / combat / heroes / dev-dashboard smokes PASS; dev-smoke PASS except the known
+  `dev-anchor-nudger` ("variantFile resolves the override-manifest key"; fails on clean `d727368` too).
 
-## Dev mode multi-instance fixes — COMPLETE (2026-10-02, latest)
+## Trading Post — COMPLETE (2026-10-02, latest)
+
+ADR 0035, design `docs/10-design/trading-post.md` (mockups in `mockups/trading-post/`), spec/plan under
+`docs/superpowers/` (left for Steve to delete once he's happy).
+
+- **What landed:** one Trading Post view (Supply · Market · Premium; Market = Exchange + Wandering Trader side by side) in `js/ui/trading/`; `MarketManager`
+  now Exchange only (value table, 0.15 spread, daily pressure); new `ShopManager` (Supply, daily crate; For-you picks in
+  `js/systems/trading/forYouPicks.js`; VIP-by-diamonds-spent in `UserManager`) and `TraderManager` (HQ 2, timed visits, activity cut); pure modules in `js/systems/trading/`;
+  `js/entities/data/tradingPost.js`; `market:traded` -> `market:exchanged`; `unit:trainingStarted`; CSS split into
+  `trading-{post,supply,exchange,trader,premium}.css`.
+- **Tests:** unit 747 -> 847; `tests/browser/trading-smoke.mjs` (34 checks).
+- **Verification:** npm 847/847 (after the final-review wave; trading/boot/tutorial re-run PASS); trading, boot, tutorial, world, combat, heroes, dev-dashboard smokes PASS; dev-smoke
+  fails only the known `dev-anchor-nudger` (twice); check-comments 12.
+- **Final-review wave:** exchange rejects ('Not enough storage.') when the gain would exceed the storage cap and the
+  slider max/hint follow free room; Trader pricing is cap-aware and never prices a bundle in its own resource;
+  `trader:updated` now emits when activity changes `nextVisitAt`; market deserialize treats a missing/invalid
+  `lastResetDate` as stale; shared helpers hoisted (`countdown.js`, `pickWeighted.js`, `buyFailureText.js`);
+  `.tp-sheet*` CSS moved to `trading-post.css`.
+- **Fixed after hand-off — queue sidebar covered the Trading Post's right edge:** `.tp` now reserves the pull-tab
+  width always, and the open panel's width above 900px (`body:has(#bq-sidebar:not(.is-collapsed))`); new
+  `--bq-panel-width` / `--bq-toggle-width` in `variables.css`, used by `sidebar.css`. Exchange chips use
+  `minmax(0, 1fr)` + compact `fmt()` amounts so they no longer spill into the trader column. Smoke: 3 clearance checks.
+  The same overlap on other views (e.g. Hero Quarters roster) is parked in the roadmap backlog.
+- **Amended after hand-off — Exchange + Trader share the Market tab** (ADR 0035 amendment): new
+  `js/ui/trading/MarketTab.js` composes both panels; old `exchange`/`trader` tab ids alias to `market`; layout rules
+  in `trading-trader.css`. Smoke checks updated (tab order, shared pane, market dot).
+- **Fixed after hand-off — card buttons rendered as bare text:** `.btn` has no fill or border on its own; every
+  Trading Post button lacked a variant class. Cards now use `btn-gold` (coins/resources) / `btn-primary` (diamonds),
+  falling back to `btn-ghost` when owned, sold or unaffordable. Use is `btn-success`; Claim, checkout and pack buttons got
+  variants too. Regression check in `trading-smoke.mjs` ("every visible Supply button has a fill or border").
+- **Notes for Steve:** CLAUDE.md is stale (wiki map still says `trading-post.md` "not built"; manager count 21 -> 23;
+  presenter count 17 -> 16) - not edited. Sandbox x10 inflates shop
+  receipts and VIP accrues free in sandbox; trader pool weights and crate table are placeholders; locked Trader tab
+  shows no dot at HQ 1.
+- **Deferred minors:** checkout has no focus trap; hero picker no Escape/resize teardown; banner dots rebuilt per
+  rotation and clicks don't restart the interval; unescaped config strings in picker/cards; `quote.rate` unrounded;
+  Trader countdown on `tick:ui` not `TimerService`; trader reseeds whole block on bad save; tab dot not re-evaluated at
+  midnight while Supply hidden; `refreshDots` sets `#nav-economy` badge class directly; smoke gaps (Use flows, banner
+  lifecycle, notifications, Need label / away phase, nav badge at HQ1, VIP-unchanged is trivially true);
+  `forYouPicks` secsLeft unvalidated; `UIManager.js` (734 lines) is a god file (pre-existing); Trader 'unaffordable'
+  toast says "Not enough funds." (shared `buyFailureText`); a bundle can still be priced in its own resource when the
+  player holds nothing else (wood fallback).
+
+## Dev mode multi-instance fixes — COMPLETE (2026-10-02)
 
 - **Level switcher only reached copy #1:** the switcher listed building *types* and its event had no
   `instanceIndex`, so `devSetLevel` defaulted to instance 0. It also filled its list once at startup, so buildings
@@ -158,8 +201,21 @@ new-hero cues. The desktop queue sidebar overlapping the roster's right edge is 
 
 ## Next steps
 
-1. **Commit** (Steve), then play battles to feel the new curve.
-2. **Balance pass** on `COMBAT_RULES` and the monster tiers; both are live first-pass values.
-3. **Skill-magnitude pass** (hero skills), after the balance pass.
+1. **Commit** (Steve), then play battles and the Trading Post to feel the new curve.
+2. **Balance pass — DEFERRED by Steve 2026-10-02** (fine tuning; other areas need work first). Yardstick chosen:
+   hand-authored reference squads per stage (data table derived from each stage's TH / barracks / tier gates) +
+   a sim script checking target win/loss bands. Probe findings (40 seeds, infantry only, no heroes/tech): monster
+   stacks hold 1–20 units vs a 200-unit Lv1 barracks slot, so a full Lv1 barracks of Footmen beats stages 1–8;
+   stages 5–8 need the same squad; stage 4 (`troll_bridge`, Ironclads def 60 + heals) is harder than 5–8;
+   10 T10s beat stage 10.
+   **Hero strikes dominate** (found 2026-10-02 while mocking the battle tab): with `HERO_STRIKE.factor` 10, two low-level
+   heroes cut a 23-round fight (12 troops) to 4 rounds; a 240-troop squad with Marcus Lv22 + Kira Lv9 clears the Mutant
+   Warband in 3 rounds losing 1 troop. Include `HERO_STRIKE` in the balance pass.
+3. **Skill-magnitude pass** (hero skills), after the balance pass (deferred with it).
 4. **Hospital** (heals the wounded pool) when wanted. Open decision: `lossReduction` (Steel Armor, loss-cut skills) keeps no troops until wounded can heal; interim rule vs. hospital first (ADR 0034).
 5. Gather/march yield hero effect stays barred until the march balance pass.
+6. ~~Trading Post~~ done 2026-10-02 (ADR 0035).
+7. **Battle tab redesign**: target design + mockups saved 2026-10-02 in `docs/10-design/battle-tab.md`; not scheduled.
+   Decisions: A1 vertical chapter trail (generated road, bosses = today's 10 monsters, elites), stage panel with
+   Commanders, P1 battle-lines playback with hero bar + timeline, results with hero XP/level-ups; 4 slots share 3 rows,
+   **max 2 slots per row** (not enforced today; rule + edge cases in the design page — can land on its own, ahead of the redesign).

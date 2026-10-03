@@ -368,6 +368,15 @@ model retires entirely (interim anti-teleport guard dies with it).
   (atk 45). Also wanted: losses weighted by tier (low tiers die first), and **hero strikes**
   that land real kills. Heroes must be ready for it: hero data/skills should expose numbers
   combat can consume, not bake combat assumptions in.
+- [x] **Trading Post** (Shop + Market merge) — built 2026-10-02, ADR 0035. Design:
+  `docs/10-design/trading-post.md` + mockups. UI part ≈ Hero Quarters redesign size; daily crate, Wandering
+  Trader and the Exchange value table are new mechanics (save state + ADR).
+- [ ] **Battle tab redesign** — target design agreed 2026-10-02, not scheduled: `docs/10-design/battle-tab.md` +
+  mockups (A1 chapter trail map, Commanders panel, battle-lines playback with timeline, results with hero XP).
+  Needs chapter/elite stage data, stars, last-report-per-stage and hero ids in the combat report.
+- [ ] Queue sidebar clearance on other views (Hero Quarters roster etc.): reuse the Trading Post rule — reserve
+  `--bq-toggle-width` always and `--bq-panel-width` while `#bq-sidebar` is open (≥ 901px); see `.tp` in
+  `css/components/trading-post.css`.
 - [ ] Region buff stacking UI (all active territory buffs in one place).
 - [ ] Multi-base / second city · [ ] mini-map / region jump-to.
 - [ ] AI difficulty scaling seam driven by player level + activity (Phase 4 prep).

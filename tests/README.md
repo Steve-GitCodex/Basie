@@ -72,6 +72,8 @@ overlays that eat clicks (story dialog, tutorial blocker, `#modal-overlay`,
 - `combat-smoke.mjs` — `?dev=combatsmoke` (ADR 0034): seeds a squad slot, sets its row to Back and checks it
   survives a reload, then runs campaign stage 1 (estimate badge, skip, result) and asserts the squad lost
   exactly the log entry's dead + wounded and the wounded pool holds the wounded.
+- `trading-smoke.mjs` — Trading Post (ADR 0035): tabs, Supply crate claim + dot, Exchange slider/trade/pressure
+  meter, Premium checkout, Trader lock/dot/buy and save+reload round trip.
 - `launcher-smoke.mjs` — spawns the Basie launcher itself on :8124 (ADR 0033): bridge injected,
   page + logManager errors reach the terminal, CSS hot-swaps in place, JS change reloads a dev tab
   but only shows a note on a normal tab.

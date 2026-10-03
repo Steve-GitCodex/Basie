@@ -360,7 +360,7 @@
   right: 0;
   top: var(--header-height);
   bottom: var(--bottom-nav-height);
-  width: 210px;
+  width: var(--bq-panel-width);
   z-index: calc(var(--z-overlay) - 1);
   display: flex;
   flex-direction: row;
@@ -370,16 +370,16 @@
 }
 
 .bq-sidebar.is-collapsed {
-  transform: translateX(210px);
+  transform: translateX(var(--bq-panel-width));
 }
 
 /* Pull-tab that stays visible when collapsed */
 .bq-sidebar__toggle {
   position: absolute;
-  left: -38px;
+  left: calc(-1 * var(--bq-toggle-width));
   top: 50%;
   transform: translateY(-50%);
-  width: 38px;
+  width: var(--bq-toggle-width);
   height: 72px;
   background: hsla(220, 30%, 6%, 0.95);
   border: 1px solid var(--clr-border);

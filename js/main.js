@@ -21,6 +21,8 @@ import { QuestManager }        from './systems/QuestManager.js';
 import { TechnologyManager }   from './systems/TechnologyManager.js';
 import { SettingsManager }     from './systems/SettingsManager.js';
 import { MarketManager }       from './systems/MarketManager.js';
+import { ShopManager }         from './systems/ShopManager.js';
+import { TraderManager }       from './systems/TraderManager.js';
 import { SoundManager }        from './systems/SoundManager.js';
 import { HeroManager }         from './systems/HeroManager.js';
 import { InventoryManager }    from './systems/InventoryManager.js';
@@ -83,6 +85,8 @@ unitManager.setTechnologyManager(techManager);
 buildingManager.setUnitManager(unitManager);
 const settingsManager  = new SettingsManager(saveManager);
 const marketManager    = new MarketManager(resourceManager);
+const shopManager      = new ShopManager({ rm: resourceManager, inventory: inventoryManager, bm: buildingManager, tech: techManager });
+const traderManager    = new TraderManager({ rm: resourceManager, inventory: inventoryManager });
 const achievementManager  = new AchievementManager(userManager, mailManager, resourceManager, inventoryManager);
 const challengeManager    = new ChallengeManager(resourceManager, mailManager, inventoryManager);
 const storyManager = new StoryManager();
@@ -139,6 +143,8 @@ engine.registerSystem(questManager);
 engine.registerSystem(mailManager);
 engine.registerSystem(heroManager);
 engine.registerSystem(marketManager);
+engine.registerSystem(shopManager);
+engine.registerSystem(traderManager);
 engine.registerSystem(challengeManager);
 engine.registerSystem(userManager);
 engine.registerSystem(achievementManager);
@@ -160,6 +166,8 @@ function getGameState() {
     quests:       questManager.serialize(),
     tech:         techManager.serialize(),
     market:       marketManager.serialize(),
+    shop:         shopManager.serialize(),
+    trader:       traderManager.serialize(),
     heroes:       heroManager.serialize(),
     inventory:    inventoryManager.serialize(),
     achievements: achievementManager.serialize(),
@@ -186,6 +194,8 @@ function applyGameState(state) {
   questManager.deserialize(state.quests);
   techManager.deserialize(state.tech);
   marketManager.deserialize(state.market);
+  shopManager.deserialize(state.shop);
+  traderManager.deserialize(state.trader);
   heroManager.deserialize(state.heroes);
   inventoryManager.deserialize(state.inventory);
   achievementManager.deserialize(state.achievements);
@@ -442,6 +452,8 @@ function launchGame(authScreen, gameShell, externalState = null) {
     tech:         techManager,
     settings:     settingsManager,
     market:       marketManager,
+    shop:         shopManager,
+    trader:       traderManager,
     heroes:       heroManager,
     inventory:    inventoryManager,
     achievements:  achievementManager,
@@ -633,7 +645,7 @@ function launchGame(authScreen, gameShell, externalState = null) {
     engine, resources: resourceManager, buildings: buildingManager,
     heroes: heroManager, inventory: inventoryManager, units: unitManager,
     combat: combatManager, tech: techManager, mail: mailManager,
-    market: marketManager, quests: questManager, user: userManager,
+    market: marketManager, trader: traderManager, quests: questManager, user: userManager,
     save:       () => saveManager.save(getGameState()),
     load:       () => applyGameState(saveManager.load()),
     clearSave:  () => saveManager.clear?.(),

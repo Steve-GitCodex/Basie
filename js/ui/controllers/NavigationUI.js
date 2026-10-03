@@ -68,6 +68,14 @@ export class NavigationUI {
       eventBus.emit('ui:openBuildables', {});
     });
     this._bindSubTabs();
+    this._hideSingleSubTabBars();
+  }
+
+  _hideSingleSubTabBars() {
+    for (const [groupId, group] of Object.entries(TAB_GROUPS)) {
+      if (group.subTabs.length !== 1) continue;
+      document.querySelector(`.sub-tab-bar[data-group="${groupId}"]`)?.classList.add('hidden');
+    }
   }
 
   /** Wire click handlers for all horizontal sub-tab buttons inside group views. */
@@ -103,7 +111,7 @@ export class NavigationUI {
     }
 
     // Check if viewId is a sub-tab viewId living inside a group
-    // (e.g. 'barracks', 'shop', 'quests', 'challenges', 'market', 'military')
+    // (e.g. 'barracks', 'trading', 'quests', 'challenges', 'military')
     for (const [groupId, group] of Object.entries(TAB_GROUPS)) {
       const subTab = group.subTabs.find(st => st.viewId === viewId);
       if (subTab) {
@@ -291,6 +299,8 @@ export class NavigationUI {
       this._updateFlipButton();
     });
     eventBus.on('ui:navigateTo',          v    => this._switchView(v));
+    eventBus.on('ui:openTradingTab',      ()   => this._switchView('economy'));
+    eventBus.on('tradingpost:dotsChanged', ()  => this._refreshMoreBadges());
     // Building click → Train / Manage Squads now open compact modals (handled by
     // MilitaryUI / BarracksUI). NavigationUI no longer switches to a Military view.
     eventBus.on('population:updated',     ()   => this._refreshStatusBar());
@@ -441,7 +451,7 @@ export class NavigationUI {
     for (const [groupId, group] of Object.entries(TAB_GROUPS)) {
       const btn = document.getElementById(`nav-${groupId}`);
       if (btn) {
-        const hasBadge = this._hasGroupBadge(groupId);
+        const hasBadge = this._hasGroupBadge(groupId) || btn.dataset.tpBadge === '1';
         btn.classList.toggle('tab-has-badge', hasBadge);
         const allMsgs = hasBadge
           ? group.subTabs.flatMap(st => this._badgeStore.get(`sub:${st.id}`) ?? [])

@@ -44,7 +44,7 @@ export function openSpeedupPicker({ anchorRect, queueType, secsLeft, inventory, 
       </div>`;
     picker.querySelector('.speedup-goto-shop')?.addEventListener('click', () => {
       close();
-      eventBus.emit('ui:navigateTo', 'shop');
+      eventBus.emit('ui:openTradingTab', { tab: 'supply', category: 'speedups' });
     });
   } else {
     const sorted = [...owned].sort((a, b) => a.skipSeconds - b.skipSeconds);

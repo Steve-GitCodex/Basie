@@ -145,101 +145,77 @@ export const INVENTORY_ITEMS = {
   speedup_universal_instant: { id: 'speedup_universal_instant', type: 'speed_boost', target: 'any', name: 'Instant Completion', icon: '✨', description: 'Instantly completes the current active build, train, or research.', rarity: 'legendary', skipSeconds: 999999 },
 };
 
-export const SHOP_CONFIG = [
-  {
-    id: 'heroes', label: 'Recruit', icon: '🎲',
-    items: [
-      { itemId: 'token_normal',    moneyCost: 400,  featured: false },
-      { itemId: 'token_epic',      moneyCost: 1250, featured: true  },
-      { itemId: 'token_legendary', diamondCost: 6, featured: false },
+export const SHOP_CONFIG = {
+  supply: [
+    { id: 'heroes', label: 'Heroes', icon: '🎲', items: [
+      { entryId: 'token_normal', itemId: 'token_normal', moneyCost: 400 },
+      { entryId: 'token_epic', itemId: 'token_epic', moneyCost: 1250 },
+      { entryId: 'token_legendary', itemId: 'token_legendary', diamondCost: 6 },
+      { entryId: 'card_hero_shadowblade', itemId: 'card_hero_shadowblade', moneyCost: 750 },
+      { entryId: 'card_hero_kaelenthorne', itemId: 'card_hero_kaelenthorne', moneyCost: 750 },
+      { entryId: 'card_hero_paladin', itemId: 'card_hero_paladin', moneyCost: 1250 },
+      { entryId: 'card_hero_junovane', itemId: 'card_hero_junovane', moneyCost: 1250 },
+      { entryId: 'card_hero_warlord', itemId: 'card_hero_warlord', diamondCost: 5 },
+      { entryId: 'card_hero_archsorceress', itemId: 'card_hero_archsorceress', diamondCost: 5 },
+      { entryId: 'card_normal', itemId: 'card_normal', moneyCost: 400 },
+      { entryId: 'card_epic', itemId: 'card_epic', moneyCost: 1000 },
+      { entryId: 'card_legendary', itemId: 'card_legendary', diamondCost: 6 },
+    ] },
+    { id: 'speedups', label: 'Speed Ups', icon: '⚡', items: [
+      { entryId: 'speedup_build_5m', itemId: 'speedup_build_5m', moneyCost: 200 },
+      { entryId: 'speedup_build_15m', itemId: 'speedup_build_15m', moneyCost: 500 },
+      { entryId: 'speedup_build_1h', itemId: 'speedup_build_1h', moneyCost: 1500 },
+      { entryId: 'speedup_build_8h', itemId: 'speedup_build_8h', moneyCost: 8000 },
+      { entryId: 'speedup_train_5m', itemId: 'speedup_train_5m', moneyCost: 200 },
+      { entryId: 'speedup_train_15m', itemId: 'speedup_train_15m', moneyCost: 500 },
+      { entryId: 'speedup_train_1h', itemId: 'speedup_train_1h', moneyCost: 1500 },
+      { entryId: 'speedup_train_8h', itemId: 'speedup_train_8h', moneyCost: 8000 },
+      { entryId: 'speedup_research_5m', itemId: 'speedup_research_5m', moneyCost: 200 },
+      { entryId: 'speedup_research_15m', itemId: 'speedup_research_15m', moneyCost: 500 },
+      { entryId: 'speedup_research_1h', itemId: 'speedup_research_1h', moneyCost: 1500 },
+      { entryId: 'speedup_research_8h', itemId: 'speedup_research_8h', moneyCost: 8000 },
+      { entryId: 'speedup_universal_5m', itemId: 'speedup_universal_5m', moneyCost: 400 },
+      { entryId: 'speedup_universal_15m', itemId: 'speedup_universal_15m', moneyCost: 1000 },
+      { entryId: 'speedup_universal_1h', itemId: 'speedup_universal_1h', moneyCost: 3000 },
+      { entryId: 'speedup_universal_8h', itemId: 'speedup_universal_8h', moneyCost: 18000 },
+    ] },
+    { id: 'resources', label: 'Resources', icon: '📦', items: [
+      { entryId: 'res_bundle_wood_t3', itemId: 'res_bundle_wood_t3', moneyCost: 150 },
+      { entryId: 'res_bundle_stone_t3', itemId: 'res_bundle_stone_t3', moneyCost: 150 },
+      { entryId: 'res_bundle_iron_t4', itemId: 'res_bundle_iron_t4', moneyCost: 200 },
+      { entryId: 'res_bundle_food_t3', itemId: 'res_bundle_food_t3', moneyCost: 125 },
+      { entryId: 'res_bundle_water_t4', itemId: 'res_bundle_water_t4', moneyCost: 200 },
+      { entryId: 'res_bundle_money_t1', itemId: 'res_bundle_money_t1', diamondCost: 2 },
+    ] },
+    { id: 'boosts', label: 'Boosts', icon: '⚗️', items: [
+      { entryId: 'xp_bundle_small', itemId: 'xp_bundle_small', moneyCost: 250 },
+      { entryId: 'xp_bundle_medium', itemId: 'xp_bundle_medium', moneyCost: 900 },
+      { entryId: 'xp_bundle_large', itemId: 'xp_bundle_large', moneyCost: 4000 },
+      { entryId: 'buff_prod_sm', itemId: 'buff_prod_sm', moneyCost: 600 },
+      { entryId: 'buff_prod_lg', itemId: 'buff_prod_lg', moneyCost: 1500 },
+    ] },
+  ],
+  premium: {
+    packs: [
+      { entryId: 'diamonds_100', diamondPackageId: 'diamonds_100', label: 'Starter Pack', icon: '💎', description: '100 Diamonds — great for grabbing a speed-up.', displayPrice: '$0.99' },
+      { entryId: 'diamonds_500', diamondPackageId: 'diamonds_500', label: 'Explorer Pack', icon: '💎', description: '500 Diamonds — unlock extra queue slots & heroes.', displayPrice: '$4.99', badge: 'Popular' },
+      { entryId: 'diamonds_1000', diamondPackageId: 'diamonds_1000', label: 'Commander Pack', icon: '💎', description: '1 000 Diamonds — VIP III perks await.', displayPrice: '$9.99' },
+      { entryId: 'diamonds_2500', diamondPackageId: 'diamonds_2500', label: 'Warlord Pack', icon: '💎', description: '2 500 Diamonds — VIP IV: powerful build & train bonuses.', displayPrice: '$19.99' },
+      { entryId: 'diamonds_5000', diamondPackageId: 'diamonds_5000', label: 'Conqueror Pack', icon: '💎', description: '5 000 Diamonds — reach VIP V for max perks & +5% production.', displayPrice: '$39.99' },
+    ],
+    unlocks: [
+      { entryId: 'build_queue_expansion', itemId: 'build_queue_expansion', diamondCost: 800 },
+      { entryId: 'research_queue_expansion', itemId: 'research_queue_expansion', diamondCost: 800 },
+      { entryId: 'cafeteria_automation', itemId: 'cafeteria_automation', diamondCost: 200 },
+      { entryId: 'speedup_universal_instant', itemId: 'speedup_universal_instant', diamondCost: 8 },
     ],
   },
-  {
-    id: 'hero_cards', label: 'Hero Cards', icon: '🃏',
-    items: [
-      { itemId: 'card_hero_shadowblade',   moneyCost: 750 },
-      { itemId: 'card_hero_kaelenthorne',  moneyCost: 750 },
-      { itemId: 'card_hero_paladin',       moneyCost: 1250 },
-      { itemId: 'card_hero_junovane',      moneyCost: 1250 },
-      { itemId: 'card_hero_warlord',       diamondCost: 5, featured: true },
-      { itemId: 'card_hero_archsorceress', diamondCost: 5, featured: true },
-    ],
-  },
-  {
-    id: 'universal_cards', label: 'Universal Cards', icon: '🎴',
-    items: [
-      { itemId: 'card_normal',    moneyCost: 400  },
-      { itemId: 'card_epic',      moneyCost: 1000 },
-      { itemId: 'card_legendary', diamondCost: 6 },
-    ],
-  },
-  {
-    id: 'experience', label: 'XP Bundles', icon: '📖',
-    items: [
-      { itemId: 'xp_bundle_small',  moneyCost: 250 },
-      { itemId: 'xp_bundle_medium', moneyCost: 900, featured: true },
-      { itemId: 'xp_bundle_large',  moneyCost: 4000 },
-    ],
-  },
-  {
-    id: 'resources', label: 'Resources', icon: '📦',
-    items: [
-      { itemId: 'res_bundle_wood_t3',    moneyCost: 150 },
-      { itemId: 'res_bundle_stone_t3',   moneyCost: 150 },
-      { itemId: 'res_bundle_iron_t4',    moneyCost: 200 },
-      { itemId: 'res_bundle_food_t3',    moneyCost: 125 },
-      { itemId: 'res_bundle_water_t4',   moneyCost: 200 },
-      { itemId: 'res_bundle_money_t1', diamondCost: 2 },
-    ],
-  },
-  {
-    id: 'buffs', label: 'Buffs', icon: '⚗️',
-    items: [
-      { itemId: 'buff_prod_sm', moneyCost: 600 },
-      { itemId: 'buff_prod_lg', moneyCost: 1500 },
-    ],
-  },
-  {
-    id: 'automations', label: 'Automations', icon: '🤖',
-    items: [
-      { itemId: 'cafeteria_automation', diamondCost: 5, featured: true },
-    ],
-  },
-  {
-    id: 'speedups', label: 'Speed Ups', icon: '⚡',
-    items: [
-      { itemId: 'speedup_build_5m',          moneyCost: 200  },
-      { itemId: 'speedup_build_15m',         moneyCost: 500  },
-      { itemId: 'speedup_build_1h',          moneyCost: 1500 },
-      { itemId: 'speedup_build_8h',          moneyCost: 8000 },
-      { itemId: 'speedup_train_5m',          moneyCost: 200  },
-      { itemId: 'speedup_train_15m',         moneyCost: 500  },
-      { itemId: 'speedup_train_1h',          moneyCost: 1500 },
-      { itemId: 'speedup_train_8h',          moneyCost: 8000 },
-      { itemId: 'speedup_research_5m',       moneyCost: 200  },
-      { itemId: 'speedup_research_15m',      moneyCost: 500  },
-      { itemId: 'speedup_research_1h',       moneyCost: 1500 },
-      { itemId: 'speedup_research_8h',       moneyCost: 8000 },
-      { itemId: 'speedup_universal_5m',      moneyCost: 400,  featured: false },
-      { itemId: 'speedup_universal_15m',     moneyCost: 1000, featured: false },
-      { itemId: 'speedup_universal_1h',      moneyCost: 3000, featured: true  },
-      { itemId: 'speedup_universal_8h',      moneyCost: 18000 },
-      { itemId: 'speedup_universal_instant', diamondCost: 8,  featured: true  },
-    ],
-  },
-  {
-    id: 'premium', label: 'Premium', icon: '💎',
-    items: [
-      { diamondPackageId: 'diamonds_100',  label: 'Starter Pack',    icon: '💎', description: '100 Diamonds — great for grabbing a speed-up.', displayPrice: '$0.99'  },
-      { diamondPackageId: 'diamonds_500',  label: 'Explorer Pack',   icon: '💎', description: '500 Diamonds — unlock extra queue slots & heroes.', displayPrice: '$4.99',  featured: true },
-      { diamondPackageId: 'diamonds_1000', label: 'Commander Pack',  icon: '💎', description: '1 000 Diamonds — VIP III perks await.', displayPrice: '$9.99'  },
-      { diamondPackageId: 'diamonds_2500', label: 'Warlord Pack',    icon: '💎', description: '2 500 Diamonds — VIP IV: powerful build & train bonuses.', displayPrice: '$19.99' },
-      { diamondPackageId: 'diamonds_5000', label: 'Conqueror Pack',  icon: '💎', description: '5 000 Diamonds — reach VIP V for max perks & +5% production.', displayPrice: '$39.99' },
-      { itemId: 'build_queue_expansion',    diamondCost: 800, featured: true },
-      { itemId: 'research_queue_expansion', diamondCost: 800 },
-    ],
-  },
-];
+};
+
+export function findShopEntry(entryId) {
+  const pools = [...SHOP_CONFIG.supply.flatMap(c => c.items), ...SHOP_CONFIG.premium.packs, ...SHOP_CONFIG.premium.unlocks];
+  return pools.find(e => e.entryId === entryId) ?? null;
+}
 
 export const DIAMOND_PACKAGES = [
   { id: 'diamonds_100',  diamonds: 100,  displayPrice: '$0.99'  },

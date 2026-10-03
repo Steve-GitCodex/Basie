@@ -185,7 +185,7 @@ export class SoundManager {
     eventBus.on('ui:error',                    () => this.error());
     eventBus.on('achievement:unlocked',        () => this.achievement());
     eventBus.on('hero:recruited',              () => this.confirm());
-    eventBus.on('market:traded',               () => this.coin());
+    eventBus.on('market:exchanged',               () => this.coin());
     eventBus.on('building:cafeteria:shortfall',({ severity } = {}) => severity === 'info' ? this.confirm() : this.error());
     eventBus.on('combat:wave:start',           () => this.battle());
     eventBus.on('march:dispatched',            () => this.dispatch());

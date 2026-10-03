@@ -9,7 +9,12 @@ export {
   FRAGMENTS_PER_SHARD, SHARDS_TO_UNLOCK
 } from './data/heroes.js';
 export { SKILLS_CONFIG } from './data/heroSkills.js';
-export { INVENTORY_ITEMS, SHOP_CONFIG, DIAMOND_PACKAGES, VIP_TIERS } from './data/economy.js';
+export { INVENTORY_ITEMS, SHOP_CONFIG, DIAMOND_PACKAGES, VIP_TIERS, findShopEntry } from './data/economy.js';
+export {
+  RESOURCE_VALUE, EXCHANGE_SPREAD, PRESSURE_PER_1000_WORTH, PRESSURE_CAP,
+  CRATE_TABLE, TRADER_TIMING, TRADER_POOL, TRADER_STOCK_SIZE, TRADER_DISCOUNT,
+  PRICE_ROUNDING, FEATURED_ENTRY_IDS,
+} from './data/tradingPost.js';
 export { MONSTERS_CONFIG, CAMPAIGNS_CONFIG, ENCOUNTER_MODIFIERS, DIFFICULTY_MODIFIERS, SURVIVAL_MONSTER } from './data/combat.js';
 export { TECH_CONFIG, TECH_BRANCHES } from './data/tech.js';
 export {

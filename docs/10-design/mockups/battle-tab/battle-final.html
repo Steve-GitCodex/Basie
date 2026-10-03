@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:hsl(30,10%,5%);--surf:hsl(30,9%,8%);--elev:hsl(30,8%,11%);--panel:hsl(30,8%,14%);--bd:hsl(30,10%,18%);--bdl:hsl(30,10%,27%);
+    --or:hsl(32,90%,55%);--orm:hsl(32,55%,18%);--tx:hsl(35,15%,93%);--tx2:hsl(35,10%,62%);--tx3:hsl(35,8%,42%);
+    --ok:hsl(90,45%,48%);--bad:hsl(5,65%,55%);--badm:hsl(5,40%,13%);--warn:hsl(45,90%,58%);--inf:hsl(5,60%,62%);--cav:hsl(45,80%,60%);--rng:hsl(150,45%,55%);
+    --leg:hsl(32,90%,55%);--epic:hsl(275,45%,62%);--norm:hsl(35,8%,62%)}
+  *{box-sizing:border-box}
+  body{margin:0;background:#1b1916;color:var(--tx);font-family:Outfit,sans-serif;padding:24px 32px 60px}
+  h1{font:700 22px Oswald;letter-spacing:.04em;margin:0 0 4px} .sub{color:var(--tx2);margin:0 0 14px;font-size:14px;max-width:1100px}
+  h2.s{font:700 17px Oswald;letter-spacing:.05em;margin:26px 0 8px} h2.s b{color:var(--or)}
+  .facts{background:#24211d;border:1px solid var(--bdl);border-radius:10px;padding:12px 16px;display:grid;grid-template-columns:repeat(4,1fr);gap:4px 22px;font-size:12px;color:var(--tx2);line-height:1.55;margin-bottom:6px}
+  .facts b{color:var(--tx)} .facts h4{font:700 11px Oswald;letter-spacing:.12em;color:var(--or);margin:0 0 3px;text-transform:uppercase}
+  .warnbox{background:hsl(45,30%,8%);border:1px solid hsl(45,40%,24%);border-radius:8px;padding:9px 14px;font-size:12.5px;color:var(--tx2);margin-bottom:8px;max-width:1100px} .warnbox b{color:var(--warn)}
+  .screen{background:var(--bg);border:1px solid var(--bd);border-radius:6px;overflow:hidden;position:relative;font-size:12px}
+  .pill{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:3px;border:1px solid currentColor}
+  .btn{background:linear-gradient(var(--or),hsl(30,88%,42%));color:#1a1108;font:700 13px Oswald;letter-spacing:.08em;text-transform:uppercase;border:0;padding:9px 16px;border-radius:4px;white-space:nowrap}
+  .btn.red{background:linear-gradient(hsl(5,65%,52%),hsl(5,65%,38%));color:#fff}
+  .btn.g{background:var(--panel);color:var(--tx);border:1px solid var(--bdl)}
+  .btn.sm{font-size:10.5px;padding:4px 8px}
+  .lbl{font:700 11px Oswald;letter-spacing:.12em;text-transform:uppercase;color:var(--tx2);margin:0 0 7px}
+  .tier{font:700 10px Oswald;background:var(--panel);border:1px solid var(--bdl);border-radius:3px;padding:0 5px;color:var(--tx)}
+  .t-inf{color:var(--inf)} .t-cav{color:var(--cav)} .t-rng{color:var(--rng)}
+  .bar{height:6px;background:var(--panel);border-radius:3px;overflow:hidden} .bar i{display:block;height:100%;background:var(--ok)}
+  .bar.foe i{background:var(--bad)} .bar.xp i{background:linear-gradient(90deg,var(--or),hsl(45,90%,58%))}
+  .chip{background:var(--elev);border:1px solid var(--bd);border-radius:4px;padding:3px 8px;font-size:11px}
+  .por{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;background:radial-gradient(circle,hsl(32,35%,22%),var(--panel));border:2px solid var(--rar,var(--norm));flex:none;position:relative}
+  .por.leg{--rar:var(--leg)} .por.epic{--rar:var(--epic)} .por.norm{--rar:var(--norm)} .por.sm{width:30px;height:30px;font-size:15px}
+  .por .lv{position:absolute;bottom:-5px;right:-6px;font:700 9px Oswald;background:var(--bg);border:1px solid var(--bdl);border-radius:3px;padding:0 3px;color:var(--tx)}
+  .fx{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+  .fx span{font-size:9.5px;border:1px solid var(--bd);border-radius:3px;padding:1px 5px;color:var(--tx2)}
+  .fx span.aura{color:var(--or);border-color:hsl(32,40%,28%)} .fx span.trig{color:var(--epic);border-color:hsl(275,25%,30%)}
+
+  /* 1 map + panel */
+  .s1{display:grid;grid-template-columns:1fr 340px;height:750px}
+  .s1 .vp{position:relative;overflow:hidden}
+  .s1 .world{position:absolute;left:0;right:0}
+  .s1 svg{position:absolute;left:0;top:0;overflow:visible}
+  .band{position:absolute;left:20px;right:20px;display:flex;align-items:center;gap:10px;font:700 12px Oswald;letter-spacing:.16em;text-transform:uppercase;color:var(--tx2)}
+  .band:before,.band:after{content:"";height:1px;flex:1;background:linear-gradient(90deg,transparent,var(--bdl),transparent)}
+  .node{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;z-index:2}
+  .node .c{border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--panel);border:2px solid var(--bdl);color:var(--tx2);font:700 11px Oswald}
+  .node.norm .c{width:30px;height:30px}
+  .node.boss .c{width:58px;height:58px;font-size:26px;border-width:3px;border-color:hsl(5,40%,35%);background:radial-gradient(circle,hsl(5,30%,16%),var(--panel))}
+  .node.done .c{border-color:var(--ok);color:var(--ok);background:hsl(90,20%,11%)}
+  .node.cur .c{border-color:var(--or);color:var(--tx);box-shadow:0 0 0 5px hsla(32,90%,55%,.18),0 0 24px hsla(32,90%,55%,.55)}
+  .node.lock .c{opacity:.45}
+  .node small{margin-top:3px;font:700 11px Oswald;letter-spacing:.05em;color:var(--tx);white-space:nowrap;text-shadow:0 1px 3px #000}
+  .node .stars{font-size:10px;color:var(--or);letter-spacing:1px} .node .stars i{color:var(--tx3);font-style:normal}
+  .you{position:absolute;top:-28px;font:700 9px Oswald;letter-spacing:.12em;background:var(--or);color:#1a1108;padding:2px 6px;border-radius:3px}
+  .fog{position:absolute;left:0;right:0;top:0;background:linear-gradient(0deg,transparent,hsla(30,10%,4%,.6) 30%,hsla(30,10%,4%,.93));pointer-events:none}
+  .sheet{background:var(--surf);border-left:1px solid var(--bdl);padding:14px;overflow:hidden}
+  .sheet h3{font:700 19px Oswald;margin:4px 0 2px;letter-spacing:.03em}
+  .wave{background:var(--elev);border:1px solid var(--bd);border-radius:5px;padding:6px 9px;margin-bottom:5px}
+  .wave b{font-size:11.5px} .wave .stk{display:flex;gap:7px;align-items:center;margin-top:3px;font-size:11px;color:var(--tx2);flex-wrap:wrap}
+  .slot{display:grid;grid-template-columns:40px 1fr;gap:9px;align-items:center;background:var(--elev);border:1px solid var(--bd);border-radius:6px;padding:6px 9px;margin-bottom:5px}
+  .slot b{font-size:12px} .slot .leads{font-size:10.5px;color:var(--tx2);margin-top:1px}
+  .slot.empty{border-style:dashed} .slot.empty .por{border-style:dashed;background:none;color:var(--tx3)}
+  .support{display:flex;align-items:center;gap:8px;background:hsl(90,15%,8%);border:1px solid hsl(90,25%,22%);border-radius:6px;padding:5px 9px;margin:5px 0}
+  .sum{display:flex;gap:5px;flex-wrap:wrap;margin:4px 0 8px}
+  .sum span{font:700 11px Oswald;background:var(--orm);border:1px solid hsl(32,50%,30%);color:var(--or);border-radius:3px;padding:2px 7px}
+
+  /* 2 playback */
+  .top{display:flex;align-items:center;gap:14px;padding:10px 18px;border-bottom:1px solid var(--bd);background:linear-gradient(var(--surf),var(--bg))}
+  .top .t{font:700 15px Oswald;letter-spacing:.08em;text-transform:uppercase}
+  .strength{display:flex;gap:16px;align-items:center;font:700 11px Oswald;letter-spacing:.06em}
+  .strength .b{width:110px}
+  .toggles{margin-left:auto;display:flex;gap:6px;color:var(--tx3);font-size:10.5px}
+  .toggles span{border:1px solid var(--bd);border-radius:4px;padding:2px 7px} .toggles span.on{color:var(--tx);border-color:var(--bdl)}
+  .field{position:relative;display:grid;grid-template-columns:1fr 130px 1fr;padding:14px 18px 10px;background:radial-gradient(ellipse at 50% 60%,hsl(15,25%,9%),transparent 70%)}
+  .side .head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+  .side .head b{font:700 14px Oswald;letter-spacing:.06em}
+  .row{display:grid;grid-template-columns:44px 1fr;gap:8px;align-items:center;margin-bottom:9px;height:52px}
+  .row .r{font:700 10px Oswald;letter-spacing:.1em;color:var(--tx3);text-transform:uppercase}
+  .foe-side .row{grid-template-columns:1fr 44px} .foe-side .row .r{text-align:right}
+  .stack{background:var(--elev);border:1px solid var(--bd);border-radius:5px;padding:7px 9px;position:relative}
+  .stack .l{display:flex;gap:7px;align-items:center;margin-bottom:5px}
+  .stack .cnt{margin-left:auto;font:700 14px Oswald}
+  .stack .loss{color:var(--bad);font:700 11px Oswald;margin-left:4px}
+  .stack .led{font-size:12px;opacity:.9}
+  .stack.hit{border-color:var(--bad);box-shadow:0 0 0 1px var(--bad),0 0 14px hsla(5,65%,55%,.35)}
+  .foe-side .stack{background:var(--badm);border-color:hsl(5,30%,24%)}
+  .foe-side .stack.hit{border-color:var(--bad)}
+  .float{position:absolute;right:10px;top:-13px;font:700 15px Oswald;text-shadow:0 2px 4px #000}
+  .float.dmg{color:var(--bad)} .float.kill{color:var(--or)} .float.heal{color:var(--ok)}
+  .lines{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:1}
+  .moment{position:absolute;left:50%;top:41%;transform:translate(-50%,-50%);background:hsla(30,10%,4%,.92);border:1px solid var(--warn);border-radius:6px;padding:7px 16px;text-align:center;z-index:3;box-shadow:0 8px 30px #000}
+  .moment b{display:block;font:700 15px Oswald;letter-spacing:.1em;color:var(--warn)} .moment small{color:var(--tx2)}
+  .strip{display:flex;gap:10px;padding:12px 18px 10px;border-top:1px solid var(--bd);background:linear-gradient(var(--surf),var(--bg))}
+  .hc{flex:1;display:flex;gap:9px;align-items:center;background:var(--elev);border:1px solid var(--bd);border-radius:6px;padding:7px 10px;position:relative}
+  .hc.firing{border-color:var(--or);box-shadow:0 0 0 1px var(--or),0 0 18px hsla(32,90%,55%,.35)}
+  .hc .k{margin-left:auto;text-align:right;font:700 15px Oswald} .hc .k small{display:block;font:700 9px Oswald;letter-spacing:.1em;color:var(--tx3)}
+  .hc .cd{display:flex;gap:4px;margin-top:3px}
+  .hc .cd span{width:20px;height:20px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;background:var(--panel);border:1px solid var(--bdl)}
+  .hc .cd span.used{opacity:.3} .hc .cd span.live{border-color:var(--or);box-shadow:0 0 8px hsla(32,90%,55%,.6)}
+  .timeline{display:flex;align-items:center;gap:10px;padding:8px 18px;border-top:1px solid var(--bd);background:var(--surf)}
+  .ctrl{display:flex;gap:4px} .ctrl span{border:1px solid var(--bd);background:var(--elev);border-radius:4px;padding:3px 8px;font:700 12px Oswald;color:var(--tx2)} .ctrl span.on{color:var(--tx);border-color:var(--or)}
+  .track{flex:1;position:relative;height:28px}
+  .track .rail{position:absolute;left:0;right:0;top:11px;height:4px;background:var(--panel);border-radius:2px}
+  .track .done{position:absolute;left:0;top:11px;height:4px;background:var(--or);border-radius:2px}
+  .track .knob{position:absolute;top:5px;width:16px;height:16px;margin-left:-8px;border-radius:50%;background:var(--tx);border:3px solid var(--or)}
+  .track .ev{position:absolute;top:-2px;font-size:11px;transform:translateX(-50%)}
+  .track .wv{position:absolute;top:19px;font:700 9px Oswald;letter-spacing:.08em;color:var(--tx3);transform:translateX(-50%);white-space:nowrap}
+  .track .tick{position:absolute;top:8px;width:2px;height:10px;background:var(--bdl)}
+  .feed{padding:7px 18px 9px;font-size:11.5px;line-height:1.65;color:var(--tx2);border-top:1px solid var(--bd)}
+  .feed b{color:var(--tx)} .feed .h{color:var(--or)} .feed .x{color:var(--bad)} .feed .w{color:var(--tx3);font:700 10px Oswald;letter-spacing:.12em}
+  .feed .k{color:var(--warn);font-weight:700} .feed .sk{color:var(--epic);font-weight:700}
+
+  /* 3 results */
+  .res{display:grid;grid-template-columns:1.25fr 1fr;gap:14px}
+  .rs{background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:16px 18px;position:relative;overflow:hidden}
+  .rs.win:before{content:"";position:absolute;inset:0 0 auto;height:120px;background:radial-gradient(ellipse at 50% 0,hsla(32,90%,55%,.18),transparent 70%)}
+  .rs.lose:before{content:"";position:absolute;inset:0 0 auto;height:120px;background:radial-gradient(ellipse at 50% 0,hsla(5,65%,55%,.16),transparent 70%)}
+  .banner{text-align:center;margin-bottom:12px;position:relative}
+  .banner h3{font:700 30px Oswald;letter-spacing:.12em;margin:0}
+  .banner.win h3{color:var(--or);text-shadow:0 0 24px hsla(32,90%,55%,.5)} .banner.lose h3{color:var(--bad)}
+  .stars{font-size:26px;letter-spacing:6px;color:var(--or)} .stars i{color:var(--panel);font-style:normal}
+  .grade{display:flex;justify-content:center;gap:14px;font-size:10.5px;color:var(--tx2);margin-top:2px}
+  .grade .y{color:var(--ok)} .grade .no{color:var(--tx3);text-decoration:line-through}
+  .sec{margin-bottom:12px}
+  .cas{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center}
+  .cas div{background:var(--elev);border:1px solid var(--bd);border-radius:5px;padding:6px 0}
+  .cas b{display:block;font:700 18px Oswald} .cas small{font:700 9px Oswald;letter-spacing:.1em;color:var(--tx3)}
+  table{width:100%;border-collapse:collapse;margin-top:6px;font-size:11px} td,th{padding:4px 6px;border-bottom:1px solid var(--bd);text-align:right} th{font:700 9.5px Oswald;letter-spacing:.1em;color:var(--tx3)} td:first-child,th:first-child{text-align:left}
+  .dead{color:var(--bad)} .wnd{color:var(--warn)}
+  .meter{display:grid;grid-template-columns:130px 1fr 52px;gap:8px;align-items:center;margin-bottom:5px;font-size:11px}
+  .meter .b{height:8px;background:var(--panel);border-radius:4px;overflow:hidden} .meter .b i{display:block;height:100%}
+  .heroes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .hr{background:var(--elev);border:1px solid var(--bd);border-radius:6px;padding:9px 10px}
+  .hr.mvp{border-color:var(--or);box-shadow:0 0 0 1px var(--or)}
+  .hr .h{display:flex;gap:8px;align-items:center;margin-bottom:7px}
+  .hr .h b{font:700 12.5px Oswald;letter-spacing:.04em;display:block} .hr .h small{color:var(--tx2);font-size:10px}
+  .hr .tr{font-size:10.5px;color:var(--tx2);margin-bottom:6px;line-height:1.45} .hr .tr b{color:var(--epic)}
+  .xprow{display:flex;justify-content:space-between;font-size:10.5px;color:var(--tx2);margin-bottom:3px} .xprow b{color:var(--or);font:700 12px Oswald}
+  .lvup{margin-top:6px;background:var(--orm);border:1px solid hsl(32,50%,30%);border-radius:4px;padding:5px 7px;font-size:10.5px}
+  .lvup b{color:var(--or);font:700 11.5px Oswald;letter-spacing:.06em}
+  .rew{display:flex;gap:7px;flex-wrap:wrap}
+  .rew span{background:var(--elev);border:1px solid var(--bd);border-radius:5px;padding:6px 10px;font:700 13px Oswald}
+  .rew span.first{border-color:var(--or);color:var(--or);box-shadow:0 0 16px hsla(32,90%,55%,.35)}
+  .cmp{display:flex;gap:10px;align-items:center;background:var(--elev);border:1px solid var(--bd);border-radius:5px;padding:8px 10px;margin-bottom:10px}
+  .why{background:hsl(45,30%,8%);border:1px solid hsl(45,40%,24%);border-radius:5px;padding:9px 11px;margin-bottom:12px;color:var(--tx2);line-height:1.5}
+  .why b{color:var(--warn)} .why ul{margin:4px 0 0;padding-left:16px} .why li span{color:var(--tx)}
+  .acts{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  .tip{margin-top:8px;background:var(--surf);border:1px dashed var(--bdl);border-radius:6px;padding:7px 10px;color:var(--tx2);font-size:11px;display:flex;align-items:center;gap:10px}
+</style></head><body>
+<h1>BATTLE TAB — final, one consistent fight</h1>
+<p class="sub">One stage, one squad, one fight, followed from the map to the results. Every screen uses only the facts below, and the totals add up (checked). Troop, hero, skill and monster data are real; the round-by-round numbers are hand-set to show a <i>tuned</i> fight (see the yellow note).</p>
+<div class="warnbox"><b>Why the fight is hand-set:</b> I ran this exact squad through the real resolver. With today's numbers it wins in 3 rounds and loses 1 Soldier, because hero strikes are far too strong (two low-level heroes cut a 23-round fight to 4 rounds). That belongs to the parked balance pass; these screens show the fight we want after it.</div>
+<div class="facts">
+  <div><h4>Stage</h4><b>Mutant Warband</b>, Chapter 3 boss<br>Wave 1: <span class="t-inf">⚔ Mutant Brutes</span> T3 ×6 (front) + <span class="t-rng">🏹 Mutant Howlers</span> T3 ×3 (back, heal 20%)<br>Wave 2: <span class="t-inf">⚔ Mutant Alpha</span> T5 ×1<br><b>10 enemies</b> · rewards 🪙400 🪨100 ✦300 XP</div>
+  <div><h4>Squad 1 · Barracks Lv7 · 300 troops</h4>Slot 1 <span class="t-inf">⚔ Soldiers</span> T2 ×120 · Front · <b>Marcus Kestrel</b> Lv22<br>Slot 2 <span class="t-rng">🏹 Sharpshooters</span> T3 ×80 · Back · <b>Kira Nightwhisper</b> Lv9<br>Slot 3 <span class="t-cav">🐎 Horsemen</span> T2 ×40 · Mid · <i>no hero</i><br>Slot 4 <span class="t-inf">⚔ Sergeants</span> T3 ×60 · Front · <i>no hero</i><br><span style="color:var(--tx3)">4 slots share 3 rows: slots 1 and 4 both fight Front.</span><br>Support: <b>Aldric Cross</b> Lv14 (Hero Quarters)</div>
+  <div><h4>Hero bonuses (as the code applies them)</h4>Marcus aura +15% atk · Battle Cry +10% atk<br>Kira aura (crit type) → +15% atk<br>= <b>+40% attack</b>; Aldric +10% base defense<br>Triggers: Charge (Marcus, battle start), Last Stand (Marcus, when losing), Shadowstep (Kira, battle start)</div>
+  <div><h4>The fight (victory, 9 rounds)</h4>Rounds 1–6 wave 1, 7–9 wave 2<br>Kills: Marcus 4 · Kira 2 · Sharpshooters 2 · Sergeants 1 · Horsemen 1 · Soldiers 0 = <b>10</b><br>Fallen: front row only (back rows aren't hit while the front stands): Soldiers 20 + Sergeants 6 = 26 → 16 dead + 10 wounded (40% wounded on victory). Front damage splits by count × tier weight, so the lower-tier Soldiers soak most of it.<br>Hero XP: +150 each (half of 300)</div>
+</div>
+
+<h2 class="s"><b>1</b> · Map + stage panel (A1 trail)</h2>
+<div class="screen s1">
+  <div class="vp"><div class="world" id="world"></div></div>
+  <div class="sheet">
+    <span class="pill" style="color:var(--bad)">Chapter 3 · Boss</span>
+    <h3>MUTANT WARBAND</h3>
+    <small style="color:var(--tx2)">A savage party of mutants. Dangerous in groups.</small>
+    <p class="lbl" style="margin-top:10px">Waves</p>
+    <div class="wave"><b>1 · Mutant Pack</b><div class="stk"><span class="tier">T3</span><span class="t-inf">⚔ Brutes ×6</span><span class="tier">T3</span><span class="t-rng">🏹 Howlers ×3</span><span class="pill" style="color:var(--ok)">heal</span></div></div>
+    <div class="wave"><b>2 · Mutant Alpha</b><div class="stk"><span class="tier">T5</span><span class="t-inf">⚔ Alpha ×1</span><span class="pill" style="color:var(--warn)">boss</span></div></div>
+    <p class="lbl" style="margin-top:8px">Commanders · Squad 1 · 2 / 4</p>
+    <div class="slot"><div class="por leg">⚔️<span class="lv">22</span></div><div><b>Marcus Kestrel</b><div class="leads">Slot 1 · <span class="t-inf">⚔ Soldiers ×120</span> · Front</div>
+      <div class="fx"><span class="aura">+15% atk aura</span><span class="aura">Battle Cry +10%</span><span class="trig">Start: Charge</span><span class="trig">Losing: Last Stand</span></div></div></div>
+    <div class="slot"><div class="por norm">🗡️<span class="lv">9</span></div><div><b>Kira Nightwhisper</b><div class="leads">Slot 2 · <span class="t-rng">🏹 Sharpshooters ×80</span> · Back</div>
+      <div class="fx"><span class="aura">+15% atk aura (crit)</span><span class="trig">Start: Shadowstep</span></div></div></div>
+    <div class="slot empty"><div class="por">＋</div><div><b style="color:var(--tx2)">Slot 3 · no hero</b><div class="leads"><span class="t-cav">🐎 Horsemen ×40</span> · Mid <button class="btn g sm" style="margin-left:4px">Assign ›</button></div></div></div>
+    <div class="slot empty"><div class="por">＋</div><div><b style="color:var(--tx2)">Slot 4 · no hero</b><div class="leads"><span class="t-inf">⚔ Sergeants ×60</span> · Front <button class="btn g sm" style="margin-left:4px">Assign ›</button></div></div></div>
+    <div class="support"><div class="por epic sm">✝️</div><div style="font-size:11px"><span style="color:var(--ok);font:700 9px Oswald;letter-spacing:.1em">SUPPORT · HERO QUARTERS</span><br>Aldric Cross · +10% base defense</div></div>
+    <div class="sum"><span>+40% attack</span><span>+10% defense</span><span>2 strikes / round</span></div>
+    <div style="display:flex;gap:6px;margin-bottom:8px"><span class="chip">🪙 400</span><span class="chip">🪨 100</span><span class="chip">✦ 300 XP</span><span class="chip" style="color:var(--or)">First clear: 🎲</span></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><span class="chip">Squad 1 · 300 ▾</span><span style="font:700 13px Oswald;color:var(--ok)">● Likely win ~80% · ~26 lost</span></div>
+    <button class="btn red" style="width:100%">⚔ Deploy</button>
+  </div>
+</div>
+
+<h2 class="s"><b>2</b> · Playback, paused on round 4 of 9</h2>
+<div class="screen">
+  <div class="top"><span class="t">Mutant Warband</span><span style="font:700 11px Oswald;color:var(--tx2);letter-spacing:.08em">WAVE 1 / 2 · ROUND 4</span>
+    <span class="strength"><span style="color:var(--ok)">YOU 95%</span><span class="b bar"><i style="width:95%"></i></span><span style="color:var(--bad)">WAVE 49%</span><span class="b bar foe"><i style="width:49%"></i></span></span>
+    <span class="toggles"><span class="on">Numbers</span><span class="on">Arrows</span><span class="on">Log</span></span></div>
+  <div class="field">
+    <svg class="lines" viewBox="0 0 1000 200" preserveAspectRatio="none">
+      <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="hsl(32,90%,55%)"/></marker>
+      <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="hsl(5,65%,55%)"/></marker></defs>
+      <path d="M455 160 C520 150 520 50 560 40" stroke="hsl(32,90%,55%)" stroke-width="3" fill="none" marker-end="url(#ah)"/>
+      <path d="M455 100 C510 95 520 50 560 42" stroke="hsl(32,90%,55%)" stroke-width="2" fill="none" marker-end="url(#ah)" opacity=".55"/>
+      <path d="M455 38 C500 36 520 38 560 38" stroke="hsl(32,90%,55%)" stroke-width="2" fill="none" marker-end="url(#ah)" opacity=".55"/>
+      <path d="M560 160 C490 150 480 60 457 50" stroke="hsl(5,65%,55%)" stroke-width="3" fill="none" marker-end="url(#ar)"/>
+      <path d="M560 46 C510 50 490 50 457 46" stroke="hsl(5,65%,55%)" stroke-width="2" fill="none" marker-end="url(#ar)" opacity=".6"/>
+    </svg>
+    <div class="side">
+      <div class="head"><b style="color:var(--ok)">SQUAD 1</b><span style="color:var(--tx2)">285 / 300</span></div>
+      <div class="row"><span class="r">Front</span><div style="display:grid;grid-template-columns:1.4fr 1fr;gap:6px"><div class="stack hit"><span class="float dmg">−4</span><div class="l"><span class="tier">T2</span><span class="t-inf">⚔ Soldiers</span><span class="led" title="Led by Marcus">⚔️</span><span class="cnt">109<span class="loss">−4</span></span></div><div class="bar"><i style="width:91%"></i></div></div><div class="stack hit"><span class="float dmg">−2</span><div class="l"><span class="tier">T3</span><span class="t-inf">⚔ Sergeants</span><span class="cnt">56<span class="loss">−2</span></span></div><div class="bar"><i style="width:93%"></i></div></div></div></div>
+      <div class="row"><span class="r">Mid</span><div class="stack"><div class="l"><span class="tier">T2</span><span class="t-cav">🐎 Horsemen</span><span class="cnt">40</span></div><div class="bar"><i style="width:100%"></i></div></div></div>
+      <div class="row"><span class="r">Back</span><div class="stack"><div class="l"><span class="tier">T3</span><span class="t-rng">🏹 Sharpshooters</span><span class="led" title="Led by Kira">🗡️</span><span class="pill" style="color:var(--or)">×1.15</span><span class="cnt">80</span></div><div class="bar"><i style="width:100%"></i></div></div></div>
+    </div>
+    <div></div>
+    <div class="side foe-side">
+      <div class="head"><span style="color:var(--tx2)">5 / 9</span><b style="color:var(--bad)">MUTANT PACK</b></div>
+      <div class="row"><div class="stack hit"><span class="float kill">☠ 2</span><div class="l"><span class="tier">T3</span><span class="t-inf">⚔ Mutant Brutes</span><span class="cnt">2<span class="loss">−2</span></span></div><div class="bar foe"><i style="width:33%"></i></div></div><span class="r">Front</span></div>
+      <div class="row"><div class="stack" style="opacity:.25;border-style:dashed"><div class="l" style="color:var(--tx3)">— no mid row —</div></div><span class="r">Mid</span></div>
+      <div class="row"><div class="stack"><span class="float heal">+20%</span><div class="l"><span class="tier">T3</span><span class="t-rng">🏹 Howlers</span><span class="pill" style="color:var(--or)">×1.15</span><span class="cnt">3</span></div><div class="bar foe"><i style="width:100%"></i></div></div><span class="r">Back</span></div>
+    </div>
+    <div class="moment"><b>FRONT LINE BREAKING</b><small>Brutes down to 2. The Howlers are next</small></div>
+  </div>
+  <div class="strip">
+    <div class="hc"><div class="por leg">⚔️<span class="lv">22</span></div><div><b>Marcus</b><div class="cd"><span class="used" title="Charge (used round 1)">💨</span><span title="Last Stand (ready, when losing)">🛡️</span></div></div><div class="k">1<small>KILLS</small></div></div>
+    <div class="hc firing"><div class="por norm">🗡️<span class="lv">9</span></div><div><b>Kira</b><div class="cd"><span class="used" title="Shadowstep (used round 1)">🌑</span></div></div><div class="k">2<small>KILLS</small></div></div>
+    <div class="hc" style="opacity:.55;flex:.7"><div class="por epic sm">✝️</div><div><b>Aldric</b><br><small style="color:var(--tx3)">support · +10% def</small></div></div>
+  </div>
+  <div class="timeline">
+    <span class="ctrl"><span>⏮</span><span class="on">▶</span><span>⏭</span><span>1×</span><span class="on">2×</span><span>Skip ›</span></span>
+    <div class="track"><div class="rail"></div><div class="done" style="width:37.5%"></div>
+      <span class="tick" style="left:0"></span><span class="tick" style="left:75%"></span>
+      <span class="wv" style="left:8%">WAVE 1</span><span class="wv" style="left:85%">WAVE 2 · BOSS</span>
+      <span class="ev" style="left:0%">💨</span><span class="ev" style="left:37.5%">🗡️</span><span class="ev" style="left:62.5%">☠</span><span class="ev" style="left:100%">⚔️</span>
+      <div class="knob" style="left:37.5%"></div></div>
+    <span style="font:700 11px Oswald;color:var(--tx2);letter-spacing:.06em">ROUND 4 / 9</span></div>
+  <div class="feed">
+    <div class="w">ROUND 4</div>
+    <div><span class="h">🗡️ Kira strikes</span> the Brutes: <b>1 slain</b>. · Your 🏹 Sharpshooters hit the Brutes (counter ×1.15): <b>1 slain</b>. · ⚔ Soldiers, ⚔ Sergeants and 🐎 Horsemen hit the Brutes: no kills.</div>
+    <div><span class="x">⚔ Brutes and 🏹 Howlers (counter ×1.15) hit your front row: 6 fallen (4 Soldiers, 2 Sergeants; the lower tier soaks more).</span> · <span style="color:var(--ok)">Howlers heal the Brutes (+20% of lost HP).</span></div>
+    <div><span class="k">⚠ Front line breaking:</span> Brutes down to 2. <span style="color:var(--tx3)">Earlier: 💨 Marcus: Charge (+20% damage, round 1), 🌑 Kira: Shadowstep (round 1).</span></div>
+  </div>
+</div>
+
+<h2 class="s"><b>3</b> · Results</h2>
+<div class="res">
+  <div class="rs win">
+    <div class="banner win"><div class="stars">★★<i>★</i></div><h3>VICTORY</h3>
+      <div class="grade"><span class="y">✓ Won</span><span class="y">✓ Under 20% lost (9%)</span><span class="no">Won within 8 rounds (took 9)</span></div></div>
+    <div class="sec"><div class="cas"><div><b>300</b><small>SENT</small></div><div><b style="color:var(--ok)">274</b><small>CAME BACK</small></div><div><b style="color:var(--warn)">10</b><small>WOUNDED</small></div><div><b style="color:var(--bad)">16</b><small>DEAD</small></div></div>
+      <table><tr><th>STACK</th><th>SENT</th><th>DEAD</th><th>WOUNDED</th><th>BACK</th><th>KILLS</th></tr>
+        <tr><td><span class="t-inf">⚔ Soldiers</span> <span style="color:var(--tx3)">front</span></td><td>120</td><td class="dead">12</td><td class="wnd">8</td><td>100</td><td>0</td></tr>
+        <tr><td><span class="t-inf">⚔ Sergeants</span> <span style="color:var(--tx3)">front</span></td><td>60</td><td class="dead">4</td><td class="wnd">2</td><td>54</td><td>1</td></tr>
+        <tr><td><span class="t-cav">🐎 Horsemen</span> <span style="color:var(--tx3)">mid</span></td><td>40</td><td>0</td><td>0</td><td>40</td><td>1</td></tr>
+        <tr><td><span class="t-rng">🏹 Sharpshooters</span> <span style="color:var(--tx3)">back</span></td><td>80</td><td>0</td><td>0</td><td>80</td><td>2</td></tr></table></div>
+    <div class="sec"><p class="lbl">Commanders</p>
+      <div class="heroes">
+        <div class="hr mvp"><div class="h"><div class="por leg sm">⚔️<span class="lv">22</span></div><div><b>MARCUS</b><small>Slot 1 · Soldiers</small></div><span class="pill" style="color:var(--or);margin-left:auto">MVP</span></div>
+          <div class="tr">4 kills incl. the <b style="color:var(--tx)">Mutant Alpha</b> · fired <b>Charge</b> (r1)</div>
+          <div class="xprow"><span>XP</span><b>+150</b></div><div class="bar xp"><i style="width:47%"></i></div></div>
+        <div class="hr"><div class="h"><div class="por norm sm">🗡️<span class="lv">10</span></div><div><b>KIRA</b><small>Slot 2 · Sharpshooters</small></div></div>
+          <div class="tr">2 kills · fired <b>Shadowstep</b> (r1)</div>
+          <div class="xprow"><span>XP</span><b>+150</b></div><div class="bar xp"><i style="width:6%"></i></div>
+          <div class="lvup"><b>LEVEL UP 9 → 10</b> · new skill ☠️ Poison Blade</div></div>
+        <div class="hr" style="opacity:.75"><div class="h"><div class="por epic sm">✝️<span class="lv">14</span></div><div><b>ALDRIC</b><small>Support · HQ</small></div></div>
+          <div class="tr">+10% base defense all fight. Support heroes earn passive XP at their post, not battle XP.</div></div>
+      </div>
+      <div class="tip"><span style="font-size:16px">＋</span><div><b style="color:var(--tx)">Slots 3 and 4 had no commander.</b> Heroes there would have added two more strikes each round and earned +150 XP each.</div><button class="btn g sm" style="margin-left:auto">Assign ›</button></div></div>
+    <div class="sec"><p class="lbl">Rewards</p><div class="rew"><span>🪙 +400</span><span>🪨 +100</span><span>✦ +300 XP</span><span class="first">🎲 First clear: Epic token</span></div></div>
+    <div class="acts"><button class="btn g">↻ Replay</button><button class="btn g">Back to map</button><button class="btn">Next: Chapter 4 ›</button></div>
+  </div>
+  <div class="rs lose">
+    <div class="banner lose"><h3>DEFEAT</h3><small style="color:var(--tx2)">Same squad, next boss: Bridge Marauders · round limit reached in wave 2</small></div>
+    <div class="cmp"><div><b>Better than last try</b><br><small style="color:var(--tx2)">Warboss left at <b style="color:var(--tx)">64%</b>. Last time you never reached wave 2.</small></div><span style="margin-left:auto;color:var(--ok);font:700 13px Oswald">▲ wave 2</span></div>
+    <div class="sec"><div class="cas"><div><b>300</b><small>SENT</small></div><div><b style="color:var(--ok)">29</b><small>CAME BACK</small></div><div><b style="color:var(--warn)">54</b><small>WOUNDED</small></div><div><b style="color:var(--bad)">217</b><small>DEAD</small></div></div>
+      <small style="color:var(--tx3)">271 fallen; 20% are wounded on a defeat.</small></div>
+    <div class="sec"><p class="lbl">Commanders</p>
+      <div class="heroes" style="grid-template-columns:1fr 1fr">
+        <div class="hr"><div class="h"><div class="por leg sm">⚔️<span class="lv">22</span></div><div><b>MARCUS</b><small>3 kills</small></div></div><div class="tr">Fired <b>Charge</b> (r1) and <b>Last Stand</b> (r14, when losing).</div><div class="xprow"><span>XP</span><b>+0</b></div></div>
+        <div class="hr"><div class="h"><div class="por norm sm">🗡️<span class="lv">10</span></div><div><b>KIRA</b><small>2 kills</small></div></div><div class="tr">Fired <b>Shadowstep</b> (r1).</div><div class="xprow"><span>XP</span><b>+0</b></div></div>
+      </div><small style="color:var(--tx3)">Heroes only earn battle XP on a win (today's rule).</small></div>
+    <div class="why"><b>Why you lost</b>
+      <ul><li>Ironclads have defense 60. Your Soldiers hit for 28 (20 + 40% hero bonus): <span>about 68% of each hit is absorbed.</span></li>
+        <li>The Warboss heals 15% of lost HP every round. After round 10 your damage fell below that.</li></ul>
+      <div class="acts" style="justify-content:flex-start;margin-top:6px"><button class="btn g sm">Train T4 Knights ›</button><button class="btn g sm">More 🏹 ranged ›</button><button class="btn g sm">Heroes in slots 3–4 ›</button></div></div>
+    <div class="acts"><button class="btn g">↻ Watch the turning point</button><button class="btn">Back to map</button></div>
+  </div>
+</div>
+
+<script>
+const CH = [
+  { name: 'Chapter 1 · Scav Territory', boss: ['🪓', 'Scav Warband'], n: 4, stars: [3,3,2,3,3] },
+  { name: 'Chapter 2 · Raider Hideout', boss: ['🗡️', 'Raider Pack'], n: 4, stars: [3,2,2,3,2] },
+  { name: 'Chapter 3 · The Mutant Wastes', boss: ['🧟', 'Mutant Warband'], n: 4, stars: [3,2,3,2] },
+  { name: 'Chapter 4 · The Blockade', boss: ['🧌', 'Bridge Marauders'], n: 4, stars: [] },
+];
+const st = [];
+CH.forEach((c, ci) => { for (let i = 1; i <= c.n; i++) st.push({ ci, label: `${ci + 1}-${i}`, kind: 'norm', stars: c.stars[i - 1] }); st.push({ ci, label: c.boss[1], icon: c.boss[0], kind: 'boss', stars: c.stars[c.n] }); });
+const CUR = st.findIndex(s => s.label === 'Mutant Warband');
+st.forEach((s, i) => s.state = i < CUR ? 'done' : i === CUR ? 'cur' : 'lock');
+const vp = document.querySelector('.s1 .vp'), world = document.getElementById('world');
+const W = vp.clientWidth, H = vp.clientHeight, gap = 64, chGap = 90;
+let a = 90; const bands = [];
+st.forEach((s, i) => { if (i && s.ci !== st[i - 1].ci) { a += chGap / 2; bands.push({ at: a, ci: s.ci }); a += chGap / 2; } s.a = a; s.b = W / 2 + Math.sin(i * 1.1) * (W / 2 - 110) * (s.kind === 'boss' ? 0.35 : 1); a += s.kind === 'boss' ? gap * 1.3 : gap; });
+bands.unshift({ at: 40, ci: 0 });
+const total = a + 60;
+st.forEach(s => { s.x = s.b; s.y = total - s.a; });
+world.style.height = total + 'px';
+world.style.background = 'radial-gradient(ellipse 60% 20% at 30% 85%,hsl(30,22%,10%),transparent),radial-gradient(ellipse 50% 20% at 60% 50%,hsl(15,25%,9%),transparent),repeating-linear-gradient(45deg,hsl(30,8%,5.5%) 0 16px,hsl(30,8%,6.5%) 16px 32px)';
+const cat = p => { let d = `M${p[0].x},${p[0].y}`; for (let i = 0; i < p.length - 1; i++) { const p0 = p[i - 1] || p[i], p1 = p[i], p2 = p[i + 1], p3 = p[i + 2] || p2; d += ` C${p1.x + (p2.x - p0.x) / 6},${p1.y + (p2.y - p0.y) / 6} ${p2.x - (p3.x - p1.x) / 6},${p2.y - (p3.y - p1.y) / 6} ${p2.x},${p2.y}`; } return d; };
+const ns = 'http://www.w3.org/2000/svg', svg = document.createElementNS(ns, 'svg');
+svg.setAttribute('width', W); svg.setAttribute('height', total);
+const P = (d, at) => { const p = document.createElementNS(ns, 'path'); p.setAttribute('d', d); p.setAttribute('fill', 'none'); for (const k in at) p.setAttribute(k, at[k]); svg.appendChild(p); };
+const full = cat(st), done = cat(st.slice(0, CUR + 1));
+P(full, { stroke: 'hsl(30,12%,3%)', 'stroke-width': 22, 'stroke-linecap': 'round' });
+P(full, { stroke: 'hsl(30,10%,17%)', 'stroke-width': 14, 'stroke-linecap': 'round' });
+P(full, { stroke: 'hsl(30,10%,30%)', 'stroke-width': 2, 'stroke-dasharray': '6 10' });
+P(done, { stroke: 'hsl(32,90%,45%)', 'stroke-width': 14, 'stroke-linecap': 'round', opacity: .35 });
+P(done, { stroke: 'hsl(32,95%,62%)', 'stroke-width': 3, 'stroke-linecap': 'round' });
+world.appendChild(svg);
+bands.filter(b => b.ci !== 3).forEach(b => { const el = document.createElement('div'); el.className = 'band'; el.textContent = CH[b.ci].name; el.style.top = (total - b.at - 8) + 'px'; world.appendChild(el); });
+const fogTop = total - (st.find(s => s.ci === 3).a - 50);
+const fog = document.createElement('div'); fog.className = 'fog'; fog.style.height = fogTop + 'px';
+fog.innerHTML = `<span style="position:absolute;left:24px;top:${fogTop - 40}px;font:700 12px Oswald;letter-spacing:.1em;color:var(--tx3)">🔒 CHAPTER 4 · THE BLOCKADE · beat the Mutant Warband to unlock</span>`;
+world.appendChild(fog);
+const starStr = n => n ? '★'.repeat(n) + `<i>${'★'.repeat(3 - n)}</i>` : '';
+st.forEach(s => {
+  const n = document.createElement('div');
+  n.className = `node ${s.kind} ${s.state}`; n.style.left = s.x + 'px'; n.style.top = s.y + 'px';
+  const inner = s.kind === 'boss' ? s.icon : (s.state === 'done' ? '✓' : s.label.split('-')[1]);
+  n.innerHTML = `${s.state === 'cur' ? '<span class="you">YOU</span>' : ''}<div class="c">${inner}</div>${s.kind === 'boss' ? `<small>${s.label}</small>` : ''}${s.state === 'done' ? `<span class="stars">${starStr(s.stars)}</span>` : ''}`;
+  world.appendChild(n);
+});
+world.style.top = -(st[CUR].y - H * 0.55) + 'px';
+</script>
+</body></html>

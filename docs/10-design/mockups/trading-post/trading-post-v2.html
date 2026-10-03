@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:hsl(30,10%,5%);--surf:hsl(30,9%,8%);--elev:hsl(30,8%,11%);--panel:hsl(30,8%,14%);--bd:hsl(30,10%,18%);--bdl:hsl(30,10%,27%);
+    --or:hsl(32,90%,55%);--orm:hsl(32,55%,18%);--tx:hsl(35,15%,93%);--tx2:hsl(35,10%,62%);--tx3:hsl(35,8%,42%);
+    --leg:hsl(32,90%,55%);--epic:hsl(275,45%,62%);--ok:hsl(90,45%,48%);--bad:hsl(5,65%,58%);--dia:hsl(190,70%,60%)}
+  *{box-sizing:border-box}
+  body{margin:0;background:#1b1916;color:var(--tx);font-family:Outfit,sans-serif;padding:24px 32px 60px}
+  h1{font:700 22px Oswald;letter-spacing:.04em;margin:0 0 4px} .sub{color:var(--tx2);margin:0 0 18px;font-size:14px;max-width:1000px}
+  .opt{border:2px solid transparent;border-radius:10px;padding:14px;margin-bottom:22px;background:#24211d;cursor:pointer}
+  .opt.selected{border-color:var(--or)} .opt h2{font:700 16px Oswald;letter-spacing:.05em;margin:0 0 4px} .opt h2 b{color:var(--or)}
+  .opt p.d{margin:0 0 12px;color:var(--tx2);font-size:13px;max-width:1000px}
+  .wrap{display:grid;grid-template-columns:1fr 260px;gap:14px}
+  .notes{font-size:12px;color:var(--tx2);line-height:1.45}
+  .notes div{margin-bottom:9px} .notes b{color:var(--tx)}
+  .n{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--or);color:#1a1108;font:700 11px Oswald;margin-right:4px;flex:none}
+  .screen{background:var(--bg);border:1px solid var(--bd);border-radius:6px;height:540px;overflow:hidden;position:relative;font-size:12px}
+  .hd{display:flex;align-items:center;gap:20px;padding:10px 18px;border-bottom:1px solid var(--bd);background:linear-gradient(var(--surf),var(--bg))}
+  .hd .t{font:700 15px Oswald;letter-spacing:.08em;text-transform:uppercase}
+  .tab{color:var(--tx3);font-weight:600;font-size:12px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;position:relative}
+  .tab.on{color:var(--tx);box-shadow:inset 0 -2px var(--or);padding-bottom:4px}
+  .dot{position:absolute;top:-3px;right:-8px;width:7px;height:7px;border-radius:50%;background:var(--bad)}
+  .wallet{margin-left:auto;display:flex;gap:10px;font:700 13px Oswald;letter-spacing:.04em}
+  .wallet span{background:var(--elev);border:1px solid var(--bd);padding:4px 10px;border-radius:4px}
+  .m{color:var(--or)} .dm{color:var(--dia)}
+  .pill{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:3px;border:1px solid currentColor}
+  .btn{background:linear-gradient(var(--or),hsl(30,88%,42%));color:#1a1108;font:700 12px Oswald;letter-spacing:.06em;border:0;padding:6px 11px;border-radius:4px;white-space:nowrap}
+  .btn.dia{background:linear-gradient(hsl(190,70%,55%),hsl(195,70%,38%));color:#061316}
+  .btn.ok{background:linear-gradient(hsl(90,45%,48%),hsl(95,45%,34%));color:#0d1606}
+  .btn.g{background:var(--panel);color:var(--tx);border:1px solid var(--bdl)}
+  .btn.off{background:var(--panel);color:var(--tx3);border:1px solid var(--bd)}
+  .item{background:var(--elev);border:1px solid var(--bd);border-radius:5px;padding:9px;display:flex;flex-direction:column;gap:5px;position:relative}
+  .item .ic{height:46px;border-radius:4px;background:radial-gradient(circle at 50% 60%,var(--panel),var(--surf));display:flex;align-items:center;justify-content:center;font-size:22px}
+  .item b{font-size:11.5px} .item small{color:var(--tx2);font-size:10.5px;line-height:1.3}
+  .item .own{position:absolute;top:5px;right:7px;font:700 10px Oswald;color:var(--tx2)}
+  .item .row{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:auto}
+  .item.r-epic{border-color:hsl(275,30%,32%)} .item.r-epic .ic{background:radial-gradient(circle at 50% 60%,hsl(275,30%,22%),var(--surf))}
+  .item.r-leg{border-color:hsl(32,50%,30%)} .item.r-leg .ic{background:radial-gradient(circle at 50% 60%,hsl(32,50%,20%),var(--surf))}
+  .lbl{font:700 11px Oswald;letter-spacing:.12em;text-transform:uppercase;color:var(--tx2);margin:0}
+  .sh{display:flex;align-items:baseline;gap:10px;margin:0 0 8px}
+  .timer{font:700 11px Oswald;color:var(--or);letter-spacing:.06em}
+  .why{font-size:10px;color:var(--ok)}
+  .callout{position:absolute;z-index:3}
+
+  /* shop */
+  .S{padding:12px 16px}
+  .S .top{display:grid;grid-template-columns:1.55fr 1fr;gap:12px;margin-bottom:14px}
+  .S .hero{height:140px;border-radius:6px;border:1px solid hsl(32,50%,30%);background:linear-gradient(100deg,hsl(32,45%,14%),var(--bg) 75%);display:flex;align-items:center;padding:0 18px;gap:18px;position:relative}
+  .S .hero .art{font-size:62px;filter:drop-shadow(0 0 18px hsl(32,90%,40%))}
+  .S .hero h3{font:700 19px Oswald;margin:2px 0;letter-spacing:.03em} .S .hero p{margin:0 0 8px;color:var(--tx2)}
+  .S .free{border-radius:6px;border:1px dashed var(--ok);background:hsl(90,20%,8%);padding:12px 14px;display:flex;flex-direction:column;justify-content:space-between}
+  .S .free h4{font:700 14px Oswald;margin:2px 0;letter-spacing:.04em}
+  .S .grid6{display:grid;grid-template-columns:repeat(6,1fr);gap:9px}
+  .seg{display:inline-flex;border:1px solid var(--bd);border-radius:4px;overflow:hidden;margin-left:auto}
+  .seg span{padding:3px 9px;font-size:10.5px;font-weight:600;color:var(--tx3);border-right:1px solid var(--bd)} .seg span:last-child{border:0}
+  .seg span.on{background:var(--orm);color:var(--tx)}
+
+  /* market */
+  .M{display:grid;grid-template-columns:1.1fr 1fr;gap:14px;padding:14px 16px;height:calc(100% - 45px)}
+  .box{background:var(--surf);border:1px solid var(--bd);border-radius:6px;padding:12px 14px}
+  .res{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin:6px 0 12px}
+  .res span{background:var(--elev);border:1px solid var(--bd);border-radius:4px;text-align:center;padding:6px 0;font-size:16px}
+  .res span.on{border-color:var(--or);background:var(--orm)} .res span.dis{opacity:.3}
+  .res span small{display:block;font:600 9px Outfit;color:var(--tx2);margin-top:2px}
+  .slider{height:6px;background:var(--panel);border-radius:3px;position:relative;margin:12px 0 6px}
+  .slider i{position:absolute;left:0;top:0;bottom:0;width:38%;background:var(--or);border-radius:3px}
+  .slider b{position:absolute;left:38%;top:-5px;width:16px;height:16px;margin-left:-8px;border-radius:50%;background:var(--tx);border:2px solid var(--or)}
+  .xrow{display:flex;align-items:center;gap:10px;font:700 20px Oswald;margin:8px 0}
+  .xrow .arrow{color:var(--tx3);font-size:16px}
+  .meter{display:flex;gap:3px;margin-top:4px} .meter i{flex:1;height:5px;border-radius:2px;background:var(--panel)} .meter i.f{background:var(--ok)} .meter i.w{background:var(--or)}
+  .trader{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+  .sold{opacity:.4}
+  .cost{display:flex;gap:6px;font-size:10.5px;color:var(--tx2)}
+</style></head><body>
+<h1>TRADING POST — v2, research-driven</h1>
+<p class="sub">Shop and Market joined into one place with three tabs. Numbered callouts say which finding each change comes from (sources are in the terminal). Click the mockups you like; tell me in the terminal what works and what doesn't.</p>
+
+<div class="opt" data-choice="shop" onclick="toggleSelect(this)">
+  <h2><b>1</b> · Supply tab (the Shop)</h2>
+  <p class="d">Starts from your layout B (consolidated tabs) and adds three things from the research: one big featured slot, a "For you" row, and a free daily crate.</p>
+  <div class="wrap">
+  <div class="screen">
+    <div class="hd"><span class="t">Trading Post</span><span class="tab on">Supply<span class="dot"></span></span><span class="tab">Exchange</span><span class="tab">Trader<span class="dot"></span></span><span class="wallet"><span class="m">🪙 12,480</span><span class="dm">💎 42</span></span></div>
+    <div class="S">
+      <div class="top">
+        <div class="hero"><span class="callout" style="left:-8px;top:-8px"><span class="n">1</span></span>
+          <div class="art">🃏</div>
+          <div><span class="pill" style="color:var(--leg)">Legendary · Hero card</span><h3>WARLORD</h3><p>+1 star, or unlocks him if you don't have him yet.</p><button class="btn dia">💎 5 · Buy</button></div>
+          <div style="position:absolute;right:14px;bottom:10px;display:flex;gap:5px"><i style="width:16px;height:3px;background:var(--or)"></i><i style="width:16px;height:3px;background:var(--bdl)"></i><i style="width:16px;height:3px;background:var(--bdl)"></i></div>
+        </div>
+        <div class="free"><span class="callout" style="position:relative"><span class="n">2</span></span>
+          <div><span class="pill" style="color:var(--ok)">Free · daily</span><h4>SUPPLY DROP</h4><small style="color:var(--tx2)">Random crate: resources, a speed-up or XP. Resets in <span class="timer">14:22:08</span></small></div>
+          <button class="btn ok" style="align-self:flex-start">Claim</button>
+        </div>
+      </div>
+      <div class="sh"><span class="n">3</span><p class="lbl">For you</p><small style="color:var(--tx3)">picked from what your base needs right now</small></div>
+      <div class="grid6" style="margin-bottom:14px">
+        <div class="item"><span class="own">own 0</span><div class="ic">🔨</div><b>Build speed-up 1h</b><small class="why">● Barracks Lv4 · 52m left</small><div class="row"><span></span><button class="btn">🪙 1,500</button></div></div>
+        <div class="item"><span class="own">own 1</span><div class="ic">⚙️</div><b>Iron crate</b><small class="why">● Iron is your lowest resource</small><div class="row"><span></span><button class="btn">🪙 200</button></div></div>
+        <div class="item r-epic"><span class="own">own 0</span><div class="ic">📖</div><b>XP bundle (M)</b><small class="why">● Kira is 140 XP from Lv12</small><div class="row"><span></span><button class="btn">🪙 900</button></div></div>
+        <div class="item"><span class="own">own 2</span><div class="ic">🎓</div><b>Train speed-up 15m</b><small class="why">● 40 Soldiers training</small><div class="row"><button class="btn g">Use</button><button class="btn">🪙 500</button></div></div>
+        <div class="item"><span class="own">own 0</span><div class="ic">⚗️</div><b>Production buff</b><small>+15% output, 1h</small><div class="row"><span></span><button class="btn off">🪙 1,500</button></div></div>
+        <div class="item r-leg"><span class="own">own 0</span><div class="ic">⏩</div><b>Instant finish</b><small>Completes one job</small><div class="row"><span></span><button class="btn dia">💎 8</button></div></div>
+      </div>
+      <div class="sh"><span class="n">4</span><p class="lbl">Speed-ups</p><div class="seg"><span class="on">Universal</span><span>Build</span><span>Train</span><span>Research</span></div></div>
+      <div class="grid6">
+        <div class="item"><span class="own">own 3</span><div class="ic">⚡</div><b>5 min</b><div class="row"><button class="btn g">Use</button><button class="btn">🪙 400</button></div></div>
+        <div class="item"><span class="own">own 1</span><div class="ic">⚡</div><b>15 min</b><div class="row"><button class="btn g">Use</button><button class="btn">🪙 1,000</button></div></div>
+        <div class="item"><span class="own">own 0</span><div class="ic">⚡</div><b>1 hour</b><div class="row"><span></span><button class="btn">🪙 3,000</button></div></div>
+        <div class="item"><span class="own">own 0</span><div class="ic">⚡</div><b>8 hours</b><div class="row"><span></span><button class="btn off">🪙 18,000</button></div></div>
+        <div class="item r-leg"><span class="own">own 0</span><div class="ic">⏩</div><b>Instant</b><div class="row"><span></span><button class="btn dia">💎 8</button></div></div>
+        <div class="item" style="justify-content:center;align-items:center;color:var(--tx3);border-style:dashed">Heroes · Resources · Boosts · 💎 ↓</div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div><span class="n">1</span><b>One featured slot.</b> Same-size, aligned items all read as equally important; give the best offer its own slot, bigger.</div>
+    <div><span class="n">2</span><b>Free daily crate + red dot.</b> A red dot pulls players in to claim something free. That builds a daily return habit with no spending pressure.</div>
+    <div><span class="n">3</span><b>"For you" row.</b> Research says tailored offers do better than a full catalogue. Single-player, we can do it from game state: running queues, lowest resource, a hero near level-up. Each card says <i>why</i> it's suggested.</div>
+    <div><span class="n">4</span><b>No more than 6–8 per row.</b> More than about 8 offers reads as endless. 17 speed-ups become 5 durations plus a type switch.</div>
+    <div><b>Own + Use on the card.</b> Shows what you already have and spends it right there, with no detour through Inventory.</div>
+    <div><b>Every price is a labelled button</b> with its currency, greyed out when you can't afford it. No hidden close buttons, no "No, I like losing" wording.</div>
+  </div>
+  </div>
+</div>
+
+<div class="opt" data-choice="market" onclick="toggleSelect(this)">
+  <h2><b>2</b> · Exchange + Trader tabs (the Market)</h2>
+  <p class="d">Six fixed trade cards become two things: a free-form <b>Exchange</b> (pick what to give and what to get, slide the amount) and a <b>Wandering Trader</b> whose stock you pay for in <i>resources</i>.</p>
+  <div class="wrap">
+  <div class="screen">
+    <div class="hd"><span class="t">Trading Post</span><span class="tab">Supply</span><span class="tab on">Exchange</span><span class="tab">Trader<span class="dot"></span></span><span class="wallet"><span class="m">🪙 12,480</span><span class="dm">💎 42</span></span></div>
+    <div class="M">
+      <div class="box"><span class="callout" style="position:relative"><span class="n">5</span></span>
+        <p class="lbl">You give</p>
+        <div class="res"><span class="on">🪵<small>8.2k</small></span><span>🪨<small>3.1k</small></span><span>⚙️<small>420</small></span><span>🌾<small>6.0k</small></span><span>💧<small>5.4k</small></span><span>🪙<small>12.5k</small></span></div>
+        <p class="lbl">You get</p>
+        <div class="res"><span class="dis">🪵<small>—</small></span><span>🪨<small>3.1k</small></span><span class="on">⚙️<small>420</small></span><span>🌾<small>6.0k</small></span><span>💧<small>5.4k</small></span><span>🪙<small>12.5k</small></span></div>
+        <div class="slider"><i></i><b></b></div>
+        <div style="display:flex;justify-content:space-between;color:var(--tx3);font-size:10px"><span>0</span><span>25%</span><span>50%</span><span>max 8,200</span></div>
+        <div class="xrow"><span>🪵 3,100</span><span class="arrow">→</span><span style="color:var(--ok)">⚙️ 1,085</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><small style="color:var(--tx2)">Rate today: 100 🪵 → 35 ⚙️</small><div class="meter"><i class="f"></i><i class="f"></i><i class="f"></i><i class="w"></i><i></i><i></i></div><small style="color:var(--tx3);font-size:10px">Rate worsens 2% per trade · eases back overnight</small></div>
+          <button class="btn">Trade</button>
+        </div>
+      </div>
+      <div class="box"><span class="callout" style="position:relative"><span class="n">6</span></span>
+        <div class="sh" style="margin-top:2px"><p class="lbl">Wandering trader</p><span class="timer" style="margin-left:auto">leaves in 3:41:10</span></div>
+        <small style="color:var(--tx2)">Takes resources, not money. New stock each visit; turns up sooner when you build, train or fight.</small>
+        <div class="trader">
+          <div class="item"><div class="ic">🔨</div><b>Build 1h</b><div class="cost">🪵 4,000 · 🪨 2,000</div><button class="btn">Buy</button></div>
+          <div class="item r-epic"><div class="ic">🎲</div><b>Epic token</b><span class="pill" style="color:var(--ok);align-self:flex-start">−30%</span><div class="cost">⚙️ 600</div><button class="btn">Buy</button></div>
+          <div class="item sold"><div class="ic">📖</div><b>XP bundle</b><div class="cost">🌾 3,000</div><button class="btn off">Sold</button></div>
+          <div class="item"><div class="ic">🎓</div><b>Train 15m</b><div class="cost">🌾 1,500</div><button class="btn">Buy</button></div>
+          <div class="item"><div class="ic">💧</div><b>Water crate</b><div class="cost">🪵 1,200</div><button class="btn">Buy</button></div>
+          <div class="item r-leg"><div class="ic">🃏</div><b>Paladin shard</b><div class="cost">⚙️ 900 · 🪨 3,000</div><button class="btn off">Need ⚙️</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div><span class="n">5</span><b>Exchange widget.</b> Pick a resource to give, one to get, and slide the amount (as Heroes of Might &amp; Magic and Travian do). It replaces 6 fixed cards and covers every pair. Rates come from one table with a spread, so a wood↔stone round trip always loses, which closes the known <code>tradeBonus</code> exploit by design. The existing inflation shows as a meter, not a warning line.</div>
+    <div><span class="n">6</span><b>Wandering Trader</b> (Rise of Kingdoms' Mysterious Merchant). Rotating stock bought with resources, so surplus wood and food become useful items. It comes back faster when you build, train or fight, which rewards playing. This is <b>new mechanics</b>: stock generation, refresh timer, save state.</div>
+    <div><b>Why merge?</b> Shop = coins/diamonds → items; Market = resources → resources/items. Under one roof with tabs, players have one place to go for anything they want to buy.</div>
+  </div>
+  </div>
+</div>
+
+<div class="opt" data-choice="premium" onclick="toggleSelect(this)">
+  <h2><b>3</b> · Premium (diamonds) — honest by default</h2>
+  <p class="d">There is no payment backend, so "$4.99" buttons promise something the game can't deliver. Options: hide the cash packs until Phase 7, or keep them clearly labelled as a demo. Diamond items (queue expansions, instant finish) stay in Supply with a confirm step.</p>
+  <div class="screen" style="height:120px;padding:16px;display:flex;gap:14px;align-items:center">
+    <div class="item" style="width:200px"><b>💎 500 · Explorer Pack</b><small>Real-money packs return when payments exist (Phase 7)</small><button class="btn off">Coming later</button></div>
+    <div class="item" style="width:260px;border-color:var(--dia)"><b>Confirm purchase</b><small>Spend 💎 800 on Build Queue +1? You have 💎 42.</small><div class="row"><button class="btn g">Cancel</button><button class="btn dia">Buy for 💎 800</button></div></div>
+  </div>
+</div>
+</body></html>

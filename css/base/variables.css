@@ -85,6 +85,8 @@
    * ========================================= */
   --header-height:     48px;
   --bottom-nav-height: 64px;
+  --bq-panel-width:    210px;
+  --bq-toggle-width:   38px;
   --dock-clearance:    calc(58px + var(--space-3) * 2 + env(safe-area-inset-bottom, 0px));
   --sidebar-width:     220px;   /* kept for legacy refs during transition */
   --sidebar-collapsed: 60px;
