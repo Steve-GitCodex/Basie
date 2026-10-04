@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>Buffs mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:hsl(30,10%,5%);--surf:hsl(30,9%,8%);--elev:hsl(30,8%,11%);--panel:hsl(30,8%,14%);--bd:hsl(30,10%,18%);--bdl:hsl(30,10%,27%);
+    --or:hsl(32,90%,55%);--orm:hsl(32,55%,18%);--tx:hsl(35,15%,93%);--tx2:hsl(35,10%,62%);--tx3:hsl(35,8%,42%);
+    --ok:hsl(90,45%,48%);--warn:hsl(45,90%,58%);--bad:hsl(5,70%,58%);--dia:hsl(190,70%,60%)}
+  *{box-sizing:border-box}
+  body{margin:0;background:#1b1916;color:var(--tx);font-family:Outfit,sans-serif;padding:24px 32px 60px}
+  h1{font:700 22px Oswald;letter-spacing:.04em;margin:0 0 4px} .sub{color:var(--tx2);margin:0 0 18px;font-size:14px;max-width:1000px}
+  .opt{border:2px solid transparent;border-radius:10px;padding:14px;margin-bottom:22px;background:#24211d;cursor:pointer}
+  .opt.selected{border-color:var(--or)} .opt h2{font:700 16px Oswald;letter-spacing:.05em;margin:0 0 4px} .opt h2 b{color:var(--or)}
+  .opt p.d{margin:0 0 12px;color:var(--tx2);font-size:13px;max-width:1000px}
+  .wrap{display:grid;grid-template-columns:1fr 250px;gap:14px}
+  .notes{font-size:12px;color:var(--tx2);line-height:1.45} .notes div{margin-bottom:9px} .notes b{color:var(--tx)}
+  .screen{background:var(--bg);border:1px solid var(--bd);border-radius:6px;height:600px;overflow:hidden;position:relative;font-size:12px}
+  .city{position:absolute;inset:0;background:radial-gradient(ellipse at 35% 55%,hsl(30,12%,16%),var(--bg) 70%)}
+  .shade{position:absolute;inset:0;background:hsla(30,10%,3%,.55)}
+  .btn{background:linear-gradient(var(--or),hsl(30,88%,42%));color:#1a1108;font:700 12px Oswald;letter-spacing:.06em;border:0;padding:6px 11px;border-radius:4px;white-space:nowrap}
+  .btn.g{background:var(--panel);color:var(--tx);border:1px solid var(--bdl)}
+  .btn.ok{background:linear-gradient(hsl(90,45%,48%),hsl(95,45%,34%));color:#0d1606}
+  .btn.bad{background:linear-gradient(hsl(5,70%,55%),hsl(5,65%,40%));color:#1a0705}
+
+  .hud{position:absolute;top:0;left:0;right:0;height:42px;display:flex;align-items:center;gap:8px;padding:0 12px;background:linear-gradient(var(--surf),hsla(30,9%,8%,.7));border-bottom:1px solid var(--bd)}
+  .res{background:var(--elev);border:1px solid var(--bd);border-radius:4px;padding:3px 8px;font:700 12px Oswald}
+  .res small{color:var(--ok);font:600 10px Outfit;margin-left:4px}
+  .badge{display:flex;align-items:center;gap:6px;border-radius:14px;padding:3px 10px 3px 5px;font:700 12px Oswald;border:1px solid hsl(90,35%,30%);background:hsl(90,30%,10%);color:var(--ok)}
+  .badge .ring{width:20px;height:20px;border-radius:50%;background:conic-gradient(var(--ok) 0 62%,var(--panel) 62% 100%);display:flex;align-items:center;justify-content:center}
+  .badge .ring span{width:14px;height:14px;border-radius:50%;background:hsl(90,30%,10%);font-size:9px;display:flex;align-items:center;justify-content:center}
+  .badge.idle{border-color:var(--bdl);background:var(--elev);color:var(--tx3)}
+  .badge.warn{border-color:hsl(45,50%,30%);background:hsl(45,40%,10%);color:var(--warn)}
+
+  .side{position:absolute;top:0;right:0;bottom:0;width:470px;background:var(--surf);border-left:1px solid var(--bdl);display:flex;flex-direction:column;box-shadow:-20px 0 40px #000}
+  .hd{display:flex;align-items:center;gap:14px;padding:10px 14px;border-bottom:1px solid var(--bd);background:linear-gradient(var(--elev),var(--surf))}
+  .hd .t{font:700 15px Oswald;letter-spacing:.08em;text-transform:uppercase}
+  .tab{color:var(--tx3);font-weight:600;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+  .tab.on{color:var(--tx);box-shadow:inset 0 -2px var(--or);padding-bottom:4px}
+  .x{margin-left:auto;color:var(--tx3);font-size:16px}
+  .body{flex:1;overflow:hidden;padding:12px 14px;display:flex;flex-direction:column;gap:12px}
+  .lbl{font:700 11px Oswald;letter-spacing:.12em;text-transform:uppercase;color:var(--tx2);margin:0;display:flex;justify-content:space-between}
+  .lbl small{font:500 10px Outfit;letter-spacing:0;text-transform:none;color:var(--tx3)}
+
+  .boost{display:grid;grid-template-columns:40px 1fr auto;gap:10px;align-items:center;background:var(--elev);border:1px solid var(--bd);border-radius:6px;padding:9px 10px}
+  .boost.live{border-color:hsl(90,30%,26%);background:linear-gradient(90deg,hsl(90,25%,9%),var(--elev) 60%)}
+  .boost .i{width:40px;height:40px;border-radius:6px;background:var(--panel);display:flex;align-items:center;justify-content:center;font-size:22px}
+  .boost b{display:block;font-size:12.5px} .boost small{color:var(--tx2);font-size:10.5px}
+  .boost .eff{color:var(--ok);font-weight:700}
+  .boost .src{font:700 9px Oswald;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);border:1px solid var(--bdl);padding:0 4px;border-radius:3px;margin-left:5px}
+  .tm{text-align:right;min-width:86px} .tm .v{font:700 14px Oswald}
+  .bar{height:4px;background:var(--panel);border-radius:2px;overflow:hidden;margin-top:4px} .bar i{display:block;height:100%;background:var(--ok)}
+  .boost.empty{border-style:dashed;background:transparent} .boost.empty .i{opacity:.45}
+  .boost.empty b{color:var(--tx2)}
+
+  .grp{background:var(--elev);border:1px solid var(--bd);border-radius:6px;overflow:hidden}
+  .grp h4{margin:0;padding:7px 10px;font:700 11px Oswald;letter-spacing:.1em;text-transform:uppercase;color:var(--tx2);background:var(--panel)}
+  .st{display:grid;grid-template-columns:20px 1fr auto 14px;gap:8px;align-items:center;padding:7px 10px;border-top:1px solid var(--bd)}
+  .st .tot{font:700 13px Oswald;color:var(--ok)} .st .tot.zero{color:var(--tx3)} .st .tot.neg{color:var(--bad)}
+  .st .chev{color:var(--tx3)}
+  .st.open{background:var(--surf)}
+  .src-row{display:grid;grid-template-columns:20px 1fr auto;gap:8px;padding:3px 10px 3px 38px;color:var(--tx2);font-size:11px}
+  .src-row b{font-weight:600;color:var(--tx)} .src-row .clock{color:var(--warn)}
+  .eff-row{display:flex;justify-content:space-between;padding:6px 10px 8px 38px;font-size:11px;color:var(--tx2);border-top:1px dashed var(--bd);margin-top:3px}
+  .eff-row b{color:var(--tx);font:700 12px Oswald}
+
+  .dlg-shade{position:absolute;inset:0;background:hsla(30,10%,3%,.72);display:flex;align-items:center;justify-content:center}
+  .dlg{width:360px;background:var(--surf);border:1px solid var(--bdl);border-radius:8px;padding:16px;box-shadow:0 20px 50px #000}
+  .dlg h3{font:700 16px Oswald;letter-spacing:.06em;margin:0 0 12px}
+  .cmp{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin-bottom:12px}
+  .cmp > div{background:var(--elev);border:1px solid var(--bd);border-radius:6px;padding:9px;text-align:center}
+  .cmp .old{opacity:.7;text-decoration:line-through;text-decoration-color:var(--bad)}
+  .cmp .big{font:700 18px Oswald;color:var(--ok)} .cmp small{display:block;color:var(--tx2);font-size:10.5px}
+  .warnline{color:var(--warn);background:hsl(45,40%,10%);border:1px solid hsl(45,50%,28%);border-radius:4px;padding:6px 9px;font-size:11px;margin-bottom:12px}
+  .row{display:flex;gap:8px} .row .btn{flex:1}
+  .hudstates{display:flex;gap:16px;align-items:center;background:var(--surf);border:1px solid var(--bd);border-radius:6px;padding:12px 16px;margin-bottom:14px}
+  .hudstates div{display:flex;flex-direction:column;gap:6px;align-items:flex-start;font-size:11px;color:var(--tx2)}
+</style></head><body>
+<h1>BUFFS — one panel for every bonus</h1>
+<p class="sub">The HUD badge opens a Buffs side panel (same slide-in shell as Inventory). <b>Active</b> lists everything with a clock. <b>Overview</b> lists every stat, with each source's contribution and the real compounded total, so the number matches the resource bar.</p>
+
+<h1 style="font-size:16px">HUD badge states</h1>
+<div class="hudstates">
+  <div><span class="badge idle"><span class="ring" style="background:var(--panel)"><span style="background:var(--elev)">⚗</span></span>Buffs</span>No timed boosts. Still visible: the entry point to the Overview.</div>
+  <div><span class="badge"><span class="ring"><span>⚗</span></span>3 · 1h 12m</span>Count of timed boosts and the shortest timer. The ring drains.</div>
+  <div><span class="badge warn"><span class="ring" style="background:conic-gradient(var(--warn) 0 8%,var(--panel) 8% 100%)"><span style="background:hsl(45,40%,10%)">⚗</span></span>3 · 4m 10s</span>Under 5 minutes: amber.</div>
+</div>
+
+<div class="opt" data-choice="active" onclick="toggleSelect(this)">
+  <h2><b>1</b> · Active tab</h2>
+  <p class="d">Every timed effect, whatever its source, plus a dashed slot for each boostable stat that's idle and has items you own (or links to buy). Standing territory bonuses appear in the Overview, not here.</p>
+  <div class="wrap">
+  <div class="screen">
+    <div class="city"></div><div class="shade"></div>
+    <div class="hud"><span class="res">🪵 48.2K<small>+1,920/h</small></span><span class="res">🪨 31.0K<small>+1,140/h</small></span><span class="res">🌾 22.7K<small>+860/h</small></span><span style="margin-left:auto" class="badge"><span class="ring"><span>⚗</span></span>3 · 18m</span></div>
+    <div class="side" style="top:42px">
+      <div class="hd"><span class="t">⚗ Buffs</span><span class="tab on">Active · 3</span><span class="tab">Overview</span><span class="x">✕</span></div>
+      <div class="body">
+        <p class="lbl">Running <small>sorted by time left</small></p>
+        <div class="boost live"><div class="i">🧭</div><div><b>Expedition spoils<span class="src">Ruin</span></b><small><span class="eff">+10% march speed</span> · Sunken Ruin</small></div>
+          <div class="tm"><div class="v" style="color:var(--warn)">18m 04s</div><div class="bar"><i style="width:22%;background:var(--warn)"></i></div></div></div>
+        <div class="boost live"><div class="i">🔥</div><div><b>Production Boost (Major)<span class="src">Item</span></b><small><span class="eff">+50% all production</span></small></div>
+          <div class="tm"><div class="v">1h 12m</div><div class="bar"><i style="width:60%"></i></div></div></div>
+        <div class="boost live"><div class="i">🎪</div><div><b>Harvest Festival<span class="src">Event</span></b><small><span class="eff">+20% food</span> · ends with the event</small></div>
+          <div class="tm"><div class="v">2d 4h</div><div class="bar"><i style="width:80%"></i></div></div></div>
+        <p class="lbl" style="margin-top:4px">Available <small>boost slots with nothing running</small></p>
+        <div class="boost empty"><div class="i">⛏️</div><div><b>Gather speed</b><small>No items owned</small></div><button class="btn g">Get in Supply ›</button></div>
+        <div class="boost empty"><div class="i">⚔️</div><div><b>Troop attack</b><small>Owned: Battle Tonic ×2 (+10%, 30m)</small></div><button class="btn">Use</button></div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div><b>One list, every clock.</b> Item boosts (BuffManager), ruin buffs (WorldMapManager timed) and event modifiers (EventManager) all come through the ledger. The <b>source tag</b> says where each came from.</div>
+    <div><b>Idle slots = buy-and-use</b> (State of Survival pattern). Only stats with an item in the catalogue get a slot. Today that's production, so gather and attack slots appear once those items exist.</div>
+    <div><b>Timers patch in place</b> through TimerService. No re-render on each tick (fixes the frozen countdown).</div>
+    <div><b>Expiry:</b> a toast, and the row fades out. World timed buffs get that too; today they expire silently.</div>
+  </div>
+  </div>
+</div>
+
+<div class="opt" data-choice="overview" onclick="toggleSelect(this)">
+  <h2><b>2</b> · Overview tab — per-stat totals by source</h2>
+  <p class="d">Grouped Economy / Military / Speed. Each stat shows its real effective total; expand it to see every source, including standing ones (territory, tech, VIP, HQ, heroes, adjacency).</p>
+  <div class="wrap">
+  <div class="screen">
+    <div class="city"></div><div class="shade"></div>
+    <div class="hud"><span class="res">🪵 48.2K<small>+1,920/h</small></span><span class="res">🪨 31.0K<small>+1,140/h</small></span><span style="margin-left:auto" class="badge"><span class="ring"><span>⚗</span></span>3 · 18m</span></div>
+    <div class="side" style="top:42px">
+      <div class="hd"><span class="t">⚗ Buffs</span><span class="tab">Active · 3</span><span class="tab on">Overview</span><span class="x">✕</span></div>
+      <div class="body" style="gap:10px">
+        <div class="grp"><h4>Economy</h4>
+          <div class="st open"><span>🪵</span><span>Wood production</span><span class="tot">+109%</span><span class="chev">▾</span></div>
+          <div class="src-row"><span>🔥</span><span><b>Production Boost (Major)</b> <span class="clock">· 1h 12m</span></span><span>+50%</span></div>
+          <div class="src-row"><span>🌲</span><span><b>Pinewood Vale</b> · region</span><span>+15%</span></div>
+          <div class="src-row"><span>🔬</span><span><b>Forestry II</b> · research</span><span>+10%</span></div>
+          <div class="src-row"><span>🏛️</span><span><b>Headquarters Lv 6</b></span><span>+5%</span></div>
+          <div class="src-row"><span>⭐</span><span><b>VIP I</b></span><span>+5%</span></div>
+          <div class="eff-row"><span>Layers multiply: 1.50 × 1.15 × 1.10 × 1.05 × 1.05</span><b>×2.09</b></div>
+          <div class="st"><span>🪨</span><span>Stone production</span><span class="tot">+82%</span><span class="chev">▸</span></div>
+          <div class="st"><span>🌾</span><span>Food production</span><span class="tot">+89%</span><span class="chev">▸</span></div>
+          <div class="st"><span>⛏️</span><span>Gather load</span><span class="tot zero">—</span><span class="chev">▸</span></div>
+        </div>
+        <div class="grp"><h4>Military</h4>
+          <div class="st"><span>⚔️</span><span>Troop attack</span><span class="tot">+20%</span><span class="chev">▸</span></div>
+          <div class="st"><span>🛡️</span><span>Troop defense</span><span class="tot">+8%</span><span class="chev">▸</span></div>
+        </div>
+        <div class="grp"><h4>Speed</h4>
+          <div class="st"><span>🧭</span><span>March speed</span><span class="tot">+10%</span><span class="chev">▸</span></div>
+          <div class="st"><span>🔨</span><span>Build speed</span><span class="tot">+15%</span><span class="chev">▸</span></div>
+          <div class="st"><span>🔬</span><span>Research speed</span><span class="tot">+12%</span><span class="chev">▸</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div><b>Effective total = the real pipeline math</b>: add within a layer, then multiply across layers. The footer line shows the multiplication, so "+50% and +15% isn't +65%" is explained right on screen.</div>
+    <div><b>Timed sources carry their clock</b> (amber), so you see what's about to fall off.</div>
+    <div><b>Zero stats stay listed</b> (dim "—"). They show what <i>can</i> be boosted and give you a reason to take regions and do research.</div>
+    <div><b>Resource chips</b> in the HUD get a hover tooltip that is this same breakdown (fills the "no rate breakdown" gap).</div>
+  </div>
+  </div>
+</div>
+
+<div class="opt" data-choice="replace" onclick="toggleSelect(this)">
+  <h2><b>3</b> · Replace confirmation (one boost per stat)</h2>
+  <p class="d">Shown only when the new boost would replace a running one. The comparison makes a downgrade obvious.</p>
+  <div class="screen" style="height:300px">
+    <div class="city"></div>
+    <div class="dlg-shade"><div class="dlg">
+      <h3>REPLACE ACTIVE BOOST?</h3>
+      <div class="cmp">
+        <div class="old"><small>Running</small><div class="big">+50%</div><small>Major · 1h 12m left</small></div>
+        <div style="color:var(--tx3);font-size:18px">→</div>
+        <div><small>New</small><div class="big" style="color:var(--warn)">+25%</div><small>Minor · 1h 00m</small></div>
+      </div>
+      <div class="warnline">⚠ Weaker and shorter. The remaining 1h 12m of the Major boost is lost.</div>
+      <div class="row"><button class="btn g">Keep current</button><button class="btn bad">Replace</button></div>
+    </div></div>
+  </div>
+</div>
+<script>function toggleSelect(el){document.querySelectorAll('.opt').forEach(o=>o.classList.toggle('selected',o===el))}</script>
+</body></html>

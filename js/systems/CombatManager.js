@@ -1,14 +1,14 @@
 import { eventBus } from '../core/EventBus.js';
 import {
-  MONSTERS_CONFIG, CAMPAIGNS_CONFIG, ENCOUNTER_MODIFIERS,
+  MONSTERS_CONFIG, ENCOUNTER_MODIFIERS,
   DIFFICULTY_MODIFIERS, SURVIVAL_MONSTER,
 } from '../entities/GAME_DATA.js';
-import { BUILDINGS_CONFIG } from '../entities/GAME_DATA.js';
 import { COMBAT_RULES } from '../entities/data/combatRules.js';
 import { resolveBattle } from './combat/resolveBattle.js';
 import {
-  battleSides, survivalMonster, squadLosses, wavesCleared, summarizeEstimate,
+  battleSides, survivalMonster, squadLosses, wavesCleared, summarizeEstimate, enemyLeftPct, troopsSent,
 } from './combat/combatInputs.js';
+import { stageById } from './campaign/campaignStages.js';
 
 const MAX_BATTLE_LOG = 20;
 const REDUCED_REWARD_SHARE = 0.1;
@@ -55,10 +55,13 @@ export class CombatManager {
     const modifier = isSurvival ? null : (this._pendingModifiers.get(monsterId) ?? null);
     if (!isSurvival) this._pendingModifiers.delete(monsterId);
 
+    const sent = troopsSent(squadData.units);
+    const stageField = !isSurvival && stageById(monsterId) ? { stageId: monsterId } : {};
     eventBus.emit('combat:started', { monsterId, monster });
 
     const report = this._fight(squadId, monster, { modifier, seed });
     const { dead, wounded, victory } = report;
+    const outcome = { rounds: report.roundsTotal, sent, enemyLeftPct: enemyLeftPct(report) };
 
     const victoryCount = this._victoryCounts[monsterId] ?? 0;
     const maxRewarded  = monster.maxRewardedWins ?? 999;
@@ -91,10 +94,12 @@ export class CombatManager {
       if (!isSurvival) this._victoryCounts[monsterId] = victoryCount + 1;
       this._user.addXP(rewards.xp ?? 0);
       this._hm.awardBattleXP(Math.floor((monster.rewards.xp ?? 100) * 0.5), squadId);
-      eventBus.emit('combat:victory', { monsterId, rewards, dead, wounded, reducedReward: isReduced });
+      eventBus.emit('combat:victory', {
+        monsterId, ...stageField, rewards, dead, wounded, reducedReward: isReduced, ...outcome,
+      });
       if (isSurvival) this._advanceSurvival();
     } else {
-      eventBus.emit('combat:defeat', { monsterId, dead, wounded });
+      eventBus.emit('combat:defeat', { monsterId, ...stageField, dead, wounded, ...outcome });
       if (isSurvival) this._endSurvival();
     }
 
@@ -170,7 +175,7 @@ export class CombatManager {
    * Get current victory count and remaining full-reward wins for a monster.
    */
   getMonsterProgress(monsterId) {
-    const monster = MONSTERS_CONFIG[monsterId];
+    const monster = this._monsterFor(monsterId);
     const count   = this._victoryCounts[monsterId] ?? 0;
     const max     = monster?.maxRewardedWins ?? 999;
     return {
@@ -179,48 +184,6 @@ export class CombatManager {
       rewardsRemaining: Math.max(0, max - count),
       maxRewardedWins: max,
     };
-  }
-
-  /**
-   * Returns each campaign stage annotated with derived state flags.
-   * Mirrors the pattern of BuildingManager.getAllBuildingsWithStatus().
-   * @returns {Array<{ isLocked: boolean, isAvailable: boolean, isCompleted: boolean }>}
-   */
-  getCampaignStagesWithState() {
-    const getLvl = this._bm
-      ? id => this._bm.getLevelOf(id)
-      : () => 0;
-
-    return CAMPAIGNS_CONFIG.map((stage, idx) => {
-      const reqs = stage.requires;
-      const reqMet = !reqs || Object.entries(reqs).every(([bId, minLvl]) => getLvl(bId) >= minLvl);
-      // Use _victoryCounts (persisted, authoritative) rather than the battle log.
-      const isCompleted    = (this._victoryCounts[stage.monsterId] ?? 0) > 0;
-      const prevCompleted  = idx === 0 || (this._victoryCounts[CAMPAIGNS_CONFIG[idx - 1].monsterId] ?? 0) > 0;
-      const isLocked       = !reqMet || !prevCompleted;
-
-      // Build a human-readable lock reason for tooltips / notifications
-      let lockReason = null;
-      if (isLocked) {
-        if (!prevCompleted) {
-          lockReason = `Complete Stage ${idx} first`;
-        } else if (reqs) {
-          const parts = Object.entries(reqs).map(([bId, minLvl]) => {
-            const name = BUILDINGS_CONFIG[bId]?.name ?? bId;
-            return `${name} Lv.${minLvl}`;
-          });
-          lockReason = `Requires: ${parts.join(', ')}`;
-        }
-      }
-
-      return {
-        ...stage,
-        isCompleted,
-        isLocked,
-        isAvailable: reqMet && prevCompleted && !isCompleted,
-        lockReason,
-      };
-    });
   }
 
   getBattleLog() { return this._battleLog; }
@@ -255,7 +218,9 @@ export class CombatManager {
   }
 
   _monsterFor(monsterId) {
-    return this._isSurvival(monsterId) ? this._buildSurvivalMonster() : MONSTERS_CONFIG[monsterId];
+    return this._isSurvival(monsterId)
+      ? this._buildSurvivalMonster()
+      : stageById(monsterId)?.monster ?? MONSTERS_CONFIG[monsterId];
   }
 
   _buildSurvivalMonster() {

@@ -2,7 +2,7 @@ import { COMBAT_RULES } from '../../entities/data/combatRules.js';
 
 const ROW_LABELS = { front: 'Front', mid: 'Mid', back: 'Back' };
 
-export function createSlotRowToggle({ row, onPick }) {
+export function createSlotRowToggle({ row, onPick, isDisabled = () => false }) {
   const el = document.createElement('div');
   el.className = 'slot-row-toggle';
   const buttons = new Map();
@@ -25,7 +25,15 @@ export function createSlotRowToggle({ row, onPick }) {
       btn.setAttribute('aria-pressed', String(active));
     }
   };
+  const refresh = () => {
+    for (const [value, btn] of buttons) {
+      const disabled = isDisabled(value);
+      btn.disabled = disabled;
+      btn.classList.toggle('slot-row-toggle__btn--disabled', disabled);
+    }
+  };
   setRow(row);
+  refresh();
 
-  return { el, setRow };
+  return { el, setRow, refresh };
 }

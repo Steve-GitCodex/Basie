@@ -62,3 +62,59 @@ await withPage(async ({ page, errors, origin }) => {
     { label: 'step 2 spotlight retargets to the Iron Mine footprint', ok: !!step2 },
   ], errors);
 });
+
+await withPage(async ({ page, errors, origin }) => {
+  await page.goto(`${origin}/index.html`, { waitUntil: 'domcontentloaded' });
+  await page.evaluate(() => localStorage.clear());
+  await page.goto(`${origin}/index.html?dev=tutcombat`, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => !!window.game?.eventBus, null, { timeout: 20_000 });
+  await page.waitForTimeout(800);
+
+  await page.evaluate(async () => {
+    const g = window.game;
+    const { TUTORIAL_STEPS } = await import('/js/systems/TutorialManager.js');
+    document.querySelector('#bq-sidebar')?.classList.add('is-collapsed');
+    window.__combatStarted = 0;
+    g.eventBus.on('combat:started', () => { window.__combatStarted++; });
+    g.user.setTutorialStep(TUTORIAL_STEPS.findIndex(s => s.id === 'combat'));
+    g.eventBus.emit('tutorial:start');
+  });
+
+  const ringOn = (selector) => page.waitForFunction((sel) => {
+    const ring = document.querySelector('#tut-spotlight-ring');
+    const target = document.querySelector(sel);
+    if (!ring || ring.classList.contains('hidden') || !target) return false;
+    const rr = ring.getBoundingClientRect();
+    const tr = target.getBoundingClientRect();
+    return Math.abs(rr.left + rr.width / 2 - (tr.left + tr.width / 2)) < 12
+      && Math.abs(rr.top + rr.height / 2 - (tr.top + tr.height / 2)) < 12;
+  }, selector, { timeout: 12_000 }).then(() => true, () => false);
+
+  const onNode = await ringOn('.campaign-node.available');
+  await page.evaluate(() => {
+    const pane = document.querySelector('#combat-pane-campaign');
+    window.__paneMaxScrollLeft = 0;
+    pane.addEventListener('scroll', () => { window.__paneMaxScrollLeft = Math.max(window.__paneMaxScrollLeft, pane.scrollLeft); });
+  });
+  const nodeClicked = await page.click('.campaign-node.available', { timeout: 4000 }).then(() => true, () => false);
+  const onDeploy = await ringOn('#btn-campaign-attack');
+  const deployHittable = await page.waitForFunction(() => {
+    const r = document.querySelector('#btn-campaign-attack')?.getBoundingClientRect();
+    return !!r && !!document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)?.closest('#btn-campaign-attack');
+  }, null, { timeout: 5000 }).then(() => true, () => false);
+  const paneScroll = await page.evaluate(() => ({ now: document.querySelector('#combat-pane-campaign').scrollLeft, max: window.__paneMaxScrollLeft }));
+  const deployClicked = await page.click('#btn-campaign-attack', { timeout: 4000 }).then(() => true, () => false);
+  await page.waitForTimeout(500);
+  if (await page.locator('#btn-warn-proceed').count()) await page.locator('#btn-warn-proceed').click();
+  const started = await page.waitForFunction(() => window.__combatStarted > 0, null, { timeout: 5000 }).then(() => true, () => false);
+
+  report('tutorial-combat-deploy', [
+    { label: 'combat step rings an available node', ok: onNode },
+    { label: 'the ringed node is clickable', ok: nodeClicked },
+    { label: 'spotlight retargets to Deploy once the panel is open', ok: onDeploy },
+    { label: 'Deploy centre hit-tests to Deploy, not a spotlight blocker', ok: deployHittable },
+    { label: `campaign pane is never scrolled sideways by the spotlight (scrollLeft=${paneScroll.now}, max=${paneScroll.max})`, ok: paneScroll.now === 0 && paneScroll.max === 0 },
+    { label: 'Deploy is clickable through the spotlight', ok: deployClicked },
+    { label: 'clicking Deploy fires combat:started', ok: started },
+  ], errors);
+});

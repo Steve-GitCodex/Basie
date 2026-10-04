@@ -55,7 +55,7 @@ test('report carries the spec shape', () => {
   assert.equal(report.rulesVersion, COMBAT_RULES.RULES_VERSION);
   assert.equal(report.seed, 1);
   assert.equal(report.roundsTotal, report.waves[0].rounds.length);
-  assert.deepEqual(Object.keys(report.waves[0].rounds[0]).sort(), ['attacker', 'defender', 'heroHits']);
+  assert.deepEqual(Object.keys(report.waves[0].rounds[0]).sort(), ['attacker', 'defender', 'heroHits', 'triggered']);
   assert.deepEqual(Object.keys(report.waves[0].rounds[0].attacker[0]).sort(), ['count', 'hpPool', 'id']);
   assert.equal(report.initial.attacker[0].count, 30);
   assert.equal(report.initial.defender[0][0].count, 2);
@@ -294,4 +294,16 @@ test('attack bonuses scale atk inside hitDamage', () => {
   const premultiplied = firstRoundPool(30);
   assert.equal(firstRoundPool(20, { firstWaveBonus: 0.5 }), premultiplied);
   assert.equal(firstRoundPool(20, { triggers: withTriggers({ battle_start: [trigger('battle_start', { attackBonus: 0.5, duration: 1 })] }) }), premultiplied);
+});
+
+test('rounds record triggered hero skills', () => {
+  const charge = { heroId: 'test_hero', skill: { id: 'charge', effect: { trigger: 'battle_start', attackBonus: 0.1, duration: 1 } }, level: 1 };
+  const report = resolveBattle(
+    attackerSide([footmen(20)], { triggers: withTriggers({ battle_start: [charge] }) }),
+    defenderSide([stack({ id: 'm', hp: 1e6, attack: 1, defense: 0 })]),
+    { seed: 1 },
+  );
+  const rounds = report.waves[0].rounds;
+  assert.deepEqual(rounds[0].triggered, [{ heroId: 'test_hero', skillId: 'charge' }]);
+  assert.deepEqual(rounds[1].triggered, []);
 });

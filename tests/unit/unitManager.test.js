@@ -223,3 +223,40 @@ test('train emits unit:trainingStarted on success', async () => {
   assert.equal(r.success, true, r.reason);
   assert.deepEqual(seen, [{ unitId: 'infantry', count: 2, tier: 1 }]);
 });
+
+function makeSquadWithInfantrySlots(slotCount) {
+  const um = new UnitManager(stubRM(), stubBM());
+  um._reserve.set('infantry_t1', slotCount * 10);
+  const { squadId } = um.createSquad('Beta');
+  for (let slot = 0; slot < slotCount; slot++) {
+    assert.ok(um.assignToSquad(squadId, 'infantry', 10, 1, slot).success);
+  }
+  return { um, squadId };
+}
+
+test('setSlotRow rejects a third slot in a row', () => {
+  const { um, squadId } = makeSquadWithInfantrySlots(3);
+  assert.equal(um.getSlotRow(squadId, 2), 'mid');
+  assert.deepEqual(um.setSlotRow(squadId, 2, 'front'), { success: false, reason: 'Row full' });
+  assert.equal(um.getSlotRow(squadId, 2), 'mid');
+  assert.equal(um.canSetSlotRow(squadId, 2, 'front'), false);
+  assert.equal(um.canSetSlotRow(squadId, 2, 'mid'), true);
+  assert.equal(um.canSetSlotRow(squadId, 2, 'back'), true);
+});
+
+test('getSlotRow default respects the cap', () => {
+  const { um, squadId } = makeSquadWithInfantrySlots(4);
+  const rows = [0, 1, 2, 3].map(slot => um.getSlotRow(squadId, slot));
+  assert.deepEqual(rows, ['front', 'front', 'mid', 'mid']);
+});
+
+test('deserialize re-flows stored rows over the cap', () => {
+  const { um, squadId } = makeSquadWithInfantrySlots(4);
+  const data = JSON.parse(JSON.stringify(um.serialize()));
+  data.squads[squadId].slotRows = { 0: 'front', 1: 'front', 2: 'front', 3: 'front' };
+  const fresh = new UnitManager(stubRM(), stubBM());
+  fresh.deserialize(data);
+  const rows = [0, 1, 2, 3].map(slot => fresh.getSlotRow(squadId, slot));
+  assert.deepEqual(rows, ['front', 'front', 'mid', 'mid']);
+  assert.equal(fresh.getSquad(squadId).slotRows.has(2), false);
+});

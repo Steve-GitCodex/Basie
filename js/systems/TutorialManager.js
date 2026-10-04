@@ -14,6 +14,9 @@
  */
 import { eventBus } from '../core/EventBus.js';
 
+const OPEN_DEPLOY = '.campaign-stage-panel--open #btn-campaign-attack:enabled';
+const COMBAT_SPOTLIGHT = `${OPEN_DEPLOY}, .combat-pane--campaign:not(:has(${OPEN_DEPLOY})) .campaign-node.available`;
+
 export const TUTORIAL_STEPS = [
   {
     id:               "lumbermill",
@@ -97,7 +100,7 @@ export const TUTORIAL_STEPS = [
     instruction:      'Head to Combat, pick an available stage, assemble your squad, and launch your first attack.',
     highlight:        'nav-combat',
     navView:          'combat',
-    highlightSelector: '.campaign-node.available',
+    highlightSelector: COMBAT_SPOTLIGHT,
     waitFor:          'combat:started',
   },
   {

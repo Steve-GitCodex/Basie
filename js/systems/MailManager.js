@@ -7,6 +7,7 @@
  * Message types: 'combat' | 'quest' | 'achievement' | 'system'
  */
 import { eventBus } from '../core/EventBus.js';
+import { stageById } from './campaign/campaignStages.js';
 
 /** @param {string} subject @returns {string} */
 function _inferType(subject) {
@@ -47,6 +48,15 @@ export class MailManager {
         subject: '💀 Combat Report: Defeat',
         body: `Your forces were overwhelmed and driven back. Take time to regroup, reinforce your barracks, and try again. The enemy will not forget this day.`,
         icon: '📋',
+      });
+    });
+    eventBus.on('campaign:firstClear', d => {
+      this.send({
+        type: 'combat',
+        subject: '💎 First clear bonus',
+        body: `Your first clear of ${stageById(d.stageId)?.name ?? 'a campaign stage'} earned a diamond bonus. Collect it below.`,
+        icon: '💎',
+        attachments: d.rewards,
       });
     });
     eventBus.on('quest:completed', d => {

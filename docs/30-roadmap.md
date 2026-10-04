@@ -371,9 +371,13 @@ model retires entirely (interim anti-teleport guard dies with it).
 - [x] **Trading Post** (Shop + Market merge) — built 2026-10-02, ADR 0035. Design:
   `docs/10-design/trading-post.md` + mockups. UI part ≈ Hero Quarters redesign size; daily crate, Wandering
   Trader and the Exchange value table are new mechanics (save state + ADR).
-- [ ] **Battle tab redesign** — target design agreed 2026-10-02, not scheduled: `docs/10-design/battle-tab.md` +
-  mockups (A1 chapter trail map, Commanders panel, battle-lines playback with timeline, results with hero XP).
-  Needs chapter/elite stage data, stars, last-report-per-stage and hero ids in the combat report.
+- [ ] **Battle tab redesign** — design `docs/10-design/battle-tab.md` + mockups. **Slices 1+2 done 2026-10-03** (ADR 0036:
+  chapter/elite stage data, stars, last-report-per-stage, hero ids in the combat report, A1 trail, stage panel + Commanders,
+  row cap 2). **Open:** slice 3 (P1 battle-lines playback with hero bar + timeline), slice 4 (results with hero XP/level-ups).
+- [ ] **Fresh-save tutorial blocker (pre-existing; PARKED by Steve 2026-10-03):** the `train` step only fills the reserve, so no
+  squad exists (or it is empty) at the `combat` step — Deploy is disabled / "Empty Squad!" and the player can only Skip.
+  Proposed: a `squad` tutorial step between `train` and `combat` that highlights the Barracks tile and waits on a new
+  narrow event (e.g. `squad:unitsAssigned` emitted from `UnitManager.assignToSquad`).
 - [ ] Queue sidebar clearance on other views (Hero Quarters roster etc.): reuse the Trading Post rule — reserve
   `--bq-toggle-width` always and `--bq-panel-width` while `#bq-sidebar` is open (≥ 901px); see `.tp` in
   `css/components/trading-post.css`.

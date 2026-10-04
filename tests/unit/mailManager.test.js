@@ -29,3 +29,15 @@ test('a new mail sent after loading a legacy save never collides with a pre-exis
   assert.equal(result.success, true);
   assert.equal(result.rewards.wood, 100);
 });
+
+test('campaign:firstClear sends a First clear bonus mail with diamond attachments', async () => {
+  const { eventBus } = await import('../../js/core/EventBus.js');
+  const { CAMPAIGN_STAGES } = await import('../../js/systems/campaign/campaignStages.js');
+  const mm = new MailManager();
+  const stage = CAMPAIGN_STAGES[0];
+  eventBus.emit('campaign:firstClear', { stageId: stage.id, rewards: { diamond: 5 } });
+  const mail = mm.getMessages()[0];
+  assert.match(mail.subject, /First clear bonus/);
+  assert.deepEqual(mail.attachments, { diamond: 5 });
+  assert.ok(mail.body.includes(stage.name));
+});

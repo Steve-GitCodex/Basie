@@ -6,8 +6,9 @@
  */
 import { eventBus } from '../core/EventBus.js';
 import { WoundedPool } from './units/woundedPool.js';
-import { defaultRowFor, isValidRow, resolveSquadRows, serializeSlotRows, deserializeSlotRows } from './units/squadRows.js';
+import { defaultRowFor, isValidRow, resolveSquadRows, assignSlotRows, occupiedSlots, acceptedStoredRows, serializeSlotRows, deserializeSlotRows } from './units/squadRows.js';
 import { UNITS_CONFIG, BUILDINGS_CONFIG, UNIT_TIER_REQUIREMENTS } from '../entities/GAME_DATA.js';
+import { COMBAT_RULES } from '../entities/data/combatRules.js';
 
 export class UnitManager {
   /**
@@ -55,17 +56,32 @@ export class UnitManager {
     return resolveSquadRows(squad.slotUnits ?? new Map(), squad.slotRows ?? new Map(), tierKey => this._parseTierKey(tierKey).unitId);
   }
 
+  _effectiveSlotRows(squad) {
+    const unitIdOf = tierKey => this._parseTierKey(tierKey).unitId;
+    return assignSlotRows(occupiedSlots(squad.slotUnits ?? new Map(), squad.slotRows ?? new Map(), unitIdOf));
+  }
+
   getSlotRow(squadId, slotIndex) {
     const squad = this._squads.get(squadId);
-    const stored = squad?.slotRows.get(slotIndex);
-    if (stored) return stored;
-    return defaultRowFor(this.getSlotUnit(squadId, slotIndex)?.unitId);
+    if (!squad) return defaultRowFor(undefined);
+    return this._effectiveSlotRows(squad).get(slotIndex) ?? squad.slotRows.get(slotIndex) ?? defaultRowFor(undefined);
+  }
+
+  canSetSlotRow(squadId, slotIndex, row) {
+    const squad = this._squads.get(squadId);
+    if (!squad || !isValidRow(row)) return false;
+    let taken = 0;
+    for (const [index, effective] of this._effectiveSlotRows(squad)) {
+      if (index !== slotIndex && effective === row) taken++;
+    }
+    return taken < COMBAT_RULES.ROW_SLOT_CAP;
   }
 
   setSlotRow(squadId, slotIndex, row) {
     const squad = this._squads.get(squadId);
     if (!squad) return { success: false, reason: 'Squad not found' };
     if (!isValidRow(row)) return { success: false, reason: 'Invalid row' };
+    if (!this.canSetSlotRow(squadId, slotIndex, row)) return { success: false, reason: 'Row full' };
     squad.slotRows.set(slotIndex, row);
     eventBus.emit('army:updated');
     return { success: true };
@@ -923,7 +939,8 @@ export class UnitManager {
             if (v && v.tierKey) slotUnits.set(Number(k), { tierKey: migrateKey(v.tierKey) ?? v.tierKey, count: v.count ?? 0 });
           }
         }
-        this._squads.set(id, { id: s.id, name: s.name, barracksInstanceId: s.barracksInstanceId ?? null, units, slotUnitLinks, slotUnits, slotRows: deserializeSlotRows(s.slotRows) });
+        const slotRows = acceptedStoredRows(slotUnits, deserializeSlotRows(s.slotRows), tierKey => this._parseTierKey(tierKey).unitId);
+        this._squads.set(id, { id: s.id, name: s.name, barracksInstanceId: s.barracksInstanceId ?? null, units, slotUnitLinks, slotUnits, slotRows });
       }
     }
     this._squadCounter = data.squadCounter ?? 1;

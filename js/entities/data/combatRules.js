@@ -5,6 +5,8 @@ export const COMBAT_RULES = Object.freeze({
   SIEGE_VS_STRUCTURE_MULT: 1.5,
   DEFAULT_ROW: Object.freeze({ infantry: 'front', cavalry: 'mid', ranged: 'back', siege: 'back' }),
   ROWS: Object.freeze(['front', 'mid', 'back']),
+  ROW_SLOT_CAP: 2,
+  STAR_RULES: Object.freeze({ lossFraction: 0.25 }),
   VARIANCE: 0.10,
   ROUND_CAP: 30,
   TIER_TARGET_WEIGHT: Object.freeze([10, 9, 8, 7, 6, 5, 4, 3, 2, 1]),

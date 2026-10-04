@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>Inventory mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:hsl(30,10%,5%);--surf:hsl(30,9%,8%);--elev:hsl(30,8%,11%);--panel:hsl(30,8%,14%);--bd:hsl(30,10%,18%);--bdl:hsl(30,10%,27%);
+    --or:hsl(32,90%,55%);--orm:hsl(32,55%,18%);--tx:hsl(35,15%,93%);--tx2:hsl(35,10%,62%);--tx3:hsl(35,8%,42%);
+    --ok:hsl(90,45%,48%);--warn:hsl(45,90%,58%);--dia:hsl(190,70%,60%);
+    --common:hsl(30,6%,45%);--rare:hsl(210,65%,58%);--epic:hsl(275,55%,62%);--legendary:hsl(40,90%,55%)}
+  *{box-sizing:border-box}
+  body{margin:0;background:#1b1916;color:var(--tx);font-family:Outfit,sans-serif;padding:24px 32px 60px}
+  h1{font:700 22px Oswald;letter-spacing:.04em;margin:0 0 4px} .sub{color:var(--tx2);margin:0 0 18px;font-size:14px;max-width:1000px}
+  .opt{border:2px solid transparent;border-radius:10px;padding:14px;margin-bottom:22px;background:#24211d;cursor:pointer}
+  .opt.selected{border-color:var(--or)} .opt h2{font:700 16px Oswald;letter-spacing:.05em;margin:0 0 4px} .opt h2 b{color:var(--or)}
+  .opt p.d{margin:0 0 12px;color:var(--tx2);font-size:13px;max-width:1000px}
+  .wrap{display:grid;grid-template-columns:1fr 250px;gap:14px}
+  .notes{font-size:12px;color:var(--tx2);line-height:1.45} .notes div{margin-bottom:9px} .notes b{color:var(--tx)}
+  .screen{background:var(--bg);border:1px solid var(--bd);border-radius:6px;height:560px;overflow:hidden;position:relative;font-size:12px}
+  .city{position:absolute;inset:0;background:radial-gradient(ellipse at 35% 55%,hsl(30,12%,16%),var(--bg) 70%)}
+  .city::after{content:"city view";position:absolute;left:24%;top:46%;color:var(--tx3);font:700 14px Oswald;letter-spacing:.2em;text-transform:uppercase}
+  .shade{position:absolute;inset:0;background:hsla(30,10%,3%,.55)}
+  .btn{background:linear-gradient(var(--or),hsl(30,88%,42%));color:#1a1108;font:700 13px Oswald;letter-spacing:.06em;border:0;padding:7px 12px;border-radius:4px;white-space:nowrap}
+  .btn.g{background:var(--panel);color:var(--tx);border:1px solid var(--bdl)}
+  .btn.ok{background:linear-gradient(hsl(90,45%,48%),hsl(95,45%,34%));color:#0d1606}
+  .btn.sm{font-size:11px;padding:4px 9px}
+  .lbl{font:700 11px Oswald;letter-spacing:.12em;text-transform:uppercase;color:var(--tx2);margin:0 0 8px}
+
+  .side{position:absolute;top:0;right:0;bottom:0;width:430px;background:var(--surf);border-left:1px solid var(--bdl);display:flex;flex-direction:column;box-shadow:-20px 0 40px #000}
+  .hd{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--bd);background:linear-gradient(var(--elev),var(--surf))}
+  .hd .t{font:700 15px Oswald;letter-spacing:.08em;text-transform:uppercase}
+  .hd .x{margin-left:auto;color:var(--tx3);font-size:16px}
+  .hd .boosts{font-size:11px;color:var(--ok);border:1px solid hsl(90,35%,26%);background:hsl(90,30%,9%);padding:3px 8px;border-radius:4px}
+  .tabs{display:flex;gap:2px;padding:0 10px;border-bottom:1px solid var(--bd)}
+  .tab{padding:8px 8px 7px;color:var(--tx3);font-weight:600;font-size:11px;letter-spacing:.05em;text-transform:uppercase;display:flex;gap:5px;align-items:center}
+  .tab.on{color:var(--tx);box-shadow:inset 0 -2px var(--or)}
+  .tab i{font-style:normal;background:var(--panel);color:var(--tx2);font-size:9.5px;padding:0 5px;border-radius:7px}
+  .tab .dot{width:6px;height:6px;border-radius:50%;background:var(--or)}
+  .grid{flex:1;overflow:hidden;padding:12px;display:grid;grid-template-columns:repeat(5,1fr);gap:8px;align-content:start}
+  .tile{aspect-ratio:1;border-radius:6px;background:linear-gradient(160deg,var(--panel),var(--elev));border:1px solid var(--bd);position:relative;display:flex;align-items:center;justify-content:center;font-size:26px}
+  .tile::before{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;border-radius:0 0 6px 6px;background:var(--r,var(--common))}
+  .tile.rare{--r:var(--rare)} .tile.epic{--r:var(--epic)} .tile.legendary{--r:var(--legendary);box-shadow:inset 0 0 14px hsla(40,90%,55%,.18)}
+  .tile .q{position:absolute;right:4px;bottom:5px;font:700 11px Oswald;text-shadow:0 1px 2px #000}
+  .tile .tag{position:absolute;left:4px;top:3px;font:700 9px Oswald;color:var(--tx2);letter-spacing:.04em}
+  .tile.new::after{content:"NEW";position:absolute;right:-4px;top:-5px;background:var(--or);color:#1a1108;font:700 8px Oswald;padding:1px 4px;border-radius:3px}
+  .tile.sel{border-color:var(--or);box-shadow:0 0 0 1px var(--or),0 0 14px hsla(32,90%,55%,.35)}
+  .det{border-top:1px solid var(--bdl);background:linear-gradient(var(--elev),var(--surf));padding:12px 14px;display:flex;flex-direction:column;gap:9px}
+  .det .top{display:flex;gap:11px;align-items:center}
+  .det .ico{width:50px;height:50px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:28px;background:var(--panel);border:1px solid var(--rare)}
+  .det .nm{font:700 15px Oswald;letter-spacing:.03em} .det .mt{font-size:11px;color:var(--tx2)} .det .mt b{color:var(--rare)}
+  .det .ds{color:var(--tx2);font-size:11.5px}
+  .preview{color:var(--ok);font-weight:700;font-size:12px}
+  .qty{display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:center}
+  .step{width:24px;height:24px;border-radius:4px;background:var(--panel);border:1px solid var(--bdl);display:flex;align-items:center;justify-content:center;font-weight:700}
+  .slider{height:6px;background:var(--panel);border-radius:3px;position:relative}
+  .slider i{position:absolute;left:0;top:0;bottom:0;width:42%;background:linear-gradient(90deg,var(--or),var(--warn));border-radius:3px}
+  .slider b{position:absolute;left:42%;top:50%;width:14px;height:14px;margin:-7px;border-radius:50%;background:var(--tx);box-shadow:0 0 0 3px var(--or)}
+  .n{font:700 14px Oswald;min-width:44px;text-align:center;background:var(--bg);border:1px solid var(--bd);border-radius:4px;padding:2px 0}
+  .acts{display:flex;gap:8px} .acts .btn{flex:1}
+
+  .modal{position:absolute;inset:30px 60px;background:var(--surf);border:1px solid var(--bdl);border-radius:8px;display:grid;grid-template-rows:auto 1fr;box-shadow:0 20px 60px #000;overflow:hidden}
+  .mbody{display:grid;grid-template-columns:120px 1fr 260px;min-height:0}
+  .rail{border-right:1px solid var(--bd);padding:8px 0;display:flex;flex-direction:column}
+  .rail span{padding:9px 12px;color:var(--tx3);font-weight:600;font-size:11.5px;display:flex;justify-content:space-between}
+  .rail span.on{color:var(--tx);background:var(--elev);box-shadow:inset 3px 0 var(--or)}
+  .rail i{font-style:normal;color:var(--tx3);font-size:10px}
+  .mgrid{padding:12px;display:grid;grid-template-columns:repeat(6,1fr);gap:8px;align-content:start;overflow:hidden}
+  .mdet{border-left:1px solid var(--bd);padding:14px;display:flex;flex-direction:column;gap:10px;background:linear-gradient(var(--elev),var(--surf))}
+  .mdet .ico{width:64px;height:64px;font-size:36px}
+
+  .states{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .card{background:var(--surf);border:1px solid var(--bd);border-radius:6px;overflow:hidden}
+  .card .cap{font:700 11px Oswald;letter-spacing:.1em;text-transform:uppercase;color:var(--tx2);padding:8px 12px;border-bottom:1px solid var(--bd)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{display:flex;gap:6px;align-items:center;background:var(--panel);border:1px solid var(--bdl);border-radius:16px;padding:3px 9px 3px 4px;font-size:11px}
+  .chip.on{border-color:var(--or);background:var(--orm)}
+  .chip span{font-size:16px} .chip small{color:var(--tx2)}
+  .hint{font-size:11px;color:var(--tx2);background:var(--bg);border:1px dashed var(--bdl);border-radius:4px;padding:7px 9px}
+</style></head><body>
+<h1>INVENTORY — bag rebuild</h1>
+<p class="sub">Last Shelter-style bag: tabs, a rarity-framed tile grid, and a <b>pinned detail bar</b> that owns every use flow (Use ×N, open chests, pick a hero). The grid never rebuilds while you act; tiles patch their count in place.</p>
+
+<div class="opt" data-choice="side" onclick="toggleSelect(this)">
+  <h2><b>A</b> · Right slide-in panel + bottom detail bar <span style="color:var(--tx3);font-size:12px">(recommended)</span></h2>
+  <p class="d">Keeps today's slide-in from the dock (the city stays visible behind). The popover is replaced by a detail bar pinned to the panel bottom, so the grid never shifts when you select something.</p>
+  <div class="wrap">
+  <div class="screen">
+    <div class="city"></div><div class="shade"></div>
+    <div class="side">
+      <div class="hd"><span class="t">🎒 Inventory</span><span class="boosts">⚗ 2 boosts · 1h 12m ›</span><span class="x">✕</span></div>
+      <div class="tabs">
+        <span class="tab">All <i>87</i></span>
+        <span class="tab on">Resources <i>41</i></span>
+        <span class="tab">Speedups <i>23</i></span>
+        <span class="tab">Boosts <i>5</i><span class="dot"></span></span>
+        <span class="tab">Heroes <i>14</i></span>
+        <span class="tab">Other <i>4</i></span>
+      </div>
+      <div class="grid">
+        <div class="tile rare sel"><span class="tag">T3</span>🪵<span class="q">12</span></div>
+        <div class="tile"><span class="tag">T1</span>🪵<span class="q">30</span></div>
+        <div class="tile rare"><span class="tag">T3</span>🪨<span class="q">6</span></div>
+        <div class="tile new"><span class="tag">T2</span>🌾<span class="q">9</span></div>
+        <div class="tile epic"><span class="tag">T4</span>⛓️<span class="q">2</span></div>
+        <div class="tile"><span class="tag">T1</span>💧<span class="q">14</span></div>
+        <div class="tile rare"><span class="tag">T3</span>🪙<span class="q">5</span></div>
+        <div class="tile legendary"><span class="tag">T5</span>💎<span class="q">1</span></div>
+        <div class="tile"><span class="tag">T2</span>🪨<span class="q">8</span></div>
+        <div class="tile"><span class="tag">T2</span>💧<span class="q">3</span></div>
+      </div>
+      <div class="det">
+        <div class="top">
+          <div class="ico">🪵</div>
+          <div><div class="nm">Wood Crate · T3</div><div class="mt"><b>Rare</b> · Owned ×12</div></div>
+        </div>
+        <div class="ds">Grants 15,000 wood. Over-cap amounts are lost.</div>
+        <div class="qty"><span class="step">−</span><div class="slider"><i></i><b></b></div><span class="step">+</span><span class="n">5</span></div>
+        <div class="preview">→ +75,000 wood <span style="color:var(--warn);font-weight:600">(storage room: 61,200)</span></div>
+        <div class="acts"><button class="btn g">Use 1</button><button class="btn ok">Use ×5</button></div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div><b>Tabs regrouped by what you do with them.</b> Today's "Special/Scroll" give way to <b>Heroes</b> (cards, fragments, shards, tokens, XP) and <b>Other</b> (queue slots, automation, the five types today shows nowhere). <b>All</b> is first; empty tabs stay visible but dimmed.</div>
+    <div><b>Rarity = bottom stripe + tier tag</b>, not a full border, so the selected-orange outline stays readable.</div>
+    <div><b>Use ×N</b> uses a slider with ± steps, plus a live preview of the result. It warns when storage would overflow, matching the Exchange's cap rule.</div>
+    <div><b>Header boost chip</b> opens the Buffs panel. It replaces the "Active Buffs" footer that used to live inside Inventory.</div>
+  </div>
+  </div>
+</div>
+
+<div class="opt" data-choice="modal" onclick="toggleSelect(this)">
+  <h2><b>B</b> · Centered modal, category rail + right detail column</h2>
+  <p class="d">Closer to Last Shelter's full-screen bag: more tiles per row, and a roomier detail column. It covers the city, and the dock toggle becomes open/close only.</p>
+  <div class="wrap">
+  <div class="screen">
+    <div class="city"></div><div class="shade" style="background:hsla(30,10%,3%,.78)"></div>
+    <div class="modal">
+      <div class="hd"><span class="t">🎒 Inventory</span><span class="boosts">⚗ 2 boosts · 1h 12m ›</span><span class="x">✕</span></div>
+      <div class="mbody">
+        <div class="rail">
+          <span>All <i>87</i></span><span class="on">Resources <i>41</i></span><span>Speedups <i>23</i></span><span>Boosts <i>5</i></span><span>Heroes <i>14</i></span><span>Other <i>4</i></span>
+        </div>
+        <div class="mgrid">
+          <div class="tile rare sel"><span class="tag">T3</span>🪵<span class="q">12</span></div>
+          <div class="tile"><span class="tag">T1</span>🪵<span class="q">30</span></div>
+          <div class="tile rare"><span class="tag">T3</span>🪨<span class="q">6</span></div>
+          <div class="tile new"><span class="tag">T2</span>🌾<span class="q">9</span></div>
+          <div class="tile epic"><span class="tag">T4</span>⛓️<span class="q">2</span></div>
+          <div class="tile"><span class="tag">T1</span>💧<span class="q">14</span></div>
+          <div class="tile rare"><span class="tag">T3</span>🪙<span class="q">5</span></div>
+          <div class="tile legendary"><span class="tag">T5</span>💎<span class="q">1</span></div>
+          <div class="tile"><span class="tag">T2</span>🪨<span class="q">8</span></div>
+          <div class="tile"><span class="tag">T2</span>💧<span class="q">3</span></div>
+        </div>
+        <div class="mdet">
+          <div class="ico det" style="padding:0;border:1px solid var(--rare);border-radius:6px;display:flex;align-items:center;justify-content:center;background:var(--panel)">🪵</div>
+          <div class="det" style="padding:0;border:0;background:none">
+            <div class="nm">Wood Crate · T3</div><div class="mt"><b>Rare</b> · Owned ×12</div>
+            <div class="ds">Grants 15,000 wood. Over-cap amounts are lost.</div>
+            <div class="qty"><span class="step">−</span><div class="slider"><i></i><b></b></div><span class="step">+</span><span class="n">5</span></div>
+            <div class="preview">→ +75,000 wood</div>
+            <div class="acts"><button class="btn g">Use 1</button><button class="btn ok">Use ×5</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div><b>Pro:</b> six columns, and the detail column doesn't steal vertical space.</div>
+    <div><b>Con:</b> it's a new modal pattern. Today Inventory, the queue and Mail are all side panels, so this one would feel different, and it hides the city that resource previews refer to.</div>
+  </div>
+  </div>
+</div>
+
+<h1 style="margin-top:30px">Detail bar — per item type</h1>
+<p class="sub">Same bar, different action block. The use logic lives in one shared module that the Trading Post's "Use" buttons call too.</p>
+<div class="states">
+  <div class="card"><div class="cap">XP bundle → pick hero inline</div>
+    <div class="det"><div class="top"><div class="ico" style="border-color:var(--epic)">📖</div><div><div class="nm">XP Bundle · Medium</div><div class="mt">Owned ×4 · +2,500 XP each</div></div></div>
+      <div class="chips"><span class="chip on"><span>🛡️</span>Paladin <small>Lv 12</small></span><span class="chip"><span>🗡️</span>Shadowblade <small>Lv 9</small></span><span class="chip"><span>🔮</span>Archsorc. <small>Lv 7</small></span></div>
+      <div class="qty"><span class="step">−</span><div class="slider"><i style="width:50%"></i><b style="left:50%"></b></div><span class="step">+</span><span class="n">2</span></div>
+      <div class="preview">Paladin Lv 12 → 13 (+5,000 XP)</div>
+      <div class="acts"><button class="btn ok">Apply ×2</button></div></div></div>
+  <div class="card"><div class="cap">Speedup → points to timers</div>
+    <div class="det"><div class="top"><div class="ico">⏩</div><div><div class="nm">Build Speedup · 1h</div><div class="mt">Owned ×6</div></div></div>
+      <div class="ds">Speedups are spent on a running timer.</div>
+      <div class="hint">2 builds running · shortest: Barracks #2, 38m left</div>
+      <div class="acts"><button class="btn">Open build queue ›</button></div></div></div>
+  <div class="card"><div class="cap">Boost → shows what it replaces</div>
+    <div class="det"><div class="top"><div class="ico" style="border-color:var(--common)">⚗️</div><div><div class="nm">Production Boost (Minor)</div><div class="mt">Owned ×3 · +25% production · 1h</div></div></div>
+      <div class="hint" style="color:var(--warn);border-color:hsl(45,50%,28%)">Active: Major +50% · 1h 12m left. Using this one replaces it.</div>
+      <div class="acts"><button class="btn g">View buffs</button><button class="btn">Activate</button></div></div></div>
+  <div class="card"><div class="cap">Hero card → goes to Recruit</div>
+    <div class="det"><div class="top"><div class="ico" style="border-color:var(--legendary)">🃏</div><div><div class="nm">Legendary Hero Card</div><div class="mt">Owned ×1</div></div></div>
+      <div class="ds">Recruits a random legendary hero you don't own.</div>
+      <div class="acts"><button class="btn">Recruit in Hero Quarters ›</button></div></div></div>
+</div>
+<script>function toggleSelect(el){document.querySelectorAll('.opt').forEach(o=>o.classList.toggle('selected',o===el))}</script>
+</body></html>

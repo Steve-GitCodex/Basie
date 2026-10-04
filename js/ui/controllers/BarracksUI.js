@@ -237,6 +237,7 @@ export class BarracksUI {
     const toggle = createSlotRowToggle({
       row: this._s.um.getSlotRow(squad.id, slotIndex),
       onPick: row => eventBus.emit('ui:setSlotRow', { squadId: squad.id, slotIndex, row }),
+      isDisabled: row => !this._s.um.canSetSlotRow(squad.id, slotIndex, row),
     });
     tile.appendChild(toggle.el);
 

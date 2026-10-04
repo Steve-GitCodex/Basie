@@ -1,7 +1,7 @@
-# Battle tab (target design — not built)
+# Battle tab (slices 1+2 built 2026-10-03; slices 3–4 open)
 
 Agreed with Steve 2026-10-02 as the final shape of the Combat view (`#view-combat`, today's `CombatUI`).
-**Not scheduled.** Combat rules are unchanged: this is a presentation of the ADR 0034 resolver
+**Status:** slices 1+2 (campaign model + map: chapters, elites, stars, A1 trail, stage panel, Commanders, tabs, row cap) are built — ADR 0036, spec `docs/superpowers/specs/2026-10-03-battle-tab-campaign-design.md`, plan `docs/superpowers/plans/2026-10-03-battle-tab-campaign.md`. Slice 3 (P1 battle-lines playback with hero bar + timeline) and slice 4 (results with hero XP/level-ups) are not built. Combat rules are unchanged: this is a presentation of the ADR 0034 resolver
 (`docs/10-design/combat.md`). Mockups (open in a browser): `docs/10-design/mockups/battle-tab/` —
 `battle-final.html` (agreed screens, one consistent scenario end to end), `trail-scaling.html` (A1 vertical
 vs A2 horizontal trail; **A1 chosen**). Visual language is Hero Quarters' (ADR 0030).

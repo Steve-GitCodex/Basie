@@ -3229,4 +3229,8 @@ body.sheet-open #more-fab { display: none !important; }
   border-color: var(--clr-gold);
   background: var(--clr-bg-elevated);
 }
+.slot-row-toggle__btn--disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 .sq-stat--wounded { cursor: help; }

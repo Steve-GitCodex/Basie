@@ -24,6 +24,9 @@
   <link rel="stylesheet" href="css/components/worldmap.css" />
   <link rel="stylesheet" href="css/components/world-view.css" />
   <link rel="stylesheet" href="css/components/battle.css" />
+  <link rel="stylesheet" href="css/components/battle-trail.css" />
+  <link rel="stylesheet" href="css/components/battle-stage.css" />
+  <link rel="stylesheet" href="css/components/battle-commanders.css" />
   <link rel="stylesheet" href="css/components/barracks.css" />
   <link rel="stylesheet" href="css/components/tooltip.css" />
   <link rel="stylesheet" href="css/utilities/helpers.css" />
@@ -284,17 +287,23 @@
 
         <!-- COMBAT VIEW -->
         <section class="view hidden" id="view-combat">
-          <div class="view-header">
-            <h2><span class="icon icon--fire icon--danger"></span> Combat</h2>
-            <p class="view-subtitle">Send your forces to battle monsters</p>
-          </div>
-          <div class="combat-layout">
-            <div class="campaign-panel" id="campaign-panel">
-              <h3>Monster Campaigns</h3>
-              <div id="campaign-list"></div>
+          <div class="combat-view">
+            <div class="view-header">
+              <h2><span class="icon icon--fire icon--danger"></span> Combat</h2>
+              <p class="view-subtitle">Send your forces to battle monsters</p>
             </div>
-            <div class="battle-log-panel" id="battle-log-panel">
-              <h3>Battle Log</h3>
+            <div id="combat-mode-banner"></div>
+            <nav class="combat-tabs" role="tablist" aria-label="Combat sections">
+              <button type="button" role="tab" aria-selected="true" class="combat-tabs__tab combat-tabs__tab--active" data-tab="campaign">Campaign</button>
+              <button type="button" role="tab" aria-selected="false" class="combat-tabs__tab" data-tab="survival">Survival</button>
+              <button type="button" role="tab" aria-selected="false" class="combat-tabs__tab" data-tab="log">Log</button>
+            </nav>
+            <div class="combat-pane combat-pane--campaign" id="combat-pane-campaign">
+              <div class="campaign-trail"></div>
+              <aside class="campaign-stage-panel" id="campaign-stage-panel" aria-hidden="true"></aside>
+            </div>
+            <div class="combat-pane hidden" id="combat-pane-survival"></div>
+            <div class="combat-pane hidden" id="combat-pane-log">
               <div id="battle-log"></div>
             </div>
           </div>

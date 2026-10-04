@@ -5,14 +5,70 @@
 > Keep it to current state: replace finished sections with a short summary — history lives in
 > git (`git log -p docs/40-active.md`) and decisions live in `docs/20-decisions/`.
 
-## Current state (2026-10-02)
+## Current state (2026-10-03)
 
-- Branch `Working_Branch`. The combat resolver is committed (`74cf629`). **Uncommitted:** the Trading Post below
-  (new files under `js/systems/trading/`, `js/ui/trading/`, `css/components/trading-*.css`; `ShopUI`/`MarketUI` deleted).
-  Tree is commit-ready.
-- Baseline: `npm test` **847/847**; `node scripts/check-comments.mjs` **12 violations, all pre-existing**;
-  trading / boot / tutorial / world / combat / heroes / dev-dashboard smokes PASS; dev-smoke PASS except the known
-  `dev-anchor-nudger` ("variantFile resolves the override-manifest key"; fails on clean `d727368` too).
+- Branch `Working_Branch`. The combat resolver is committed (`74cf629`) and the Trading Post (`8b37896`). **Uncommitted:** the
+  Battle tab campaign model + map below (new `js/systems/campaign/`, `CampaignManager`, `js/entities/data/campaign.js`,
+  `js/ui/combat/*`, `css/components/battle-*.css`, modified combat/unit/mail/tutorial/UI files, tests) plus the Buffs +
+  Inventory research/specs/plans (docs only). Tree is commit-ready.
+- Baseline: `npm test` **924/924**; `node scripts/check-comments.mjs` **12 violations, all pre-existing**;
+  boot / tutorial / combat / world / heroes / trading / dev-dashboard smokes PASS; dev-smoke PASS except the known
+  `dev-anchor-nudger` ("variantFile resolves the override-manifest key").
+
+## Battle tab — campaign model + map (slices 1+2) — COMPLETE (2026-10-03)
+
+ADR 0036 (`docs/20-decisions/0036-campaign-chapters.md`), design `docs/10-design/battle-tab.md`, spec/plan
+`docs/superpowers/specs|plans/2026-10-03-battle-tab-campaign*` (left for Steve to delete once he's happy).
+
+- **KNOWN ISSUE — Fresh-save tutorial blocker (pre-existing; PARKED by Steve 2026-10-03):** the `train` step only fills the reserve; no squad exists
+  (or it's empty) at the `combat` step, so Deploy is disabled / "Empty Squad!" and the player can only Skip. Proposed fix
+  (not built — needs Steve's call): a `squad` tutorial step between `train` and `combat` highlighting the Barracks tile,
+  waiting on a new narrow event (e.g. `squad:unitsAssigned` from `assignToSquad`). In the roadmap backlog.
+- **What landed:** max 2 slots per row (`ROW_SLOT_CAP`, `UnitManager` re-flow, Barracks toggle disables a full row); 10 chapters from
+  `CAMPAIGNS_CONFIG` with generated stages (4 regular + boss + elite; boss ids = existing monster ids; `js/systems/campaign/`);
+  star rules (`STAR_RULES.lossFraction` 0.25 + round par); `CampaignManager` (bestStars / firstCleared / lastReport, first-clear
+  diamonds by mail); combat event payloads carry hero ids + per-round `triggered` skill events; `squadCommanders`; `trailLayout`;
+  new Combat view (Campaign / Survival / Log tabs, A1 vertical trail, stage panel with squad picker, win estimate and
+  Commanders); tutorial `combat` spotlight retargets from the node to Deploy. `CombatUI` split into `js/ui/combat/` modules,
+  CSS into `battle-{stage,commanders,trail}.css`.
+- **Tests:** unit 847 -> 925; `combat-smoke` gained stars-after-win, row-cap-toggle, report and `combat-return` blocks;
+  `tutorial-smoke` gained `tutorial-combat-deploy` (incl. Deploy hit-test + campaign pane never scrolled sideways).
+- **Final-review fixes (2026-10-03):** Deploy spotlight race fixed (`.combat-pane--campaign { overflow: clip }` — `hidden` let
+  the spotlight's `scrollIntoView` scroll the pane sideways mid-slide, misplacing ring/blockers); returning to Combat
+  re-opens an open stage panel (fresh squads / Deploy state); chosen tab kept across view returns (default only on first show
+  or mode change) and the trail is patched, not rebuilt, unless its width changed; `getMonsterProgress` uses the generated
+  stage (cap 5, not 999); "1 strike / round". Report: `.superpowers/sdd/2026-10-03-battle-tab-campaign/final-fix-report.md`.
+- **Verification (after final-review fixes):** npm **925/925**; check-comments **12**; combat-smoke PASS (all 7 blocks);
+  tutorial-smoke PASS 4/4 consecutive runs; boot, heroes PASS. Earlier in the session: world, trading, dev-dashboard PASS;
+  dev-smoke fails only the known `dev-anchor-nudger`.
+- **Rulings (full list in ADR 0036):** YOU marker falls back to the last completed non-elite stage, else the first; default tab
+  is Survival in survival mode; locked nodes still open the panel; lock text uses config building names; tutorial spotlight
+  retarget; aura chips show effective values (`auraValueFor`); chips follow `isUnlocked`/stars/scope like `collectEffects`.
+- **Deferred minors:** `assignToSquad` stores default rows as "stored" so an overflowed slot can jump rows when room frees; no
+  tests for merged stacks under the cap / toggle refresh; `ui:setSlotRow` rejection gives no UI feedback; stage knobs other than
+  tier/regularCount unvalidated; per-stack rounding doesn't guarantee non-decreasing power; `CampaignManager.deserialize` copies
+  `lastReport` unvalidated; `MailManager` imports campaign data for the stage name; empty-stages / elite-without-boss
+  `trailLayout` edge cases; `squadCommanders` imports `heroCombat`; slot-lock rule duplicated
+  vs `BarracksUI`; squad-to-barracks mapping mismatch (`HeroManager.barracksIdForSquad` vs squad `barracksInstanceId`, backlog);
+  fog label of a locked chapter overlaps its first node; legacy `.campaign-detail*` CSS in `grid.css`/`worldmap.css` unused.
+- **Slice-3 note:** the report's `triggered` lists every *active* trigger per round
+  (`wave_start`/`losing` repeat each round; round implied by nesting), not activations — decide the activation format
+  (`{ round, heroId, skillId }` edges) in the slice-3 spec.
+- **Notes for Steve:** CLAUDE.md is stale (manager count, wiki map says battle-tab "not built") - not edited. Old dev saves:
+  reset the slot (no-legacy). Stage knobs (scale, elite bump, diamonds, round par) are placeholders for the balance pass.
+  Fresh-save tutorial blocker: see KNOWN ISSUE above.
+
+## Buffs + Inventory — PLANNED, not started (2026-10-03)
+
+Design-only session; no game code changed. Build **Buffs first**, then Inventory (Inventory uses `BuffManager`).
+
+- Research: `docs/research/inventory-buffs-codebase.md` (every buff source, file:line), `docs/research/inventory-buffs-genre.md`
+  (thin: most genre sites blocked fetches; screen layouts unconfirmed).
+- Mockups: `docs/10-design/mockups/inventory-buffs/` — `buffs-v1.html` (approved), `inventory-v1.html` (**option B, modal**, approved).
+- Specs: `docs/superpowers/specs/2026-10-03-buffs-design.md`, `2026-10-03-inventory-design.md`.
+- Plans: `docs/superpowers/plans/2026-10-03-buffs.md` (9 tasks), `2026-10-03-inventory.md` (5 tasks).
+- Decisions taken: one timed boost per stat, replace-with-confirm; Overview shows the real compounded total via shared
+  `productionLayers()`; Inventory becomes a Mail-style modal; speedups from the bag reuse `SpeedupPicker`.
 
 ## Trading Post — COMPLETE (2026-10-02, latest)
 
@@ -215,7 +271,19 @@ new-hero cues. The desktop queue sidebar overlapping the roster's right edge is 
 4. **Hospital** (heals the wounded pool) when wanted. Open decision: `lossReduction` (Steel Armor, loss-cut skills) keeps no troops until wounded can heal; interim rule vs. hospital first (ADR 0034).
 5. Gather/march yield hero effect stays barred until the march balance pass.
 6. ~~Trading Post~~ done 2026-10-02 (ADR 0035).
-7. **Battle tab redesign**: target design + mockups saved 2026-10-02 in `docs/10-design/battle-tab.md`; not scheduled.
-   Decisions: A1 vertical chapter trail (generated road, bosses = today's 10 monsters, elites), stage panel with
-   Commanders, P1 battle-lines playback with hero bar + timeline, results with hero XP/level-ups; 4 slots share 3 rows,
-   **max 2 slots per row** (not enforced today; rule + edge cases in the design page — can land on its own, ahead of the redesign).
+7. **Battle tab — PICK UP HERE next combat session.** Slices 1+2 (campaign model + map) done 2026-10-03, ADR 0036.
+   - **Next: slices 3 + 4 together, one spec → plan cycle (Steve, 2026-10-03)** — same flow as slices 1+2
+     (`docs/superpowers/specs/2026-10-03-battle-tab-campaign-design.md`). Design: `docs/10-design/battle-tab.md`
+     "Playback" + "Results"; mockup `mockups/battle-tab/battle-final.html` screens 2 and 3.
+     - Slice 3 — P1 battle-lines playback, replacing today's playback modal (`js/ui/combat/battleFlow.js`): rows facing
+       rows, strength bars, attack arrows, hero bar, key-moment banners, timeline (pause/step/scrub/1×/2×/Skip), round log.
+     - Slice 4 — results: victory/defeat screens, casualty layers, Commanders XP + level-ups, "Why you lost", last-attempt
+       comparison from `CampaignManager.getProgress(stageId).lastReport`; "Watch the turning point" jumps the replay, so
+       build playback tasks first within the plan.
+     - **First decision in the spec:** report rounds carry `triggered` = every *active* trigger that round (wave_start/losing
+       repeat each round), not activations — banners and "skills fired" need firing edges (`{ round, heroId, skillId }`);
+       decide the format first (`js/systems/combat/resolveBattle.js` `playRound`).
+   - Fresh-save tutorial blocker: **parked by Steve 2026-10-03** (see the KNOWN ISSUE above) — don't raise it in combat sessions.
+   - Parked combat items: balance pass (#2, incl. the new stage knobs in `js/entities/data/campaign.js`), hospital (#4),
+     squad↔barracks mapping mismatch, unused legacy campaign CSS in `worldmap.css`, fog label overlapping a node.
+8. **Buffs, then Inventory**: planned 2026-10-03 (see the PLANNED section above); plans in `docs/superpowers/plans/`.

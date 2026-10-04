@@ -42,3 +42,27 @@ test('estimate summary averages wins, dead and wounded', () => {
   ]);
   assert.deepEqual(summary, { winChance: 0.5, avgDead: 4, avgWounded: 0.5 });
 });
+
+test('enemyLeftPct is 0 on a cleared fight and 100 when no damage was dealt', async () => {
+  const { enemyLeftPct } = await import('../../js/systems/combat/combatInputs.js');
+  const initial = { defender: [[{ hpPool: 100 }], [{ hpPool: 100 }]] };
+  const cleared = { initial, waves: [{ rounds: [{ defender: [{ hpPool: 0 }] }] }, { rounds: [{ defender: [{ hpPool: 0 }] }] }] };
+  const untouched = { initial, waves: [{ rounds: [{ defender: [{ hpPool: 100 }] }] }, { rounds: [] }] };
+  assert.equal(enemyLeftPct(cleared), 0);
+  assert.equal(enemyLeftPct(untouched), 100);
+});
+
+test('enemyLeftPct counts unfought waves at full hp and rounds to an integer', async () => {
+  const { enemyLeftPct } = await import('../../js/systems/combat/combatInputs.js');
+  const report = {
+    initial: { defender: [[{ hpPool: 100 }], [{ hpPool: 200 }]] },
+    waves: [{ rounds: [{ defender: [{ hpPool: 50 }] }, { defender: [{ hpPool: 0 }] }] }, { rounds: [] }],
+  };
+  assert.equal(enemyLeftPct(report), 67);
+});
+
+test('troopsSent totals unit counts', async () => {
+  const { troopsSent } = await import('../../js/systems/combat/combatInputs.js');
+  assert.equal(troopsSent([{ count: 5 }, { count: 7 }, { count: 0 }]), 12);
+  assert.equal(troopsSent([]), 0);
+});

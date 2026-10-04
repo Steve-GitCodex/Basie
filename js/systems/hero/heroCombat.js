@@ -10,6 +10,15 @@ import { globalEffectBonus } from './heroProductionBonus.js';
 
 const bySlot = (a, b) => (a.slotIndex ?? Infinity) - (b.slotIndex ?? Infinity);
 
+export function auraValueFor(hero, cfg, auraFrac = 0) {
+  const base = cfg.aura?.value ?? 0;
+  if (!base) return 0;
+
+  const levelTerm = AWAKENING_CONFIG.levelScalePerLevel * ((hero.level ?? 1) - 1);
+  const starTerm  = (AWAKENING_CONFIG.perStarAuraBonus ?? 0) * (hero.stars ?? 0);
+  return base * (1 + levelTerm + starTerm + auraFrac);
+}
+
 export class HeroCombat {
   constructor(hero) { this._h = hero; }
 
@@ -23,12 +32,7 @@ export class HeroCombat {
   }
 
   _auraValueFor(hero, cfg, auraFrac = 0) {
-    const base = cfg.aura?.value ?? 0;
-    if (!base) return 0;
-
-    const levelTerm = AWAKENING_CONFIG.levelScalePerLevel * ((hero.level ?? 1) - 1);
-    const starTerm  = (AWAKENING_CONFIG.perStarAuraBonus ?? 0) * (hero.stars ?? 0);
-    return base * (1 + levelTerm + starTerm + auraFrac);
+    return auraValueFor(hero, cfg, auraFrac);
   }
 
   /** Aggregate aura bonuses for a squad's heroes plus HQ heroes (null squadId = all). */

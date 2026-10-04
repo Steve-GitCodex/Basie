@@ -175,3 +175,66 @@ test('an unknown difficulty setting is ignored and battles stay on normal', () =
   assert.equal(result.success, true);
   assert.deepEqual(result.report.initial.defender, normal.report.initial.defender);
 });
+
+const allEvents = ['combat:victory', 'combat:defeat'];
+const outcomeOf = (seen) => seen.find((e) => allEvents.includes(e.name)).data;
+
+test('attack resolves a generated stage id', () => {
+  const { combat, squad } = makeCombat([unitEntry('infantry', 1, 200)]);
+  let result;
+  const seen = recordEvents(allEvents, () => { result = combat.attack('ch1_s1', 'squad_1', { seed: SEED }); });
+  assert.equal(result.success, true);
+  const data = outcomeOf(seen);
+  assert.equal(data.stageId, 'ch1_s1');
+  assert.equal(data.monsterId, 'ch1_s1');
+  assert.equal(data.rounds, result.report.roundsTotal);
+  assert.equal(data.sent, 200);
+  assert.equal(typeof data.enemyLeftPct, 'number');
+  assert.ok(squad.units[0].count <= 200);
+});
+
+test('attack on a boss id carries stageId equal to the monster id', () => {
+  const { combat } = makeCombat([unitEntry('infantry', 1, 80)]);
+  const seen = recordEvents(allEvents, () => { combat.attack('orc_warband', 'squad_1', { seed: SEED }); });
+  const data = outcomeOf(seen);
+  assert.equal(data.stageId, 'orc_warband');
+  assert.equal(data.sent, 80);
+});
+
+test('survival attack omits stageId', () => {
+  const { combat } = makeCombat([unitEntry('infantry', 1, 80)]);
+  eventBus.emit('game:modeChanged', { mode: 'survival' });
+  try {
+    const seen = recordEvents(allEvents, () => { combat.attack('survival_wave', 'squad_1', { seed: SEED }); });
+    assert.equal('stageId' in outcomeOf(seen), false);
+  } finally {
+    eventBus.emit('game:modeChanged', { mode: 'campaign' });
+  }
+});
+
+test('defeat carries rounds, sent and a non-zero enemyLeftPct', () => {
+  const { combat } = makeCombat([unitEntry('infantry', 1, 5)]);
+  let result;
+  const seen = recordEvents(allEvents, () => { result = combat.attack('chaos_titan', 'squad_1', { seed: SEED }); });
+  const data = outcomeOf(seen);
+  assert.equal(data.rounds, result.report.roundsTotal);
+  assert.equal(data.sent, 5);
+  assert.ok(data.enemyLeftPct > 0 && data.enemyLeftPct <= 100);
+});
+
+test('enemyLeftPct is 0 on victory', () => {
+  const { combat } = makeCombat([unitEntry('infantry', 1, 300)]);
+  const seen = recordEvents(allEvents, () => { combat.attack('goblin_camp', 'squad_1', { seed: SEED }); });
+  const victory = seen.find((e) => e.name === 'combat:victory').data;
+  assert.equal(victory.enemyLeftPct, 0);
+});
+
+test('attacking a frozen generated stage does not mutate it', () => {
+  const { combat } = makeCombat([unitEntry('infantry', 1, 200)]);
+  assert.doesNotThrow(() => combat.attack('ch1_elite', 'squad_1', { seed: SEED }));
+});
+
+test('getMonsterProgress reads the generated stage cap, matching attack', () => {
+  const { combat } = makeCombat([unitEntry('infantry', 1, 5)]);
+  assert.equal(combat.getMonsterProgress('ch1_s1').maxRewardedWins, 5);
+});

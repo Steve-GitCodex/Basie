@@ -136,7 +136,8 @@ function playRound(battle, wave, round) {
   for (const plan of incoming) strikeRow(plan);
   reviveDefenders(defenders);
 
-  return { attacker: snapshotOf(attacker.stacks), defender: snapshotOf(defenders), heroHits };
+  const triggered = active.map((entry) => ({ heroId: entry.heroId, skillId: entry.skill.id }));
+  return { attacker: snapshotOf(attacker.stacks), defender: snapshotOf(defenders), heroHits, triggered };
 }
 
 function fightWave(battle, wave, rounds) {

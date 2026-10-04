@@ -1,0 +1,131 @@
+.commander-row {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 9px;
+  align-items: center;
+  margin-bottom: 5px;
+  padding: 6px 9px;
+  background: var(--clr-bg-elevated);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-sm);
+}
+
+.commander-row--empty,
+.commander-row--locked { border-style: dashed; }
+.commander-row--locked { opacity: 0.6; }
+
+.commander-portrait {
+  --rarity: var(--clr-rarity-normal);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--rarity);
+  background: radial-gradient(circle, hsl(32, 35%, 22%), var(--clr-bg-panel));
+}
+
+.commander-portrait--epic      { --rarity: var(--clr-rarity-epic); }
+.commander-portrait--legendary { --rarity: var(--clr-rarity-legendary); }
+
+.commander-portrait--empty {
+  border-style: dashed;
+  border-color: var(--clr-border-light);
+  background: none;
+  color: var(--clr-text-muted);
+  font-size: var(--text-base);
+}
+
+.commander-portrait__lv {
+  position: absolute;
+  right: -6px;
+  bottom: -5px;
+  padding: 0 3px;
+  font: 700 9px var(--font-heading);
+  background: var(--clr-bg-base);
+  border: 1px solid var(--clr-border-light);
+  border-radius: 3px;
+  color: var(--clr-text-primary);
+}
+
+.commander-row__body { min-width: 0; }
+
+.commander-row__name {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--clr-text-primary);
+}
+
+.commander-row__name--muted { color: var(--clr-text-secondary); }
+
+.commander-row__leads {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 1px;
+  font-size: 10.5px;
+  color: var(--clr-text-secondary);
+}
+
+.commander-row__troops--infantry { color: hsl(5, 60%, 62%); }
+.commander-row__troops--cavalry  { color: hsl(45, 80%, 60%); }
+.commander-row__troops--ranged   { color: hsl(150, 45%, 55%); }
+.commander-row__troops--siege    { color: var(--clr-info); }
+.commander-row__troops--none     { color: var(--clr-text-muted); }
+
+.commander-row__assign { padding: 2px 8px; }
+
+.commander-row__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 3px;
+}
+
+.commander-chip {
+  padding: 1px 5px;
+  font-size: 9.5px;
+  border: 1px solid var(--clr-border);
+  border-radius: 3px;
+  color: var(--clr-text-secondary);
+}
+
+.commander-chip--aura    { color: var(--clr-primary); border-color: hsl(32, 40%, 28%); }
+.commander-chip--trigger { color: var(--clr-rarity-epic); border-color: hsl(275, 25%, 30%); }
+
+.commander-support {
+  margin: 5px 0;
+  padding: 5px 9px;
+  font-size: 11px;
+  color: var(--clr-text-primary);
+  background: hsl(90, 15%, 8%);
+  border: 1px solid hsl(90, 25%, 22%);
+  border-radius: var(--radius-sm);
+}
+
+.commander-support__label {
+  font: 700 9px var(--font-heading);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--clr-success);
+}
+
+.commander-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 4px 0 var(--space-2);
+}
+
+.commander-totals span {
+  padding: 2px 7px;
+  font: 700 11px var(--font-heading);
+  color: var(--clr-primary);
+  background: var(--clr-primary-muted);
+  border: 1px solid hsl(32, 50%, 30%);
+  border-radius: 3px;
+}

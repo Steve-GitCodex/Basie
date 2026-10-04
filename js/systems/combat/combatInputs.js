@@ -37,6 +37,23 @@ export function wavesCleared(report) {
   return report.waves.filter((wave) => wave.rounds.at(-1)?.defender.every((stack) => stack.count === 0)).length;
 }
 
+export function enemyLeftPct(report) {
+  const poolOf = (stacks) => stacks.reduce((sum, stack) => sum + stack.hpPool, 0);
+  let initial = 0;
+  let remaining = 0;
+  report.initial.defender.forEach((stacks, i) => {
+    const start = poolOf(stacks);
+    const last = report.waves[i].rounds.at(-1);
+    initial += start;
+    remaining += last ? poolOf(last.defender) : start;
+  });
+  return initial > 0 ? Math.round((remaining / initial) * 100) : 0;
+}
+
+export function troopsSent(units) {
+  return units.reduce((sum, unit) => sum + unit.count, 0);
+}
+
 export function summarizeEstimate(reports) {
   const runs = reports.length;
   return {

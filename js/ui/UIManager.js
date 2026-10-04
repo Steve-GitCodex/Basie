@@ -127,6 +127,9 @@ export class UIManager {
     this._combat = new CombatUI({
       cm:            systems.cm,
       um:            systems.um,
+      bm:            systems.bm,
+      heroes:        systems.heroes,
+      campaign:      systems.campaign,
       user:          systems.user,
       notifications: systems.notifications,
       sound:         systems.sound,
@@ -216,6 +219,7 @@ export class UIManager {
     eventBus.on('tutorial:complete',     () => this._hideTutorial());
     // Re-pin the ring whenever BuildingsUI replaces its innerHTML
     eventBus.on('buildings:rendered',    () => this._repositionRing());
+    eventBus.on('tutorial:retarget',     () => { if (this._tutStep) this._applySpotlight(this._tutStep); });
     document.getElementById('btn-tutorial-skip')?.addEventListener('click', () => {
       eventBus.emit('ui:click');
       this._tutorial?.skip();

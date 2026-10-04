@@ -14,6 +14,7 @@ import { ResourceManager }     from './systems/ResourceManager.js';
 import { BuildingManager }     from './systems/BuildingManager.js';
 import { UnitManager }         from './systems/UnitManager.js';
 import { CombatManager }       from './systems/CombatManager.js';
+import { CampaignManager }     from './systems/CampaignManager.js';
 import { NotificationManager } from './systems/NotificationManager.js';
 import { MailManager }         from './systems/MailManager.js';
 import { UserManager }         from './systems/UserManager.js';
@@ -73,6 +74,7 @@ inventoryManager.setResourceManager(resourceManager);
 const unitManager      = new UnitManager(resourceManager, buildingManager);
 unitManager.setHeroManager(heroManager);
 const combatManager    = new CombatManager(unitManager, userManager, resourceManager, heroManager, buildingManager);
+const campaignManager  = new CampaignManager(buildingManager);
 resourceManager.setHeroManager(heroManager);
 const mailManager      = new MailManager();
 const questManager     = new QuestManager(resourceManager, userManager);
@@ -138,6 +140,7 @@ engine.registerSystem(resourceManager);
 engine.registerSystem(buildingManager);
 engine.registerSystem(unitManager);
 engine.registerSystem(combatManager);
+engine.registerSystem(campaignManager);
 engine.registerSystem(techManager);
 engine.registerSystem(questManager);
 engine.registerSystem(mailManager);
@@ -162,6 +165,7 @@ function getGameState() {
     buildings:    buildingManager.serialize(),
     units:        unitManager.serialize(),
     combat:       combatManager.serialize(),
+    campaign:     campaignManager.serialize(),
     mail:         mailManager.serialize(),
     quests:       questManager.serialize(),
     tech:         techManager.serialize(),
@@ -190,6 +194,7 @@ function applyGameState(state) {
   buildingManager.deserialize(state.buildings);
   unitManager.deserialize(state.units);
   combatManager.deserialize(state.combat);
+  campaignManager.deserialize(state.campaign);
   mailManager.deserialize(state.mail);
   questManager.deserialize(state.quests);
   techManager.deserialize(state.tech);
@@ -446,6 +451,7 @@ function launchGame(authScreen, gameShell, externalState = null) {
     bm:           buildingManager,
     um:           unitManager,
     cm:           combatManager,
+    campaign:     campaignManager,
     mail:         mailManager,
     user:         userManager,
     quest:        questManager,
@@ -644,7 +650,7 @@ function launchGame(authScreen, gameShell, externalState = null) {
   window.game = {
     engine, resources: resourceManager, buildings: buildingManager,
     heroes: heroManager, inventory: inventoryManager, units: unitManager,
-    combat: combatManager, tech: techManager, mail: mailManager,
+    combat: combatManager, campaign: campaignManager, tech: techManager, mail: mailManager,
     market: marketManager, trader: traderManager, quests: questManager, user: userManager,
     save:       () => saveManager.save(getGameState()),
     load:       () => applyGameState(saveManager.load()),
