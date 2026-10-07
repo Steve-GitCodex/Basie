@@ -5,15 +5,53 @@
 > Keep it to current state: replace finished sections with a short summary — history lives in
 > git (`git log -p docs/40-active.md`) and decisions live in `docs/20-decisions/`.
 
-## Current state (2026-10-03)
+## Current state (2026-10-05)
 
 - Branch `Working_Branch`. The combat resolver is committed (`74cf629`) and the Trading Post (`8b37896`). **Uncommitted:** the
-  Battle tab campaign model + map below (new `js/systems/campaign/`, `CampaignManager`, `js/entities/data/campaign.js`,
-  `js/ui/combat/*`, `css/components/battle-*.css`, modified combat/unit/mail/tutorial/UI files, tests) plus the Buffs +
-  Inventory research/specs/plans (docs only). Tree is commit-ready.
-- Baseline: `npm test` **924/924**; `node scripts/check-comments.mjs` **12 violations, all pre-existing**;
-  boot / tutorial / combat / world / heroes / trading / dev-dashboard smokes PASS; dev-smoke PASS except the known
-  `dev-anchor-nudger` ("variantFile resolves the override-manifest key").
+  Battle tab slices 1+2 (campaign model + map: `js/systems/campaign/`, `CampaignManager`, `js/entities/data/campaign.js`,
+  `css/components/battle-*.css`) AND slices 3+4 (report events, `js/systems/combat/report/`, the battle scene in
+  `js/ui/combat/scene/`, `battle-{scene,field,results}.css`, new tests and `battle-scene-smoke`; deleted
+  `BattlePlayback`/`battleFlow`/`battleResultHtml`/`playbackSteps`), plus the Buffs + Inventory research/specs/plans (docs
+  only). Tree is commit-ready.
+- Baseline: `npm test` **1041/1041**; `node scripts/check-comments.mjs` **12 violations, all pre-existing**;
+  boot / tutorial / combat / battle-scene / world / heroes / trading / dev-dashboard smokes PASS; dev-smoke PASS except the
+  known `dev-anchor-nudger`.
+
+## Battle tab — playback + results (slices 3+4) — COMPLETE (2026-10-05)
+
+ADR 0037 (`docs/20-decisions/0037-battle-scene.md`), design `docs/10-design/battle-tab.md`, spec/plan
+`docs/superpowers/specs|plans/2026-10-04-battle-playback-results*` (left for Steve to delete once he's happy).
+
+- **What landed:** resolver rounds carry per-stack snapshots + ordered `events` (heal / skill edge / strike / heroStrike /
+  revive; replaces `triggered`, outcome-identical); pure report models in `js/systems/combat/report/` (timeline, moments +
+  turning point, round log, summary, defeat analysis, text); `awardBattleXP` returns per-hero results (`heroXp`);
+  `lastReport` gains `wavesReached`/`bossLeftPct`; full-screen battle scene in `js/ui/combat/scene/` on `--z-scene`
+  (rows facing rows, arrows, floats, hero bar, timeline with pause/step/scrub/1x/2x/Skip, round log, toggles) and results
+  (casualty layers, hero XP, why-lost with fix routing, last-attempt comparison, "Watch the turning point"). Old modal,
+  `BattlePlayback`, `playbackSteps`, `battleResultHtml`, `battleFlow` and the UIManager battle banner are deleted. New events
+  `battle:opening` / `battle:closed` / `battle:resultsShown` (victory/defeat sting moved there; story beats held during a battle).
+- **Tests:** unit 925 -> 1041 (new: battleTimeline/Moments/Summary, roundLog, defeatAnalysis, heroBarModel, sceneInputs,
+  resultsModel/Html/Actions; `playbackSteps.test.js` deleted with its module; `resolveBattle` triggered assertions rewritten
+  to events); `tests/browser/battle-scene-smoke.mjs` (+ `battleSceneSteps.mjs`) new; `combat-smoke` updated to the scene ids.
+- **Verification (2026-10-05, after final-review fixes):** npm **1048/1048**; check-comments **12** (pre-existing); combat-smoke
+  PASS x3 (Skip is now optional: a 1-round fight can auto-play to results first), battle-scene, tutorial, boot PASS;
+  dev-smoke fails only the known `dev-anchor-nudger`. Final-review fixes: one hero-kills definition (led-stack kills),
+  heal count `ceil`, `+N healed after the battle` note, defeat-comparison guard, `BattleField` moment timer cleared on close.
+- **Rulings (full list in ADR 0037):** never-led defeats show "Watch the fight" from frame 0; MVP pill hidden on defeat;
+  `roundLog(frame, report, moments = [])`; `hit.damage` = HP actually removed; one `sceneInputs` adapter; `commanderModel` 3
+  exports, `sceneToggles` 2; toggles default on (`basie_battle_toggles`); `train` fix opens Training for the main-damage stack's
+  trainer, `mix`/`rows` Barracks, `heroes` Hero Quarters.
+- **Deferred minors:** no test pins `strike.counterMult` or per-row `aoe_blast` events (`counterMult` is vs `targets[0]`);
+  `wavesReached` `?.i + 1 || 0` obscure, `poolOf` duplicated, `xpGained` reports the full award when capped mid-award; heal count
+  rounds to 0 on small heals, heal only on the defender side; roundLog repeats revive/heroKill on the moment line, no plurals
+  ("1 Soldiers"); stars from `report.dead` vs rules from layers (one source safer), "(25%)" shown on a 25.4% fail; `waveIndex`
+  guard repeated 4x in the report models; support card and story-hold release on a throwing attack have no automated test;
+  smoke writes `heroes._owned` directly and its turning-point check only matches the label; `pivotOf` treats a frame-0-only
+  defeat as never-led; phone timeline label "WAVE 2 · BOSS" was clipped (fixed in T9, re-check on devices);
+  `'survival_wave'` literal remains in `CombatManager.js` / `data/combat.js`.
+- **Notes for Steve:** deploy-time spoilers still fire outside the scene (Victory/Defeated toasts, announced via aria-live;
+  `levelUp`/`missionComplete` sounds) — backlogged. Old dev saves with `triggered` reports: reset the slot (no-legacy). CLAUDE.md
+  is stale (wiki map says the battle tab is not built) — not edited. Slices 1+2 and 3+4 are both uncommitted.
 
 ## Battle tab — campaign model + map (slices 1+2) — COMPLETE (2026-10-03)
 
@@ -51,9 +89,7 @@ ADR 0036 (`docs/20-decisions/0036-campaign-chapters.md`), design `docs/10-design
   `trailLayout` edge cases; `squadCommanders` imports `heroCombat`; slot-lock rule duplicated
   vs `BarracksUI`; squad-to-barracks mapping mismatch (`HeroManager.barracksIdForSquad` vs squad `barracksInstanceId`, backlog);
   fog label of a locked chapter overlaps its first node; legacy `.campaign-detail*` CSS in `grid.css`/`worldmap.css` unused.
-- **Slice-3 note:** the report's `triggered` lists every *active* trigger per round
-  (`wave_start`/`losing` repeat each round; round implied by nesting), not activations — decide the activation format
-  (`{ round, heroId, skillId }` edges) in the slice-3 spec.
+- **Slice-3 note (resolved):** the activation format became firing-edge `skill` events (ADR 0037).
 - **Notes for Steve:** CLAUDE.md is stale (manager count, wiki map says battle-tab "not built") - not edited. Old dev saves:
   reset the slot (no-legacy). Stage knobs (scale, elite bump, diamonds, round par) are placeholders for the balance pass.
   Fresh-save tutorial blocker: see KNOWN ISSUE above.
@@ -257,7 +293,7 @@ new-hero cues. The desktop queue sidebar overlapping the roster's right edge is 
 
 ## Next steps
 
-1. **Commit** (Steve), then play battles and the Trading Post to feel the new curve.
+1. **Commit** (Steve), then play battles (the new scene + results) and the Trading Post to feel the new curve.
 2. **Balance pass — DEFERRED by Steve 2026-10-02** (fine tuning; other areas need work first). Yardstick chosen:
    hand-authored reference squads per stage (data table derived from each stage's TH / barracks / tier gates) +
    a sim script checking target win/loss bands. Probe findings (40 seeds, infantry only, no heroes/tech): monster
@@ -271,19 +307,9 @@ new-hero cues. The desktop queue sidebar overlapping the roster's right edge is 
 4. **Hospital** (heals the wounded pool) when wanted. Open decision: `lossReduction` (Steel Armor, loss-cut skills) keeps no troops until wounded can heal; interim rule vs. hospital first (ADR 0034).
 5. Gather/march yield hero effect stays barred until the march balance pass.
 6. ~~Trading Post~~ done 2026-10-02 (ADR 0035).
-7. **Battle tab — PICK UP HERE next combat session.** Slices 1+2 (campaign model + map) done 2026-10-03, ADR 0036.
-   - **Next: slices 3 + 4 together, one spec → plan cycle (Steve, 2026-10-03)** — same flow as slices 1+2
-     (`docs/superpowers/specs/2026-10-03-battle-tab-campaign-design.md`). Design: `docs/10-design/battle-tab.md`
-     "Playback" + "Results"; mockup `mockups/battle-tab/battle-final.html` screens 2 and 3.
-     - Slice 3 — P1 battle-lines playback, replacing today's playback modal (`js/ui/combat/battleFlow.js`): rows facing
-       rows, strength bars, attack arrows, hero bar, key-moment banners, timeline (pause/step/scrub/1×/2×/Skip), round log.
-     - Slice 4 — results: victory/defeat screens, casualty layers, Commanders XP + level-ups, "Why you lost", last-attempt
-       comparison from `CampaignManager.getProgress(stageId).lastReport`; "Watch the turning point" jumps the replay, so
-       build playback tasks first within the plan.
-     - **First decision in the spec:** report rounds carry `triggered` = every *active* trigger that round (wave_start/losing
-       repeat each round), not activations — banners and "skills fired" need firing edges (`{ round, heroId, skillId }`);
-       decide the format first (`js/systems/combat/resolveBattle.js` `playRound`).
-   - Fresh-save tutorial blocker: **parked by Steve 2026-10-03** (see the KNOWN ISSUE above) — don't raise it in combat sessions.
-   - Parked combat items: balance pass (#2, incl. the new stage knobs in `js/entities/data/campaign.js`), hospital (#4),
-     squad↔barracks mapping mismatch, unused legacy campaign CSS in `worldmap.css`, fog label overlapping a node.
+7. **Battle tab redesign — COMPLETE** (slices 1+2 ADR 0036, slices 3+4 ADR 0037, 2026-10-05). Remaining combat items: the
+   balance pass (#2, incl. the stage knobs in `js/entities/data/campaign.js` and `HERO_STRIKE`), hospital (#4), the backlogged
+   deploy-time spoilers (Victory/Defeated toasts, `levelUp`/`missionComplete` sounds fire before the results reveal), and the
+   parked fresh-save tutorial blocker (see the KNOWN ISSUE above — don't raise it in combat sessions). Also parked:
+   squad↔barracks mapping mismatch, unused legacy campaign CSS in `worldmap.css`, fog label overlapping a node.
 8. **Buffs, then Inventory**: planned 2026-10-03 (see the PLANNED section above); plans in `docs/superpowers/plans/`.

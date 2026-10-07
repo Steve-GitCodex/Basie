@@ -66,3 +66,23 @@ test('troopsSent totals unit counts', async () => {
   assert.equal(troopsSent([{ count: 5 }, { count: 7 }, { count: 0 }]), 12);
   assert.equal(troopsSent([]), 0);
 });
+
+test('wavesReached and bossLeftPct read the last fought wave', async () => {
+  const { wavesReached, bossLeftPct } = await import('../../js/systems/combat/combatInputs.js');
+  const report = {
+    initial: { defender: [[{ hpPool: 100 }], [{ hpPool: 200 }]] },
+    waves: [
+      { rounds: [{ defender: [{ hpPool: 0 }] }] },
+      { rounds: [{ defender: [{ hpPool: 150 }] }, { defender: [{ hpPool: 50 }] }] },
+    ],
+  };
+  assert.equal(wavesReached(report), 2);
+  assert.equal(bossLeftPct(report), 25);
+});
+
+test('wavesReached is 0 and bossLeftPct 100 when nothing was fought', async () => {
+  const { wavesReached, bossLeftPct } = await import('../../js/systems/combat/combatInputs.js');
+  const report = { initial: { defender: [[{ hpPool: 100 }]] }, waves: [{ rounds: [] }] };
+  assert.equal(wavesReached(report), 0);
+  assert.equal(bossLeftPct(report), 100);
+});

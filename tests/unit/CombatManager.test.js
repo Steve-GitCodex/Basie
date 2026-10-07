@@ -7,6 +7,7 @@ import { SKILLS_CONFIG } from '../../js/entities/GAME_DATA.js';
 import { bucketTriggeredByEvent, sumTriggeredEffects } from '../../js/systems/hero/heroSkills.js';
 
 const SEED = 12345;
+const HERO_XP_MARKER = [{ heroId: 'marker' }];
 
 function entry(skillId, level = 1) {
   return { heroId: 'test_hero', skill: SKILLS_CONFIG[skillId], level };
@@ -49,7 +50,7 @@ function makeCombat(units) {
   };
   const heroManager = {
     getCombatBonuses: (squadId) => { bonusCalls.push(squadId); return neutralBonuses(); },
-    awardBattleXP: () => {},
+    awardBattleXP: () => HERO_XP_MARKER,
   };
   const userManager = { addXP: () => {}, setWaveHighScore: () => {} };
   const combat = new CombatManager(unitManager, userManager, {}, heroManager, null);
@@ -237,4 +238,29 @@ test('attacking a frozen generated stage does not mutate it', () => {
 test('getMonsterProgress reads the generated stage cap, matching attack', () => {
   const { combat } = makeCombat([unitEntry('infantry', 1, 5)]);
   assert.equal(combat.getMonsterProgress('ch1_s1').maxRewardedWins, 5);
+});
+
+test('attack result carries heroXp on victory and an empty list on defeat', () => {
+  const won = makeCombat([unitEntry('infantry', 1, 80)]).combat.attack('orc_warband', 'squad_1', { seed: SEED });
+  assert.equal(won.report.victory, true);
+  assert.equal(won.heroXp, HERO_XP_MARKER);
+
+  const lost = makeCombat([unitEntry('infantry', 1, 5)]).combat.attack('chaos_titan', 'squad_1', { seed: SEED });
+  assert.equal(lost.report.victory, false);
+  assert.deepEqual(lost.heroXp, []);
+});
+
+test('combat:victory and combat:defeat carry wavesReached and bossLeftPct', () => {
+  let won;
+  const wonSeen = recordEvents(['combat:victory'], () => {
+    won = makeCombat([unitEntry('infantry', 1, 80)]).combat.attack('orc_warband', 'squad_1', { seed: SEED });
+  });
+  assert.equal(wonSeen[0].data.wavesReached, won.report.waves.filter((w) => w.rounds.length > 0).length);
+  assert.equal(wonSeen[0].data.bossLeftPct, 0);
+
+  const lostSeen = recordEvents(['combat:defeat'], () => {
+    makeCombat([unitEntry('infantry', 1, 5)]).combat.attack('chaos_titan', 'squad_1', { seed: SEED });
+  });
+  assert.ok(lostSeen[0].data.wavesReached >= 1);
+  assert.ok(lostSeen[0].data.bossLeftPct > 0 && lostSeen[0].data.bossLeftPct <= 100);
 });

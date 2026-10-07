@@ -13,6 +13,8 @@
   opacity: 0.55;
 }
 
+body:has(.dev-dashboard__toggle) .timeline { padding-left: 56px; }
+
 .dev-dashboard__toggle:hover,
 .dev-dashboard__toggle--active {
   opacity: 1;

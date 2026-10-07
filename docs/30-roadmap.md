@@ -371,9 +371,11 @@ model retires entirely (interim anti-teleport guard dies with it).
 - [x] **Trading Post** (Shop + Market merge) — built 2026-10-02, ADR 0035. Design:
   `docs/10-design/trading-post.md` + mockups. UI part ≈ Hero Quarters redesign size; daily crate, Wandering
   Trader and the Exchange value table are new mechanics (save state + ADR).
-- [ ] **Battle tab redesign** — design `docs/10-design/battle-tab.md` + mockups. **Slices 1+2 done 2026-10-03** (ADR 0036:
-  chapter/elite stage data, stars, last-report-per-stage, hero ids in the combat report, A1 trail, stage panel + Commanders,
-  row cap 2). **Open:** slice 3 (P1 battle-lines playback with hero bar + timeline), slice 4 (results with hero XP/level-ups).
+- [x] **Battle tab redesign** — done 2026-10-05. Design `docs/10-design/battle-tab.md` + mockups. Slices 1+2 (ADR 0036: chapters, elites, stars,
+  last-report-per-stage, A1 trail, stage panel + Commanders, row cap 2); slices 3+4 (ADR 0037: report events, full-screen battle scene,
+  results with hero XP, why-lost, comparison).
+- [ ] **Battle deploy-time spoilers** — NotificationManager Victory/Defeated toasts (announced via aria-live under the opaque scene) and
+  the `levelUp` / `missionComplete` sounds fire at deploy, before the results reveal. Hold them like story beats during a battle.
 - [ ] **Fresh-save tutorial blocker (pre-existing; PARKED by Steve 2026-10-03):** the `train` step only fills the reserve, so no
   squad exists (or it is empty) at the `combat` step — Deploy is disabled / "Empty Squad!" and the player can only Skip.
   Proposed: a `squad` tutorial step between `train` and `combat` that highlights the Barracks tile and waits on a new

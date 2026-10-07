@@ -5,7 +5,9 @@ import { CampaignTrail } from '../combat/CampaignTrail.js';
 import { StagePanel } from '../combat/StagePanel.js';
 import { SurvivalPane } from '../combat/SurvivalPane.js';
 import { BattleLogPane } from '../combat/BattleLogPane.js';
-import { startBattle } from '../combat/battleFlow.js';
+import { BattleScene } from '../combat/scene/BattleScene.js';
+import { confirmDeploy } from '../combat/scene/readinessWarning.js';
+import { SURVIVAL_STAGE_ID } from '../../systems/campaign/campaignStages.js';
 
 const MODE_BANNERS = {
   survival: `<div class="sandbox-banner" style="background:var(--clr-danger)22;border:1px solid var(--clr-danger)44;color:var(--clr-danger)">${icon('lightning', 'icon--danger')} <strong>Survival Mode</strong> — Endless waves, escalating difficulty</div>`,
@@ -40,9 +42,13 @@ export class CombatUI {
       onDeploy: (stageId, squadId) => this._deploy(stageId, squadId),
     });
     this._survival = new SurvivalPane(panes.survival, this._s, {
-      onFight: squadId => this._deploy('survival_wave', squadId),
+      onFight: squadId => this._deploy(SURVIVAL_STAGE_ID, squadId),
     });
     this._log = new BattleLogPane(view.querySelector('#battle-log'));
+    this._scene = new BattleScene(document.getElementById('battle-scene'), this._s, {
+      onClose: outcome => this._afterBattle(outcome),
+      onNext: stageId => this._stagePanel.open(stageId),
+    });
     this._tabs = new CombatTabs(view.querySelector('.combat-tabs'), panes, { onShow: tab => this._onShowTab(tab) });
 
     new ResizeObserver(() => { if (this._visible) this._trail.renderIfResized(); })
@@ -93,13 +99,22 @@ export class CombatUI {
   }
 
   _deploy(stageId, squadId) {
-    startBattle({ systems: this._s, stageId, squadId, onClose: () => this._afterBattle() });
+    if (this._scene.isOpen) return;
+    confirmDeploy(this._s, { stageId, squadId, onProceed: () => this._scene.open({ stageId, squadId }) });
   }
 
-  _afterBattle() {
+  _afterBattle({ stageId, victory } = {}) {
     this._trail.patch();
+    if (!victory) this._shakeNode(stageId);
     this._survival.render();
     const openStage = this._stagePanel.stageId;
     if (openStage) this._stagePanel.open(openStage);
+  }
+
+  _shakeNode(stageId) {
+    const node = stageId && document.querySelector(`.campaign-node[data-stage-id="${stageId}"]`);
+    if (!node) return;
+    node.classList.add('defeat-shake');
+    node.addEventListener('animationend', () => node.classList.remove('defeat-shake'), { once: true });
   }
 }

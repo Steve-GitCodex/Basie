@@ -173,8 +173,7 @@ export class SoundManager {
     eventBus.on('building:completed',          () => this.complete());
     eventBus.on('building:started',            () => this.confirm());
     eventBus.on('unit:trained',                () => this.complete());
-    eventBus.on('combat:victory',              () => this.victory());
-    eventBus.on('combat:defeat',               () => this.defeat());
+    eventBus.on('battle:resultsShown',         ({ victory }) => (victory ? this.victory() : this.defeat()));
     eventBus.on('combat:started',              () => this.battle());
     eventBus.on('combat:marchResolved',        () => this.hit());
     eventBus.on('quest:completed',             () => this.missionComplete());

@@ -1,6 +1,6 @@
 import { COMBAT_RULES } from '../../entities/data/combatRules.js';
 import { createRng } from './seededRng.js';
-import { hitDamage, varianceMult } from './hitMath.js';
+import { hitDamage, varianceMult, counterMult } from './hitMath.js';
 import { livingInRow, frontRow, allocate, strikeRow } from './targeting.js';
 import { splitCasualties } from './casualties.js';
 import { sumTriggeredEffects, triggeredStatEntries } from '../hero/heroSkills.js';
@@ -30,41 +30,58 @@ function cloneAttacker(input) {
   };
 }
 
-function healDefenders(stacks) {
+function healDefenders(stacks, events) {
   for (const stack of stacks) {
     if (!isAlive(stack) || stack.ability?.kind !== 'heal') continue;
     const fullPool = stack.startCount * stack.hp;
+    const before = stack.hpPool;
     stack.hpPool = Math.min(fullPool, stack.hpPool + stack.ability.value * (fullPool - stack.hpPool));
     stack.count = Math.ceil(stack.hpPool / stack.hp);
+    const amount = stack.hpPool - before;
+    if (amount > 0) events.push({ kind: 'heal', stackId: stack.id, amount });
   }
 }
 
-function reviveDefenders(stacks) {
+function reviveDefenders(stacks, events) {
   for (const stack of stacks) {
     if (isAlive(stack) || stack.ability?.kind !== 'revive' || stack.revived) continue;
     stack.count = Math.round(stack.startCount * stack.ability.value);
     stack.hpPool = stack.count * stack.hp;
     stack.revived = true;
+    if (stack.count > 0) events.push({ kind: 'revive', stackId: stack.id, count: stack.count });
   }
 }
 
 function activeTriggers(battle, wave, round) {
   const { triggers } = battle.attacker;
-  const active = [...triggers.wave_start];
+  const tagged = (trigger, entries) => entries.map((entry) => ({ trigger, entry }));
+  const active = tagged('wave_start', triggers.wave_start);
   if (wave.isFirst) {
-    active.push(...triggers.battle_start.filter((entry) => round <= (entry.skill?.effect?.duration ?? 1)));
+    active.push(...tagged('battle_start', triggers.battle_start.filter((entry) => round <= (entry.skill?.effect?.duration ?? 1))));
   }
-  if (wave.isFinal) active.push(...triggers.final_wave);
-  if (totalHp(battle.attacker.stacks) < LOSING_THRESHOLD * battle.initialHp) active.push(...triggers.losing);
+  if (wave.isFinal) active.push(...tagged('final_wave', triggers.final_wave));
+  if (totalHp(battle.attacker.stacks) < LOSING_THRESHOLD * battle.initialHp) active.push(...tagged('losing', triggers.losing));
   return active;
 }
 
-function planStackStrikes(stacks, counts, variances, { attackScale, multFor, rowsFor, structure }) {
+function skillEdges(battle, wave, active, events) {
+  for (const { trigger, entry } of active) {
+    const edge = `${entry.heroId}:${entry.skill.id}:${trigger}`;
+    const key = trigger === 'wave_start' ? `${edge}:${wave.index}` : edge;
+    if (battle.firedSkills.has(key)) continue;
+    battle.firedSkills.add(key);
+    events.push({ kind: 'skill', heroId: entry.heroId, skillId: entry.skill.id, trigger });
+  }
+}
+
+function planStackStrikes(stacks, counts, variances, { side, attackScale, multFor, rowsFor, structure }) {
   const plans = [];
   stacks.forEach((stack, i) => {
     if (counts[i] <= 0) return;
     for (const targets of rowsFor(stack)) {
       plans.push({
+        side,
+        fromId: stack.id,
         attacker: { count: counts[i], attack: stack.attack * attackScale, type: stack.type },
         mult: multFor(variances[i]),
         targets,
@@ -89,12 +106,28 @@ function planHeroStrike(striker, variance, attackMult, targets) {
   };
 }
 
+function strikeEvent(plan) {
+  const { hits } = strikeRow(plan);
+  const [first] = plan.targets;
+  return {
+    kind: 'strike',
+    side: plan.side,
+    fromId: plan.fromId,
+    row: first.row,
+    counterMult: counterMult(plan.attacker.type, first.type, { structure: plan.structure }),
+    hits,
+  };
+}
+
 function playRound(battle, wave, round) {
   const { attacker, rng, structure } = battle;
   const defenders = wave.stacks;
-  healDefenders(defenders);
+  const events = [];
+  healDefenders(defenders, events);
 
-  const active = activeTriggers(battle, wave, round);
+  const tagged = activeTriggers(battle, wave, round);
+  skillEdges(battle, wave, tagged, events);
+  const active = tagged.map(({ entry }) => entry);
   const fx = sumTriggeredEffects(active);
   mergeMaxBySource(battle.triggeredLoss, triggeredStatEntries(active, 'lossReduction'));
   mergeMaxBySource(battle.triggeredHeal, triggeredStatEntries(active, 'postBattleHeal'));
@@ -116,7 +149,7 @@ function playRound(battle, wave, round) {
 
   const outgoing = defenderTargets
     ? planStackStrikes(attacker.stacks, attackerCounts, attackerVariance, {
-      attackScale: attackMult * opening, multFor: (v) => v, rowsFor: () => [defenderTargets], structure,
+      side: 'attacker', attackScale: attackMult * opening, multFor: (v) => v, rowsFor: () => [defenderTargets], structure,
     })
     : [];
   const heroStrikes = defenderTargets
@@ -124,6 +157,7 @@ function playRound(battle, wave, round) {
     : [];
   const incoming = attackerTargets
     ? planStackStrikes(defenders, defenderCounts, defenderVariance, {
+      side: 'defender',
       attackScale: 1,
       multFor: (v) => v * intake,
       rowsFor: (stack) => (stack.ability?.kind === 'aoe_blast' ? attackerRows : [attackerTargets]),
@@ -131,13 +165,16 @@ function playRound(battle, wave, round) {
     })
     : [];
 
-  for (const plan of outgoing) strikeRow(plan);
-  const heroHits = heroStrikes.map(({ strike, ...hit }) => ({ ...hit, kills: strikeRow(strike) }));
-  for (const plan of incoming) strikeRow(plan);
-  reviveDefenders(defenders);
+  for (const plan of outgoing) events.push(strikeEvent(plan));
+  const heroHits = heroStrikes.map(({ strike, ...hit }) => {
+    const { kills, hits } = strikeRow(strike);
+    events.push({ kind: 'heroStrike', heroId: hit.heroId, hits });
+    return { ...hit, kills };
+  });
+  for (const plan of incoming) events.push(strikeEvent(plan));
+  reviveDefenders(defenders, events);
 
-  const triggered = active.map((entry) => ({ heroId: entry.heroId, skillId: entry.skill.id }));
-  return { attacker: snapshotOf(attacker.stacks), defender: snapshotOf(defenders), heroHits, triggered };
+  return { round, attacker: snapshotOf(attacker.stacks), defender: snapshotOf(defenders), heroHits, events };
 }
 
 function fightWave(battle, wave, rounds) {
@@ -173,12 +210,13 @@ export function resolveBattle(attackerInput, defenderInput, { seed, rulesVersion
     initialHp: totalHp(attacker.stacks),
     triggeredLoss: new Map(),
     triggeredHeal: new Map(),
+    firedSkills: new Set(),
   };
 
   let cleared = true;
   for (const index of fought) {
     if (!cleared) break;
-    const wave = { stacks: waves[index].stacks, isFirst: index === fought[0], isFinal: index === fought.at(-1) };
+    const wave = { index, stacks: waves[index].stacks, isFirst: index === fought[0], isFinal: index === fought.at(-1) };
     cleared = fightWave(battle, wave, reportWaves[index].rounds);
   }
   const victory = cleared && anyAlive(attacker.stacks);

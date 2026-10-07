@@ -2,6 +2,8 @@ import { CAMPAIGNS_CONFIG, MONSTERS_CONFIG } from '../../entities/data/combat.js
 import { CAMPAIGN_CHAPTER_KNOBS, CAMPAIGN_CHAPTER_OVERRIDES } from '../../entities/data/campaign.js';
 import { buildCampaignStages } from './stageGenerator.js';
 
+export const SURVIVAL_STAGE_ID = 'survival_wave';
+
 function deepFreeze(value) {
   if (value && typeof value === 'object') {
     Object.freeze(value);

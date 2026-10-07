@@ -15,7 +15,7 @@ function setup() {
 }
 
 const win = (stageId, dead = {}, rounds = 1) =>
-  eventBus.emit('combat:victory', { monsterId: 'x', stageId, rewards: {}, dead, wounded: {}, rounds, sent: 100, enemyLeftPct: 0 });
+  eventBus.emit('combat:victory', { monsterId: 'x', stageId, rewards: {}, dead, wounded: {}, rounds, sent: 100, enemyLeftPct: 0, wavesReached: 1, bossLeftPct: 0 });
 
 test('victory records stars and keeps the best', () => {
   const { campaign, stop } = setup();
@@ -46,11 +46,11 @@ test('first victory emits campaign:updated once, after firstClear', () => {
 
 test('defeat stores lastReport but no stars', () => {
   const { campaign, stop } = setup();
-  eventBus.emit('combat:defeat', { monsterId: 'x', stageId: STAGE.id, dead: { a: 2, b: 3 }, wounded: { a: 1 }, rounds: 5, sent: 50, enemyLeftPct: 40 });
+  eventBus.emit('combat:defeat', { monsterId: 'x', stageId: STAGE.id, dead: { a: 2, b: 3 }, wounded: { a: 1 }, rounds: 5, sent: 50, enemyLeftPct: 40, wavesReached: 2, bossLeftPct: 30 });
   const p = campaign.getProgress(STAGE.id);
   assert.equal(p.bestStars, 0);
   assert.equal(p.firstCleared, false);
-  assert.deepEqual(p.lastReport, { victory: false, rounds: 5, sent: 50, dead: 5, wounded: 1, enemyLeftPct: 40, at: 1234 });
+  assert.deepEqual(p.lastReport, { victory: false, rounds: 5, sent: 50, dead: 5, wounded: 1, enemyLeftPct: 40, wavesReached: 2, bossLeftPct: 30, at: 1234 });
   stop();
 });
 
@@ -111,4 +111,30 @@ test('destroy unsubscribes from combat events', () => {
   campaign.destroy();
   win(STAGE.id);
   assert.equal(campaign.getProgress(STAGE.id).bestStars, 0);
+});
+
+test('lastReport stores wavesReached and bossLeftPct', () => {
+  const { campaign, stop } = setup();
+  eventBus.emit('combat:defeat', {
+    monsterId: 'x', stageId: STAGE.id, dead: {}, wounded: {}, rounds: 3, sent: 100, enemyLeftPct: 40,
+    wavesReached: 2, bossLeftPct: 35,
+  });
+  const report = campaign.getProgress(STAGE.id).lastReport;
+  assert.equal(report.wavesReached, 2);
+  assert.equal(report.bossLeftPct, 35);
+  stop();
+});
+
+test('deserialize keeps wavesReached and bossLeftPct', () => {
+  const { campaign, stop } = setup();
+  eventBus.emit('combat:defeat', {
+    monsterId: 'x', stageId: STAGE.id, dead: {}, wounded: {}, rounds: 3, sent: 100, enemyLeftPct: 40,
+    wavesReached: 2, bossLeftPct: 35,
+  });
+  const data = JSON.parse(JSON.stringify(campaign.serialize()));
+  campaign.deserialize(data);
+  const report = campaign.getProgress(STAGE.id).lastReport;
+  assert.equal(report.wavesReached, 2);
+  assert.equal(report.bossLeftPct, 35);
+  stop();
 });

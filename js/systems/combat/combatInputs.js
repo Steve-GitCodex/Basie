@@ -50,6 +50,20 @@ export function enemyLeftPct(report) {
   return initial > 0 ? Math.round((remaining / initial) * 100) : 0;
 }
 
+const foughtWaves = (report) => report.waves.map((wave, i) => ({ wave, i })).filter(({ wave }) => wave.rounds.length > 0);
+
+export function wavesReached(report) {
+  return foughtWaves(report).at(-1)?.i + 1 || 0;
+}
+
+export function bossLeftPct(report) {
+  const last = foughtWaves(report).at(-1);
+  if (!last) return 100;
+  const poolOf = (stacks) => stacks.reduce((sum, stack) => sum + stack.hpPool, 0);
+  const start = poolOf(report.initial.defender[last.i]);
+  return start > 0 ? Math.round((poolOf(last.wave.rounds.at(-1).defender) / start) * 100) : 0;
+}
+
 export function troopsSent(units) {
   return units.reduce((sum, unit) => sum + unit.count, 0);
 }

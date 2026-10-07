@@ -49,9 +49,9 @@ await withPage(async ({ page, errors, origin }) => {
   await page.evaluate(() => document.querySelector('#btn-campaign-attack').click());
   await page.waitForTimeout(500);
   if (await page.locator('#btn-warn-proceed').count()) await page.locator('#btn-warn-proceed').click();
-  await page.waitForSelector('#btn-battle-skip', { timeout: 5000 });
-  await page.locator('#btn-battle-skip').click();
-  const resultShown = await page.waitForSelector('#battle-result-area .battle-result', { timeout: 10_000 }).then(() => true, () => false);
+  await page.waitForSelector('#btn-battle-skip:visible, #battle-results:not(.hidden)', { timeout: 5000 });
+  if (await page.locator('#btn-battle-skip').isVisible()) await page.locator('#btn-battle-skip').click();
+  const resultShown = await page.waitForSelector('#battle-results:not(.hidden)', { timeout: 10_000 }).then(() => true, () => false);
   await page.waitForSelector('#btn-battle-close', { timeout: 10_000 });
 
   const after = await page.evaluate((id) => {
@@ -64,7 +64,7 @@ await withPage(async ({ page, errors, origin }) => {
       woundedPool: sum(wounded), hasSeed: entry?.seed != null, hasRules: entry?.rulesVersion != null,
     };
   }, setup.squadId);
-  const resultText = await page.locator('#battle-result-area').textContent();
+  const resultText = await page.locator('#battle-results').textContent();
 
   report('combat', [
     { label: 'squad slot 0 seeded with units', ok: setup.ok && before === 30 },
@@ -276,8 +276,8 @@ await withPage(async ({ page, errors, origin }) => {
   await page.evaluate(() => document.querySelector('#btn-campaign-attack').click());
   await page.waitForTimeout(500);
   if (await page.locator('#btn-warn-proceed').count()) await page.locator('#btn-warn-proceed').click();
-  await page.waitForSelector('#btn-battle-skip', { timeout: 5000 });
-  await page.locator('#btn-battle-skip').click();
+  await page.waitForSelector('#btn-battle-skip:visible, #battle-results:not(.hidden)', { timeout: 5000 });
+  if (await page.locator('#btn-battle-skip').isVisible()) await page.locator('#btn-battle-skip').click();
   await page.waitForSelector('#btn-battle-close', { timeout: 10_000 });
   await page.locator('#btn-battle-close').click();
   await page.waitForTimeout(800);

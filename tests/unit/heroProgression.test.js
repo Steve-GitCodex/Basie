@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { HeroManager } from '../../js/systems/HeroManager.js';
-import { INVENTORY_ITEMS } from '../../js/entities/GAME_DATA.js';
+import { INVENTORY_ITEMS, HEROES_CONFIG, SKILLS_CONFIG } from '../../js/entities/GAME_DATA.js';
 
 function stubRM() {
   return { canAfford: () => true, spend() {}, add() {}, getSnapshot: () => ({}) };
@@ -173,4 +173,47 @@ test('skill level reaches effectiveStats through the real level-up path', () => 
 
   assert.ok(hero.effectiveStats.attack > before,
     'buying a skill level must be visible in the stats the roster UI reads');
+});
+
+test('awardBattleXP returns per-hero gain and level change', () => {
+  const m = makeManager({ heroquartersLevel: 10 });
+  m._recruitHero('warlord');
+  m.assignHeroToBuilding('warlord', 'barracks_0');
+  const [row] = m.awardBattleXP(1500, 'squad_1');
+  const hero = m._owned.get('warlord');
+  assert.equal(row.heroId, 'warlord');
+  assert.equal(row.xpGained, 1500);
+  assert.equal(row.levelBefore, 1);
+  assert.equal(row.levelAfter, hero.level);
+  assert.ok(hero.level >= 5);
+  assert.equal(row.xpPct, Math.round((hero.xp / hero.xpToNext) * 100));
+  const expected = HEROES_CONFIG.warlord.skills.filter((id) => {
+    const lv = SKILLS_CONFIG[id].unlockLevel;
+    return lv > 1 && lv <= hero.level;
+  });
+  assert.ok(expected.length > 0);
+  assert.deepEqual(row.unlockedSkills, expected);
+});
+
+test('capped hero reports zero gain', () => {
+  const m = makeManager({ heroquartersLevel: 1 });
+  m._recruitHero('warlord');
+  m.assignHeroToBuilding('warlord', 'barracks_0');
+  const hero = m._owned.get('warlord');
+  hero.level = m._progression.levelCap();
+  const [row] = m.awardBattleXP(500, 'squad_1');
+  assert.equal(row.xpGained, 0);
+  assert.equal(row.levelBefore, row.levelAfter);
+  assert.equal(row.xpPct, 100);
+  assert.deepEqual(row.unlockedSkills, []);
+});
+
+test('heroes outside the squad barracks are not in the awardBattleXP result', () => {
+  const m = makeManager({ heroquartersLevel: 10 });
+  m._recruitHero('warlord');
+  m._recruitHero('paladin');
+  m.assignHeroToBuilding('warlord', 'barracks_0');
+  m.assignHeroToBuilding('paladin', 'barracks_1');
+  const rows = m.awardBattleXP(500, 'squad_1');
+  assert.deepEqual(rows.map((r) => r.heroId), ['warlord']);
 });

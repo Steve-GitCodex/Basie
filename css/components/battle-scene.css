@@ -1,0 +1,322 @@
+.battle-scene {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-scene);
+  display: flex;
+  flex-direction: column;
+  background: var(--clr-bg-base);
+  color: var(--clr-text-primary);
+  font-family: var(--font-body);
+}
+
+.battle-scene__top {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--clr-border);
+  background: linear-gradient(var(--clr-bg-surface), var(--clr-bg-base));
+}
+
+.battle-scene__title {
+  font: 700 15px var(--font-heading);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.battle-scene__round {
+  font: 700 11px var(--font-heading);
+  letter-spacing: 0.08em;
+  color: var(--clr-text-secondary);
+}
+
+.battle-scene__strength {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font: 700 11px var(--font-heading);
+  letter-spacing: 0.06em;
+}
+
+.battle-scene__pct--you { color: var(--clr-success); }
+.battle-scene__pct--foe { color: var(--clr-danger); margin-left: var(--space-2); }
+
+.battle-scene__bar {
+  width: 110px;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--clr-bg-panel);
+}
+
+.battle-scene__bar i {
+  display: block;
+  height: 100%;
+  background: var(--clr-success);
+  transition: width var(--transition-base);
+}
+
+.battle-scene__bar--foe i { background: var(--clr-danger); }
+
+.battle-scene__toggles {
+  margin-left: auto;
+  display: flex;
+  gap: var(--space-2);
+}
+
+.scene-toggles__btn {
+  padding: 2px 8px;
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--clr-text-muted);
+  font: 600 11px var(--font-body);
+  cursor: pointer;
+}
+
+.scene-toggles__btn[aria-pressed="true"] { color: var(--clr-text-primary); border-color: var(--clr-border-light); }
+
+.battle-scene--hide-arrows .bf__arrows,
+.battle-scene--hide-numbers .bf-float,
+.battle-scene--hide-numbers .bf-stack__delta,
+.battle-scene--hide-log .battle-scene__log { display: none; }
+
+.battle-scene__stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.battle-scene__field { flex: 1; }
+
+.battle-scene__heroes:empty,
+.battle-scene__log:empty,
+.battle-scene__toggles:empty { display: none; }
+
+.hero-bar {
+  flex: none;
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5) var(--space-2);
+  border-top: 1px solid var(--clr-border);
+  background: linear-gradient(var(--clr-bg-surface), var(--clr-bg-base));
+}
+
+.hero-bar__card {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 10px;
+  border: 1px solid var(--clr-border);
+  border-radius: 6px;
+  background: var(--clr-bg-elevated);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.hero-bar__card--firing {
+  border-color: var(--clr-primary);
+  box-shadow: 0 0 0 1px var(--clr-primary), 0 0 18px hsla(32, 90%, 55%, 0.35);
+}
+
+.hero-bar__card--support { flex: 0.7; opacity: 0.55; }
+.hero-bar__portrait { flex: none; width: 36px; height: 36px; font-size: 18px; }
+.hero-bar__body { min-width: 0; }
+
+.hero-bar__name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-sm);
+}
+
+.hero-bar__role { color: var(--clr-text-muted); font-size: var(--text-xs); }
+
+.hero-bar__skills {
+  display: flex;
+  gap: 4px;
+  margin-top: 3px;
+}
+
+.hero-bar__skill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--clr-border-light);
+  border-radius: 4px;
+  background: var(--clr-bg-panel);
+  font-size: 11px;
+}
+
+.hero-bar__skill.is-firing { border-color: var(--clr-primary); box-shadow: 0 0 8px hsla(32, 90%, 55%, 0.6); }
+.hero-bar__skill.is-used { opacity: 0.3; }
+
+.hero-bar__kills {
+  margin-left: auto;
+  text-align: right;
+  font: 700 15px var(--font-heading);
+}
+
+.hero-bar__kills small {
+  display: block;
+  font: 700 9px var(--font-heading);
+  letter-spacing: 0.1em;
+  color: var(--clr-text-muted);
+}
+
+.round-log {
+  flex: none;
+  padding: 7px var(--space-5) 9px;
+  border-top: 1px solid var(--clr-border);
+  color: var(--clr-text-secondary);
+  font-size: 11.5px;
+  line-height: 1.65;
+}
+
+.round-log--empty { display: none; }
+.round-log__line { margin: 0; }
+
+.battle-scene--results .battle-scene__stage,
+.battle-scene--results .timeline { display: none; }
+
+.battle-scene__results {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-5);
+}
+
+.timeline {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-5);
+  padding-bottom: calc(var(--space-2) + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--clr-border);
+  background: var(--clr-bg-surface);
+}
+
+.timeline__ctrl {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.timeline__btn {
+  min-width: 32px;
+  height: 28px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-sm);
+  background: var(--clr-bg-elevated);
+  color: var(--clr-text-secondary);
+  font: 700 12px var(--font-heading);
+  cursor: pointer;
+}
+
+.timeline__btn:hover { color: var(--clr-text-primary); border-color: var(--clr-border-light); }
+.timeline__btn--play,
+.timeline__btn[aria-pressed="true"] { color: var(--clr-text-primary); border-color: var(--clr-primary); }
+.timeline__btn--skip { letter-spacing: 0.06em; }
+
+.timeline__track {
+  position: relative;
+  flex: 1;
+  height: 34px;
+  margin: 0 var(--space-3);
+  cursor: pointer;
+  touch-action: none;
+}
+
+.timeline__rail,
+.timeline__done {
+  position: absolute;
+  top: 15px;
+  height: 4px;
+  border-radius: 2px;
+}
+
+.timeline__rail { left: 0; right: 0; background: var(--clr-bg-panel); }
+.timeline__done { left: 0; background: var(--clr-primary); }
+
+.timeline__knob {
+  position: absolute;
+  top: 9px;
+  width: 16px;
+  height: 16px;
+  margin-left: -8px;
+  border: 3px solid var(--clr-primary);
+  border-radius: 50%;
+  background: var(--clr-text-primary);
+  pointer-events: none;
+}
+
+.timeline__wave-marker,
+.timeline__moment {
+  position: absolute;
+  transform: translateX(-50%);
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.timeline__wave-marker {
+  top: 22px;
+  font: 700 9px var(--font-heading);
+  letter-spacing: 0.08em;
+  color: var(--clr-text-muted);
+}
+
+.timeline__wave-marker::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -14px;
+  width: 2px;
+  height: 10px;
+  background: var(--clr-border-light);
+}
+
+.timeline__wave-marker:hover { color: var(--clr-text-primary); }
+.timeline__wave-marker--end { transform: translateX(calc(-100% + 3px)); }
+.timeline__wave-marker--end::before { left: auto; right: 2px; }
+
+.timeline__moment {
+  top: -2px;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--clr-warning);
+}
+
+.timeline__count {
+  font: 700 11px var(--font-heading);
+  letter-spacing: 0.06em;
+  color: var(--clr-text-secondary);
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .battle-scene__top { padding: var(--space-2) var(--space-3); gap: var(--space-1) var(--space-3); }
+  .battle-scene__title { flex-basis: 100%; }
+  .battle-scene__bar { width: 56px; }
+  .timeline { flex-wrap: wrap; gap: var(--space-2); padding: var(--space-2) var(--space-3); }
+  .timeline__track { order: -1; flex-basis: 100%; margin: 0 var(--space-2); }
+  .timeline__count { margin-left: auto; }
+  .battle-scene__results { padding: var(--space-3); }
+  .hero-bar { overflow-x: auto; padding: var(--space-2) var(--space-3); gap: var(--space-2); scroll-snap-type: x proximity; }
+  .hero-bar__card { flex: 0 0 auto; min-width: 150px; scroll-snap-align: start; }
+  .hero-bar__card--support { flex: 0 0 auto; min-width: 110px; }
+  .round-log { padding: var(--space-1) var(--space-3) var(--space-2); }
+  .round-log__line { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .round-log__line ~ .round-log__line { display: none; }
+}

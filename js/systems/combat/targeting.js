@@ -29,21 +29,26 @@ export function applyDamage(stack, damage) {
 }
 
 export function strikeRow({ attacker, mult, targets, structure }) {
-  let kills = 0;
-  let overflow = 0;
+  const hits = new Map();
+  const credit = (target, damage) => {
+    const hit = hits.get(target) ?? { targetId: target.id, damage: 0, kills: 0 };
+    hit.damage += Math.min(damage, target.hpPool);
+    const result = applyDamage(target, damage);
+    hit.kills += result.kills;
+    hits.set(target, hit);
+    return result.overflow;
+  };
   const shares = allocate(attacker.count, targets);
+  let overflow = 0;
   targets.forEach((target, i) => {
     const perHit = hitDamage(attacker.attack, target.defense) * counterMult(attacker.type, target.type, { structure });
-    const result = applyDamage(target, shares[i] * perHit * mult);
-    kills += result.kills;
-    overflow += result.overflow;
+    overflow += credit(target, shares[i] * perHit * mult);
   });
   const survivors = targets.filter(isAlive);
   if (overflow > 0 && survivors.length > 0) {
     const spill = allocate(overflow, survivors);
-    survivors.forEach((target, i) => {
-      kills += applyDamage(target, spill[i]).kills;
-    });
+    survivors.forEach((target, i) => credit(target, spill[i]));
   }
-  return kills;
+  const merged = [...hits.values()];
+  return { kills: merged.reduce((sum, hit) => sum + hit.kills, 0), hits: merged };
 }

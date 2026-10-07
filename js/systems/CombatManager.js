@@ -7,6 +7,7 @@ import { COMBAT_RULES } from '../entities/data/combatRules.js';
 import { resolveBattle } from './combat/resolveBattle.js';
 import {
   battleSides, survivalMonster, squadLosses, wavesCleared, summarizeEstimate, enemyLeftPct, troopsSent,
+  wavesReached, bossLeftPct,
 } from './combat/combatInputs.js';
 import { stageById } from './campaign/campaignStages.js';
 
@@ -61,7 +62,10 @@ export class CombatManager {
 
     const report = this._fight(squadId, monster, { modifier, seed });
     const { dead, wounded, victory } = report;
-    const outcome = { rounds: report.roundsTotal, sent, enemyLeftPct: enemyLeftPct(report) };
+    const outcome = {
+      rounds: report.roundsTotal, sent, enemyLeftPct: enemyLeftPct(report),
+      wavesReached: wavesReached(report), bossLeftPct: bossLeftPct(report),
+    };
 
     const victoryCount = this._victoryCounts[monsterId] ?? 0;
     const maxRewarded  = monster.maxRewardedWins ?? 999;
@@ -90,10 +94,11 @@ export class CombatManager {
 
     this._applyCasualties(squadId, report);
 
+    let heroXp = [];
     if (victory) {
       if (!isSurvival) this._victoryCounts[monsterId] = victoryCount + 1;
       this._user.addXP(rewards.xp ?? 0);
-      this._hm.awardBattleXP(Math.floor((monster.rewards.xp ?? 100) * 0.5), squadId);
+      heroXp = this._hm.awardBattleXP(Math.floor((monster.rewards.xp ?? 100) * 0.5), squadId) ?? [];
       eventBus.emit('combat:victory', {
         monsterId, ...stageField, rewards, dead, wounded, reducedReward: isReduced, ...outcome,
       });
@@ -104,7 +109,7 @@ export class CombatManager {
     }
 
     eventBus.emit('combat:logUpdated', this._battleLog);
-    return { success: true, report, rewards, reducedReward: isReduced, modifier };
+    return { success: true, report, rewards, reducedReward: isReduced, modifier, heroXp };
   }
 
   /** Loot returns to MarchManager; emitting combat:victory here would double-grant via MailManager. */

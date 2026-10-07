@@ -49,7 +49,7 @@ test('applyDamage reports overflow beyond the pool', () => {
 test('spill never produces negative counts', () => {
   const targets = [stack({ id: 'a' }), stack({ id: 'b', tier: 2 })];
   const attacker = { count: 1e9, attack: 1000, type: 'infantry' };
-  const kills = strikeRow({ attacker, mult: 1, targets, structure: false });
+  const { kills } = strikeRow({ attacker, mult: 1, targets, structure: false });
   for (const t of targets) {
     assert.equal(t.count, 0);
     assert.equal(t.hpPool, 0);
@@ -62,8 +62,31 @@ test('overflow from a wiped stack spills onto the survivor', () => {
   const weak = stack({ id: 'a', count: 1, hpPool: 100, tier: 1 });
   const big = stack({ id: 'b', count: 100, hpPool: 10000, tier: 10 });
   const attacker = { count: 1000, attack: 100, type: 'infantry' };
-  const kills = strikeRow({ attacker, mult: 1, targets: [weak, big], structure: false });
+  const { kills } = strikeRow({ attacker, mult: 1, targets: [weak, big], structure: false });
   assert.equal(weak.count, 0);
   assert.ok(big.hpPool < 10000);
   assert.ok(kills >= 1);
+});
+
+test('strikeRow returns per-target hits whose kills sum to kills', () => {
+  const targets = [stack({ id: 'a' }), stack({ id: 'b', tier: 3 })];
+  const poolBefore = targets.reduce((sum, t) => sum + t.hpPool, 0);
+  const { kills, hits } = strikeRow({ attacker: { count: 20, attack: 50, type: 'infantry' }, mult: 1, targets, structure: false });
+  assert.deepEqual(hits.map((h) => h.targetId), ['a', 'b']);
+  assert.ok(kills > 0);
+  assert.equal(hits.reduce((sum, h) => sum + h.kills, 0), kills);
+  const poolAfter = targets.reduce((sum, t) => sum + t.hpPool, 0);
+  assert.ok(Math.abs(hits.reduce((sum, h) => sum + h.damage, 0) - (poolBefore - poolAfter)) < 1e-6);
+});
+
+test('overflow spill is credited to the survivor\'s hit', () => {
+  const weak = stack({ id: 'a', count: 1, hpPool: 100, tier: 1 });
+  const big = stack({ id: 'b', count: 100, hpPool: 10000, tier: 10 });
+  const { kills, hits } = strikeRow({ attacker: { count: 1000, attack: 100, type: 'infantry' }, mult: 1, targets: [weak, big], structure: false });
+  const hitOn = (id) => hits.find((h) => h.targetId === id);
+  assert.equal(hits.length, 2);
+  assert.deepEqual(hitOn('a'), { targetId: 'a', damage: 100, kills: 1 });
+  assert.ok(Math.abs(hitOn('b').damage - (10000 - big.hpPool)) < 1e-6);
+  assert.equal(hitOn('b').kills, 100 - big.count);
+  assert.equal(hitOn('a').kills + hitOn('b').kills, kills);
 });

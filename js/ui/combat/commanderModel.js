@@ -17,7 +17,7 @@ function heroEntry(hero) {
   };
 }
 
-function slotsFor({ um, bm }, squadId, fallbackBarracksId) {
+export function commanderSlots({ um, bm }, squadId, fallbackBarracksId) {
   const slotCfgs = BUILDINGS_CONFIG.barracks?.squadSlots ?? [];
   const barracksId = um.getSquad(squadId)?.barracksInstanceId ?? fallbackBarracksId;
   const barracksLevel = bm?.getInstanceLevelOf?.(barracksId) ?? 1;
@@ -34,14 +34,22 @@ function slotsFor({ um, bm }, squadId, fallbackBarracksId) {
   });
 }
 
-export function commanderModel(systems, squadId) {
-  const { heroes } = systems;
+export function placedHeroes({ heroes }, squadId) {
   const barracksId = heroes.barracksIdForSquad(squadId);
   const placed = heroes.getRosterWithState().filter(h => h.isOwned && h.assignment?.type === 'building');
-  return squadCommanders({
-    slots: slotsFor(systems, squadId, barracksId),
+  return {
+    barracksId,
     squadHeroes: placed.filter(h => h.assignment.buildingId === barracksId).map(heroEntry),
     supportHeroes: placed.filter(h => h.assignment.buildingId?.startsWith(SUPPORT_BUILDING_PREFIX)).map(heroEntry),
-    bonuses: { ...NEUTRAL_BONUSES, ...heroes.getCombatBonuses(squadId) },
+  };
+}
+
+export function commanderModel(systems, squadId) {
+  const { barracksId, squadHeroes, supportHeroes } = placedHeroes(systems, squadId);
+  return squadCommanders({
+    slots: commanderSlots(systems, squadId, barracksId),
+    squadHeroes,
+    supportHeroes,
+    bonuses: { ...NEUTRAL_BONUSES, ...systems.heroes.getCombatBonuses(squadId) },
   });
 }

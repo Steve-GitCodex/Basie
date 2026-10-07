@@ -211,7 +211,17 @@ export class UIManager {
     this._world.init();
     this._flyout = new ResourceFlyout();
     this._installButtonSfx();
-    eventBus.on('story:chapter_triggered', chapter => this._showStoryModal(chapter));
+    this._heldStories = null;
+    eventBus.on('battle:opening', () => { this._heldStories ??= []; });
+    eventBus.on('battle:closed', () => {
+      const held = this._heldStories ?? [];
+      this._heldStories = null;
+      held.forEach(chapter => this._showStoryModal(chapter));
+    });
+    eventBus.on('story:chapter_triggered', chapter => {
+      if (this._heldStories) this._heldStories.push(chapter);
+      else this._showStoryModal(chapter);
+    });
 
     // ── Tutorial overlay ────────────────────────────────────────────────
     this._tutStep = null; // current active step — needed to re-pin ring after re-renders
@@ -245,10 +255,6 @@ export class UIManager {
           .forEach(el => this._flashCard(el));
       }, 0);
     });
-
-    // Victory / defeat banner on the world map (after modal closes)
-    eventBus.on('combat:victory', () => this._showBattleBanner(false));
-    eventBus.on('combat:defeat',  () => this._showBattleBanner(true));
 
     // XP float near the player level badge on level-up
     eventBus.on('user:levelUp', () => this._spawnXpFloat());
@@ -307,30 +313,6 @@ export class UIManager {
     void el.offsetWidth;                  // force reflow to restart animation
     el.classList.add('flash-complete');
     el.addEventListener('animationend', () => el.classList.remove('flash-complete'), { once: true });
-  }
-
-  /** Show a small victory/defeat banner that auto-dismisses after 2.5 s. */
-  _showBattleBanner(isDefeat) {
-    const existing = document.querySelector('.victory-banner');
-    if (existing) existing.remove();
-
-    // Delay slightly so the battle modal finishes closing first
-    setTimeout(() => {
-      const banner = document.createElement('div');
-      banner.className = `victory-banner${isDefeat ? ' defeat' : ''}`;
-      banner.innerHTML = isDefeat ? `${icon('x-circle', 'icon--danger')} Defeated!` : `${icon('sword', 'icon--gold')} Victory!`;
-      document.body.appendChild(banner);
-      setTimeout(() => banner.remove(), 2500);
-
-      // Shake the current available stage node on defeat
-      if (isDefeat) {
-        const availableNode = document.querySelector('.campaign-node.available');
-        if (availableNode) {
-          availableNode.classList.add('defeat-shake');
-          availableNode.addEventListener('animationend', () => availableNode.classList.remove('defeat-shake'), { once: true });
-        }
-      }
-    }, 400);
   }
 
   /**

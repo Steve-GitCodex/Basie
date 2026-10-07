@@ -126,21 +126,48 @@ export class HeroProgression {
   /** Award battle XP to heroes assigned to a specific squad (and HQ heroes). */
   awardBattleXP(amount, squadId) {
     const targetBarracks = squadId ? this._h.barracksIdForSquad(squadId) : null;
+    const results = [];
     for (const hero of this._h._owned.values()) {
       const a = hero.assignment;
       if (a?.type !== 'building' || !a.buildingId?.startsWith('barracks_')) continue;
       if (targetBarracks && a.buildingId !== targetBarracks) continue;
-      this._applyXP(hero, HEROES_CONFIG[hero.heroId], amount);
+      const cfg = HEROES_CONFIG[hero.heroId];
+      const { gained, levelBefore, levelAfter } = this._applyXP(hero, cfg, amount);
+      results.push({
+        heroId: hero.heroId,
+        xpGained: gained,
+        levelBefore,
+        levelAfter,
+        xpPct: this._xpPct(hero),
+        unlockedSkills: this._skillsUnlockedBetween(cfg, levelBefore, levelAfter),
+      });
     }
     eventBus.emit('heroes:updated', this._h.getRosterWithState());
+    return results;
+  }
+
+  /** @private */
+  _xpPct(hero) {
+    if (hero.level >= this.levelCap()) return 100;
+    return Math.round((hero.xp / hero.xpToNext) * 100);
+  }
+
+  /** @private */
+  _skillsUnlockedBetween(cfg, levelBefore, levelAfter) {
+    return (cfg.skills ?? []).filter((id) => {
+      const unlockLevel = SKILLS_CONFIG[id]?.unlockLevel;
+      return unlockLevel > levelBefore && unlockLevel <= levelAfter;
+    });
   }
 
   /** @private */
   _applyXP(hero, cfg, amount) {
     const safeAmount = Number(amount);
-    if (!isFinite(safeAmount) || safeAmount <= 0) return;
+    const levelBefore = hero.level;
     const cap = this.levelCap();
-    if (hero.level >= cap) return;
+    if (!isFinite(safeAmount) || safeAmount <= 0 || hero.level >= cap) {
+      return { gained: 0, levelBefore, levelAfter: levelBefore };
+    }
 
     hero.xp = (isFinite(hero.xp) ? hero.xp : 0) + safeAmount;
     while (hero.level < cap && hero.xp >= hero.xpToNext) {
@@ -151,5 +178,6 @@ export class HeroProgression {
       eventBus.emit('hero:levelUp', { heroId: hero.heroId, name: cfg.name, level: hero.level });
     }
     if (hero.level >= cap) hero.xp = 0;
+    return { gained: safeAmount, levelBefore, levelAfter: hero.level };
   }
 }

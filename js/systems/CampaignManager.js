@@ -79,7 +79,8 @@ export class CampaignManager {
     const dead = total(d.dead);
     const wounded = total(d.wounded);
     this._lastReport[stage.id] = {
-      victory, rounds: d.rounds, sent: d.sent, dead, wounded, enemyLeftPct: d.enemyLeftPct, at: this._now(),
+      victory, rounds: d.rounds, sent: d.sent, dead, wounded, enemyLeftPct: d.enemyLeftPct,
+      wavesReached: d.wavesReached, bossLeftPct: d.bossLeftPct, at: this._now(),
     };
     if (victory) {
       const stars = starsFor({ victory, sent: d.sent, dead, wounded, rounds: d.rounds, roundPar: stage.roundPar });
