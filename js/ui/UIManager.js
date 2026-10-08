@@ -6,7 +6,7 @@
  * full render. All business logic and rendering belongs in the controllers.
  *
  * Domain controllers:
- *   NavigationUI   — nav, status bar, resource display, live timers
+ *   NavigationUI   — nav, badges, header button bindings
  *   BuildingsUI    — buildings grid
  *   BarracksUI     — reserve units, squads, training queue
  *   HeroesUI       — hero roster
@@ -18,6 +18,8 @@
  *   SettingsUI     — settings modal
  */
 import { NavigationUI } from './controllers/NavigationUI.js';
+import { ResourceChips } from './hud/ResourceChips.js';
+import { PlayerPlate }   from './hud/PlayerPlate.js';
 import { BuildingsUI }  from './controllers/BuildingsUI.js';
 import { BarracksUI }   from './controllers/BarracksUI.js';
 import { HeroesUI }     from './controllers/HeroesUI.js';
@@ -27,6 +29,7 @@ import { QuestsUI }     from './controllers/QuestsUI.js';
 import { MailUI }       from './controllers/MailUI.js';
 import { SettingsUI }   from './controllers/SettingsUI.js';
 import { InventoryUI }  from './controllers/InventoryUI.js';
+import { BuffsUI }       from './buffs/BuffsUI.js';
 import { TradingPostUI } from './trading/TradingPostUI.js';
 import { PremiumTab } from './trading/PremiumTab.js';
 import { SupplyTab } from './trading/SupplyTab.js';
@@ -63,9 +66,12 @@ export class UIManager {
       user:          systems.user,
       mail:          systems.mail,
       heroes:        systems.heroes,
+      buffs:         systems.buffs,
       notifications: systems.notifications,
       achievements:  systems.achievements,
     });
+    this._resourceChips = new ResourceChips({ rm: systems.rm, bm: systems.bm });
+    this._playerPlate   = new PlayerPlate({ user: systems.user });
 
     this._buildings = new BuildingsUI({
       rm:            systems.rm,
@@ -106,6 +112,24 @@ export class UIManager {
     this._inventory = new InventoryUI({
       inventory:     systems.inventory,
       heroes:        systems.heroes,
+      buffs:         systems.buffs,
+      rm:            systems.rm,
+      bm:            systems.bm,
+      um:            systems.um,
+      tech:          systems.tech,
+      notifications: systems.notifications,
+    });
+
+    this._buffsPanel = new BuffsUI({
+      buffs:         systems.buffs,
+      worldMap:      systems.worldMap,
+      tech:          systems.tech,
+      user:          systems.user,
+      bm:            systems.bm,
+      heroes:        systems.heroes,
+      events:        systems.events,
+      rm:            systems.rm,
+      inventory:     systems.inventory,
       notifications: systems.notifications,
     });
 
@@ -115,6 +139,7 @@ export class UIManager {
       um:            systems.um,
       tech:          systems.tech,
       inventory:     systems.inventory,
+      buffs:         systems.buffs,
       heroes:        systems.heroes,
       user:          systems.user,
       shop:          systems.shop,
@@ -189,11 +214,14 @@ export class UIManager {
   _init() {
     // Register event subscriptions and one-time DOM bindings
     this._navigation.init();
+    this._resourceChips.init();
+    this._playerPlate.init();
     this._buildings.init();
     this._barracks.init();
     this._military.init();
     this._heroes.init();
     this._inventory.init();
+    this._buffsPanel.init();
     this._combat.init();
     this._research.init();
     this._quests.init();

@@ -51,9 +51,12 @@ export class WorldMapManager {
     }
     // Expire timed buffs (ruin expeditions).
     if (this._timedBuffs.length) {
-      const before = this._timedBuffs.length;
-      this._timedBuffs = this._timedBuffs.filter(b => b.expiresAt > now);
-      if (this._timedBuffs.length !== before) eventBus.emit('world:buffsChanged', {});
+      const expired = this._timedBuffs.filter(b => b.expiresAt <= now);
+      if (expired.length) {
+        this._timedBuffs = this._timedBuffs.filter(b => b.expiresAt > now);
+        for (const buff of expired) eventBus.emit('world:buffExpired', { buff });
+        eventBus.emit('world:buffsChanged', {});
+      }
     }
   }
 
@@ -213,7 +216,7 @@ export class WorldMapManager {
   /** Add a temporary buff (e.g. a ruin expedition reward). */
   grantTimedBuff(buff) {
     if (!buff || !buff.durationMs) return;
-    this._timedBuffs.push({ ...buff, expiresAt: Date.now() + buff.durationMs });
+    this._timedBuffs.push({ ...buff, grantedAt: Date.now(), expiresAt: Date.now() + buff.durationMs });
     eventBus.emit('world:buffGranted', { buff });
     eventBus.emit('world:buffsChanged', {});
   }

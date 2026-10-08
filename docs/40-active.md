@@ -5,17 +5,151 @@
 > Keep it to current state: replace finished sections with a short summary — history lives in
 > git (`git log -p docs/40-active.md`) and decisions live in `docs/20-decisions/`.
 
-## Current state (2026-10-05)
+## Current state (2026-10-07)
 
 - Branch `Working_Branch`. The combat resolver is committed (`74cf629`) and the Trading Post (`8b37896`). **Uncommitted:** the
   Battle tab slices 1+2 (campaign model + map: `js/systems/campaign/`, `CampaignManager`, `js/entities/data/campaign.js`,
   `css/components/battle-*.css`) AND slices 3+4 (report events, `js/systems/combat/report/`, the battle scene in
   `js/ui/combat/scene/`, `battle-{scene,field,results}.css`, new tests and `battle-scene-smoke`; deleted
-  `BattlePlayback`/`battleFlow`/`battleResultHtml`/`playbackSteps`), plus the Buffs + Inventory research/specs/plans (docs
-  only). Tree is commit-ready.
-- Baseline: `npm test` **1041/1041**; `node scripts/check-comments.mjs` **12 violations, all pre-existing**;
-  boot / tutorial / combat / battle-scene / world / heroes / trading / dev-dashboard smokes PASS; dev-smoke PASS except the
+  `BattlePlayback`/`battleFlow`/`battleResultHtml`/`playbackSteps`), plus **Buffs**, the **Inventory modal** and the **Mail hub** (below).
+  Tree is commit-ready.
+- Baseline: `npm test` **1123/1123**; `node scripts/check-comments.mjs` **12 violations, all pre-existing**;
+  boot / tutorial / combat / battle-scene / world / heroes / trading / buffs / inventory / mail / dev-dashboard smokes PASS; dev-smoke PASS except the
   known `dev-anchor-nudger`.
+
+## PENDING PLANS — read this first (2026-10-07)
+
+Six plans are written and not built. Each one is self-contained (spec links, constraints, failing tests first,
+checkpoints).
+
+**One plan per session (Steve's rule).** Never run two plans in one session, and never run a plan in the session that
+wrote it. **How to run one:** open a fresh session and say, for example, "implement
+`docs/superpowers/plans/<file>.md` with subagent-driven development". The session invokes
+`superpowers:subagent-driven-development`: one implementer subagent per task, a reviewer per task, then a whole-branch
+review. Every task ends with "tree is commit-ready"; **Steve commits between tasks/plans, and agents never commit.**
+Follow the session protocol in `CLAUDE.md`, which means updating this file and ticking the roadmap at the end.
+
+| # | Plan | Depends on | What it does |
+|---|---|---|---|
+| A | `2026-10-07-topbar-two-tier.md` | none (independent) | Responsive two-tier header, compact values, chip popover (ADR 0041) |
+| B | `2026-10-07-hero-levelup-sheet.md` | none (independent) | Hero XP items are spent only from the hero page, through a Level up sheet (steppers, preview, Next level / Fill to cap). The Inventory and Trading Post route to Heroes (ADR 0046) |
+| 1 | `2026-10-07-building-levels-safety.md` | none | Shared `buildingCurve.js`, `levelTable` (no silent 0/null), per-level table validation. **No balance change.** |
+| 2 | `2026-10-07-building-levels-scale.md` | 1 | Max levels to 30, cap rule, HQ chain, tables to 30, gate remap `M`, prod/crates, UI for 30 rows, progression smoke, extensibility guard tests (ADR 0044) |
+| 3 | `2026-10-07-power-stat.md` | 2 (A optional) | `powerMath` + `PowerManager`, enemy power in the stage generator, monster rescale (ADR 0043), profile split + Power block, top-bar power, battle-report power, gauge (campaign panel + anchored world card) (ADR 0045) |
+| 4 | `2026-10-07-player-levels.md` | 2 (3 recommended first, for the Profile Level block) | Level curve, cap and bank, new XP sources, march/survival XP limits, rewards, queued level-up deck (ADR 0045) |
+
+**Order:** A and B can run any time. Run 1 → 2 → 3 → 4. **Never raise a `maxLevel` before plan 1 lands**, or storage silently
+drops to 0 and marches stop.
+
+**Built to extend:** the campaign (chapters 11+) and a post-30 band are data appends, guarded by tests in plans 2–4.
+See "Built to extend" in `building-levels.md` and `power-levels.md`.
+
+**Deferred to the backlog:**
+- chapters 11–12;
+- a post-30 band;
+- research depth for Workshop 19–30;
+- march gathering scaling;
+- building art for eras 2–4;
+- storage pressure;
+- the chapter 4 heal and cavalry ×2.2 balance.
+
+## Power + player levels — RESEARCH (2026-10-07, no code changed)
+
+- `docs/research/power-levels-genre.md` (genre; sourcing thin, labelled) and `docs/research/power-levels-codebase.md`
+  (current XP/level code, power inputs, events, open questions).
+- Key facts: no power stat; level gates nothing real (HQ/building levels do); curve `500×1.4^(L-1)` uncapped;
+  `lineupPower` exists for monsters only; `userManager.test.js` has no level tests.
+- **Decided:**
+  - Level = activity + rewards meter (HQ stays the gate). Power is combat-weighted, with buildings and other research
+    capped. Wounded troops don't count until healed.
+  - Power is used in: top bar + profile, recommended power, an AI hook, and battle reports.
+- **Prototype:** `docs/10-design/mockups/power-levels/power-v1.html`. Choices:
+  - Breakdown **A** (stacked bar + expandable list).
+  - Recommended power **B** (squad-vs-enemy gauge plus the existing win % from `estimateBadge`; chip on markers and list
+    cards).
+    - **World map:** tapping a marker pops the gauge card attached to the target. It reuses the `TileTooltip._position`
+      idiom (flip above/below, 8px viewport clamp, arrow) with `WorldCamera.worldToScreen` and re-places on camera
+      `onChange`, hiding when the target is off-screen. It replaces the docked `PoiDetailPanel`.
+    - **Campaign:** keeps its own stage panel (`battle-tab.md`), with the gauge inside it.
+  - Level-up **A** (celebration card; replaces the level-up mail).
+- **Level-up queue rule:**
+  - Level-ups are queued and never pop during the battle scene/playback, a tutorial step, a confirm dialog or an open
+    modal.
+  - On release they show as a deck of cards, one per level (lowest on top, "1 of N"), with Collect (next card) and
+    Collect all.
+  - Closing without collecting keeps the rewards waiting. A pip on the plate shows the waiting count.
+- **Formula draft landed:** `docs/research/power-levels-formula.md` (not locked).
+  - Troop power is √(effective hp × atk²/(atk+120)), validated on 877 resolver fights.
+  - Enemies use the same metric (replacing `lineupPower`); recommended power = 1.2 × enemy power.
+  - Buildings and research are capped at 25%.
+  - Curve: `80+150(L-1)+5(L-1)²`, capped at 5×HQ, with an XP bank.
+  - **Blocking finding:** monsters are 15×–1,350× weaker than a plausible army at their gate, so every recommendation
+    would read green until monsters are rescaled.
+- **Ruled:** rescale monsters now (ADR 0043); level cap 5×HQ with an XP bank; new XP from buildings, research and
+  training (daily cap); march XP daily limit then 10%. Design page `docs/10-design/power-levels.md`, ADR 0045.
+- **Profile placement:** placement 1, power inside the existing Profile tab (Level · Power · Statistics blocks). Recorded in `power-levels.md`.
+- **Building levels decided (ADR 0044):**
+  - HQ 30, about 42 days for a completionist, nothing past 30.
+  - One shared curve (HQ 1–10 unchanged).
+  - Proportional HQ cap, and the HQ chain from HQ 10 (Workshop + a rotating partner).
+  - The content remap `M = [1,2,4,6,9,12,15,18,22,26]`.
+  - Design page `docs/10-design/building-levels.md`. Research `docs/research/building-levels{,-codebase}.md`.
+- **Re-fitted for HQ 30:** `power-levels.md` (level-cap table to 55, building XP `0.3·L²`, era-based troop
+  equivalents and money cap) and the ADR 0043 amendment (monster targets at the new gates).
+- **Plans (build order):**
+  1. `2026-10-07-building-levels-safety.md`
+  2. `2026-10-07-building-levels-scale.md`
+  3. `2026-10-07-power-stat.md`
+  4. `2026-10-07-player-levels.md`
+
+  Mail is built. The top bar plan is still independent.
+
+## Shared panel frame — DONE (2026-10-07, uncommitted)
+
+- Mail and Inventory now use one frame (ADR 0042): tokens `--panel-modal-w`/`--panel-modal-h` in `variables.css`, one rule in
+  `modals.css` for `.mail-modal` + `.inv-modal-host`; at ≤700px both are full width, top to `--dock-clearance`. Per-file sizing
+  removed from `mail.css`/`inventory.css`; Mail's dock padding/toast offset removed.
+- `mail-smoke` +2 checks (same `#modal-content` rect desktop + phone), now 23. Inventory, buffs smokes PASS.
+
+## Mail hub — COMPLETE (2026-10-07, uncommitted)
+
+ADR 0040 (built), design `docs/10-design/mail.md`, plan `docs/superpowers/plans/2026-10-07-mail-hub.md`.
+
+- **What landed:** pure `js/systems/mail/mailCategories.js`; `MailManager` gains `claimAll`, `trashMany`/`restoreMany`,
+  `markReadMany` (renamed), `counts()`, 7-day trash purge on load, `msg.report` from the combat payload; archive / `delete` /
+  `icon` / `_inferType` / emoji subjects removed; welcome mail `gold` → `money`. `MailUI.js` (431 → 93 lines) is a shell over
+  `js/ui/mail/` (hub, list, row, expand, battle report, actions, list menu, Undo toast). New generic `js/ui/confirmDialog.js`.
+  Escape now closes `swapModal` panels only (system `openModal` modals like Daily Login are exempt; `SpeedupPicker` now
+  `preventDefault`s its Escape). Mail CSS moved out of `modals.css` into `mail.css` +
+  `mail-expand.css`; `confirm-dialog.css` new. `window.game.notifications` exposed for smoke spies.
+- **Tests:** unit +19 (`mailCategories.test.js` new, `mailManager.test.js` appended); `tests/browser/mail-smoke.mjs` new (21 checks, 23 with the frame checks).
+- **Verification:** npm 1123/1123; check-comments 12 (pre-existing); mail, inventory, boot, tutorial, buffs smokes PASS.
+- **Final review (Opus) deferred minors:** Escape with the ⋯ menu open closes Mail; Delete read is a no-op in Starred; trash purge
+  only on load; ages don't tick while open; confirm dialog has no focus trap/return; scroll-keep check is weak (relies on
+  scroll anchoring); daily-login mail still passes a dead `icon:`.
+- **Known gaps:** no Attack again button in the report (no stage route stored); tutorial-smoke does not assert the welcome mail;
+  `ChallengeManager` and the daily-login mail in `UIManager` still put emoji in subjects and pass a now-ignored `icon`.
+- **Next:** Steve reviews/commits; then the top bar plan (`docs/superpowers/plans/2026-10-07-topbar-two-tier.md`).
+
+## Top bar + Mail redesign — RESEARCH + PROTOTYPES (2026-10-07, no code changed)
+
+- **Research:** `docs/research/topbar-mail-genre.md` (genre + MDN/WCAG/APG; genre half thin, labelled) and
+  `docs/research/topbar-mail-codebase.md` (current HUD/Mail map, mail usability friction table, constraints).
+- **Prototypes:** `docs/10-design/mockups/topbar-mail/topbar-v1.html` (A one strip + priority overflow, B two tiers on
+  narrow, C commander plate; desktop/tablet/phone frames, early/mid/late value presets) and `mail-v1.html` (A tabs + sticky
+  claim bar, B category hub + in-place expand, C single feed + reward tray + select mode; interactive desktop + phone).
+- **Key facts:** header has no breakpoint below 768px and silently scroll-clips chips; rate/cap invisible on touch. Mail
+  rebuilds via innerHTML on every keystroke (search loses focus), has no claim-all/bulk UI (manager methods exist), no
+  Escape, no responsive layout, unescaped subject/body.
+- **Mail decided:** option B, category hub with in-place expand → `docs/10-design/mail.md`, ADR 0040.
+- **Top bar decided:** option B, two tiers at ≤700px → `docs/10-design/topbar.md`, ADR 0041. No player power stat exists;
+  the plate slot stays hidden until one is designed.
+- **Plans written:** `docs/superpowers/plans/2026-10-07-mail-hub.md` (5 tasks) and
+  `docs/superpowers/plans/2026-10-07-topbar-two-tier.md` (5 tasks). They are independent and can run in either order.
+- **Next — top bar build order:** move header rendering out of `NavigationUI.js` into `js/ui/hud/` → responsive
+  `--header-height` (48/86 + safe area) and check every consumer → two-tier CSS + compact values + chip popover → delete
+  dead header CSS/JS → `hud-smoke.mjs` at 1280/360 + retest tutorial.
+- Mail is built (section above).
 
 ## Battle tab — playback + results (slices 3+4) — COMPLETE (2026-10-05)
 
@@ -49,6 +183,16 @@ ADR 0037 (`docs/20-decisions/0037-battle-scene.md`), design `docs/10-design/batt
   smoke writes `heroes._owned` directly and its turning-point check only matches the label; `pivotOf` treats a frame-0-only
   defeat as never-led; phone timeline label "WAVE 2 · BOSS" was clipped (fixed in T9, re-check on devices);
   `'survival_wave'` literal remains in `CombatManager.js` / `data/combat.js`.
+- **Final fix pass (2026-10-07):** double-click guarded by `_busy`; Mail builds in `onShown`; fragments only target their own
+  hero (else progress + Recruit; `useItem` rejects other heroes); `awardHeroXP` returns `gained` and capped heroes keep the
+  items ("Hero is at max level."); detail stacks under the grid below 720 px; sort is rarity desc, tier (`_tN` / `skipSeconds`),
+  name; items arriving in an empty tab select the first tile; owned hero cards show a disabled "Owned" / "All Owned".
+- **Fixed after hand-off (2026-10-07) — dock clicks queued modals:** with the Inventory open, the Mail dock button (above
+  `--z-modal`) queued Mail instead of replacing the Inventory, and each extra click queued another Mail that reopened after
+  every close. New `swapModal` in `uiUtils.js` replaces the visible modal; Mail, Inventory and Profile use it. The backdrop
+  listener is now tracked (was `{ once: true }`, consumed by the first click inside the content). Preview line lost its
+  leading `→`. Regression: inventory-smoke `dock swaps mail and inventory without queueing`; two queue-era checks re-pointed
+  to swap semantics (`inventory from dock replaces mail, wired`, `mail replaces inventory and renders`).
 - **Notes for Steve:** deploy-time spoilers still fire outside the scene (Victory/Defeated toasts, announced via aria-live;
   `levelUp`/`missionComplete` sounds) — backlogged. Old dev saves with `triggered` reports: reset the slot (no-legacy). CLAUDE.md
   is stale (wiki map says the battle tab is not built) — not edited. Slices 1+2 and 3+4 are both uncommitted.
@@ -94,17 +238,70 @@ ADR 0036 (`docs/20-decisions/0036-campaign-chapters.md`), design `docs/10-design
   reset the slot (no-legacy). Stage knobs (scale, elite bump, diamonds, round par) are placeholders for the balance pass.
   Fresh-save tutorial blocker: see KNOWN ISSUE above.
 
-## Buffs + Inventory — PLANNED, not started (2026-10-03)
+## Buffs — COMPLETE (2026-10-07)
 
-Design-only session; no game code changed. Build **Buffs first**, then Inventory (Inventory uses `BuffManager`).
+ADR 0038 (`docs/20-decisions/0038-buffs-ledger.md`), design `docs/10-design/buffs.md` (mockup
+`mockups/inventory-buffs/buffs-v1.html`), spec/plan `docs/superpowers/specs|plans/2026-10-03-buffs*` (left for Steve to delete
+once he's happy). Run ledger: `.superpowers/sdd/2026-10-03-buffs/progress.md`.
 
-- Research: `docs/research/inventory-buffs-codebase.md` (every buff source, file:line), `docs/research/inventory-buffs-genre.md`
-  (thin: most genre sites blocked fetches; screen layouts unconfirmed).
-- Mockups: `docs/10-design/mockups/inventory-buffs/` — `buffs-v1.html` (approved), `inventory-v1.html` (**option B, modal**, approved).
-- Specs: `docs/superpowers/specs/2026-10-03-buffs-design.md`, `2026-10-03-inventory-design.md`.
-- Plans: `docs/superpowers/plans/2026-10-03-buffs.md` (9 tasks), `2026-10-03-inventory.md` (5 tasks).
-- Decisions taken: one timed boost per stat, replace-with-confirm; Overview shows the real compounded total via shared
-  `productionLayers()`; Inventory becomes a Mail-style modal; speedups from the bag reuse `SpeedupPicker`.
+- **What landed:** `BuffManager` owns timed item boosts (one per stat, replace) and `buffs:changed`; the HeroManager buff
+  methods are gone. Shared `js/systems/resource/productionLayers.js` (`ResourceManager.getRateBreakdown`); pure ledger +
+  `worldBuffStat` in `js/systems/buffs/`; stat catalogue `buffStats.js`; Buffs panel (Active + Overview), HUD badge, replace
+  confirm, toasts and resource-chip tooltips in `js/ui/buffs/`; `css/components/buffs.css`. `TimerService` gained opt-in
+  `data-timer-format="duration"`. `InventoryBuffSection.js` and the Inventory buff footer are deleted.
+- **Tests:** unit 1048 -> 1087 (new: buffManager, buffText, buffLedger, ledgerSources, productionLayers, worldBuffStat,
+  appended resourceManager/inventoryManager/userManager/gameData cases); new `tests/browser/buffs-smoke.mjs` (9 checks, ~64 s,
+  a 90 s toast poll behind the dev-slot toast backlog).
+- **Verification (2026-10-07):** npm **1087/1087**; check-comments **12** (pre-existing); buffs-smoke PASS x3; boot, tutorial,
+  world, trading smokes PASS.
+- **Rulings (full list in ADR 0038):** difficulty and event layers compound their entries, others add (behaviour-preserving);
+  `worldBuffStat` in `js/systems/buffs` (systems don't import UI); badge/tooltips split out of the 773-line `NavigationUI`;
+  replace-confirm reachable only from the future Inventory modal; "Get in Supply" emits `ui:openTradingTab { tab: 'supply' }`.
+- **Forced edits to existing tests:** `heroManager` L10 test renamed "deserialize without owned does not throw" (buff asserts
+  dropped); dead mock keys removed in `resourceManager.test.js` (`getActiveProductionMultiplier`) and `CombatManager.test.js`
+  (`productionBuffMult`); `heroes-smoke` Inventory assertion flipped to expect no buff block.
+- **Fixed in passing:** BuffsUI did not re-render on `inventory:updated` (stale Use buttons while open).
+- **Deferred minors:** `deserialize` doesn't check saved stat against the item config, `isBuffConfig` doesn't validate finite
+  value/duration; `formatPct`/`formatRemaining` lack a `Number.isFinite` guard; `TimerService` imports `buffText`
+  (`formatRemaining` could live in `uiUtils`); event modifier label truncates ids containing ':'; ledger `sourceId` is the
+  field key (rows must key on kind + id + stat); `buffSnapshot.js` has no unit test; event effect keys are mapped
+  unchecked; `_toggleStat` full re-render loses keyboard focus; Overview source clocks are static between events;
+  `!important` and hsl/rgba literals in `buffs.css`; failed activation surfaces as an unhandled rejection; badge ring is full
+  when `startedAt` is null; `resourceChipTooltips` leaves `d.name` unescaped (static data); tooltips build the ledger twice
+  per event; an expedition grant shows both "Army returned" and "Buff gained" toasts and `NotificationManager`
+  `MAX_VISIBLE=1` can delay them; smoke has fixed 200-300 ms sleeps and a weak z-compare in check 5.
+- **Final fix wave (2026-10-07):** `resources:ratesChanged` gated on a rate-multiplier signature (`js/ui/buffs/buffEvents.js`; panel no
+  longer rebuilds per tick, 0 body mutations in 3 s idle); Trading Post Use and legacy Inventory Activate route through
+  `activateBoostItem` (confirm above the legacy panel via `--z-confirm`); tech flat `defenseBonus` no longer mapped to a %; Buffs
+  panel above the dock (`--z-nav + 20`); chip tooltip names escaped; toggled Overview row keeps focus. Tests: npm **1090/1090**,
+  buffs-smoke now 10 checks (supply Use prompts); boot/tutorial/heroes/trading smokes PASS.
+- **Notes for Steve:** CLAUDE.md wiki map (no `buffs.md`) and manager count (23 -> 24) are your call - not edited. Old saves'
+  `heroes.activeBuffs` is ignored (no-legacy). `InventoryUI.js` is now a 162-line shell over `js/ui/inventory/*`.
+
+## Inventory — COMPLETE (2026-10-07)
+
+ADR 0039 (`docs/20-decisions/0039-inventory-modal.md`), design `docs/10-design/inventory.md` (mockup
+`mockups/inventory-buffs/inventory-v1.html` option B), spec/plan `docs/superpowers/specs|plans/2026-10-03-inventory*` (left for
+Steve to delete once he's happy). Run ledger: `.superpowers/sdd/2026-10-03-inventory/progress.md`.
+
+- **What landed:** the bag is a Mail-style modal (`InventoryUI.js` shell + `js/ui/inventory/*`); tabs All, Resources, Speedups,
+  Boosts, Heroes, Other; shared `js/ui/items/useItemFlow.js` (Trading Post `useOwnedItem` is a thin call, its hero picker is
+  gone; hero items open the Inventory); batch `useItem({ qty, heroId })` / `previewUse` with the `lost` over-cap report
+  (`js/systems/inventory/itemYield.js`); XP items via one `awardHeroXP` (`HeroManager.useFragmentAsXP` / `applyXPCard` now unused
+  by the inventory, kept with their own tests). `openModal` gained an `onShown` hook; dock panels use `swapModal` (see fix below). Old
+  slide-in panel, `InventoryBuffSection.js` and dead CSS removed.
+- **Tests:** npm **1104/1104** (was 1090; `inventoryTabs` new, appended inventoryManager cases); new
+  `tests/browser/inventory-smoke.mjs` (12 checks). Forced edits: `inventoryManager.test.js` xp_card case repointed to
+  `awardHeroXP`; `heroes-smoke` Inventory flow now picks the hero chip before Use.
+- **Verification (2026-10-07):** npm 1104/1104; check-comments **12** (pre-existing); inventory, trading, boot, tutorial, heroes
+  (and buffs) smokes PASS.
+- **Deferred minors:** `useOwnedItem` returns an unawaited promise in SupplyTab/TraderTab, and an unhandled rejection if
+  `useItemFlow` rejects in `_run`; `RARITY_RANK` also ranks uncommon; no unit coverage of `useItemFlow` (smoke only);
+  `joinEntries` param `sep` is a formatter; `InventoryHeader.js` exports a const plus a class; `.modal-close` no longer emits
+  `ui:click` sound; boost chip, hero chips and speedup/boost remaining text are static between events; `InventoryUI.js` 162 lines vs 150 target;
+  stepper buttons enabled at bounds; non-qty buttons re-enable mid-cooldown after `show()`; recruit act calls `_onClose` then
+  `_run`; smoke disables pointer-events on `#notification-container`.
+- **Notes for Steve:** the CLAUDE.md wiki map should list `inventory.md` and `buffs.md` (not edited).
 
 ## Trading Post — COMPLETE (2026-10-02, latest)
 
@@ -312,4 +509,4 @@ new-hero cues. The desktop queue sidebar overlapping the roster's right edge is 
    deploy-time spoilers (Victory/Defeated toasts, `levelUp`/`missionComplete` sounds fire before the results reveal), and the
    parked fresh-save tutorial blocker (see the KNOWN ISSUE above — don't raise it in combat sessions). Also parked:
    squad↔barracks mapping mismatch, unused legacy campaign CSS in `worldmap.css`, fog label overlapping a node.
-8. **Buffs, then Inventory**: planned 2026-10-03 (see the PLANNED section above); plans in `docs/superpowers/plans/`.
+8. ~~Buffs~~ done 2026-10-07 (ADR 0038). ~~Inventory~~ done 2026-10-07 (ADR 0039). **Next: commit (Steve), then the balance pass (#2) when wanted.**

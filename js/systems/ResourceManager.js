@@ -4,10 +4,10 @@
  * Registered with the GameEngine and updated every tick.
  */
 import { eventBus } from '../core/EventBus.js';
-import { DIFFICULTY_MODIFIERS } from '../entities/GAME_DATA.js';
+import { DIFFICULTY_MODIFIERS, INVENTORY_ITEMS } from '../entities/GAME_DATA.js';
 import { TUTORIAL_STEPS } from './TutorialManager.js';
 import { BUILDINGS_CONFIG } from '../entities/data/buildings.js';
-import { economicBonus } from './world/regionBuffs.js';
+import { productionLayers, layerMultiplier } from './resource/productionLayers.js';
 
 export class ResourceManager {
   constructor() {
@@ -31,9 +31,11 @@ export class ResourceManager {
     this._uiDirty = true;
     this._techBonuses = {};
     this._heroManager = null;
+    this._buffManager = null;
     this._buildingManager = null;
     this._worldMapManager = null;
     this._lastActiveBuildings = [];
+    this._baseRates = {};
     /** Population is a pseudo-resource — not spent/earned like others. */
     this._population = { current: 0, cap: 0 };
     /** Cafeteria food-stock capacity (sum of all cafeteria instances). Updated by BuildingManager. */
@@ -90,8 +92,12 @@ export class ResourceManager {
    */
   setHeroManager(hm) {
     this._heroManager = hm;
-    eventBus.on('buffs:changed',                () => this._reapplyRates());
     eventBus.on('hero:productionBonusChanged',   () => this._reapplyRates());
+  }
+
+  setBuffManager(bm) {
+    this._buffManager = bm;
+    eventBus.on('buffs:changed', () => this._reapplyRates());
   }
 
   /** Re-run recalculateRates with the cached building list. */
@@ -163,67 +169,37 @@ export class ResourceManager {
       }
     }
 
-    // Apply tech multipliers
-    if (this._techBonuses.ironBonus)  this._resources.iron.perSec  *= (1 + this._techBonuses.ironBonus);
-    if (this._techBonuses.woodBonus)  this._resources.wood.perSec  *= (1 + this._techBonuses.woodBonus);
-    if (this._techBonuses.stoneBonus) this._resources.stone.perSec *= (1 + this._techBonuses.stoneBonus);
-    if (this._techBonuses.waterBonus) this._resources.water.perSec *= (1 + this._techBonuses.waterBonus);
-
-    // Apply economic region buffs (captured territory raises base production of its resource)
-    if (this._worldMapManager) {
-      const buffs = this._worldMapManager.activeBuffs();
-      for (const key of Object.keys(this._resources)) {
-        const bonus = economicBonus(buffs, key);
-        if (bonus > 0) this._resources[key].perSec *= (1 + bonus);
-      }
-    }
-
-    // Apply HQ-level production bonus (all resources)
-    if (this._buildingManager) {
-      const hqBonus = this._buildingManager.getHQBenefits().productionBonus;
-      if (hqBonus > 0) {
-        for (const key of Object.keys(this._resources)) {
-          this._resources[key].perSec *= (1 + hqBonus);
-        }
-      }
-    }
-
-    // Stationed-hero production bonuses are applied per-instance in
-    // buildingEconomy.computeActiveRates; re-applying them here would double-count.
-    if (this._heroManager) {
-      // Apply active production buff multiplier to ALL resource rates
-      const buffMult = this._heroManager.getActiveProductionMultiplier();
-      if (buffMult > 0) {
-        for (const key of Object.keys(this._resources)) {
-          this._resources[key].perSec *= (1 + buffMult);
-        }
-      }
-    }
-
-    // Apply VIP production bonus (tier 5: +5% all resources)
-    if (this._vipProductionBonus > 0) {
-      for (const key of Object.keys(this._resources)) {
-        this._resources[key].perSec *= (1 + this._vipProductionBonus);
-      }
-    }
-
-    // Apply difficulty production rate modifier (last — scales everything above)
-    if (this._difficultyProductionMult !== 1.0) {
-      for (const key of Object.keys(this._resources)) {
-        this._resources[key].perSec *= this._difficultyProductionMult;
-      }
-    }
-
-    // Apply stacked temporary modifiers (e.g. from EventManager)
-    if (this._modifiers.size > 0) {
-      for (const { resourceType, multiplier } of this._modifiers.values()) {
-        if (this._resources[resourceType] !== undefined) {
-          this._resources[resourceType].perSec *= multiplier;
-        }
-      }
+    for (const [key, res] of Object.entries(this._resources)) {
+      this._baseRates[key] = res.perSec;
+      res.perSec *= layerMultiplier(this._layersFor(key));
     }
 
     eventBus.emit('resources:ratesChanged', this.getSnapshot());
+  }
+
+  _layersFor(resource) {
+    const boost = this._buffManager?.getBoosts?.().find(x => x.stat === 'production.all');
+    const pct = this._buffManager?.multiplierFor('production.all') ?? 0;
+    return productionLayers(resource, {
+      techBonuses: this._techBonuses,
+      worldBuffs: this._worldMapManager?.activeBuffs() ?? [],
+      hqBonus: this._buildingManager?.getHQBenefits().productionBonus ?? 0,
+      boost: pct > 0 ? {
+        pct,
+        label: INVENTORY_ITEMS[boost?.itemId]?.name ?? boost?.itemId ?? 'Production Boost',
+        endsAt: boost?.endsAt ?? null,
+      } : null,
+      vipPct: this._vipProductionBonus,
+      difficultyMult: this._difficultyProductionMult,
+      eventModifiers: [...this._modifiers.entries()].map(([key, m]) => ({
+        id: key, label: key.split(':')[0], resourceType: m.resourceType, multiplier: m.multiplier, endsAt: null,
+      })),
+    });
+  }
+
+  getRateBreakdown(resource) {
+    const layers = this._layersFor(resource);
+    return { base: this._baseRates[resource] ?? 0, layers, multiplier: layerMultiplier(layers) };
   }
 
   // =============================================
@@ -391,6 +367,8 @@ export class ResourceManager {
   // =============================================
   // SERIALIZATION
   // =============================================
+  isSandbox() { return this._gameMode === 'sandbox'; }
+
   getSnapshot() {
     const snap = {};
     for (const [key, res] of Object.entries(this._resources)) {

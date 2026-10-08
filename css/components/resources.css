@@ -15,16 +15,6 @@
   flex-shrink: 0;
 }
 
-.resource-chip:hover {
-  border-color: var(--clr-primary-muted);
-  background: hsla(32, 40%, 10%, 0.9);
-}
-
-.resource-chip:hover {
-  border-color: var(--clr-border-light);
-  background: var(--clr-bg-hover);
-}
-
 .res-icon { font-size: 1rem; flex-shrink: 0; }
 
 .res-data {
@@ -104,36 +94,3 @@
 #res-money:hover     { border-color: var(--clr-res-money); }
 #res-diamond:hover   { border-color: var(--clr-res-diamond); }
 #res-cafeteria:hover { border-color: var(--clr-res-cafeteria); }
-
-/* =============================================
- * RESPONSIVE BREAKPOINTS
- * ============================================= */
-
-/* ≤1400px — tighten chips on cramped desktops */
-@media (max-width: 1400px) {
-  .resource-chip {
-    min-width: 110px;
-    padding: var(--space-1) var(--space-2);
-  }
-}
-
-/* ≤1100px — hide resource name, fixes Diamond truncation */
-@media (max-width: 1100px) {
-  .resource-chip {
-    min-width: 80px;
-  }
-  .res-name {
-    display: none;
-  }
-}
-
-/* ≤768px — icon + value only, minimal footprint */
-@media (max-width: 768px) {
-  .resource-chip {
-    min-width: 58px;
-    gap: var(--space-1);
-  }
-  .res-rate-col {
-    display: none;
-  }
-}

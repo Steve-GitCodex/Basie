@@ -31,7 +31,7 @@ function neutralBonuses() {
   return {
     attackMult: 1, defenseMult: 1, baseDefense: 0, lossReduction: 0, postBattleHeal: 0,
     statEntries: { lossReduction: [], postBattleHeal: [] },
-    triggeredByEvent, activeSkills: triggeredByEvent.battle_start, strikers: [], productionBuffMult: 0,
+    triggeredByEvent, activeSkills: triggeredByEvent.battle_start, strikers: [],
   };
 }
 

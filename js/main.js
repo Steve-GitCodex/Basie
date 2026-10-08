@@ -27,6 +27,7 @@ import { TraderManager }       from './systems/TraderManager.js';
 import { SoundManager }        from './systems/SoundManager.js';
 import { HeroManager }         from './systems/HeroManager.js';
 import { InventoryManager }    from './systems/InventoryManager.js';
+import { BuffManager }         from './systems/BuffManager.js';
 import { AchievementManager }  from './systems/AchievementManager.js';
 import { ChallengeManager }    from './systems/ChallengeManager.js';
 import { StoryManager }        from './systems/StoryManager.js';
@@ -66,6 +67,7 @@ const userManager      = new UserManager();
 const resourceManager  = new ResourceManager();
 const buildingManager  = new BuildingManager(resourceManager);
 const inventoryManager = new InventoryManager();
+const buffManager      = new BuffManager();
 const heroManager      = new HeroManager(resourceManager, buildingManager, inventoryManager);
 buildingManager.setHeroManager(heroManager);
 resourceManager.setBuildingManager(buildingManager);
@@ -81,6 +83,8 @@ const questManager     = new QuestManager(resourceManager, userManager);
 const techManager      = new TechnologyManager(resourceManager, buildingManager);
 techManager.setHeroManager(heroManager);
 inventoryManager.setBuildingManager(buildingManager);
+inventoryManager.setBuffManager(buffManager);
+resourceManager.setBuffManager(buffManager);
 inventoryManager.setUnitManager(unitManager);
 inventoryManager.setTechnologyManager(techManager);
 unitManager.setTechnologyManager(techManager);
@@ -110,6 +114,8 @@ mailManager.setInventoryManager(inventoryManager);
     [resourceManager,  '_buildingManager','resourceManager → buildingManager'],
     [resourceManager,  '_heroManager',   'resourceManager → heroManager'],
     [inventoryManager, '_hm',            'inventoryManager → heroManager'],
+    [inventoryManager, '_buffs',         'inventoryManager → buffManager'],
+    [resourceManager,  '_buffManager',   'resourceManager → buffManager'],
     [inventoryManager, '_rm',            'inventoryManager → resourceManager'],
     [inventoryManager, '_bm',            'inventoryManager → buildingManager'],
     [inventoryManager, '_um',            'inventoryManager → unitManager'],
@@ -145,6 +151,7 @@ engine.registerSystem(techManager);
 engine.registerSystem(questManager);
 engine.registerSystem(mailManager);
 engine.registerSystem(heroManager);
+engine.registerSystem(buffManager);
 engine.registerSystem(marketManager);
 engine.registerSystem(shopManager);
 engine.registerSystem(traderManager);
@@ -174,6 +181,7 @@ function getGameState() {
     trader:       traderManager.serialize(),
     heroes:       heroManager.serialize(),
     inventory:    inventoryManager.serialize(),
+    buffs:        buffManager.serialize(),
     achievements: achievementManager.serialize(),
     challenges:   challengeManager.serialize(),
     story:        storyManager.serialize(),
@@ -203,6 +211,7 @@ function applyGameState(state) {
   traderManager.deserialize(state.trader);
   heroManager.deserialize(state.heroes);
   inventoryManager.deserialize(state.inventory);
+  buffManager.deserialize(state.buffs);
   achievementManager.deserialize(state.achievements);
   challengeManager.deserialize(state.challenges);
   storyManager.deserialize(state.story);
@@ -462,6 +471,7 @@ function launchGame(authScreen, gameShell, externalState = null) {
     trader:       traderManager,
     heroes:       heroManager,
     inventory:    inventoryManager,
+    buffs:        buffManager,
     achievements:  achievementManager,
     challenges:    challengeManager,
     events:        eventManager,
@@ -566,10 +576,9 @@ function launchGame(authScreen, gameShell, externalState = null) {
     if (!savedState) {
       mailManager.send({
         type: 'system',
-        subject: '⚔️ Welcome to Basie, Commander!',
+        subject: 'Welcome to Basie, Commander!',
         body: 'Your realm awaits! Build structures to generate resources, train soldiers in the Barracks, and recruit legendary Heroes. Study the Research tree for long-term advantages. Good luck, Commander!',
-        icon: '👑',
-        attachments: { gold: 500, wood: 200, stone: 100 },
+        attachments: { money: 500, wood: 200, stone: 100 },
       });
       inventoryManager.addItem('token_normal', 2);
       inventoryManager.addItem('token_epic', 1);
@@ -649,7 +658,7 @@ function launchGame(authScreen, gameShell, externalState = null) {
   }
   window.game = {
     engine, resources: resourceManager, buildings: buildingManager,
-    heroes: heroManager, inventory: inventoryManager, units: unitManager,
+    heroes: heroManager, inventory: inventoryManager, buffs: buffManager, units: unitManager,
     combat: combatManager, campaign: campaignManager, tech: techManager, mail: mailManager,
     market: marketManager, trader: traderManager, quests: questManager, user: userManager,
     save:       () => saveManager.save(getGameState()),
@@ -660,6 +669,7 @@ function launchGame(authScreen, gameShell, externalState = null) {
     worldMap:   worldMapManager,
     march:      marchManager,
     sound:      soundManager,
+    notifications: notificationManager,
     settings:   settingsManager,
     log:        logManager,
     eventBus,   // exposed for debugging/automation (watch/emit EventBus traffic)

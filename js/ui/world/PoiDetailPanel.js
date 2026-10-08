@@ -4,6 +4,7 @@
  * passed by WorldMapUI and emits intents through callbacks. One UI surface.
  */
 import { fmt } from '../uiUtils.js';
+import { worldBuffEffect } from '../buffs/buffText.js';
 
 export class PoiDetailPanel {
   constructor(host, { onAction, onClose }) {
@@ -108,7 +109,7 @@ export class PoiDetailPanel {
       return `<div class="world-panel__row"><span>Type</span><b>${kindName}</b></div>
               <div class="world-panel__row"><span>Status</span><b>${outpostOwned ? 'Held — boon active' : 'Capturable'}</b></div>
               ${garrison}
-              <div class="world-panel__row"><span>Boon</span><b>${this._boonText(poi.boon)}</b></div>
+              <div class="world-panel__row"><span>Boon</span><b>${poi.boon ? worldBuffEffect(poi.boon) : 'None'}</b></div>
               ${reveal}`;
     }
     return '<div class="world-panel__row"><span>Your home city</span></div>';
@@ -121,10 +122,7 @@ export class PoiDetailPanel {
     if (reward.kind === 'item') return `${reward.qty ?? 1}× ${reward.itemId}`;
     if (reward.kind === 'buff') {
       const mins = Math.round((reward.durationMs ?? 0) / 60000);
-      const what = reward.flavor === 'economic' ? `+${Math.round(reward.pct * 100)}% ${reward.resource}`
-        : reward.flavor === 'military' ? `+${Math.round(reward.pct * 100)}% troop attack`
-        : `+${Math.round(reward.pct * 100)}% march speed`;
-      return `${what} for ${mins}m`;
+      return `${worldBuffEffect(reward)} for ${mins}m`;
     }
     return 'Unknown';
   }
@@ -134,15 +132,6 @@ export class PoiDetailPanel {
     const s = Math.max(0, Math.round(ms / 1000));
     if (s < 60) return `${s}s`;
     return `${Math.floor(s / 60)}m ${s % 60}s`;
-  }
-
-  /** Human-readable summary of a persistent outpost boon. */
-  _boonText(boon) {
-    if (!boon) return 'None';
-    const pct = Math.round((boon.pct ?? 0) * 100);
-    if (boon.flavor === 'economic') return `+${pct}% ${boon.resource}`;
-    if (boon.flavor === 'military') return `+${pct}% troop attack`;
-    return `+${pct}% march speed`;
   }
 
   _show() { this._el.classList.remove('hidden'); }

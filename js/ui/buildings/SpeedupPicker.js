@@ -85,7 +85,7 @@ export function openSpeedupPicker({ anchorRect, queueType, secsLeft, inventory, 
 
   // Teardown: outside-click, Escape, resize/scroll, or programmatic close.
   const onDoc = (e) => { if (!picker.contains(e.target)) close(); };
-  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); close(); } };
   function close() {
     if (_close !== close) return;          // already closed
     picker.remove();

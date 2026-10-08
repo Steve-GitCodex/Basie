@@ -86,9 +86,9 @@ export class HeroProgression {
   awardHeroXP(heroId, amount) {
     const hero = this._h._owned.get(heroId);
     if (!hero) return { success: false, reason: 'Hero not in roster.' };
-    this._applyXP(hero, HEROES_CONFIG[heroId], amount);
+    const { gained } = this._applyXP(hero, HEROES_CONFIG[heroId], amount);
     eventBus.emit('heroes:updated', this._h.getRosterWithState());
-    return { success: true };
+    return { success: true, gained };
   }
 
   /** Grant XP to many heroes; broadcasts the roster once, and only when someone levelled up. */

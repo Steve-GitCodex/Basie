@@ -10,6 +10,7 @@
 import { eventBus } from '../../core/EventBus.js';
 import { WORLD_MAP } from '../../entities/GAME_DATA.js';
 import { marchTypeForPOI } from '../../systems/march/marchRules.js';
+import { worldBuffEffect } from '../buffs/buffText.js';
 import { WorldRenderer } from '../world/WorldRenderer.js';
 import { PoiDetailPanel } from '../world/PoiDetailPanel.js';
 import { MarchDispatchSheet } from '../world/MarchDispatchSheet.js';
@@ -69,11 +70,17 @@ export class WorldMapUI {
     // the map + open panel so the new ownership/boon shows immediately.
     eventBus.on('world:outpostCaptured', () => { this._renderer?.syncState(); this._refreshOpenPanel(); });
     eventBus.on('world:regionCaptured', (d) => {
-      this._notify?.show?.('success', '🚩 Region captured', this._wm.getRegion(d.regionId)?.name ?? '');
+      this._notify?.show?.('success', '🚩 Region captured', this._regionCaptureText(d.regionId));
       this._renderer?.rippleRegion(d.regionId);
       this._renderer?.syncState();
       this._renderLegend();
     });
+  }
+
+  _regionCaptureText(regionId) {
+    const region = this._wm.getRegion(regionId);
+    const effect = region?.buff ? worldBuffEffect(region.buff) : '';
+    return [region?.name, effect].filter(Boolean).join(' — ');
   }
 
   _impactFor(m) {
@@ -212,14 +219,7 @@ export class WorldMapUI {
   _announceComplete(m) {
     const parts = Object.entries(m.payload ?? {}).map(([k, v]) => `${v} ${k}`);
     for (const it of m.grants?.items ?? []) parts.push(`${it.qty ?? 1}× ${it.itemId}`);
-    if (m.grants?.buff) parts.push(this._buffText(m.grants.buff));
+    if (m.grants?.buff) parts.push(worldBuffEffect(m.grants.buff));
     if (parts.length) this._notify?.show?.('success', '🎁 Army returned', parts.join(', '));
-  }
-
-  _buffText(buff) {
-    const pct = Math.round((buff.pct ?? 0) * 100);
-    if (buff.flavor === 'economic') return `+${pct}% ${buff.resource} buff`;
-    if (buff.flavor === 'military') return `+${pct}% troop attack buff`;
-    return `+${pct}% march speed buff`;
   }
 }

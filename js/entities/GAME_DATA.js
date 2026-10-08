@@ -37,6 +37,7 @@ export {
 } from './data/citySectors.js';
 export { WORLD_MAP } from './data/worldMap.js';
 export { STAT_RULES } from './data/statRules.js';
+export { BUFF_STATS, BUFF_SOURCES } from './data/buffStats.js';
 export { COMBAT_RULES } from './data/combatRules.js';
 export { CAMPAIGN_CHAPTER_KNOBS, CAMPAIGN_CHAPTER_OVERRIDES } from './data/campaign.js';
 

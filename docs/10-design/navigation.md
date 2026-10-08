@@ -4,7 +4,8 @@ There is **no bottom tab bar** (ADR 0003). The shell is a game HUD layered over 
 
 ## Surfaces
 
-- **`#floating-dock`** (bottom-center): `#btn-inventory` · `#nav-flip` · `#btn-mail`.
+- **`#floating-dock`** (bottom-center): `#btn-inventory` · `#nav-flip` · `#btn-mail`. The Inventory button toggles the Inventory modal
+  (`ui:openInventory`, `docs/10-design/inventory.md`), like Mail.
 - **`#nav-flip`** — single Base⇄World switch. `NavigationUI` tracks `_primaryView`;
   `_updateFlipButton()` shows the *destination* (on Base it reads "World"). Locked until
   a Rally Point exists.
@@ -15,9 +16,12 @@ There is **no bottom tab bar** (ADR 0003). The shell is a game HUD layered over 
 - **Building-tied views** (Heroes/Research/Military/Training) are reached by clicking the
   owning building — `TileTooltip` actions from `BUILDING_VIEW_ACTION` (see
   `city-view.md`). Building-tied badges redirect to the flip/Base.
+- Escape closes player-opened panels (`swapModal`: Mail, Inventory, …), never system modals from `openModal` (Daily Login,
+  offline earnings), whose close callbacks grant rewards. Layers above a panel (`confirmDialog`, `confirmReplace`,
+  `SpeedupPicker`) swallow their own Escape first (`preventDefault`).
 - View switching is centralized in `NavigationUI._switchView` / `ui:navigateTo`.
 - HUD: resource bar is `.resource-chip` components (`hud.css`), header actions, player
-  chip, floating `#hud-rail`. Icons are the unified SVG `icon()` system (50 SVGs in
+  chip. Icons are the unified SVG `icon()` system (50 SVGs in
   `assets/icons/svg/`) — no emoji in UI.
 
 ## Conventions

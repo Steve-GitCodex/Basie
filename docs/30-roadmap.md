@@ -20,6 +20,17 @@ Deep design lives in `docs/10-design/`; the session handoff is `docs/40-active.m
 | **6** | Notification center + hero equipment crafting | [ ] |
 | **7** | Backend + true multiplayer (Node.js + Firebase Realtime DB) | [ ] |
 
+## Progression rework — planned (2026-10-07)
+
+Run order and how-to: `docs/40-active.md` "PENDING PLANS". Plans live in `docs/superpowers/plans/`.
+
+- [ ] Top bar, two tiers: `2026-10-07-topbar-two-tier.md` (ADR 0041, independent)
+- [ ] Hero level-up sheet, with XP items moved off the Inventory: `2026-10-07-hero-levelup-sheet.md` (ADR 0046, independent)
+- [ ] Building levels, safety foundation: `2026-10-07-building-levels-safety.md` (ADR 0044; must land first)
+- [ ] Building levels, scale to HQ 30 + rebalance + content remap: `2026-10-07-building-levels-scale.md` (ADR 0044)
+- [ ] Power stat + monster rescale + gauges: `2026-10-07-power-stat.md` (ADRs 0045, 0043)
+- [ ] Player levels, curve/cap/bank, XP sources, rewards, level-up deck: `2026-10-07-player-levels.md` (ADR 0045)
+
 ## Grit reskin (current focus)
 
 Sequencing per `docs/10-design/grit-reskin.md` — each phase ≈ one session, independently
@@ -155,16 +166,14 @@ sprite generation.
   - *Wrong-but-contained:* difficulty never restored on load (`SettingsManager` only emits on
     `set()`, combat stays `'normal'`); challenge daily/weekly reset adds seconds as ms (needs
     16.7h continuous play); quest prereq gating drops progress instead of banking it; tutorial
-    `waitFor` double-increment window (500ms) on `'train'`/`'quest'`; welcome mail's 500 `gold`
-    destroyed (`gold` isn't a resource key); universal speed-ups need caller `queueType`;
+    `waitFor` double-increment window (500ms) on `'train'`/`'quest'`; universal speed-ups need caller `queueType`;
     `addItem` returns `undefined` on success and rejection; daily login streak uses UTC;
     `_reapplyRates` replays a stale snapshot (self-corrects).
-  - *Future traps:* `milMult < 1` debuffs discarded (guard `> 1` — fix before Phase 4 authors
-    debuffs); event objectives `produce_iron`/`gather_wood` have no writer; Market `tradeBonus`
+  - *Future traps:* event objectives `produce_iron`/`gather_wood` have no writer; Market `tradeBonus`
     dead (at ≥ 0.112 wood↔stone cycle mints resources); `concurrentSlots` authored but never
     read; `purchaseXPBundle` references nonexistent `gold`; story `rewards`/`unlocksQuestIds`
     dead data; no save `version` field (BuildingManager infers legacy from a missing key);
-    mail trash write-only; `spend()` unguarded on unknown zero-valued keys; debug `clearSave()`
+    `spend()` unguarded on unknown zero-valued keys; debug `clearSave()`
     calls a nonexistent `clear`; `_trainMultiplier` logic duplicated across call sites.
   - *Kept consequences of the fixes:* already-inflated VIP slot saves are not clawed back;
     over-cap gains are wasted but stock is never reduced (`_addCapped`; `setCap` doesn't clamp);
@@ -197,12 +206,9 @@ sprite generation.
     only. **Decided** (2026-07-15): global is the model of record (matches the flat
     `activeBuffs()` list and the existing gather/military/logistic treatment). Base
     economic buffs now apply globally too; align UI copy when the buff-stacking UI lands.
-  - [ ] **Future trap:** `CombatManager.resolveMarchBattle` ignores `milMult < 1`
-    (`milMult > 1` guard) — silently breaks the first debuff (Phase 4 AI).
-  - [~] **Unused event:** `world:buffsChanged` fires (outpost capture, region capture,
-    timed buffs, expiry) — `ResourceManager` now listens (production reapply). No
-    buff-dependent *UI* listener yet, so buff panels can still go stale until another
-    event repaints them.
+  - [x] **Unused event:** `world:buffsChanged` fires (outpost capture, region capture,
+    timed buffs, expiry) — `ResourceManager` listens (production reapply) and the Buffs panel,
+    HUD badge and resource-chip tooltips repaint on it (ADR 0038).
   - Verified sound, for the record: clock-derived boss windows; deploy-lock
     runtime-only + re-asserted on load + excluded from campaign attacks; offline march
     catch-up (cascading absolute timestamps); `worldState` seed/reconcile;
@@ -353,6 +359,17 @@ model retires entirely (interim anti-teleport guard dies with it).
 
 ## Backlog / nice-to-haves
 
+- [ ] **Progression follow-ups (deferred 2026-10-07; all are data appends by design, see "Built to extend" in
+  `building-levels.md`):**
+  - campaign chapters 11–12;
+  - a post-HQ30 band with a new currency (Whiteout Survival Fire Crystal style);
+  - research depth for Workshop 19–30 (extra tech levels or new techs);
+  - march gathering scaling by region;
+  - building art for eras 2–4;
+  - storage pressure;
+  - the chapter 4 heal weight and the cavalry ×2.2 balance;
+  - a pacing re-fit once played.
+
 - [x] **Phase 2c candidate, found by the final whole-branch review of Phase 2b:** (done 2026-10-01: wired via the unowned hero detail's How-to-recruit path, ADR 0030)
   `HeroManager.convertFragments`/`unlockFromShards` have no UI caller anywhere
   (pre-existing, predates Phase 2b) — `HeroDetailPanel`'s unowned-hero "Fragment
@@ -383,6 +400,10 @@ model retires entirely (interim anti-teleport guard dies with it).
 - [ ] Queue sidebar clearance on other views (Hero Quarters roster etc.): reuse the Trading Post rule — reserve
   `--bq-toggle-width` always and `--bq-panel-width` while `#bq-sidebar` is open (≥ 901px); see `.tp` in
   `css/components/trading-post.css`.
-- [ ] Region buff stacking UI (all active territory buffs in one place).
+- [x] **Inventory modal** - done 2026-10-07, ADR 0039. Design `docs/10-design/inventory.md`: Mail-style modal, regrouped tabs,
+  shared `useItemFlow` (Trading Post uses it), batch Use xN with lost report, one `awardHeroXP` path.
+- [x] **Mail hub** - done 2026-10-07, ADR 0040. Design `docs/10-design/mail.md`: category hub (Reports/Rewards/System/Starred/Trash),
+  in-place expand, per-category + global Claim all, Undo on delete, in-game confirm, battle report, Escape closes, phone hub→list.
+- [x] Region buff stacking UI (all active territory buffs in one place) — Buffs panel Overview, ADR 0038.
 - [ ] Multi-base / second city · [ ] mini-map / region jump-to.
 - [ ] AI difficulty scaling seam driven by player level + activity (Phase 4 prep).

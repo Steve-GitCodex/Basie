@@ -1,29 +1,34 @@
-/**
- * MailManager.js
- * Manages an in-game inbox of persistent messages.
- * Handles unread state, reward attachments, interactive reward collection,
- * archiving, bulk operations, and categorised mail types.
- *
- * Message types: 'combat' | 'quest' | 'achievement' | 'system'
- */
 import { eventBus } from '../core/EventBus.js';
+import { MONSTERS_CONFIG } from '../entities/GAME_DATA.js';
 import { stageById } from './campaign/campaignStages.js';
+import { categoryCounts, isClaimable, unreadCount } from './mail/mailCategories.js';
 
-/** @param {string} subject @returns {string} */
-function _inferType(subject) {
-  if (/^[⚔️💀]/.test(subject)) return 'combat';
-  if (/^📜/.test(subject))      return 'quest';
-  if (/^🏆/.test(subject))      return 'achievement';
-  return 'system';
+const TRASH_PURGE_MS = 7 * 86_400_000;
+
+function withoutXp(rewards) {
+  const { xp: _xp, ...rest } = rewards ?? {};
+  return rest;
+}
+
+function battleReport(d, victory) {
+  return {
+    victory,
+    enemyName:    MONSTERS_CONFIG[d.monsterId]?.name ?? stageById(d.stageId ?? d.monsterId)?.name ?? 'Unknown enemy',
+    sent:         d.sent ?? 0,
+    dead:         d.dead ?? {},
+    wounded:      d.wounded ?? {},
+    rounds:       d.rounds ?? 0,
+    enemyLeftPct: d.enemyLeftPct ?? 0,
+    rewards:      victory ? withoutXp(d.rewards) : null,
+  };
 }
 
 export class MailManager {
   constructor() {
     this.name = 'MailManager';
-    /** @type {Array<{id, subject, body, icon, type, isRead, isArchived, attachments, rewardsClaimed, timestamp}>} */
     this._messages = [];
     this._nextId = 1;
-    this._inv = null; // set via setInventoryManager() after construction
+    this._inv = null;
     this._registerEvents();
   }
 
@@ -32,242 +37,199 @@ export class MailManager {
 
   _registerEvents() {
     eventBus.on('combat:victory', d => {
-      // Strip xp from attachments — XP is already granted directly at victory time.
-      const { xp: _xp, ...attachmentRewards } = d.rewards ?? {};
       this.send({
         type: 'combat',
-        subject: '⚔️ Combat Report: Victory',
-        body: `Your forces stood firm and defeated the enemy! All spoils of war have been recorded below. Collect them to add to your reserves.`,
-        icon: '📋',
-        attachments: attachmentRewards,
+        subject: 'Combat Report: Victory',
+        body: 'Your forces stood firm and defeated the enemy! All spoils of war have been recorded below. Collect them to add to your reserves.',
+        attachments: withoutXp(d.rewards),
+        report: battleReport(d, true),
       });
     });
-    eventBus.on('combat:defeat', () => {
+    eventBus.on('combat:defeat', d => {
       this.send({
         type: 'combat',
-        subject: '💀 Combat Report: Defeat',
-        body: `Your forces were overwhelmed and driven back. Take time to regroup, reinforce your barracks, and try again. The enemy will not forget this day.`,
-        icon: '📋',
+        subject: 'Combat Report: Defeat',
+        body: 'Your forces were overwhelmed and driven back. Take time to regroup, reinforce your barracks, and try again. The enemy will not forget this day.',
+        report: battleReport(d ?? {}, false),
       });
     });
     eventBus.on('campaign:firstClear', d => {
       this.send({
         type: 'combat',
-        subject: '💎 First clear bonus',
+        subject: 'First clear bonus',
         body: `Your first clear of ${stageById(d.stageId)?.name ?? 'a campaign stage'} earned a diamond bonus. Collect it below.`,
-        icon: '💎',
         attachments: d.rewards,
       });
     });
     eventBus.on('quest:completed', d => {
       this.send({
         type: 'quest',
-        subject: `📜 Quest Complete: "${d.name}"`,
+        subject: `Quest Complete: "${d.name}"`,
         body: d.description ?? 'Objective complete! Your reward is waiting to be collected.',
-        icon: '📜',
         attachments: d.rewards,
       });
     });
     eventBus.on('user:levelUp', d => {
       this.send({
         type: 'system',
-        subject: `🎉 Level Up! You are now Level ${d.level}`,
+        subject: `Level Up! You are now Level ${d.level}`,
         body: `Congratulations, Commander! Your growing experience has elevated you to Level ${d.level}. New opportunities await — new buildings, technologies, and challenges will unlock as you grow stronger.`,
-        icon: '👑',
         attachments: { money: d.level * 50 },
       });
     });
   }
 
-  // ─── Core ─────────────────────────────────────────────────────────────────
-
-  /**
-   * Send a new message to the inbox.
-   * @param {{ type?: string, subject: string, body: string, icon?: string, attachments?: object }} opts
-   */
+  /** @param {{ type?: string, subject: string, body: string, attachments?: object, report?: object }} opts */
   send(opts) {
     const msg = {
       id:             this._nextId++,
       type:           opts.type ?? 'system',
       subject:        opts.subject,
       body:           opts.body,
-      icon:           opts.icon ?? '📬',
       isRead:         false,
-      isArchived:     false,
       isInTrash:      false,
       deletedAt:      null,
       isImportant:    false,
       attachments:    opts.attachments ?? null,
       rewardsClaimed: false,
+      report:         opts.report ?? null,
       timestamp:      Date.now(),
     };
     this._messages.unshift(msg);
     eventBus.emit('mail:received', { unreadCount: this.getUnreadCount(), message: msg });
-    eventBus.emit('mail:updated',  { unreadCount: this.getUnreadCount() });
+    this._emitUpdated();
   }
 
-  // ─── Read ──────────────────────────────────────────────────────────────────
-
   markRead(id) {
-    const msg = this._messages.find(m => m.id === id);
-    if (msg && !msg.isRead) {
-      msg.isRead = true;
-      const uc = this.getUnreadCount();
-      eventBus.emit('mail:read',    { unreadCount: uc });
-      eventBus.emit('mail:updated', { unreadCount: uc });
-    }
+    const msg = this._find(id);
+    if (!msg || msg.isRead) return;
+    msg.isRead = true;
+    eventBus.emit('mail:read', { unreadCount: this.getUnreadCount() });
+    this._emitUpdated();
   }
 
   markUnread(id) {
-    const msg = this._messages.find(m => m.id === id);
-    if (msg && msg.isRead) {
-      msg.isRead = false;
-      const uc = this.getUnreadCount();
-      eventBus.emit('mail:updated', { unreadCount: uc });
-    }
+    const msg = this._find(id);
+    if (!msg || !msg.isRead) return;
+    msg.isRead = false;
+    this._emitUpdated();
   }
 
   markAllRead() {
     this._messages.forEach(m => m.isRead = true);
-    eventBus.emit('mail:read',    { unreadCount: 0 });
-    eventBus.emit('mail:updated', { unreadCount: 0 });
+    eventBus.emit('mail:read', { unreadCount: 0 });
+    this._emitUpdated();
   }
 
   /** @param {number[]} ids */
-  markReadMultiple(ids) {
+  markReadMany(ids) {
     const set = new Set(ids);
     this._messages.forEach(m => { if (set.has(m.id)) m.isRead = true; });
-    const uc = this.getUnreadCount();
-    eventBus.emit('mail:read',    { unreadCount: uc });
-    eventBus.emit('mail:updated', { unreadCount: uc });
+    eventBus.emit('mail:read', { unreadCount: this.getUnreadCount() });
+    this._emitUpdated();
   }
 
-  // ─── Trash ────────────────────────────────────────────────────────────────
+  trashMail(id)   { this.trashMany([id]); }
+  restoreMail(id) { this.restoreMany([id]); }
 
-  trashMail(id) {
-    const msg = this._messages.find(m => m.id === id);
-    if (msg) {
-      msg.isInTrash  = true;
-      msg.deletedAt  = Date.now();
-      msg.isArchived = false;
-      eventBus.emit('mail:updated', { unreadCount: this.getUnreadCount() });
-    }
+  /** @param {number[]} ids */
+  trashMany(ids) {
+    const now = Date.now();
+    this._forEachId(ids, m => { m.isInTrash = true; m.deletedAt = now; });
   }
 
-  restoreMail(id) {
-    const msg = this._messages.find(m => m.id === id);
-    if (msg) {
-      msg.isInTrash = false;
-      msg.deletedAt = null;
-      eventBus.emit('mail:updated', { unreadCount: this.getUnreadCount() });
-    }
+  /** @param {number[]} ids */
+  restoreMany(ids) {
+    this._forEachId(ids, m => { m.isInTrash = false; m.deletedAt = null; });
   }
 
   permanentDelete(id) {
     this._messages = this._messages.filter(m => m.id !== id);
-    const uc = this.getUnreadCount();
-    eventBus.emit('mail:deleted', { unreadCount: uc });
-    eventBus.emit('mail:updated', { unreadCount: uc });
+    eventBus.emit('mail:deleted', { unreadCount: this.getUnreadCount() });
+    this._emitUpdated();
   }
 
   toggleImportant(id) {
-    const msg = this._messages.find(m => m.id === id);
-    if (msg) {
-      msg.isImportant = !msg.isImportant;
-      eventBus.emit('mail:updated', { unreadCount: this.getUnreadCount() });
-    }
+    const msg = this._find(id);
+    if (!msg) return;
+    msg.isImportant = !msg.isImportant;
+    this._emitUpdated();
   }
 
-  // ─── Archive ───────────────────────────────────────────────────────────────
-
-  archive(id) {
-    const msg = this._messages.find(m => m.id === id);
-    if (msg) { msg.isArchived = true; eventBus.emit('mail:updated', { unreadCount: this.getUnreadCount() }); }
-  }
-
-  unarchive(id) {
-    const msg = this._messages.find(m => m.id === id);
-    if (msg) { msg.isArchived = false; eventBus.emit('mail:updated', { unreadCount: this.getUnreadCount() }); }
-  }
-
-  /** @param {number[]} ids */
-  archiveMultiple(ids) {
-    const set = new Set(ids);
-    this._messages.forEach(m => { if (set.has(m.id)) m.isArchived = true; });
-    eventBus.emit('mail:updated', { unreadCount: this.getUnreadCount() });
-  }
-
-  // ─── Delete ────────────────────────────────────────────────────────────────
-
-  delete(id) {
-    this._messages = this._messages.filter(m => m.id !== id);
-    const uc = this.getUnreadCount();
-    eventBus.emit('mail:deleted', { unreadCount: uc });
-    eventBus.emit('mail:updated', { unreadCount: uc });
-  }
-
-  /** @param {number[]} ids */
-  deleteMultiple(ids) {
-    const set = new Set(ids);
-    this._messages = this._messages.filter(m => !set.has(m.id));
-    const uc = this.getUnreadCount();
-    eventBus.emit('mail:deleted', { unreadCount: uc });
-    eventBus.emit('mail:updated', { unreadCount: uc });
-  }
-
-  // ─── Rewards ───────────────────────────────────────────────────────────────
-
-  /**
-   * Claim reward attachments from a mail.
-   * @param {number} id
-   * @param {import('./ResourceManager.js').ResourceManager} resourceManager
-   * @returns {{ success: boolean, rewards?: object, reason?: string }}
-   */
+  /** @returns {{ success: boolean, rewards?: object, reason?: string }} */
   claimRewards(id) {
     if (!this._inv) return { success: false, reason: 'Inventory system not available.' };
-    const msg = this._messages.find(m => m.id === id);
+    const msg = this._find(id);
     if (!msg)               return { success: false, reason: 'Message not found.' };
     if (!msg.attachments)   return { success: false, reason: 'No attachments.' };
     if (msg.rewardsClaimed) return { success: false, reason: 'Rewards already claimed.' };
 
-    // Convert flat attachments { money: 500, wood: 300 } to reward array and
-    // route through InventoryManager so items land in inventory for deferred use.
-    const rewardArray = Object.entries(msg.attachments)
-      .filter(([k]) => k !== 'xp')
-      .map(([k, v]) => ({ type: 'resource', itemId: k, quantity: v }));
-    this._inv.grantRewards(rewardArray);
-
+    this._inv.grantRewards(this._rewardArray(msg.attachments));
     msg.rewardsClaimed = true;
-    eventBus.emit('mail:rewardsClaimed', { id, rewards: msg.attachments });
-    eventBus.emit('mail:updated', { unreadCount: this.getUnreadCount() });
+    msg.isRead = true;
+    eventBus.emit('mail:rewardsClaimed', { ids: [id], rewards: msg.attachments });
+    this._emitUpdated();
     return { success: true, rewards: msg.attachments };
   }
 
-  // ─── Queries ───────────────────────────────────────────────────────────────
+  /** @param {number[]} ids @returns {{ success: boolean, claimed: number[], rewards: object }} */
+  claimAll(ids) {
+    const set = new Set(ids);
+    const msgs = this._messages.filter(m => set.has(m.id) && isClaimable(m));
+    if (!this._inv || msgs.length === 0) return { success: false, claimed: [], rewards: {} };
+
+    const rewards = {};
+    for (const m of msgs) {
+      for (const [k, v] of Object.entries(withoutXp(m.attachments))) rewards[k] = (rewards[k] ?? 0) + v;
+    }
+    this._inv.grantRewards(this._rewardArray(rewards));
+    msgs.forEach(m => { m.rewardsClaimed = true; m.isRead = true; });
+    const claimed = msgs.map(m => m.id);
+    eventBus.emit('mail:rewardsClaimed', { ids: claimed, rewards });
+    this._emitUpdated();
+    return { success: true, claimed, rewards };
+  }
 
   getMessages()    { return [...this._messages].sort((a, b) => b.timestamp - a.timestamp); }
-  getUnreadCount() { return this._messages.filter(m => !m.isRead && !m.isArchived && !m.isInTrash).length; }
+  getUnreadCount() { return unreadCount(this._messages); }
+  counts()         { return categoryCounts(this._messages); }
 
-  update(dt) { /* No tick needed */ }
+  purgeTrash(now = Date.now()) {
+    const cutoff = now - TRASH_PURGE_MS;
+    this._messages = this._messages.filter(m => !(m.isInTrash && (m.deletedAt ?? now) < cutoff));
+  }
 
-  // ─── Persistence ───────────────────────────────────────────────────────────
+  update() {}
 
   serialize() { return { messages: this._messages, nextId: this._nextId }; }
 
   deserialize(data) {
     if (!data) return;
     this._messages = (data.messages ?? []).map(m => ({
-      isArchived:     false,
       isInTrash:      false,
       deletedAt:      null,
       isImportant:    false,
       rewardsClaimed: false,
-      type: _inferType(m.subject),
       ...m,
     }));
     const maxExistingId = this._messages.reduce((max, m) => Math.max(max, m.id ?? 0), 0);
     this._nextId = data.nextId ?? maxExistingId + 1;
+    this.purgeTrash();
     eventBus.emit('mail:received', { unreadCount: this.getUnreadCount() });
-    eventBus.emit('mail:updated',  { unreadCount: this.getUnreadCount() });
+    this._emitUpdated();
   }
+
+  _find(id) { return this._messages.find(m => m.id === id); }
+
+  _forEachId(ids, fn) {
+    const set = new Set(ids);
+    this._messages.forEach(m => { if (set.has(m.id)) fn(m); });
+    this._emitUpdated();
+  }
+
+  _rewardArray(attachments) {
+    return Object.entries(withoutXp(attachments)).map(([k, v]) => ({ type: 'resource', itemId: k, quantity: v }));
+  }
+
+  _emitUpdated() { eventBus.emit('mail:updated', { unreadCount: this.getUnreadCount() }); }
 }

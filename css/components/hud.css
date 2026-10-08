@@ -59,18 +59,6 @@
 .res-icon--diamond  { --icon: url('/assets/icons/svg/diamond.svg');   --ricon-color: var(--clr-res-diamond, #f4b23a); }
 .res-icon--cafeteria { --icon: url('/assets/icons/svg/cafeteria.svg'); --ricon-color: var(--clr-res-cafeteria, #d98a5a); }
 
-/* ── Header action buttons: framed glass ─────────────────────────────────── */
-.header-icon-btn {
-  background: linear-gradient(180deg, hsla(205, 35%, 14%, 0.7), hsla(210, 40%, 9%, 0.8));
-  border: 1px solid hsla(205, 40%, 40%, 0.28);
-  border-radius: 10px;
-  box-shadow: inset 0 1px 0 hsla(32, 90%, 80%, 0.07);
-}
-.header-icon-btn:hover {
-  border-color: hsla(32, 70%, 55%, 0.55);
-  background: linear-gradient(180deg, hsla(205, 45%, 18%, 0.85), hsla(210, 45%, 12%, 0.9));
-}
-
 /* ── Bottom nav: floating dock ───────────────────────────────────────────── */
 .bottom-tab-bar {
   background: linear-gradient(0deg, hsla(220, 34%, 5%, 0.86), hsla(220, 32%, 7%, 0.66));
@@ -98,90 +86,11 @@
 .city-home-btn,
 .world-grid .city-home-btn { bottom: calc(var(--bottom-nav-height) + var(--space-3)); }
 
-/* ── Resource bar v2: icon-forward, capacity as a fill-bar, rate on hover ── */
-.resource-bar { justify-content: flex-start; padding-left: var(--space-3); gap: var(--space-2); }
-.resource-bar .res-name { display: none; }                 /* A: drop names — icon is the label */
-.resource-bar .res-cap  { display: none; }                 /* B: capacity becomes a fill-bar */
-.resource-bar .res-rate { opacity: 0; transition: opacity 0.15s ease; }  /* E: rate on hover only */
-.resource-bar .resource-chip:hover .res-rate { opacity: 1; }
-
-.resource-bar .resource-chip {
-  position: relative;
-  min-width: 0;
-  padding: 4px 12px 7px 7px;
-  overflow: hidden;
-}
-.resource-bar .res-value { font-size: var(--text-md); }    /* value-forward */
-.resource-bar .res-rate-col { min-width: 30px; }
-
-/* capacity fill underline (driven by --fill set in NavigationUI) */
-.resource-bar .resource-chip::after {
-  content: "";
-  position: absolute;
-  left: 7px; right: 10px; bottom: 3px;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--rc, #6a9cb5);
-  transform: scaleX(var(--fill, 0));
-  transform-origin: left;
-  opacity: 0.85;
-  transition: transform 0.3s ease;
-}
 #res-wood  { --rc: var(--clr-res-wood); }
 #res-stone { --rc: var(--clr-res-stone); }
 #res-food  { --rc: var(--clr-res-food); }
 #res-iron  { --rc: var(--clr-res-iron); }
 #res-water { --rc: var(--clr-res-water); }
-
-/* ── Premium currency pills (money / diamond) pinned by the avatar ── */
-.resource-chip--premium {
-  display: flex; align-items: center; gap: 6px;
-  min-width: 0; padding: 4px 11px;
-  background: linear-gradient(180deg, hsla(45, 45%, 16%, 0.72), hsla(40, 42%, 10%, 0.88));
-  border: 1px solid hsla(45, 70%, 55%, 0.35);
-}
-#res-diamond.resource-chip--premium {
-  background: linear-gradient(180deg, hsla(190, 45%, 16%, 0.72), hsla(195, 45%, 10%, 0.88));
-  border-color: hsla(190, 70%, 55%, 0.4);
-}
-.resource-chip--premium .res-value { font-size: var(--text-md); font-weight: 700; }
-.resource-chip--premium .res-rate  { font-size: var(--text-xs); color: var(--clr-success); }
-
-/* ── Compact, clearly-tappable profile chip (opens profile + settings) ── */
-.player-chip { cursor: pointer; padding: 3px 9px 3px 4px; gap: 6px; }
-.player-chip:hover { border-color: hsla(32, 70%, 55%, 0.5); background: hsla(205, 40%, 14%, 0.9); }
-.player-chip .player-avatar { font-size: 1.05rem; }
-.player-chip .player-name { display: none; }   /* avatar + level + VIP only */
-
-/* ── Floating utility rail (right edge) — inventory + mail, above ⚡ queues ── */
-.hud-rail {
-  position: fixed;
-  right: var(--space-2);
-  top: calc(var(--header-height) + var(--space-3));   /* upper-right, just under the header */
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  z-index: calc(var(--z-overlay) - 1);
-}
-.hud-rail__btn {
-  position: relative;
-  width: 42px; height: 42px;
-  display: grid; place-items: center;
-  font-size: 1.15rem;
-  border-radius: 50%;
-  cursor: pointer;
-  color: var(--clr-text-primary);
-  background: linear-gradient(180deg, hsla(205, 35%, 14%, 0.82), hsla(210, 40%, 9%, 0.9));
-  border: 1px solid hsla(205, 40%, 40%, 0.3);
-  box-shadow: 0 2px 10px hsla(220, 60%, 2%, 0.5), inset 0 1px 0 hsla(32, 90%, 80%, 0.07);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-}
-.hud-rail__btn:hover {
-  border-color: hsla(32, 70%, 55%, 0.55);
-  background: linear-gradient(180deg, hsla(205, 45%, 18%, 0.92), hsla(210, 45%, 12%, 0.96));
-}
-.hud-rail__btn .badge { position: absolute; top: -3px; right: -3px; }
 
 /* World tab icon — globe with meridians */
 .nav-icon--world { --icon: url('/assets/icons/svg/world.svg'); }

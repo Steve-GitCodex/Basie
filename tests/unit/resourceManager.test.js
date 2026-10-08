@@ -86,9 +86,7 @@ test('applyOffline never snaps an over-cap amount down', () => {
 
 test('hero building production bonus is not applied globally (no double count)', () => {
   const rm = new ResourceManager();
-  rm.setHeroManager({
-    getActiveProductionMultiplier: () => 0,
-  });
+  rm.setHeroManager({});
   rm.recalculateRates([{ effects: { iron: 10, money: 10 }, level: 1 }]);
   assert.equal(rm._resources.iron.perSec, 10, 'per-instance hero scaling belongs to buildingEconomy, not here');
   assert.equal(rm._resources.money.perSec, 10, 'an unrelated resource must never be boosted by a hero bonus map');
@@ -99,4 +97,35 @@ test('lowering a cap below current stock never deletes resources', () => {
   rm._resources.wood.amount = 500;
   rm.setCap('wood', 100);
   assert.equal(rm._resources.wood.amount, 500);
+});
+
+test('item boost multiplier comes from BuffManager production.all', () => {
+  const rm = new ResourceManager();
+  rm.setBuffManager({ multiplierFor: s => (s === 'production.all' ? 0.5 : 0) });
+  rm.recalculateRates([{ effects: { wood: 10 }, level: 1 }]);
+  assert.equal(rm._resources.wood.perSec, 15);
+});
+
+test('getRateBreakdown multiplier × base equals perSec with every layer active', () => {
+  const rm = new ResourceManager();
+  rm._techBonuses = { woodBonus: 0.1 };
+  rm._vipProductionBonus = 0.05;
+  rm._difficultyProductionMult = 0.9;
+  rm.setBuildingManager({ getHQBenefits: () => ({ productionBonus: 0.05 }) });
+  rm.setBuffManager({ multiplierFor: () => 0.5, getBoosts: () => [] });
+  rm.setWorldMapManager({ activeBuffs: () => [{ flavor: 'economic', resource: 'wood', pct: 0.15 }] });
+  rm.addModifier('wood', 2, 'evt');
+  rm.recalculateRates([{ effects: { wood: 10 }, level: 2 }]);
+  const b = rm.getRateBreakdown('wood');
+  assert.equal(b.base, 20);
+  assert.ok(Math.abs(b.base * b.multiplier - rm._resources.wood.perSec) < 1e-9);
+});
+
+test('getRateBreakdown with zero base returns a finite multiplier', () => {
+  const rm = new ResourceManager();
+  rm.setBuffManager({ multiplierFor: () => 0.5, getBoosts: () => [] });
+  rm.recalculateRates([]);
+  const b = rm.getRateBreakdown('stone');
+  assert.equal(b.base, 0);
+  assert.ok(Number.isFinite(b.multiplier));
 });

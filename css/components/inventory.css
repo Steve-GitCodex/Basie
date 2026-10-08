@@ -1,300 +1,190 @@
-/* ============================================================
-   Inventory Slide-in Panel
-   ============================================================ */
-
-#inventory-panel-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  z-index: 900;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.28s ease;
-}
-
-#inventory-panel-overlay.open {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-#inventory-panel {
-  position: fixed;
-  top: 0;
-  right: -480px;
-  width: 460px;
+/* Inventory modal — Mail-style shell, category rail, rarity grid (docs/10-design/mockups/inventory-buffs/) */
+.inv-modal {
+  --inv-epic: hsl(275, 55%, 62%);
+  --inv-rare: hsl(210, 65%, 58%);
+  display: grid;
+  grid-template-rows: auto 1fr;
   height: 100%;
-  background: var(--surface-1, #1e2433);
-  border-left: 1px solid var(--border-color, rgba(255,255,255,0.1));
-  z-index: 901;
+  min-height: 0;
+  background: var(--clr-bg-surface);
+}
+
+.inv-modal__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--clr-border);
+  background: linear-gradient(var(--clr-bg-elevated), var(--clr-bg-surface));
+}
+.inv-modal__title {
+  font: 700 15px var(--font-heading);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--clr-text-primary);
+}
+.inv-modal__boosts {
+  font-size: 11px;
+  color: var(--clr-success);
+  border: 1px solid hsl(90, 35%, 26%);
+  background: hsl(90, 30%, 9%);
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.inv-modal__boosts:hover { background: hsl(90, 30%, 13%); }
+.inv-modal__header .modal-close { margin-left: auto; }
+
+.inv-modal__body {
+  display: grid;
+  grid-template-columns: 132px 1fr 260px;
+  min-height: 0;
+}
+.inv-modal__rail {
   display: flex;
   flex-direction: column;
-  transition: right 0.3s ease;
-  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.5);
+  padding: 8px 0;
+  border-right: 1px solid var(--clr-border);
+  overflow-y: auto;
 }
-
-#inventory-panel.open {
-  right: 0;
-}
-
-/* --- Header ------------------------------------------------- */
-.inv-panel-header {
+.inv-rail__tab {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px 13px;
-  border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.08));
-  flex-shrink: 0;
-}
-
-.inv-panel-title {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--text-primary, #e8e8e8);
-}
-
-.inv-panel-close {
+  gap: 6px;
+  padding: 9px 12px;
   background: none;
-  border: none;
-  color: var(--text-secondary, #888);
-  font-size: 1.2rem;
+  border: 0;
+  color: var(--clr-text-muted);
+  font-weight: 600;
+  font-size: 11.5px;
+  text-align: left;
   cursor: pointer;
-  padding: 2px 6px;
-  border-radius: 4px;
-  transition: background 0.15s, color 0.15s;
 }
-
-.inv-panel-close:hover {
-  background: rgba(255,255,255,0.08);
-  color: var(--text-primary, #e8e8e8);
+.inv-rail__tab:hover { color: var(--clr-text-secondary); }
+.inv-rail__tab--active {
+  color: var(--clr-text-primary);
+  background: var(--clr-bg-elevated);
+  box-shadow: inset 3px 0 var(--clr-primary);
 }
+.inv-rail__label { flex: 1; white-space: nowrap; }
+.inv-rail__count { font-size: 10px; color: var(--clr-text-muted); }
+.inv-rail__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--clr-primary);
+}
+.inv-rail__dot.hidden { display: none; }
 
-/* --- Body --------------------------------------------------- */
-.inv-panel-body {
-  flex: 1;
+.inv-modal__stage {
+  position: relative;
+  min-height: 0;
   overflow-y: auto;
+  scrollbar-width: thin;
+}
+.inv-modal__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 8px;
+  align-content: start;
   padding: 12px;
 }
-
-/* --- Tab bar ------------------------------------------------- */
-.inv-tabs {
+.inv-modal__empty {
+  position: absolute;
+  inset: 0;
   display: flex;
-  gap: 6px;
-  padding: 10px 12px;
-  overflow-x: auto;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-  flex-shrink: 0;
-  scrollbar-width: none;
-}
-.inv-tabs::-webkit-scrollbar { display: none; }
-
-.inv-tab {
-  position: relative;
-  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  white-space: nowrap;
-  padding: 6px 12px;
-  border-radius: 20px;
-  border: 1px solid rgba(255,255,255,0.1);
-  background: rgba(255,255,255,0.05);
-  color: var(--text-secondary, #9aa);
-  font-size: 0.78rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  justify-content: center;
+  gap: 10px;
 }
-.inv-tab:hover:not(:disabled) { background: rgba(255,255,255,0.1); color: var(--text-primary, #e8e8e8); }
-.inv-tab:disabled { opacity: 0.4; cursor: default; }
-.inv-tab--active {
-  background: var(--clr-tier-rare-muted, hsl(32,60%,16%));
-  border-color: var(--clr-tier-rare, hsl(32,100%,60%));
-  color: var(--text-primary, #e8e8e8);
+.inv-modal__empty.hidden { display: none; }
+.inv-modal__empty-title {
+  font: 700 14px var(--font-heading);
+  letter-spacing: 0.06em;
+  color: var(--clr-text-secondary);
 }
-.inv-tab__count {
-  font-size: 0.66rem;
-  font-weight: 800;
-  line-height: 1;
-  min-width: 16px;
-  padding: 2px 5px;
-  border-radius: 10px;
-  background: var(--clr-gold, #f0c040);
-  color: #1a1a1a;
-}
-
-/* --- Item grid (square rarity tiles) ------------------------ */
-.inv-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+.inv-modal__detail {
+  border-left: 1px solid var(--clr-border);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  background: linear-gradient(var(--clr-bg-elevated), var(--clr-bg-surface));
 }
 
 .inv-tile {
+  --inv-tier: var(--clr-tier-common);
   position: relative;
   aspect-ratio: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
-  border: 1.5px solid var(--clr-tier-common, #888);
-  background: var(--clr-tier-common-muted, hsl(220,10%,18%));
-  cursor: pointer;
   padding: 0;
-  transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s;
+  font-size: 1.7rem;
+  border-radius: 6px;
+  background: linear-gradient(160deg, var(--clr-bg-panel), var(--clr-bg-elevated));
+  border: 1px solid var(--clr-border);
+  color: var(--clr-text-primary);
+  cursor: pointer;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
-.inv-tile:hover { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(0,0,0,0.4); }
-.inv-tile--common    { border-color: var(--clr-tier-common, #888);     background: var(--clr-tier-common-muted, hsl(220,10%,18%)); }
-.inv-tile--rare      { border-color: var(--clr-tier-rare, hsl(38,85%,58%));    background: var(--clr-tier-rare-muted, hsl(32,60%,16%)); }
-.inv-tile--legendary { border-color: var(--clr-tier-legendary, #e6a32a); background: var(--clr-tier-legendary-muted, hsl(43,60%,18%)); }
-.inv-tile--common:hover    { box-shadow: 0 0 14px var(--clr-tier-common-glow); }
-.inv-tile--rare:hover      { box-shadow: 0 0 14px var(--clr-tier-rare-glow); }
-.inv-tile--legendary:hover { box-shadow: 0 0 14px var(--clr-tier-legendary-glow); }
-.inv-tile--selected {
-  outline: 2px solid var(--clr-gold, #f0c040);
-  outline-offset: 1px;
+.inv-tile::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  border-radius: 0 0 6px 6px;
+  background: var(--inv-tier);
 }
-
-.inv-tile__icon { font-size: 1.9rem; line-height: 1; }
-
+.inv-tile:hover { transform: translateY(-2px); }
+.inv-tile--common { --inv-tier: var(--clr-tier-common); }
+.inv-tile--rare { --inv-tier: var(--inv-rare); }
+.inv-tile--epic { --inv-tier: var(--inv-epic); }
+.inv-tile--legendary {
+  --inv-tier: var(--clr-tier-legendary);
+  box-shadow: inset 0 0 14px var(--clr-tier-legendary-glow);
+}
+.inv-tile__icon { line-height: 1; }
 .inv-tile__qty {
   position: absolute;
   right: 4px;
-  bottom: 4px;
-  font-size: 0.7rem;
-  font-weight: 800;
-  color: #fff;
-  background: rgba(0,0,0,0.6);
-  border-radius: 7px;
-  padding: 0 5px;
-  line-height: 1.4;
+  bottom: 5px;
+  font: 700 11px var(--font-heading);
+  text-shadow: 0 1px 2px #000;
 }
-
-/* Newly granted item — gold dot. Cleared 3 s after panel opens. */
-.inv-tile--new::after {
-  content: '';
+.inv-tile__tag {
   position: absolute;
-  top: -3px;
-  right: -3px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--clr-gold, #f4c430);
-  box-shadow: 0 0 0 2px var(--surface-1, #1e2433);
+  left: 4px;
+  top: 3px;
+  font: 700 9px var(--font-heading);
+  letter-spacing: 0.04em;
+  color: var(--clr-text-secondary);
+}
+.inv-tile--new::after {
+  content: "NEW";
+  position: absolute;
+  right: -4px;
+  top: -5px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--clr-primary);
+  color: var(--clr-text-inverse);
+  font: 700 8px var(--font-heading);
+}
+.inv-tile--selected {
+  border-color: var(--clr-primary);
+  box-shadow: 0 0 0 1px var(--clr-primary), 0 0 14px hsla(32, 90%, 55%, 0.35);
 }
 
-/* --- Selected item detail popover --------------------------- */
-.inv-detail {
-  flex-shrink: 0;
-  border-top: 1px solid rgba(255,255,255,0.1);
-  background: rgba(0,0,0,0.2);
-  padding: 12px 16px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.inv-detail__head { display: flex; align-items: center; gap: 12px; }
-.inv-detail__icon {
-  width: 44px; height: 44px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.6rem;
-  border-radius: 10px;
-  background: rgba(255,255,255,0.06);
-  flex-shrink: 0;
-}
-.inv-detail__info { min-width: 0; }
-.inv-detail__name {
-  font-size: 0.92rem;
-  font-weight: 700;
-  color: var(--text-primary, #e8e8e8);
-}
-.inv-detail__meta {
-  font-size: 0.74rem;
-  text-transform: capitalize;
-  color: var(--text-secondary, #9aa);
-  margin-top: 1px;
-}
-.inv-detail__desc {
-  font-size: 0.76rem;
-  color: var(--text-secondary, #9aa);
-  line-height: 1.4;
-}
-
-.inv-card-action {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.inv-card-action .btn {
-  font-size: 0.74rem;
-  padding: 4px 12px;
-}
-
-/* --- Empty state -------------------------------------------- */
-.inv-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 48px 24px;
-  text-align: center;
-}
-
-.inv-empty-icon {
-  font-size: 2.8rem;
-  opacity: 0.45;
-}
-
-.inv-empty-title {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--text-primary, #e8e8e8);
-}
-
-.inv-empty-sub {
-  font-size: 0.8rem;
-  color: var(--text-secondary, #888);
-}
-
-/* --- Hero picker -------------------------------------------- */
-.inv-hero-picker {
-  background: rgba(255,255,255,0.04);
-  border-radius: 8px;
-  margin: 4px 0 8px;
-  padding: 8px 10px;
-  grid-column: 1 / -1;
-}
-
-.inv-picker-label {
-  font-size: 0.72rem;
-  color: var(--text-secondary, #888);
-  margin-bottom: 6px;
-}
-
-.inv-pick-btn {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 6px;
-  padding: 5px 10px;
-  margin-bottom: 4px;
-  color: var(--text-primary, #e8e8e8);
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: background 0.12s;
-}
-
-.inv-pick-btn:hover {
-  background: rgba(255,255,255,0.12);
-}
-
-.inv-pick-lv {
-  font-size: 0.7rem;
-  color: var(--text-secondary, #888);
+@media (max-width: 720px) {
+  .inv-modal__body { grid-template-columns: 96px 1fr; grid-template-rows: minmax(0, 1fr) minmax(0, auto); }
+  .inv-modal__rail { grid-row: 1 / -1; }
+  .inv-modal__detail { border-left: 0; border-top: 1px solid var(--clr-border); max-height: 48vh; }
 }
 
 /* Success buy button override */
@@ -323,14 +213,6 @@
   font-size: 0.75rem;
   color: var(--text-secondary, #888);
   font-style: italic;
-}
-
-/* ── Speed Boost hint in inventory ─────────────────────── */
-.inv-speed-hint {
-  font-size: 0.72rem;
-  color: var(--clr-gold, #f0c040);
-  font-style: italic;
-  opacity: 0.85;
 }
 
 /* ============================================================
@@ -362,23 +244,6 @@
 @keyframes speedup-pop {
   from { opacity: 0; transform: translateY(-6px) scale(0.98); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-/* Ensure picker isn't clipped by the parent slot or strip */
-.bq-slot-active,
-.research-slot-active,
-.queue-item.training,
-.mq-active {
-  overflow: visible !important;
-  position: relative;
-}
-
-.bq-strip,
-.bq-items,
-.research-queue-slots,
-.mq-slot,
-.military-queue-grid {
-  overflow: visible !important;
 }
 
 .speedup-picker-title {
@@ -464,164 +329,4 @@
   padding: 2px 7px;
   border-radius: 999px;
   white-space: nowrap;
-}
-
-/* ── Layout helpers for speed-up button next to progress ── */
-.bq-speedup-row,
-.slot-speedup-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.bq-speedup-row .progress-container,
-.slot-speedup-row .progress-container {
-  flex: 1;
-  min-width: 0;
-}
-
-.bq-speed-btn,
-.slot-speed-btn {
-  flex-shrink: 0;
-  font-size: 1rem !important;
-  padding: 4px 8px !important;
-  line-height: 1.1;
-  min-width: 32px;
-  min-height: 28px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-/* =============================================
- * INVENTORY — Active Buffs
- * ============================================= */
-
-.inv-buff-section {
-  margin-top: var(--space-6);
-  padding: var(--space-5);
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.07);
-  border-radius: var(--radius-lg);
-}
-
-.inv-buff-heading {
-  font-size: var(--text-sm);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--clr-text-primary);
-  margin-bottom: var(--space-4);
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.buff-heading-icon { font-size: 1.1rem; }
-
-/* Card list */
-.buff-card-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-}
-
-/* Empty state */
-.buff-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-6) var(--space-4);
-  width: 100%;
-  text-align: center;
-  color: var(--clr-text-muted);
-}
-
-.buff-empty-icon {
-  font-size: 2rem;
-  opacity: 0.5;
-}
-
-.buff-empty-hint {
-  font-size: var(--text-xs);
-  max-width: 340px;
-}
-
-/* Individual buff card */
-.buff-card {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  background: linear-gradient(135deg, rgba(245,158,11,0.1), rgba(251,191,36,0.05));
-  border: 1px solid rgba(245,158,11,0.3);
-  border-radius: var(--radius-md);
-  min-width: 240px;
-  flex: 1;
-  max-width: 380px;
-  animation: buff-card-in 0.25s ease-out;
-}
-
-@keyframes buff-card-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0);   }
-}
-
-.buff-card-icon {
-  font-size: 1.8rem;
-  flex-shrink: 0;
-}
-
-.buff-card-body {
-  flex: 1;
-  min-width: 0;
-}
-
-.buff-card-name {
-  font-size: var(--text-sm);
-  font-weight: 700;
-  color: var(--clr-gold, #f59e0b);
-}
-
-.buff-card-effect {
-  font-size: var(--text-xs);
-  color: var(--clr-text-secondary, #94a3b8);
-  margin-top: 2px;
-}
-
-/* Countdown timer */
-.buff-card-timer {
-  text-align: right;
-  flex-shrink: 0;
-}
-
-.buff-timer-label {
-  font-size: 0.6rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--clr-text-muted);
-}
-
-.buff-timer-value {
-  font-size: var(--text-md);
-  font-weight: 800;
-  font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  color: var(--clr-gold, #f59e0b);
-  white-space: nowrap;
-}
-
-.buff-timer-bar {
-  width: 80px;
-  height: 4px;
-  background: rgba(255,255,255,0.1);
-  border-radius: 2px;
-  margin-top: 4px;
-  overflow: hidden;
-}
-
-.buff-timer-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--clr-gold, #f59e0b), #fcd34d);
-  border-radius: 2px;
-  transition: width 1s linear;
 }

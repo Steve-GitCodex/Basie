@@ -32,25 +32,25 @@ what **is** — MVP + fast-follows are shipped. PvP/co-op is reserved for the fu
 | `outpost` (subtypes outpost/shrine/watchtower) | scout → capture | persistent (`_outpostOwner`) | standing `boon`; watchtower `revealRadius` lifts fog |
 | `world_boss` | attack | **windowed** (`window:{everyMs,openMs}`, derived from clock — ADR 0006) | weighted `lootTable` (`worldBoss.rollLoot`), one kill per window, no capture |
 
-## Buffs — one source of truth (with known gaps)
+## Buffs — one source of truth
 
 `WorldMapManager.activeBuffs()` merges region signature buffs (economic / military /
 logistic), held-outpost boons, and timed buffs from ruin expeditions (`_timedBuffs`,
 expiring). Consumers as **actually wired** (verified 2026-07-15):
 
 - **logistic** → `MarchManager` via `logisticSpeedMult` (march speed). Works.
-- **military** → `resolveMarchBattle` via `militaryMult` (attack mult; values < 1 are
-  silently dropped by the `milMult > 1` guard in `CombatManager`). Works for buffs only.
-- **economic** → gather marches only, and effectively **dead**: `marchResolver._gather`
-  clamps `granted*(1+bonus)` back to `loadCap`, which `takeFromNode` already filled — the
-  bonus survives only when the node held less than the squad could carry.
-  **`ResourceManager` has no buff wiring at all** — the spec'd "economic buff boosts
-  in-region production rates" was never implemented (no listener on
-  `world:regionCaptured`/`world:buffsChanged` outside the world UI).
+- **military** → `resolveMarchBattle` via `militaryMult` (attack mult; there is no `milMult > 1`
+  guard, so values < 1 pass straight through). Works.
+- **economic** → base production: `ResourceManager` applies `economicBonus` as the `world` layer of
+  `productionLayers` and reapplies on `world:buffsChanged`. Gather marches are still effectively
+  unboosted: `marchResolver._gather` clamps `granted*(1+bonus)` back to `loadCap`, which `takeFromNode`
+  already filled.
+- **Display:** every source above (plus tech, VIP, HQ, hero, event and item boosts) is listed in the Buffs
+  panel ledger — `buffs.md`, ADR 0038. `worldBuffStat` (`js/systems/buffs/`) maps a world buff to its stat id.
 - **Region locality was never implemented** — the design says buffs apply "in-region"
   (in-region nodes/battles/march legs); all three flavors actually apply globally.
 
-Fixing/re-speccing these is on the roadmap (Hardening → audit findings).
+The remaining gap (gather clamp) is on the roadmap (Hardening → audit findings).
 
 ## Fog of war
 

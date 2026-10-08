@@ -18,11 +18,14 @@ it on march return).
 ## Buff pipeline
 
 Territory/expedition buffs aggregate in `WorldMapManager.activeBuffs()` — see
-`world-map.md` § Buffs for what is **actually wired** (verified 2026-07-15: logistic and
-military work; economic is effectively dead — `ResourceManager` consumes no world buffs,
-and the gather-march bonus is clamped away by load capacity; "in-region" locality was
-never implemented for any flavor). VIP and hero/tech multipliers apply in their owning
-managers and do work.
+`world-map.md` § Buffs for what is **actually wired** (logistic, military and
+economic buffs all apply; economic feeds base production, though the gather-march bonus is
+still clamped away by load capacity; "in-region" locality was never implemented for any
+flavor). VIP and hero/tech multipliers apply in their owning managers and do work.
+
+Production is one product of layers (`js/systems/resource/productionLayers.js`): tech, world, HQ, item
+boost, VIP, difficulty, event. `ResourceManager` and the Buffs panel Overview both read it, so the displayed
+total is the real rate (ADR 0038, `buffs.md`). Timed item boosts are owned by `BuffManager`.
 
 ## Population / cafeteria
 

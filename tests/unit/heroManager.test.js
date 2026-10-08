@@ -103,15 +103,11 @@ test('getCombatBonuses applies a hero aura when genuinely stationed at heroquart
   assert.ok(bonuses.defenseMult > 1.0, 'Paladin genuinely at heroquarters should still apply globally');
 });
 
-// ── L10: deserialize must not drop activeBuffs when `owned` is absent ──
+// ── L10: deserialize without `owned` must not throw ──
 
-test('deserialize preserves activeBuffs even when owned is missing', () => {
+test('deserialize without owned does not throw', () => {
   const hm = makeHM();
-  const futureEndsAt = Date.now() + 1_000_000;
-  hm.deserialize({ activeBuffs: [{ value: 0.1, endsAt: futureEndsAt }] });
-
-  assert.equal(hm.getActiveBuffs().length, 1);
-  assert.equal(hm.getActiveBuffs()[0].endsAt, futureEndsAt);
+  assert.doesNotThrow(() => hm.deserialize({ pity: { normal: 1 } }));
 });
 
 test('deserialize with no data at all is a safe no-op', () => {
@@ -525,4 +521,21 @@ test('a passive XP tick where a hero levels up emits heroes:updated exactly once
   assert.equal(countHeroesUpdated(() => hm.update(10)), 1);
   assert.equal(hm._owned.get('paladin').level, 2);
   assert.equal(hm._owned.get('shadowblade').level, 2);
+});
+
+test('HeroManager no longer owns timed buffs (legacy activeBuffs ignored)', () => {
+  const hm = makeHM();
+  hm.deserialize({ owned: {}, activeBuffs: [{ value: 0.1, endsAt: Date.now() + 60000 }] });
+  assert.equal(hm.getActiveBuffs, undefined);
+  assert.equal('activeBuffs' in hm.serialize(), false);
+});
+
+test('awardHeroXP reports gained XP, and zero for a hero at the level cap', () => {
+  const m = makeHM();
+  m._recruitHero('warlord');
+  assert.equal(m.awardHeroXP('warlord', 40).gained, 40);
+  m.awardHeroXP('warlord', 10_000_000);
+  const capped = m.awardHeroXP('warlord', 500);
+  assert.equal(capped.success, true);
+  assert.equal(capped.gained, 0);
 });

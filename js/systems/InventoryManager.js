@@ -6,6 +6,7 @@
  */
 import { eventBus } from '../core/EventBus.js';
 import { INVENTORY_ITEMS } from '../entities/GAME_DATA.js';
+import { BATCHABLE, HERO_XP_TYPES, xpPerUnit, resourceYield } from './inventory/itemYield.js';
 
 /**
  * Tier ladder for each resource type — matched to the entries in economy.js.
@@ -65,6 +66,7 @@ export class InventoryManager {
     /** @type {Map<string, number>} itemId → quantity */
     this._items = new Map();
     this._hm = null; // set via setHeroManager()
+    this._buffs = null;
     this._rm = null; // set via setResourceManager()
     this._bm = null; // set via setBuildingManager()
     this._um = null; // set via setUnitManager()
@@ -72,6 +74,7 @@ export class InventoryManager {
   }
 
   setHeroManager(hm) { this._hm = hm; }
+  setBuffManager(bm) { this._buffs = bm; }
   setResourceManager(rm) { this._rm = rm; }
   setBuildingManager(bm) { this._bm = bm; }
   setUnitManager(um) { this._um = um; }
@@ -200,15 +203,41 @@ export class InventoryManager {
   }
 
   /**
-   * Use/consume one of an item, applying its effect.
+   * Dry-run of useItem: validates qty and reports what the player would receive. Never mutates or emits.
+   * @returns {{ success: boolean, reason?: string, qty: number, grants?: object, lost?: object, xpAmount?: number }}
+   */
+  previewUse(itemId, { qty = 1 } = {}) {
+    const cfg = INVENTORY_ITEMS[itemId];
+    if (!cfg) return { success: false, reason: 'Unknown item.', qty: 0 };
+    const n = BATCHABLE.has(cfg.type) ? qty : 1;
+    if (!Number.isInteger(n) || n < 1) return { success: false, reason: 'Invalid quantity.', qty: n };
+    if (!this.hasItem(itemId, n)) {
+      return { success: false, reason: `You don't have ${n > 1 ? `${n}× ` : ''}${cfg.name}.`, qty: n };
+    }
+    if (cfg.type === 'resource_bundle') {
+      if (!this._rm) return { success: false, reason: 'Resource system not available.', qty: n };
+      const mult = this._rm.isSandbox?.() ? 10 : 1;
+      return { success: true, qty: n, ...resourceYield(cfg.grants, n, this._rm.getSnapshot(), mult) };
+    }
+    if (HERO_XP_TYPES.has(cfg.type)) {
+      const per = xpPerUnit(cfg);
+      if (!per) return { success: false, reason: `${cfg.name} has no XP value configured.`, qty: n };
+      return { success: true, qty: n, xpAmount: per * n };
+    }
+    return { success: true, qty: n };
+  }
+
+  /**
+   * Use/consume an item, applying its effect. Batchable types apply qty units with one inventory:updated.
    * @param {string} itemId
-   * @param {{ heroId?: string, queueType?: string }} [opts]
+   * @param {{ qty?: number, heroId?: string, queueType?: string, targetInstanceId?: string }} [opts]
    * @returns {{ success: boolean, reason?: string }}
    */
-  useItem(itemId, { heroId, queueType, targetInstanceId } = {}) {
+  useItem(itemId, { qty = 1, heroId, queueType, targetInstanceId } = {}) {
     const cfg = INVENTORY_ITEMS[itemId];
     if (!cfg) return { success: false, reason: 'Unknown item.' };
     if (!this.hasItem(itemId)) return { success: false, reason: `You don't have ${cfg.name}.` };
+    if (BATCHABLE.has(cfg.type)) return this._useBatch(itemId, cfg, qty, heroId);
 
     if (cfg.type === 'hero_card' || cfg.type === 'hero_card_universal') {
       if (!this._hm) return { success: false, reason: 'Hero system not available.' };
@@ -226,45 +255,13 @@ export class InventoryManager {
       }
       return { success: true, gachaResult: r };
 
-    } else if (cfg.type === 'hero_fragment') {
-      // Convert fragment to XP on a chosen hero
-      if (!heroId) return { success: false, reason: 'Select a hero to receive the XP.' };
-      if (!this._hm) return { success: false, reason: 'Hero system not available.' };
-      return this._hm.useFragmentAsXP(itemId, heroId);
-
-    } else if (cfg.type === 'xp_card') {
-      if (!heroId) return { success: false, reason: 'Select a hero to receive the XP.' };
-      if (!this._hm) return { success: false, reason: 'Hero system not available.' };
-      return this._hm.applyXPCard(itemId, heroId);
-
-    } else if (cfg.type === 'xp_bundle') {
-      if (!heroId) return { success: false, reason: 'Select a hero to receive the XP.' };
-      if (!this._hm) return { success: false, reason: 'Hero system not available.' };
-      // Support both cfg.xpAmount and cfg.grants.xp (GAME_DATA uses grants.xp)
-      const xpAmount = cfg.xpAmount ?? cfg.grants?.xp ?? 0;
-      if (!xpAmount) return { success: false, reason: 'XP bundle has no XP value configured.' };
-      const r = this._hm.awardHeroXP(heroId, xpAmount);
-      if (!r?.success) return { success: false, reason: r?.reason ?? 'Could not award XP.' };
-      this.removeItem(itemId, 1);
-      return { success: true, xpAmount };
-
-    } else if (cfg.type === 'resource_bundle') {
-      if (!this._rm) return { success: false, reason: 'Resource system not available.' };
-      try {
-        this._rm.add(cfg.grants);          // add resources FIRST
-        this.removeItem(itemId, 1);        // only consume item on success
-      } catch (err) {
-        return { success: false, reason: 'Failed to grant resources.' };
-      }
-      eventBus.emit('inventory:itemUsed', { itemId, grants: cfg.grants });
-      return { success: true, grants: cfg.grants };
-
     } else if (cfg.type === 'buff') {
-      if (!this._hm) return { success: false, reason: 'Hero system not available.' };
+      if (!this._buffs) return { success: false, reason: 'Buff system not available.' };
+      const r = this._buffs.activate(itemId);
+      if (!r?.success) return { success: false, reason: r?.reason ?? 'Could not activate buff.' };
       this.removeItem(itemId, 1);
-      this._hm.activateBuff({ value: cfg.value, durationMs: cfg.durationMs });
       eventBus.emit('inventory:itemUsed', { itemId });
-      return { success: true, durationMs: cfg.durationMs, value: cfg.value };
+      return { success: true, replaced: r.replaced, durationMs: cfg.durationMs, value: cfg.value };
 
     } else if (cfg.type === 'speed_boost') {
       const target = queueType ?? cfg.target;
@@ -310,6 +307,34 @@ export class InventoryManager {
 
     }
     return { success: false, reason: 'This item cannot be used.' };
+  }
+
+  _useBatch(itemId, cfg, qty, heroId) {
+    const preview = this.previewUse(itemId, { qty });
+    if (!preview.success) return preview;
+    if (cfg.type === 'resource_bundle') return this._openBundles(itemId, cfg, preview);
+    if (!heroId) return { success: false, reason: 'Select a hero to receive the XP.' };
+    if (!this._hm) return { success: false, reason: 'Hero system not available.' };
+    if (cfg.type === 'hero_fragment' && heroId !== cfg.targetHeroId) {
+      return { success: false, reason: 'Fragments can only be used on their own hero.' };
+    }
+    const r = this._hm.awardHeroXP(heroId, preview.xpAmount);
+    if (!r?.success) return { success: false, reason: r?.reason ?? 'Could not award XP.' };
+    if (r.gained === 0) return { success: false, reason: 'Hero is at max level.' };
+    this.removeItem(itemId, preview.qty);
+    return { success: true, qty: preview.qty, xpAmount: preview.xpAmount };
+  }
+
+  _openBundles(itemId, cfg, preview) {
+    const requested = Object.fromEntries(Object.entries(cfg.grants).map(([res, per]) => [res, per * preview.qty]));
+    try {
+      this._rm.add(requested);
+    } catch {
+      return { success: false, reason: 'Failed to grant resources.' };
+    }
+    this.removeItem(itemId, preview.qty);
+    eventBus.emit('inventory:itemUsed', { itemId, qty: preview.qty, grants: preview.grants });
+    return { success: true, qty: preview.qty, grants: preview.grants, lost: preview.lost };
   }
 
   // ─────────────────────────────────────────────

@@ -37,8 +37,34 @@ export function fmt(n) {
   return n.toLocaleString();
 }
 
-// Queue for modals that arrive while one is already open
 const _modalQueue = [];
+let _activeModal = null;
+
+function _modalEls() {
+  return { overlay: document.getElementById('modal-overlay'), content: document.getElementById('modal-content') };
+}
+
+function _showModal({ overlay, content }, html, onClose, onShown, escapable = false) {
+  content.innerHTML = html;
+  overlay.classList.remove('hidden');
+  const onBackdrop = e => { if (e.target === overlay) closeModal(onClose); };
+  const onKey = e => { if (e.key === 'Escape' && !e.defaultPrevented) closeModal(onClose); };
+  overlay.addEventListener('click', onBackdrop);
+  if (escapable) document.addEventListener('keydown', onKey);
+  _activeModal = { onClose, onBackdrop, onKey };
+  content.querySelectorAll('.modal-close').forEach(btn => btn.addEventListener('click', () => closeModal(onClose)));
+  onShown();
+}
+
+function _hideModal({ overlay, content }) {
+  if (_activeModal) {
+    overlay?.removeEventListener('click', _activeModal.onBackdrop);
+    document.removeEventListener('keydown', _activeModal.onKey);
+  }
+  _activeModal = null;
+  overlay?.classList.add('hidden');
+  if (content) content.innerHTML = '';
+}
 
 /**
  * Populate and show the shared modal overlay.
@@ -47,19 +73,29 @@ const _modalQueue = [];
  * @param {string} html
  * @param {Function} onClose - called when the modal is closed
  */
-export function openModal(html, onClose = () => {}) {
-  const overlay = document.getElementById('modal-overlay');
-  const content = document.getElementById('modal-content');
-  if (!overlay || !content) return;
-  // Another modal is visible — queue this one instead of overwriting
-  if (!overlay.classList.contains('hidden')) {
-    _modalQueue.push({ html, onClose });
+export function openModal(html, onClose = () => {}, onShown = () => {}) {
+  const els = _modalEls();
+  if (!els.overlay || !els.content) return;
+  if (!els.overlay.classList.contains('hidden')) {
+    _modalQueue.push({ html, onClose, onShown });
     return;
   }
-  content.innerHTML = html;
-  overlay.classList.remove('hidden');
-  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(onClose); }, { once: true });
-  content.querySelectorAll('.modal-close').forEach(btn => btn.addEventListener('click', () => closeModal(onClose)));
+  _showModal(els, html, onClose, onShown);
+}
+
+/**
+ * Player-initiated panels (dock buttons): replace the visible modal instead of queueing behind it.
+ * The replaced modal's onClose runs; queued modals stay queued.
+ */
+export function swapModal(html, onClose = () => {}, onShown = () => {}) {
+  const els = _modalEls();
+  if (!els.overlay || !els.content) return;
+  if (!els.overlay.classList.contains('hidden')) {
+    const replaced = _activeModal;
+    _hideModal(els);
+    replaced?.onClose();
+  }
+  _showModal(els, html, onClose, onShown, true);
 }
 
 /**
@@ -68,13 +104,10 @@ export function openModal(html, onClose = () => {}) {
  * @param {Function} onClose
  */
 export function closeModal(onClose = () => {}) {
-  const overlay = document.getElementById('modal-overlay');
-  const content = document.getElementById('modal-content');
-  if (overlay) overlay.classList.add('hidden');
-  if (content) content.innerHTML = '';
+  _hideModal(_modalEls());
   onClose();
   if (_modalQueue.length > 0) {
     const next = _modalQueue.shift();
-    setTimeout(() => openModal(next.html, next.onClose), 100);
+    setTimeout(() => openModal(next.html, next.onClose, next.onShown), 100);
   }
 }

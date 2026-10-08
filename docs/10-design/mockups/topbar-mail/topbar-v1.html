@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Top bar mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:hsl(30,10%,5%);--surf:hsl(30,9%,8%);--elev:hsl(30,8%,11%);--panel:hsl(30,8%,14%);--bd:hsl(30,10%,18%);--bdl:hsl(30,10%,27%);
+    --or:hsl(32,90%,55%);--orm:hsl(32,55%,18%);--tx:hsl(35,15%,93%);--tx2:hsl(35,10%,62%);--tx3:hsl(35,8%,42%);
+    --ok:hsl(90,45%,48%);--warn:hsl(45,90%,58%);--bad:hsl(5,70%,58%);--dia:hsl(190,70%,60%);--gold:hsl(45,85%,58%)}
+  *{box-sizing:border-box}
+  body{margin:0;background:#1b1916;color:var(--tx);font-family:Outfit,sans-serif;padding:24px 32px 60px}
+  h1{font:700 22px Oswald;letter-spacing:.04em;margin:0 0 4px} .sub{color:var(--tx2);margin:0 0 14px;font-size:14px;max-width:1100px}
+  .ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 18px;font-size:12px;color:var(--tx2)}
+  .ctl button{background:var(--panel);color:var(--tx);border:1px solid var(--bdl);border-radius:4px;padding:5px 10px;font:600 12px Outfit;cursor:pointer}
+  .ctl button.on{border-color:var(--or);color:var(--or)}
+  .opt{border:2px solid transparent;border-radius:10px;padding:14px;margin-bottom:22px;background:#24211d;cursor:pointer}
+  .opt.selected{border-color:var(--or)} .opt h2{font:700 16px Oswald;letter-spacing:.05em;margin:0 0 4px} .opt h2 b{color:var(--or)}
+  .opt p.d{margin:0 0 12px;color:var(--tx2);font-size:13px;max-width:1100px}
+  .wrap{display:grid;grid-template-columns:1fr 260px;gap:14px}
+  .notes{font-size:12px;color:var(--tx2);line-height:1.45} .notes div{margin-bottom:9px} .notes b{color:var(--tx)}
+  .frames{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
+  .fr{display:flex;flex-direction:column;gap:4px} .fr>span{font:600 10px Outfit;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3)}
+  .screen{container-type:inline-size;background:var(--bg);border:1px solid var(--bd);border-radius:6px;height:190px;overflow:hidden;position:relative;font-size:12px}
+  .w-desk{width:1000px;max-width:100%} .w-tab{width:640px;max-width:100%} .w-ph{width:360px}
+  .city{position:absolute;inset:0;background:radial-gradient(ellipse at 40% 70%,hsl(30,14%,17%),var(--bg) 70%)}
+  .city::after{content:"";position:absolute;left:12%;right:12%;bottom:-40px;height:120px;background:repeating-linear-gradient(60deg,transparent 0 22px,hsla(30,10%,30%,.18) 22px 24px),repeating-linear-gradient(-60deg,transparent 0 22px,hsla(30,10%,30%,.18) 22px 24px);transform:perspective(300px) rotateX(35deg)}
+  .dock{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:8px}
+  .dock i{width:34px;height:34px;border-radius:50%;background:var(--elev);border:1px solid var(--bdl);display:flex;align-items:center;justify-content:center;font-style:normal;font-size:15px}
+  .hh{position:absolute;top:0;left:0;right:0;background:linear-gradient(hsla(30,9%,8%,.96),hsla(30,9%,8%,.8));border-bottom:1px solid var(--bd);backdrop-filter:blur(6px)}
+  .hlbl{position:absolute;right:6px;bottom:44px;font:600 9px Outfit;color:var(--tx3);letter-spacing:.06em}
+
+  .chip{position:relative;display:flex;align-items:center;gap:5px;height:30px;padding:0 9px 0 4px;border-radius:15px;background:var(--elev);border:1px solid var(--bd);font:700 13px Oswald;font-variant-numeric:tabular-nums;white-space:nowrap;cursor:pointer;color:var(--tx);min-width:0}
+  .chip .ic{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;background:color-mix(in hsl,var(--rc) 30%,var(--panel));flex-shrink:0}
+  .chip .fill{position:absolute;left:12px;right:12px;bottom:2px;height:2px;border-radius:1px;background:var(--panel);overflow:hidden}
+  .chip .fill i{display:block;height:100%;width:calc(var(--f)*100%);background:var(--rc)}
+  .chip.near{border-color:hsl(45,50%,32%)} .chip.near .fill i{background:var(--warn)}
+  .chip.full{border-color:hsl(5,55%,38%);animation:pulse 1.6s infinite} .chip.full .fill i{background:var(--bad)}
+  @keyframes pulse{50%{box-shadow:0 0 0 3px hsla(5,70%,58%,.18)}}
+  .chip.prem{--rc:var(--gold)} .chip.dia{--rc:var(--dia)} .chip.prem .fill,.chip.dia .fill{display:none}
+  .chip .plus{width:16px;height:16px;border-radius:50%;background:var(--ok);color:#0d1606;font:700 12px Outfit;display:flex;align-items:center;justify-content:center;margin-left:2px}
+  .buff{display:flex;align-items:center;gap:5px;height:30px;padding:0 9px 0 4px;border-radius:15px;border:1px solid hsl(90,35%,30%);background:hsl(90,30%,10%);color:var(--ok);font:700 12px Oswald;cursor:pointer;white-space:nowrap}
+  .buff .ring{width:22px;height:22px;border-radius:50%;background:conic-gradient(var(--ok) 0 62%,var(--panel) 62% 100%);display:flex;align-items:center;justify-content:center}
+  .buff .ring span{width:16px;height:16px;border-radius:50%;background:hsl(90,30%,10%);font-size:9px;display:flex;align-items:center;justify-content:center}
+  .more{height:30px;min-width:38px;padding:0 9px;border-radius:15px;border:1px dashed var(--bdl);background:transparent;color:var(--tx2);font:700 12px Oswald;cursor:pointer;display:none}
+
+  .pop{position:absolute;z-index:5;min-width:200px;background:var(--surf);border:1px solid var(--bdl);border-radius:8px;box-shadow:0 12px 30px #000;padding:10px 12px;font-size:12px}
+  .pop h5{margin:0 0 6px;font:700 13px Oswald;letter-spacing:.06em;text-transform:uppercase;display:flex;gap:6px;align-items:center}
+  .pop .r{display:flex;justify-content:space-between;gap:16px;padding:3px 0;color:var(--tx2)} .pop .r b{color:var(--tx);font-variant-numeric:tabular-nums}
+  .pop .bar{height:5px;border-radius:3px;background:var(--panel);overflow:hidden;margin:6px 0} .pop .bar i{display:block;height:100%}
+  .pop .acts{display:flex;gap:6px;margin-top:8px}
+  .btn{background:linear-gradient(var(--or),hsl(30,88%,42%));color:#1a1108;font:700 11px Oswald;letter-spacing:.06em;border:0;padding:6px 10px;border-radius:4px;white-space:nowrap;cursor:pointer}
+  .btn.g{background:var(--panel);color:var(--tx);border:1px solid var(--bdl)}
+  .pop .ov{display:grid;grid-template-columns:24px 1fr auto;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--bd)}
+  .pop .ov:first-of-type{border-top:0}
+
+  /* Option A: single strip, priority overflow */
+  .A{height:46px;display:flex;align-items:center;gap:6px;padding:0 10px}
+  .A .av{width:36px;height:36px;border-radius:50%;flex-shrink:0;background:radial-gradient(circle at 40% 35%,hsl(30,30%,35%),hsl(30,20%,15%));border:2px solid var(--or);position:relative;cursor:pointer}
+  .A .av b{position:absolute;bottom:-4px;right:-6px;background:var(--or);color:#1a1108;font:700 9px Oswald;padding:1px 4px;border-radius:6px}
+  .A .res{display:flex;gap:6px;min-width:0;flex:1}
+  .A .tail{display:flex;gap:6px;margin-left:auto;flex-shrink:0}
+  @container (max-width:820px){.A [data-p="5"]{display:none}.A .more{display:block}}
+  @container (max-width:560px){.A [data-p="4"],.A .chip.prem{display:none}.A .buff .t{display:none}}
+  @container (max-width:400px){.A [data-p="3"]{display:none}.A{gap:5px;padding:0 8px}.A .chip{padding-right:7px}}
+
+  /* Option B: two-tier on narrow, one row wide */
+  .B{display:grid;grid-template-columns:auto 1fr auto;grid-template-areas:"plate res tail";align-items:center;gap:8px;padding:6px 10px;min-height:46px}
+  .B .plate{grid-area:plate;display:flex;align-items:center;gap:7px;cursor:pointer}
+  .B .plate .av{width:34px;height:34px;border-radius:6px;background:radial-gradient(circle at 40% 35%,hsl(30,30%,35%),hsl(30,20%,15%));border:1px solid var(--or)}
+  .B .plate .nm{display:flex;flex-direction:column;line-height:1.1} .B .plate .nm b{font:700 13px Oswald;letter-spacing:.03em} .B .plate .nm small{color:var(--tx2);font-size:11px}
+  .B .plate .nm small em{color:var(--or);font-style:normal;font-weight:700}
+  .B .res{grid-area:res;display:flex;gap:6px;min-width:0}
+  .B .tail{grid-area:tail;display:flex;gap:6px}
+  @container (max-width:700px){
+    .B{grid-template-columns:1fr auto;grid-template-areas:"plate tail" "res res";row-gap:6px;padding:6px 8px 7px}
+    .B .res{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+    .B .res .chip{justify-content:center;padding:0 4px;border-radius:6px;height:32px;gap:4px}
+    .B .res .chip .ic{width:18px;height:18px;font-size:10px}
+  }
+  @container (max-width:400px){.B .chip.prem{display:none}.B .buff .t{display:none}.B .res .chip{font-size:12px}}
+
+  /* Option C: commander plate */
+  .C{height:58px;display:flex;align-items:flex-start;gap:8px;padding:5px 10px 0 4px}
+  .C .cmd{position:relative;width:78px;flex-shrink:0;cursor:pointer;height:52px}
+  .C .cmd .av{position:absolute;left:4px;top:0;width:48px;height:48px;border-radius:50%;background:radial-gradient(circle at 40% 35%,hsl(30,30%,35%),hsl(30,20%,15%));box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--or)}
+  .C .cmd .xp{position:absolute;left:0;top:-4px;width:56px;height:56px;border-radius:50%;background:conic-gradient(var(--or) 0 70%,transparent 70%);mask:radial-gradient(circle,transparent 25px,#000 26px);-webkit-mask:radial-gradient(circle,transparent 25px,#000 26px)}
+  .C .cmd .lv{position:absolute;left:36px;top:32px;background:var(--or);color:#1a1108;font:700 10px Oswald;padding:1px 5px;clip-path:polygon(15% 0,85% 0,100% 50%,85% 100%,15% 100%,0 50%)}
+  .C .cmd .pw{position:absolute;left:56px;top:6px;font:700 11px Oswald;color:var(--tx);white-space:nowrap}
+  .C .cmd .pw small{display:block;color:var(--tx3);font:600 8px Outfit;letter-spacing:.1em}
+  .C .body{flex:1;display:flex;flex-direction:column;gap:4px;min-width:0;padding-left:26px}
+  .C .res{display:flex;gap:6px;flex-wrap:nowrap}
+  .C .sec{display:flex;gap:6px;justify-content:flex-end}
+  .C .sec .chip,.C .sec .buff{height:22px;font-size:11px} .C .sec .chip .ic,.C .sec .buff .ring{width:16px;height:16px;font-size:9px}
+  .C .sec .buff .ring span{width:11px;height:11px;font-size:7px}
+  @container (min-width:821px){.C{height:46px;align-items:center}.C .body{flex-direction:row;align-items:center}.C .sec{margin-left:auto}.C .sec .chip,.C .sec .buff{height:30px;font-size:13px}.C .sec .chip .ic,.C .sec .buff .ring{width:22px;height:22px;font-size:12px}.C .cmd{height:46px}.C .cmd .av{width:38px;height:38px;top:4px}.C .cmd .xp{width:46px;height:46px;top:0}.C .cmd .lv{top:30px;left:28px}.C .cmd .pw{left:48px;top:10px}}
+  @container (max-width:560px){
+    .C{height:76px}
+    .C .body{padding-left:14px}
+    .C .res{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+    .C .res .chip{height:24px;font-size:12px;padding:0 6px 0 3px;border-radius:5px} .C .res .chip .ic{width:17px;height:17px;font-size:9px}
+    .C .res .chip .fill{left:6px;right:6px;bottom:1px}
+    .C .sec{position:absolute;left:6px;top:58px}
+    .C .cmd .pw{display:none}
+  }
+</style></head>
+<body>
+<h1>TOP BAR — v1 prototypes</h1>
+<p class="sub">Three responsive layouts for the header. Each one is drawn at desktop (1000), tablet (640) and phone (360) width. The frames use container queries, so you can also resize the browser window. Tap a resource to see its detail popover, and tap <b>+N</b> to see the hidden resources. Inputs: <code>docs/research/topbar-mail-*.md</code>. Click a card to select it.</p>
+<div class="ctl">Values:
+  <button data-preset="early">Early game</button><button data-preset="mid" class="on">Mid game</button><button data-preset="late">Late game (M/B)</button>
+  <span style="margin-left:10px">Late game shows the near-cap (amber) and full (red pulse) states.</span>
+</div>
+
+<div class="opt" data-opt="A">
+  <h2>OPTION A — <b>One strip, priority overflow</b></h2>
+  <p class="d">The current single row, tidied up. Each chip shows only its value and a capacity line underneath. As the bar gets narrower, the lowest-priority resources move into a <b>+N</b> chip, so nothing is ever hidden in an invisible scroll again. The header stays 46px at every width.</p>
+  <div class="wrap"><div class="frames" data-variant="A"></div>
+  <div class="notes">
+    <div><b>Pros:</b> smallest change. <code>--header-height</code> stays fixed, so the map, toasts and world view need no changes. Every existing <code>#res-*</code> id is kept.</div>
+    <div><b>Cons:</b> on a phone you only see 2–3 resources at a glance. Moving the others into overflow needs a priority order, for example the resource you're short of comes first.</div>
+    <div><b>Phone:</b> avatar · 2 chips · +3 · diamond · buff.</div>
+  </div></div>
+</div>
+
+<div class="opt selected" data-opt="B">
+  <h2>OPTION B — <b>Two tiers on narrow screens</b> · CHOSEN (ADR 0041)</h2>
+  <p class="d">Wide screens get one row: the player plate (name, level, power), then resources, premium currency and buffs. Below 700px it splits into a top row (player plate, currencies, buffs) and a row of five resource cells of equal width. All five resources stay visible on a phone.</p>
+  <div class="wrap"><div class="frames" data-variant="B"></div>
+  <div class="notes">
+    <div><b>Pros:</b> everything stays visible at every width, with no overflow logic. The player name and power come back, since they're hidden today. Equal-width cells line up neatly.</div>
+    <div><b>Cons:</b> the phone header is about 84px. <code>--header-height</code> needs to become responsive, and everything that uses it (toasts, world view, battle trail, map offset) has to follow.</div>
+    <div><b>Note:</b> money moves to the top row next to diamond, so resources and premium currency read as two separate groups.</div>
+  </div></div>
+</div>
+
+<div class="opt" data-opt="C">
+  <h2>OPTION C — <b>Commander plate (Last Shelter style)</b></h2>
+  <p class="d">The genre look: a large avatar on the left with an XP ring, a level hexagon and a power readout. The resource strip sits beside it. Below 560px the resources fold into a 3×2 grid, and diamond and buffs sit under the avatar.</p>
+  <div class="wrap"><div class="frames" data-variant="C"></div>
+  <div class="notes">
+    <div><b>Pros:</b> the strongest grit-reskin identity. The avatar and power are always prominent, which gives a natural home for the level-up float and the VIP badge.</div>
+    <div><b>Cons:</b> the most CSS work. The phone grid cells are tight, so values must stay at 4 characters or fewer, which compact formatting does. The header is about 76px on a phone, with the same token issue as B.</div>
+    <div><b>Note:</b> the avatar overlaps the bottom edge of the header on purpose, as in the genre. The tutorial spotlight is not affected because no tutorial step targets the header.</div>
+  </div></div>
+</div>
+
+<script>
+const PRESETS={
+  early:{wood:[820,5000,1.2],stone:[410,5000,.8],iron:[95,1000,.2],food:[1460,2000,1.1],water:[730,2000,.9],money:[2400],diamond:[35]},
+  mid:{wood:[48200,120000,6.4],stone:[22950,120000,4.1],iron:[9870,40000,1.9],food:[71200,80000,5.2],water:[33100,80000,4.8],money:[412000],diamond:[1280]},
+  late:{wood:[2410000,3000000,62],stone:[2990000,3000000,48],iron:[812000,1200000,21],food:[1540000,2400000,55],water:[2400000,2400000,51],money:[18400000000],diamond:[24500]}
+};
+const META=[
+  {k:'wood',i:'🪵',n:'Wood',c:'hsl(28,55%,50%)',p:1},{k:'food',i:'🌾',n:'Food',c:'hsl(48,70%,55%)',p:2},
+  {k:'stone',i:'🪨',n:'Stone',c:'hsl(30,8%,62%)',p:3},{k:'water',i:'💧',n:'Water',c:'hsl(200,65%,55%)',p:4},
+  {k:'iron',i:'⛓',n:'Iron',c:'hsl(210,15%,60%)',p:5}
+];
+const fmtC=new Intl.NumberFormat('en',{notation:'compact',maximumFractionDigits:1});
+const fmtF=new Intl.NumberFormat('en');
+let preset='mid';
+
+function chip(m,d){
+  const [v,cap,rate]=d[m.k];const f=Math.min(1,v/cap);
+  const st=f>=1?'full':f>=.9?'near':'';
+  return `<button class="chip ${st}" data-k="${m.k}" data-p="${m.p}" style="--rc:${m.c};--f:${f}"><span class="ic">${m.i}</span>${fmtC.format(v)}<span class="fill"><i></i></span></button>`;
+}
+function prem(d){return `<button class="chip prem" data-k="money"><span class="ic">💰</span>${fmtC.format(d.money[0])}</button><button class="chip dia" data-k="diamond"><span class="ic">💎</span>${fmtC.format(d.diamond[0])}<span class="plus">+</span></button>`}
+const buff=`<button class="buff" data-k="buff"><span class="ring"><span>3</span></span><span class="t">12:40</span></button>`;
+const res=d=>META.map(m=>chip(m,d)).join('');
+
+const VARIANTS={
+  A:d=>`<div class="A"><button class="av" data-k="player"><b>23</b></button><div class="res">${res(d)}<button class="more" data-k="more">+2</button></div><div class="tail">${prem(d)}${buff}</div></div>`,
+  B:d=>`<div class="B"><div class="plate" data-k="player"><span class="av"></span><span class="nm"><b>Commander Rook</b><small>Lv 23 · <em>⚔ 1.24M</em></small></span></div><div class="res">${res(d)}</div><div class="tail">${prem(d)}${buff}</div></div>`,
+  C:d=>`<div class="C"><div class="cmd" data-k="player"><span class="xp"></span><span class="av"></span><span class="lv">23</span><span class="pw"><small>POWER</small>1.24M</span></div><div class="body"><div class="res">${res(d)}<button class="chip prem" data-k="money"><span class="ic">💰</span>${fmtC.format(d.money[0])}</button></div><div class="sec"><button class="chip dia" data-k="diamond"><span class="ic">💎</span>${fmtC.format(d.diamond[0])}<span class="plus">+</span></button>${buff}</div></div></div>`
+};
+const FRAMES=[['Desktop 1000','w-desk'],['Tablet 640','w-tab'],['Phone 360','w-ph']];
+
+function render(){
+  const d=PRESETS[preset];
+  document.querySelectorAll('.frames').forEach(fs=>{
+    const v=fs.dataset.variant;
+    fs.innerHTML=FRAMES.map(([l,w])=>`<div class="fr ${w==='w-desk'?'w-desk':''}"><span>${l}</span><div class="screen ${w}"><div class="city"></div><div class="dock"><i>🎒</i><i>🗺</i><i>✉</i></div><div class="hh">${VARIANTS[v](d)}</div></div></div>`).join('');
+  });
+  requestAnimationFrame(countOverflow);
+}
+function countOverflow(){
+  document.querySelectorAll('.A').forEach(a=>{
+    const hidden=[...a.querySelectorAll('.res .chip')].filter(c=>getComputedStyle(c).display==='none');
+    const more=a.querySelector('.more');more.textContent='+'+hidden.length;more.dataset.hidden=hidden.map(c=>c.dataset.k).join(',');
+  });
+  document.querySelectorAll('.screen').forEach(s=>{
+    const h=s.querySelector('.hh');const l=document.createElement('span');l.className='hlbl';l.textContent='header '+h.offsetHeight+'px';l.style.top=(h.offsetHeight+4)+'px';l.style.bottom='auto';s.appendChild(l);
+  });
+}
+function closePops(){document.querySelectorAll('.pop').forEach(p=>p.remove())}
+function popFor(btn){
+  const d=PRESETS[preset],k=btn.dataset.k,scr=btn.closest('.screen');
+  const m=META.find(x=>x.k===k);let html='';
+  if(m){
+    const [v,cap,rate]=d[k],f=Math.min(1,v/cap),left=cap-v;
+    const eta=left<=0?'<b style="color:var(--bad)">Full — production stopped</b>':`<b>${fmtDur(left/rate)}</b>`;
+    html=`<h5>${m.i} ${m.n}</h5><div class="r">Stock <b>${fmtF.format(Math.floor(v))} / ${fmtF.format(cap)}</b></div><div class="bar"><i style="width:${f*100}%;background:${f>=1?'var(--bad)':f>=.9?'var(--warn)':m.c}"></i></div><div class="r">Production <b style="color:var(--ok)">+${rate}/s</b></div><div class="r">Full in ${eta}</div><div class="acts"><button class="btn">Use items</button><button class="btn g">Upgrade storage</button></div>`;
+  }else if(k==='more'){
+    html='<h5>More resources</h5>'+btn.dataset.hidden.split(',').filter(Boolean).map(h=>{const mm=META.find(x=>x.k===h),[v,cap,r]=d[h];return `<div class="ov"><span>${mm.i}</span><span>${mm.n}<br><small style="color:var(--tx3)">+${r}/s</small></span><b style="font:700 13px Oswald">${fmtC.format(v)} / ${fmtC.format(cap)}</b></div>`}).join('');
+  }else if(k==='money'||k==='diamond'){
+    html=`<h5>${k==='money'?'💰 Money':'💎 Diamonds'}</h5><div class="r">Exact <b>${fmtF.format(d[k][0])}</b></div><div class="acts"><button class="btn">${k==='money'?'Trading Post':'Get more'}</button></div>`;
+  }else if(k==='buff'){
+    html='<h5>⚡ Active buffs</h5><div class="r">Gathering +25% <b>12:40</b></div><div class="r">Training +10% <b>41:02</b></div><div class="r">Shield <b>2:11:09</b></div><div class="acts"><button class="btn g">Open buffs</button></div>';
+  }else{
+    html='<h5>Commander Rook</h5><div class="r">Level <b>23</b></div><div class="r">Power <b>1,240,880</b></div><div class="r">VIP <b>4</b></div><div class="acts"><button class="btn g">Profile</button></div>';
+  }
+  const p=document.createElement('div');p.className='pop';p.innerHTML=html;scr.appendChild(p);
+  const sr=scr.getBoundingClientRect(),br=btn.getBoundingClientRect();
+  let x=br.left-sr.left;x=Math.max(6,Math.min(x,sr.width-p.offsetWidth-6));
+  p.style.left=x+'px';p.style.top=(br.bottom-sr.top+6)+'px';
+}
+function fmtDur(s){s=Math.round(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?`${h}h ${m}m`:`${m}m ${s%60}s`}
+
+document.addEventListener('click',e=>{
+  const pb=e.target.closest('[data-preset]');
+  if(pb){preset=pb.dataset.preset;document.querySelectorAll('[data-preset]').forEach(b=>b.classList.toggle('on',b===pb));closePops();render();return}
+  const opt=e.target.closest('.opt');if(opt){document.querySelectorAll('.opt').forEach(o=>o.classList.toggle('selected',o===opt))}
+  const t=e.target.closest('.screen [data-k]');
+  if(e.target.closest('.pop'))return;
+  closePops();if(t)popFor(t);
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closePops()});
+addEventListener('resize',()=>{closePops();render()});
+render();
+</script>
+</body></html>

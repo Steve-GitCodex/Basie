@@ -8,7 +8,7 @@ import {
   SHOP_CONFIG, INVENTORY_ITEMS, PROD_BONUS_CONFIG, STAT_RULES,
   SURVIVAL_MONSTER, COMBAT_RULES, UNITS_CONFIG,
   DIAMOND_PACKAGES, findShopEntry,
-  TRADER_POOL, FEATURED_ENTRY_IDS,
+  TRADER_POOL, FEATURED_ENTRY_IDS, BUFF_STATS,
 } from '../../js/entities/GAME_DATA.js';
 
 const allShopEntries = () => [
@@ -302,4 +302,8 @@ test('every TRADER_POOL item exists in INVENTORY_ITEMS and has a worth or a Supp
 test('FEATURED_ENTRY_IDS all resolve via findShopEntry', () => {
   assert.equal(FEATURED_ENTRY_IDS.length, 3);
   for (const id of FEATURED_ENTRY_IDS) assert.ok(findShopEntry(id), `featured '${id}' unresolved`);
+});
+
+test('every buff item declares a known stat', () => {
+  for (const it of Object.values(INVENTORY_ITEMS).filter(i => i.type === 'buff')) assert.ok(BUFF_STATS[it.stat], it.id);
 });

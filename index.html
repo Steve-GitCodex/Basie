@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Basie — Base Building Command Center</title>
   <meta name="description" content="A premium browser-based base building and management game featuring resource collection, unit training, heroes, and monster combat." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -35,6 +35,11 @@
   <link rel="stylesheet" href="css/utilities/helpers.css" />
   <link rel="stylesheet" href="css/components/story.css" />
   <link rel="stylesheet" href="css/components/inventory.css" />
+  <link rel="stylesheet" href="css/components/mail.css" />
+  <link rel="stylesheet" href="css/components/mail-expand.css" />
+  <link rel="stylesheet" href="css/components/confirm-dialog.css" />
+  <link rel="stylesheet" href="css/components/inventory-detail.css" />
+  <link rel="stylesheet" href="css/components/buffs.css" />
   <link rel="stylesheet" href="css/components/heroes-base.css" />
   <link rel="stylesheet" href="css/components/heroes-roster.css" />
   <link rel="stylesheet" href="css/components/heroes-detail.css" />
@@ -94,6 +99,17 @@
 
     <!-- HEADER -->
     <header class="game-header" id="game-header">
+      <div class="hud-plate">
+        <div class="player-chip" id="player-chip" title="Profile & Settings">
+          <span class="player-avatar" id="player-avatar"><span class="icon icon--crown icon--gold"></span></span>
+          <div class="player-data">
+            <span class="player-name" id="player-name">Commander</span>
+            <span class="player-level" id="player-level">Lv 1</span>
+          </div>
+          <span class="vip-badge hidden" id="vip-badge" title=""></span>
+          <span class="badge hidden" id="achievements-badge" title="Unclaimed achievement rewards"><span class="icon icon--star-burst icon--gold"></span></span>
+        </div>
+      </div>
       <!-- RESOURCE BAR -->
       <div class="resource-bar" id="resource-bar">
         <div class="resource-chip" id="res-wood" title="Wood">
@@ -103,7 +119,7 @@
             <span class="res-value" id="v-wood">0</span>
           </div>
           <div class="res-rate-col">
-            <span class="res-cap" id="c-wood">/ 5k</span>
+            <span class="res-cap" id="c-wood"></span>
             <span class="res-rate" id="r-wood">+0/s</span>
           </div>
         </div>
@@ -114,7 +130,7 @@
             <span class="res-value" id="v-stone">0</span>
           </div>
           <div class="res-rate-col">
-            <span class="res-cap" id="c-stone">/ 5k</span>
+            <span class="res-cap" id="c-stone"></span>
             <span class="res-rate" id="r-stone">+0/s</span>
           </div>
         </div>
@@ -125,7 +141,7 @@
             <span class="res-value" id="v-food">0</span>
           </div>
           <div class="res-rate-col">
-            <span class="res-cap" id="c-food">/ 1k</span>
+            <span class="res-cap" id="c-food"></span>
             <span class="res-rate" id="r-food">+0/s</span>
           </div>
         </div>
@@ -136,7 +152,7 @@
             <span class="res-value" id="v-iron">0</span>
           </div>
           <div class="res-rate-col">
-            <span class="res-cap" id="c-iron">/ 2k</span>
+            <span class="res-cap" id="c-iron"></span>
             <span class="res-rate" id="r-iron">+0/s</span>
           </div>
         </div>
@@ -147,7 +163,7 @@
             <span class="res-value" id="v-water">0</span>
           </div>
           <div class="res-rate-col">
-            <span class="res-cap" id="c-water">/ 2k</span>
+            <span class="res-cap" id="c-water"></span>
             <span class="res-rate" id="r-water">+0/s</span>
           </div>
         </div>
@@ -158,38 +174,36 @@
             <span class="res-value" id="v-cafeteria">0</span>
           </div>
           <div class="res-rate-col">
-            <span class="res-cap" id="c-cafeteria">/ 0</span>
+            <span class="res-cap" id="c-cafeteria"></span>
             <span class="res-rate" id="r-cafeteria"></span>
           </div>
         </div>
       </div>
-      <!-- HEADER ACTIONS -->
-      <div class="header-actions">
-        <button class="header-icon-btn buff-hud-badge hidden" id="buff-hud-badge" title="Active Buffs — click to manage">
-          <span class="icon icon--flask-potion"></span> <span id="buff-badge-count">0</span>
-          <span class="buff-badge-sep">·</span>
-          <span id="buff-badge-timer"></span>
-        </button>
+      <div class="hud-wallet">
         <div class="resource-chip resource-chip--premium" id="res-money" title="Money">
           <span class="res-icon res-icon--money"></span>
-          <span class="res-value" id="v-money">0</span>
-          <span class="res-rate" id="r-money"></span>
-          <span class="res-cap hidden" id="c-money"></span>
+          <div class="res-data">
+            <span class="res-value" id="v-money">0</span>
+          </div>
+          <div class="res-rate-col">
+            <span class="res-cap" id="c-money"></span>
+            <span class="res-rate" id="r-money"></span>
+          </div>
         </div>
         <div class="resource-chip resource-chip--premium" id="res-diamond" title="Diamond">
           <span class="res-icon res-icon--diamond"></span>
-          <span class="res-value" id="v-diamond">0</span>
-          <span class="res-rate hidden" id="r-diamond"></span>
-        </div>
-        <div class="player-chip" id="player-chip" title="Profile & Settings">
-          <span class="player-avatar" id="player-avatar"><span class="icon icon--crown icon--gold"></span></span>
-          <div class="player-data">
-            <span class="player-name" id="player-name">Commander</span>
-            <span class="player-level" id="player-level">Lv. 1</span>
+          <div class="res-data">
+            <span class="res-value" id="v-diamond">0</span>
           </div>
-          <span class="vip-badge hidden" id="vip-badge" title=""></span>
-          <span class="badge hidden" id="achievements-badge" title="Unclaimed achievement rewards"><span class="icon icon--star-burst icon--gold"></span></span>
+          <div class="res-rate-col">
+            <span class="res-cap" id="c-diamond"></span>
+            <span class="res-rate" id="r-diamond"></span>
+          </div>
         </div>
+        <button class="buff-hud-badge buff-hud-badge--idle" id="buff-hud-badge" title="Buffs — click to manage">
+          <span class="buff-hud-badge__ring"><span class="icon icon--flask-potion"></span></span>
+          <span id="buff-badge-label">Buffs</span>
+        </button>
       </div>
     </header>
 
@@ -511,9 +525,8 @@
     <div id="story-modal-panel" class="story-modal-panel"></div>
   </div>
 
-  <!-- Inventory slide-in panel (content injected by InventoryUI) -->
-  <div id="inventory-panel-overlay"></div>
-  <div id="inventory-panel"></div>
+  <div id="buffs-panel-overlay"></div>
+  <div id="buffs-panel"></div>
 
   <script type="module" src="js/main.js"></script>
 </body>

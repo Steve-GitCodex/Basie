@@ -95,13 +95,13 @@ export const INVENTORY_ITEMS = {
   },
   // ── Buffs ─────────────────────────────────────────────────────────────────
   buff_prod_sm: {
-    id: 'buff_prod_sm', type: 'buff',
+    id: 'buff_prod_sm', type: 'buff', stat: 'production.all',
     name: 'Production Boost (Minor)', icon: '⚗️',
     description: '+25% all resource production for 1 hour.',
     moneyCost: 600, durationMs: 3600000, value: 0.25, rarity: 'common',
   },
   buff_prod_lg: {
-    id: 'buff_prod_lg', type: 'buff',
+    id: 'buff_prod_lg', type: 'buff', stat: 'production.all',
     name: 'Production Boost (Major)', icon: '🔥',
     description: '+50% all resource production for 2 hours.',
     moneyCost: 1500, durationMs: 7200000, value: 0.50, rarity: 'rare',

@@ -18,6 +18,7 @@
  *   </div>
  */
 import { eventBus } from '../core/EventBus.js';
+import { formatRemaining } from './buffs/buffText.js';
 
 export class TimerService {
   init() {
@@ -38,7 +39,9 @@ export class TimerService {
       el.querySelector('.progress-fill')?.style.setProperty('width', `${pct}%`);
 
       const lbl = el.querySelector('.progress-time-label');
-      if (lbl) lbl.textContent = `${Math.max(0, Math.ceil((end - now) / 1000))}s`;
+      if (lbl) lbl.textContent = el.dataset.timerFormat === 'duration'
+        ? formatRemaining(end - now)
+        : `${Math.max(0, Math.ceil((end - now) / 1000))}s`;
     });
   }
 }

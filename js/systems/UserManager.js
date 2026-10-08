@@ -188,6 +188,8 @@ export class UserManager {
     return totals;
   }
 
+  getVipPerks() { return this._computeAggregatedPerks(this.getVipTier()); }
+
   /**
    * Returns the player's current VIP tier (0 = no VIP) based on cumulative diamond spend.
    * Pure computation — not stored in _profile to avoid stale deserialization.

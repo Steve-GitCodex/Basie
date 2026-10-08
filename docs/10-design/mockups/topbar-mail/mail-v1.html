@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mail mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:hsl(30,10%,5%);--surf:hsl(30,9%,8%);--elev:hsl(30,8%,11%);--panel:hsl(30,8%,14%);--bd:hsl(30,10%,18%);--bdl:hsl(30,10%,27%);
+    --or:hsl(32,90%,55%);--orm:hsl(32,55%,18%);--tx:hsl(35,15%,93%);--tx2:hsl(35,10%,62%);--tx3:hsl(35,8%,42%);
+    --ok:hsl(90,45%,48%);--warn:hsl(45,90%,58%);--bad:hsl(5,70%,58%);--dia:hsl(190,70%,60%)}
+  *{box-sizing:border-box}
+  body{margin:0;background:#1b1916;color:var(--tx);font-family:Outfit,sans-serif;padding:24px 32px 60px}
+  h1{font:700 22px Oswald;letter-spacing:.04em;margin:0 0 4px} .sub{color:var(--tx2);margin:0 0 18px;font-size:14px;max-width:1100px}
+  .opt{border:2px solid transparent;border-radius:10px;padding:14px;margin-bottom:22px;background:#24211d;cursor:pointer}
+  .opt.selected{border-color:var(--or)} .opt h2{font:700 16px Oswald;letter-spacing:.05em;margin:0 0 4px} .opt h2 b{color:var(--or)}
+  .opt p.d{margin:0 0 12px;color:var(--tx2);font-size:13px;max-width:1100px}
+  .wrap{display:grid;grid-template-columns:1fr 260px;gap:14px}
+  .notes{font-size:12px;color:var(--tx2);line-height:1.45} .notes div{margin-bottom:9px} .notes b{color:var(--tx)}
+  .frames{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
+  .fr{display:flex;flex-direction:column;gap:4px} .fr>span{font:600 10px Outfit;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3)}
+  .screen{background:var(--bg);border:1px solid var(--bd);border-radius:6px;overflow:hidden;position:relative;font-size:13px;cursor:default}
+  .s-desk{width:960px;height:600px;max-width:100%} .s-ph{width:360px;height:640px}
+  .city{position:absolute;inset:0;background:radial-gradient(ellipse at 35% 55%,hsl(30,12%,16%),var(--bg) 70%)}
+  .shade{position:absolute;inset:0;background:hsla(30,10%,3%,.6)}
+  button{font-family:inherit;cursor:pointer}
+  .btn{background:linear-gradient(var(--or),hsl(30,88%,42%));color:#1a1108;font:700 12px Oswald;letter-spacing:.06em;border:0;padding:0 12px;height:34px;border-radius:5px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+  .btn:disabled{filter:grayscale(1) brightness(.6);cursor:default}
+  .btn.g{background:var(--panel);color:var(--tx);border:1px solid var(--bdl)}
+  .btn.ghost{background:transparent;color:var(--tx2);border:1px solid var(--bd)}
+  .btn.bad{background:transparent;color:var(--bad);border:1px solid hsl(5,40%,30%)}
+  .btn.sm{height:28px;padding:0 9px;font-size:11px}
+  .ico{width:34px;height:34px;border-radius:5px;background:transparent;border:1px solid var(--bd);color:var(--tx2);font-size:15px;display:inline-flex;align-items:center;justify-content:center}
+  .ico.on{color:var(--warn);border-color:hsl(45,40%,30%)}
+
+  .modal{position:absolute;display:flex;flex-direction:column;background:var(--surf);border:1px solid var(--bdl);box-shadow:0 20px 50px #000;overflow:hidden}
+  .s-desk .modal{left:30px;right:30px;top:30px;bottom:30px;border-radius:8px}
+  .s-ph .modal{inset:0;border-radius:0}
+  .mh{display:flex;align-items:center;gap:10px;padding:0 10px 0 14px;height:48px;border-bottom:1px solid var(--bd);background:linear-gradient(var(--elev),var(--surf));flex-shrink:0}
+  .mh .t{font:700 16px Oswald;letter-spacing:.1em;text-transform:uppercase}
+  .mh .t small{font:600 11px Outfit;letter-spacing:0;color:var(--tx3);text-transform:none;margin-left:6px}
+  .mh .x{margin-left:auto}
+  .tabs{display:flex;gap:2px;padding:0 10px;border-bottom:1px solid var(--bd);flex-shrink:0;overflow-x:auto;scrollbar-width:none}
+  .tab{position:relative;background:none;border:0;color:var(--tx3);font:600 12px Outfit;letter-spacing:.05em;text-transform:uppercase;height:40px;padding:0 10px;white-space:nowrap;display:flex;align-items:center;gap:6px}
+  .tab.on{color:var(--tx);box-shadow:inset 0 -2px var(--or)}
+  .cnt{min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--bad);color:#fff;font:700 10px Outfit;display:inline-flex;align-items:center;justify-content:center}
+  .cnt.gift{background:var(--or);color:#1a1108}
+  .mb{flex:1;display:flex;min-height:0}
+  .listp{display:flex;flex-direction:column;min-width:0;min-height:0}
+  .s-desk .listp{width:44%;border-right:1px solid var(--bd)} .s-ph .listp{flex:1}
+  .list{flex:1;overflow-y:auto;min-height:0}
+  .row{display:grid;grid-template-columns:8px 34px 1fr auto;gap:9px;align-items:center;padding:9px 10px 9px 8px;min-height:56px;border-bottom:1px solid var(--bd);cursor:pointer;position:relative}
+  .row:hover{background:hsla(30,10%,30%,.12)} .row.sel{background:var(--elev);box-shadow:inset 3px 0 var(--or)}
+  .row .dot{width:8px;height:8px;border-radius:50%} .row.unread .dot{background:var(--or)}
+  .row .mi{width:34px;height:34px;border-radius:6px;background:var(--panel);display:flex;align-items:center;justify-content:center;font-size:16px}
+  .row .mi.win{background:hsl(90,25%,14%)} .row .mi.loss{background:hsl(5,30%,15%)}
+  .row .tx{min-width:0} .row .su{font-size:13px;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row.unread .su{color:var(--tx);font-weight:700}
+  .row .me{font-size:11px;color:var(--tx3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row .rt{display:flex;align-items:center;gap:6px}
+  .row .star{background:none;border:0;color:var(--tx3);font-size:15px;width:28px;height:34px} .row .star.on{color:var(--warn)}
+  .row .chk{width:20px;height:20px;border-radius:4px;border:1.5px solid var(--bdl);display:flex;align-items:center;justify-content:center;font-size:12px}
+  .row .chk.on{background:var(--or);border-color:var(--or);color:#1a1108}
+  .row.wchk{grid-template-columns:20px 8px 34px 1fr auto}
+  .pills{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+  .pill{display:inline-flex;gap:3px;align-items:center;font:700 11px Oswald;background:var(--panel);border:1px solid var(--bd);border-radius:10px;padding:1px 7px 1px 4px;color:var(--tx);flex-shrink:0;white-space:nowrap}
+  .pill.done{opacity:.4;text-decoration:line-through}
+  .claimed{font:600 11px Outfit;color:var(--tx3)}
+  .foot{display:flex;gap:6px;align-items:center;padding:8px 10px;border-top:1px solid var(--bdl);background:var(--elev);flex-shrink:0}
+  .foot .grow{flex:1}
+  .empty{padding:40px 20px;text-align:center;color:var(--tx3)}
+
+  .reader{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
+  .rh{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-bottom:1px solid var(--bd);flex-shrink:0}
+  .rh .mi{width:40px;height:40px;border-radius:6px;background:var(--panel);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+  .rh h3{margin:0;font:700 16px Oswald;letter-spacing:.03em} .rh small{color:var(--tx3);font-size:11px}
+  .rbody{flex:1;overflow-y:auto;padding:14px;line-height:1.5;color:var(--tx2);font-size:13px}
+  .rbody p{margin:0 0 12px}
+  .rew{background:var(--elev);border:1px solid var(--bd);border-radius:6px;padding:10px;margin-top:6px}
+  .rew h4,.br h4{margin:0 0 8px;font:700 11px Oswald;letter-spacing:.12em;text-transform:uppercase;color:var(--tx2)}
+  .rew .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:6px}
+  .rew .it{background:var(--panel);border:1px solid var(--bd);border-radius:6px;padding:7px 4px;text-align:center;font:700 13px Oswald}
+  .rew .it span{display:block;font-size:20px;line-height:1.2}
+  .rew.done .it{opacity:.4}
+  .rbar{display:flex;gap:6px;align-items:center;padding:8px 10px;border-top:1px solid var(--bdl);background:var(--elev);flex-shrink:0}
+  .rbar .sp{flex:1}
+  .back{background:none;border:0;color:var(--or);font:700 13px Oswald;letter-spacing:.06em;height:34px;padding:0 6px 0 0}
+
+  .br{margin-bottom:12px}
+  .br .ban{font:700 20px Oswald;letter-spacing:.12em;text-align:center;padding:8px;border-radius:6px;margin-bottom:10px}
+  .br .ban.win{background:linear-gradient(90deg,transparent,hsl(90,30%,16%),transparent);color:var(--ok)}
+  .br .ban.loss{background:linear-gradient(90deg,transparent,hsl(5,35%,17%),transparent);color:var(--bad)}
+  .br .vs{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:stretch}
+  .br .side{background:var(--elev);border:1px solid var(--bd);border-radius:6px;padding:8px 10px}
+  .br .side b{display:block;font:700 13px Oswald;color:var(--tx);margin-bottom:4px}
+  .br .side .l{display:flex;justify-content:space-between;font-size:12px;padding:2px 0} .br .side .l em{font-style:normal;color:var(--tx);font-weight:700;font-variant-numeric:tabular-nums}
+  .br .side .l em.bad{color:var(--bad)} .br .side .l em.warn{color:var(--warn)}
+  .br .mid{display:flex;align-items:center;font:700 13px Oswald;color:var(--tx3)}
+
+  .toast{position:absolute;left:50%;bottom:64px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--bdl);border-radius:6px;padding:8px 12px;display:flex;gap:12px;align-items:center;box-shadow:0 8px 24px #000;font-size:12px;white-space:nowrap;z-index:9}
+  .toast button{background:none;border:0;color:var(--or);font:700 12px Oswald;letter-spacing:.06em}
+
+  /* B: hub + accordion */
+  .hub{display:flex;flex-direction:column;gap:8px;padding:10px;overflow-y:auto}
+  .s-desk .hub{width:230px;border-right:1px solid var(--bd);flex-shrink:0} .s-ph .hub{flex:1}
+  .tile{display:grid;grid-template-columns:40px 1fr auto;gap:10px;align-items:center;background:var(--elev);border:1px solid var(--bd);border-radius:8px;padding:10px;cursor:pointer;text-align:left;color:var(--tx)}
+  .tile.on{border-color:var(--or);background:linear-gradient(90deg,var(--orm),var(--elev))}
+  .tile .ti{width:40px;height:40px;border-radius:8px;background:var(--panel);display:flex;align-items:center;justify-content:center;font-size:20px}
+  .tile b{font:700 14px Oswald;letter-spacing:.05em;text-transform:uppercase;display:block} .tile small{color:var(--tx3);font-size:11px}
+  .tile .cs{display:flex;flex-direction:column;gap:3px;align-items:flex-end}
+  .acc{border-bottom:1px solid var(--bd)}
+  .acc .row{border-bottom:0}
+  .acc .ex{padding:0 12px 12px 54px;color:var(--tx2);font-size:13px;line-height:1.5}
+  .acc .ex .acts{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+  .s-ph .acc .ex{padding:0 10px 12px}
+
+  /* C: feed + tray + sheet */
+  .tray{display:flex;align-items:center;gap:10px;padding:10px 12px;background:linear-gradient(90deg,var(--orm),var(--elev));border-bottom:1px solid hsl(32,40%,25%);flex-shrink:0}
+  .tray .sum{flex:1;min-width:0} .tray .sum b{font:700 12px Oswald;letter-spacing:.08em;text-transform:uppercase;color:var(--or)}
+  .tray .sum .pills{flex-wrap:nowrap;overflow:hidden}
+  .chips{display:flex;gap:6px;padding:8px 10px;border-bottom:1px solid var(--bd);overflow-x:auto;scrollbar-width:none;flex-shrink:0;align-items:center}
+  .fchip{height:30px;padding:0 12px;border-radius:15px;border:1px solid var(--bd);background:var(--elev);color:var(--tx2);font:600 12px Outfit;white-space:nowrap;display:inline-flex;gap:5px;align-items:center}
+  .fchip.on{border-color:var(--or);color:var(--tx);background:var(--orm)}
+  .chips .selbtn{margin-left:auto}
+  .bulk{display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--panel);border-bottom:1px solid var(--bdl);flex-shrink:0}
+  .bulk b{flex:1;font:700 13px Oswald}
+  .sheet{position:absolute;top:0;bottom:0;right:0;background:var(--surf);border-left:1px solid var(--bdl);box-shadow:-20px 0 40px #000;display:flex;flex-direction:column;z-index:4}
+  .s-desk .sheet{width:58%} .s-ph .sheet{left:0;border-left:0}
+  .sheetshade{position:absolute;inset:0;background:hsla(30,10%,3%,.45);z-index:3}
+  .C-body{position:relative;flex:1;display:flex;flex-direction:column;min-height:0}
+</style></head>
+<body>
+<h1>MAIL — v1 prototypes</h1>
+<p class="sub">Three ways to make Mail quicker to operate. Every frame is interactive with its own inbox: open a mail, claim, use <b>Claim all</b>, delete then <b>Undo</b>, star, and open a battle report (the ⚔ rows). Each option is shown in the desktop modal and in the phone drill-in. <b>Reset</b> restores the inbox. Inputs: <code>docs/research/topbar-mail-*.md</code>. Click a card to select it.</p>
+
+<div class="opt" data-opt="A">
+  <h2>OPTION A — <b>Tabs and a sticky claim bar</b></h2>
+  <p class="d">The current mail, made faster. A row of tabs (All · Reports · Rewards · System · Starred · Trash) replaces the 160px side rail, and each tab shows unread and claimable badges. Rows have a <b>Claim</b> button, so you don't need to open a mail to collect it. A bottom bar is always in view with <b>Claim all (N)</b>, <b>Read all</b> and <b>Delete read</b>. In the reader, the action bar is pinned, Delete is kept apart from Claim, and claiming jumps to the next mail with rewards.</p>
+  <div class="wrap"><div class="frames" data-variant="A"></div>
+  <div class="notes">
+    <div><b>Clearing N reward mails:</b> 2 + 2N clicks today → <b>2</b> (dock, Claim all).</div>
+    <div><b>Pros:</b> the closest to the current mental model and to the Inventory shell (ADR 0039), so it's the cheapest to build. <code>MailManager</code> already has the bulk methods.</div>
+    <div><b>Cons:</b> on desktop there are two panes, so a wide modal is still needed. Archive moves into Trash and Starred, so there's one fewer bucket to think about.</div>
+    <div><b>Delete read</b> skips starred and unclaimed mail and can be undone, so nothing valuable is ever lost.</div>
+  </div></div>
+</div>
+
+<div class="opt selected" data-opt="B">
+  <h2>OPTION B — <b>Category hub (genre style)</b> · CHOSEN (ADR 0040)</h2>
+  <p class="d">The Last Shelter / Whiteout pattern. You start on large category tiles, each showing its unread and gift counts and its own <b>Read &amp; claim all</b>. Inside a category, mails open <b>in place</b> as an expanding row instead of a separate reader pane. Desktop keeps the tiles on the left. On a phone you go hub → list, and that's as deep as it gets.</p>
+  <div class="wrap"><div class="frames" data-variant="B"></div>
+  <div class="notes">
+    <div><b>Clearing a category:</b> 2 clicks (dock, tile's claim all). Clearing everything: dock and the header's <b>Claim all</b>.</div>
+    <div><b>Pros:</b> feels like the genre. The rows that expand in place mean there is no reader pane to go back and forth from, and the list position stays where it was. It also works well in a narrow modal.</div>
+    <div><b>Cons:</b> long battle reports make the list very tall. Searching and a single list of everything are harder because they're one level down.</div>
+  </div></div>
+</div>
+
+<div class="opt" data-opt="C">
+  <h2>OPTION C — <b>Single feed and reward tray</b></h2>
+  <p class="d">There are no categories, just one chronological feed with filter chips (All · Unread · Rewards · Reports · Starred). A <b>reward tray</b> at the top adds up everything waiting to be claimed, with a single Claim all. <b>Select</b> adds checkboxes and a bulk bar (Read · Star · Delete). Mails open as a sheet that slides over the feed.</p>
+  <div class="wrap"><div class="frames" data-variant="C"></div>
+  <div class="notes">
+    <div><b>Pros:</b> the tray shows exactly what you'll get before you tap, which is the most satisfying moment in Mail. The sheet keeps the feed scroll intact. Select mode covers every bulk case and has a tap alternative to swiping (WCAG 2.5.1).</div>
+    <div><b>Cons:</b> the biggest departure from the Inventory shell. Filter chips are less discoverable than tabs for Trash and archive.</div>
+    <div><b>Later:</b> swipe-to-delete on phones can sit on top of select mode.</div>
+  </div></div>
+</div>
+
+<script>
+const R={wood:'🪵',stone:'🪨',iron:'⛓',food:'🌾',water:'💧',money:'💰',diamond:'💎'};
+const fmtC=new Intl.NumberFormat('en',{notation:'compact',maximumFractionDigits:1});
+const NOW=Date.now();
+const SEED=[
+  {id:1,cat:'reports',icon:'⚔',win:true,subject:'Victory — Raider Camp Lv 4',from:'Battle Command',ago:4,read:false,rewards:{wood:1200,iron:300},report:{you:{troops:1200,dead:42,wounded:118,power:'186K'},foe:{name:'Raider Camp',troops:900,dead:900,wounded:0,power:'142K'}}},
+  {id:2,cat:'rewards',icon:'📜',subject:'Quest complete: Lumber Rush',from:'Quest Board',ago:22,read:false,rewards:{wood:500,money:200}},
+  {id:3,cat:'rewards',icon:'🏆',subject:'Achievement: First Blood',from:'Hall of Records',ago:65,read:false,rewards:{diamond:10}},
+  {id:4,cat:'system',icon:'⬆',subject:'Level 23 reached',from:'Command',ago:130,read:false,rewards:{money:1150}},
+  {id:5,cat:'reports',icon:'⚔',win:false,subject:'Defeat — Bandit Fort Lv 7',from:'Battle Command',ago:190,read:true,report:{you:{troops:1500,dead:310,wounded:640,power:'186K'},foe:{name:'Bandit Fort',troops:2100,dead:820,wounded:0,power:'260K'}}},
+  {id:6,cat:'system',icon:'📅',subject:'Daily supply — Day 4',from:'Command',ago:600,read:true,rewards:{food:800,water:800}},
+  {id:7,cat:'reports',icon:'⚔',win:true,subject:'Victory — Scavenger Den Lv 3',from:'Battle Command',ago:1440,read:true,starred:true,claimed:true,rewards:{stone:900},report:{you:{troops:800,dead:12,wounded:40,power:'150K'},foe:{name:'Scavenger Den',troops:500,dead:500,wounded:0,power:'90K'}}},
+  {id:8,cat:'rewards',icon:'📜',subject:'Quest complete: Stone Age',from:'Quest Board',ago:2000,read:true,claimed:true,rewards:{stone:400}},
+  {id:9,cat:'system',icon:'📢',subject:'Supply routes restored',from:'Command',ago:2900,read:true},
+  {id:10,cat:'system',icon:'🏠',subject:'Welcome to Basie, Commander',from:'Command',ago:4300,read:true,claimed:true,rewards:{wood:200,stone:100}}
+];
+const BODY={reports:'Field report from your squad commander. Casualties and recovered supplies are listed below.',rewards:'Well done, Commander. Your reward has been prepared for collection.',system:'A message from Command. Rewards, where attached, can be collected below.'};
+const TABS_A=[['all','All'],['reports','Reports'],['rewards','Rewards'],['system','System'],['starred','Starred'],['trash','Trash']];
+const CATS=[['reports','⚔','Reports'],['rewards','🏆','Rewards'],['system','📢','System'],['starred','★','Starred'],['trash','🗑','Trash']];
+const CHIPS_C=[['all','All'],['unread','Unread'],['rewards','Has rewards'],['reports','Reports'],['starred','Starred']];
+
+const ago=m=>m<60?m+'m':m<1440?Math.round(m/60)+'h':Math.round(m/1440)+'d';
+const claimable=m=>m.rewards&&!m.claimed&&!m.trash;
+const pills=(rw,done)=>Object.entries(rw).map(([k,v])=>`<span class="pill ${done?'done':''}">${R[k]}${fmtC.format(v)}</span>`).join('');
+const sumRewards=ms=>ms.reduce((a,m)=>{for(const[k,v]of Object.entries(m.rewards))a[k]=(a[k]||0)+v;return a},{});
+
+function inCat(m,c){
+  if(c==='trash')return !!m.trash;
+  if(m.trash)return false;
+  if(c==='all')return true;
+  if(c==='starred')return !!m.starred;
+  return m.cat===c;
+}
+
+class Box{
+  constructor(el,variant){this.el=el;this.v=variant;this.narrow=el.classList.contains('s-ph');this.reset();}
+  reset(){Object.assign(this,{msgs:structuredClone(SEED),tab:'all',open:null,cat:this.narrow?null:'reports',chip:'all',selecting:false,sel:new Set(),toast:null});this.render()}
+  get(id){return this.msgs.find(m=>m.id===id)}
+  view(){
+    if(this.v==='A')return this.msgs.filter(m=>inCat(m,this.tab));
+    if(this.v==='B')return this.msgs.filter(m=>inCat(m,this.cat));
+    const c=this.chip;return this.msgs.filter(m=>!m.trash&&(c==='all'||(c==='unread'&&!m.read)||(c==='rewards'&&claimable(m))||(c==='reports'&&m.cat==='reports')||(c==='starred'&&m.starred)));
+  }
+  showToast(text,undo){clearTimeout(this._t);this.toast={text,undo};this._t=setTimeout(()=>{this.toast=null;this.render()},4500)}
+  claim(ids){
+    const ms=ids.map(i=>this.get(i)).filter(claimable);if(!ms.length)return;
+    const sum=sumRewards(ms);ms.forEach(m=>{m.claimed=true;m.read=true});
+    this.showToast(`Collected ${Object.entries(sum).map(([k,v])=>R[k]+' +'+fmtC.format(v)).join('  ')}`);
+  }
+  trash(ids){
+    const ms=ids.map(i=>this.get(i));ms.forEach(m=>m.trash=true);
+    if(this.open&&ids.includes(this.open))this.open=null;
+    this.showToast(`${ms.length} mail${ms.length>1?'s':''} moved to Trash`,()=>ms.forEach(m=>m.trash=false));
+  }
+  act(a,id,e){
+    const m=id&&this.get(id);
+    switch(a){
+      case'reset':return this.reset();
+      case'tab':this.tab=id;this.open=null;break;
+      case'cat':this.cat=id;this.open=null;break;
+      case'hub':this.cat=null;this.open=null;break;
+      case'chip':this.chip=id;break;
+      case'open':
+        if(this.selecting){this.sel.has(id)?this.sel.delete(id):this.sel.add(id);break}
+        this.open=this.v==='B'&&this.open===id?null:id;m.read=true;break;
+      case'back':this.open=null;break;
+      case'star':m.starred=!m.starred;break;
+      case'unread':m.read=false;this.open=null;break;
+      case'claim':this.claim([id]);if(this.v==='A'&&this.open===id){const nx=this.view().find(claimable);if(nx){this.open=nx.id;nx.read=true}}break;
+      case'claimAll':this.claim(this.view().filter(claimable).map(m=>m.id));break;
+      case'claimEvery':this.claim(this.msgs.filter(claimable).map(m=>m.id));break;
+      case'claimCat':this.claim(this.msgs.filter(x=>inCat(x,id)&&claimable(x)).map(x=>x.id));break;
+      case'readAll':this.view().forEach(x=>x.read=true);this.showToast('All marked read');break;
+      case'delRead':{const ids=this.view().filter(x=>x.read&&!x.starred&&!claimable(x)&&!x.trash).map(x=>x.id);if(ids.length)this.trash(ids);break}
+      case'del':this.trash([id]);break;
+      case'restore':m.trash=false;this.open=null;break;
+      case'purge':this.msgs=this.msgs.filter(x=>x!==m);this.open=null;break;
+      case'undo':this.toast.undo&&this.toast.undo();this.toast=null;break;
+      case'select':this.selecting=!this.selecting;this.sel.clear();break;
+      case'bulkRead':this.sel.forEach(i=>this.get(i).read=true);this.selecting=false;this.sel.clear();break;
+      case'bulkStar':this.sel.forEach(i=>this.get(i).starred=true);this.selecting=false;this.sel.clear();break;
+      case'bulkDel':this.trash([...this.sel]);this.selecting=false;this.sel.clear();break;
+      case'selAll':this.view().forEach(x=>this.sel.add(x.id));break;
+    }
+    this.render();
+  }
+  row(m,{check=false}={}){
+    const rew=m.rewards?(claimable(m)?`<div class="pills">${pills(m.rewards)}</div>`:''):'';
+    const right=claimable(m)?`<button class="btn sm" data-act="claim" data-id="${m.id}">Claim</button>`:(m.rewards&&m.claimed?'<span class="claimed">✓</span>':'');
+    return `<div class="row ${m.read?'':'unread'} ${this.open===m.id?'sel':''} ${check?'wchk':''}" data-act="open" data-id="${m.id}">
+      ${check?`<span class="chk ${this.sel.has(m.id)?'on':''}">${this.sel.has(m.id)?'✓':''}</span>`:''}
+      <span class="dot"></span><span class="mi ${m.cat==='reports'?(m.win?'win':'loss'):''}">${m.icon}</span>
+      <div class="tx"><div class="su">${m.subject}</div><div class="me">${m.from} · ${ago(m.ago)}</div>${rew}</div>
+      <div class="rt">${right}<button class="star ${m.starred?'on':''}" data-act="star" data-id="${m.id}" aria-label="Star">${m.starred?'★':'☆'}</button></div></div>`;
+  }
+  report(m){
+    if(!m.report)return '';const y=m.report.you,f=m.report.foe;
+    return `<div class="br"><div class="ban ${m.win?'win':'loss'}">${m.win?'VICTORY':'DEFEAT'}</div><div class="vs">
+      <div class="side"><b>Your squad</b><div class="l">Power<em>${y.power}</em></div><div class="l">Troops<em>${y.troops}</em></div><div class="l">Dead<em class="bad">${y.dead}</em></div><div class="l">Wounded<em class="warn">${y.wounded}</em></div></div>
+      <div class="mid">VS</div>
+      <div class="side"><b>${f.name}</b><div class="l">Power<em>${f.power}</em></div><div class="l">Troops<em>${f.troops}</em></div><div class="l">Dead<em class="bad">${f.dead}</em></div><div class="l">Wounded<em class="warn">${f.wounded}</em></div></div>
+    </div></div>`;
+  }
+  rewards(m){
+    if(!m.rewards)return '';
+    return `<div class="rew ${m.claimed?'done':''}"><h4>${m.claimed?'Collected':'Attached rewards'}</h4><div class="grid">${Object.entries(m.rewards).map(([k,v])=>`<div class="it"><span>${R[k]}</span>${fmtC.format(v)}</div>`).join('')}</div></div>`;
+  }
+  reader(m,{back=true}={}){
+    const bar=m.trash
+      ?`<button class="btn g" data-act="restore" data-id="${m.id}">Restore</button><span class="sp"></span><button class="btn bad" data-act="purge" data-id="${m.id}">Delete forever</button>`
+      :`<button class="ico" data-act="del" data-id="${m.id}" aria-label="Delete">🗑</button><button class="ico ${m.starred?'on':''}" data-act="star" data-id="${m.id}" aria-label="Star">${m.starred?'★':'☆'}</button><button class="ico" data-act="unread" data-id="${m.id}" aria-label="Mark unread">✉</button><span class="sp"></span>${claimable(m)?`<button class="btn" data-act="claim" data-id="${m.id}">Claim${this.v==='A'?' & next':''}</button>`:''}${m.cat==='reports'?'<button class="btn g">Attack again</button>':''}`;
+    return `<div class="reader">${back&&(this.narrow||this.v==='C')?`<div style="padding:4px 10px;border-bottom:1px solid var(--bd)"><button class="back" data-act="back">${this.narrow?'‹ Back':'Close ›'}</button></div>`:''}
+      <div class="rh"><span class="mi">${m.icon}</span><div><h3>${m.subject}</h3><small>${m.from} · ${new Date(NOW-m.ago*60000).toLocaleString([], {dateStyle:'medium',timeStyle:'short'})}</small></div></div>
+      <div class="rbody">${this.report(m)}<p>${BODY[m.cat]}</p>${this.rewards(m)}</div>
+      <div class="rbar">${bar}</div></div>`;
+  }
+  header(extra='',right=''){
+    const unread=this.msgs.filter(m=>!m.read&&!m.trash).length;
+    return `<div class="mh">${extra}<span class="t">Mail<small>${unread} unread</small></span><span class="x"></span>${right}<button class="btn ghost sm" data-act="reset">Reset</button><button class="ico" aria-label="Close">✕</button></div>`;
+  }
+  badges(c){
+    const ms=this.msgs.filter(m=>inCat(m,c));const u=ms.filter(m=>!m.read).length,g=ms.filter(claimable).length;
+    return (g?`<span class="cnt gift">${g}</span>`:'')+(u&&c!=='trash'?`<span class="cnt">${u}</span>`:'');
+  }
+  renderA(){
+    const list=this.view(),n=list.filter(claimable).length,m=this.open&&this.get(this.open);
+    const tabs=`<div class="tabs">${TABS_A.map(([k,l])=>`<button class="tab ${this.tab===k?'on':''}" data-act="tab" data-id="${k}">${l}${this.badges(k)}</button>`).join('')}</div>`;
+    const lp=`<div class="listp"><div class="list">${list.length?list.map(x=>this.row(x)).join(''):'<div class="empty">Nothing here.</div>'}</div>
+      <div class="foot">${this.tab==='trash'?'<span class="grow" style="color:var(--tx3);font-size:12px">Trash empties after 7 days</span>':`<button class="btn" data-act="claimAll" ${n?'':'disabled'}>Claim all (${n})</button><span class="grow"></span><button class="btn g sm" data-act="readAll">Read all</button><button class="btn ghost sm" data-act="delRead">Delete read</button>`}</div></div>`;
+    if(this.narrow)return this.header()+(m?this.reader(m):tabs+`<div class="mb">${lp}</div>`);
+    return this.header()+tabs+`<div class="mb">${lp}${m?this.reader(m,{back:false}):'<div class="reader"><div class="empty" style="margin:auto">Select a mail</div></div>'}</div>`;
+  }
+  renderB(){
+    const total=this.msgs.filter(claimable).length;
+    const hub=`<div class="hub">${CATS.map(([k,i,l])=>{const ms=this.msgs.filter(m=>inCat(m,k)),g=ms.filter(claimable).length,u=ms.filter(m=>!m.read).length;
+      return `<div class="tile ${this.cat===k?'on':''}" data-act="cat" data-id="${k}"><span class="ti">${i}</span><span><b>${l}</b><small>${ms.length} mail${u&&k!=='trash'?` · ${u} unread`:''}</small></span><span class="cs">${g?`<button class="btn sm" data-act="claimCat" data-id="${k}">Claim ${g}</button>`:''}</span></div>`}).join('')}</div>`;
+    const list=this.cat?this.view():[];
+    const acc=`<div class="listp" style="${this.narrow?'':'width:auto;flex:1;border:0'}"><div class="list">${list.length?list.map(m=>`<div class="acc">${this.row(m)}${this.open===m.id?`<div class="ex">${this.report(m)}<p style="margin:0 0 8px">${BODY[m.cat]}</p>${this.rewards(m)}<div class="acts">${claimable(m)?`<button class="btn" data-act="claim" data-id="${m.id}">Claim</button>`:''}${m.trash?`<button class="btn g sm" data-act="restore" data-id="${m.id}">Restore</button>`:`<button class="btn bad sm" data-act="del" data-id="${m.id}">Delete</button>`}</div></div>`:''}</div>`).join(''):'<div class="empty">Nothing here.</div>'}</div></div>`;
+    const claimBtn=`<button class="btn sm" data-act="claimEvery" ${total?'':'disabled'} style="margin-right:4px">Claim all (${total})</button>`;
+    if(this.narrow){
+      if(!this.cat)return this.header('',claimBtn)+`<div class="mb">${hub}</div>`;
+      return this.header(`<button class="back" data-act="hub">‹</button>`)+`<div class="tabs" style="height:36px;align-items:center;font:700 13px Oswald;letter-spacing:.08em;text-transform:uppercase;color:var(--tx2)">${CATS.find(c=>c[0]===this.cat)[2]}</div><div class="mb">${acc}</div>`;
+    }
+    return this.header('',claimBtn)+`<div class="mb">${hub}${acc}</div>`;
+  }
+  renderC(){
+    const all=this.msgs.filter(claimable),list=this.view(),m=this.open&&this.get(this.open);
+    const tray=this.selecting
+      ?`<div class="bulk"><b>${this.sel.size} selected</b><button class="btn ghost sm" data-act="selAll">All</button><button class="btn g sm" data-act="bulkRead">Read</button><button class="btn g sm" data-act="bulkStar">★</button><button class="btn bad sm" data-act="bulkDel">Delete</button></div>`
+      :(all.length?`<div class="tray"><div class="sum"><b>${all.length} rewards waiting</b><div class="pills">${pills(sumRewards(all))}</div></div><button class="btn" data-act="claimEvery">Claim all</button></div>`:'');
+    const chips=`<div class="chips">${CHIPS_C.map(([k,l])=>`<button class="fchip ${this.chip===k?'on':''}" data-act="chip" data-id="${k}">${l}</button>`).join('')}<button class="fchip selbtn ${this.selecting?'on':''}" data-act="select">${this.selecting?'Done':'Select'}</button></div>`;
+    const feed=`<div class="list">${list.length?list.map(x=>this.row(x,{check:this.selecting})).join(''):'<div class="empty">Nothing here.</div>'}</div>`;
+    const sheet=m?`<div class="sheetshade" data-act="back"></div><div class="sheet">${this.reader(m)}</div>`:'';
+    return this.header()+tray+chips+`<div class="C-body">${feed}${sheet}</div>`;
+  }
+  render(){
+    const body=this.v==='A'?this.renderA():this.v==='B'?this.renderB():this.renderC();
+    const t=this.toast?`<div class="toast">${this.toast.text}${this.toast.undo?'<button data-act="undo">UNDO</button>':''}</div>`:'';
+    this.el.innerHTML=`<div class="city"></div><div class="shade"></div><div class="modal">${body}</div>${t}`;
+  }
+}
+
+const boxes=new Map();
+document.querySelectorAll('.frames').forEach(fs=>{
+  const v=fs.dataset.variant;
+  fs.innerHTML=`<div class="fr"><span>Desktop modal</span><div class="screen s-desk"></div></div><div class="fr"><span>Phone 360 — drill-in</span><div class="screen s-ph"></div></div>`;
+  fs.querySelectorAll('.screen').forEach(s=>boxes.set(s,new Box(s,v)));
+});
+document.addEventListener('click',e=>{
+  const opt=e.target.closest('.opt');if(opt)document.querySelectorAll('.opt').forEach(o=>o.classList.toggle('selected',o===opt));
+  const t=e.target.closest('[data-act]');if(!t)return;
+  const box=boxes.get(t.closest('.screen'));if(!box)return;
+  e.stopPropagation();
+  const id=t.dataset.id;box.act(t.dataset.act,id&&/^\d+$/.test(id)?+id:id,e);
+});
+</script>
+</body></html>

@@ -5,7 +5,7 @@
  *  - Player Profile (profile pill -> ui:openProfile): Profile . Achievements . Account
  */
 import { eventBus } from '../../core/EventBus.js';
-import { openModal, closeModal } from '../uiUtils.js';
+import { swapModal, closeModal } from '../uiUtils.js';
 import { icon } from '../icons.js';
 
 const RARITY_COLORS = {
@@ -155,7 +155,7 @@ export class SettingsUI {
   _openProfile(tab = 'profile') {
     this._activeTab   = tab;
     this._profileOpen = true;
-    openModal(this._buildProfileShell(), () => { this._profileOpen = false; });
+    swapModal(this._buildProfileShell(), () => { this._profileOpen = false; });
     this._bindProfileShell();
   }
 

@@ -1,15 +1,12 @@
 /**
  * NavigationUI.js
- * Handles: navigation view switching, status bar, resource display,
- * player profile, live progress-bar timers, save indicator, mail badge.
+ * Handles: navigation view switching, unlock states, activity badges, header button bindings.
  *
  * Emits `ui:viewChanged` when the active view changes so domain
  * controllers can re-render themselves.
  */
 import { eventBus } from '../../core/EventBus.js';
-import { RES_META, fmt } from '../uiUtils.js';
-import { tickTo } from '../fx/numberTicker.js';
-import { VIP_TIERS, TAB_UNLOCK_CONDITIONS, TAB_GROUPS, BUILDING_TAB_MAP, HQ_UNLOCK_TABLE, BUILDINGS_CONFIG, UNITS_CONFIG } from '../../entities/GAME_DATA.js';
+import { TAB_UNLOCK_CONDITIONS, TAB_GROUPS, BUILDING_TAB_MAP, HQ_UNLOCK_TABLE, BUILDINGS_CONFIG, UNITS_CONFIG } from '../../entities/GAME_DATA.js';
 import { icon } from '../icons.js';
 import { devMute } from '../../core/devMute.js';
 
@@ -22,13 +19,10 @@ export class NavigationUI {
     this._activeView = 'base';
     // The last-shown "primary" map view (base|world); the flip button toggles between them.
     this._primaryView = 'base';
-    this._sessionStartMs = Date.now();
     // Tracks the last-active sub-tab id per group view — derived from TAB_GROUPS so new groups are automatically included
     this._activeSubTab = Object.fromEntries(Object.keys(TAB_GROUPS).map(k => [k, null]));
     // Badge store: tabKey → string[] of messages
     this._badgeStore = new Map();
-    // Throttle for resources:tick → DOM writes capped at 2Hz
-    this._resTickThrottle = 0;
   }
 
   init() {
@@ -38,10 +32,7 @@ export class NavigationUI {
     this._bindFlip();
     this._updateFlipButton();
     this._subscribeToEvents();
-    this._renderResources(this._s.rm.getSnapshot());
-    this._renderProfile(this._s.user.getProfile());
     this._updateMailBadge(this._s.mail.getUnreadCount());
-    this._refreshStatusBar();
     this._refreshUnlockStates();
     if (this._s.achievements) {
       this._updateAchievementsBadge(this._s.achievements.getAll());
@@ -249,51 +240,26 @@ export class NavigationUI {
       eventBus.emit('ui:click');
       eventBus.emit('ui:openInventory');
     });
-    document.getElementById('btn-settings')?.addEventListener('click', () => {
-      eventBus.emit('ui:click');
-      eventBus.emit('ui:openSettings');
-    });
     document.getElementById('player-chip')?.addEventListener('click', () => {
       eventBus.emit('ui:click');
       eventBus.emit('ui:openProfile');
-    });
-    // Buff badge → Heroes (manage buffs); Heroes is now building-tied, no nav button
-    document.getElementById('buff-hud-badge')?.addEventListener('click', () => {
-      eventBus.emit('ui:click');
-      eventBus.emit('ui:navigateTo', 'heroes');
     });
   }
 
   // ---- EVENT SUBSCRIPTIONS ----
   _subscribeToEvents() {
-    eventBus.on('resources:tick', snap => {
-      const now = Date.now();
-      if (now - this._resTickThrottle < 500) return;
-      this._resTickThrottle = now;
-      this._renderResources(snap);
-    });
-    eventBus.on('resources:ratesChanged', snap => this._renderResources(snap));
-    eventBus.on('user:profileUpdated',    p    => this._renderProfile(p));
-    eventBus.on('user:levelUp',           ()   => this._renderProfile(this._s.user.getProfile()));
-    eventBus.on('user:xpGained',          d    => this._renderProfile(d.profile));
     eventBus.on('mail:received',          d    => this._updateMailBadge(d.unreadCount));
     eventBus.on('mail:updated',           d    => this._updateMailBadge(d.unreadCount)); // covers mail:read and mail:deleted
-    eventBus.on('game:saved',             ()   => this._flashSaveIndicator());
-    eventBus.on('tick:ui',               ()   => { this._refreshStatusBar(); this._refreshBuffBadgeTick(); });
     eventBus.on('building:completed', d => {
-      this._refreshStatusBar();
       this._refreshUnlockStates();
       this._renderAllBadges(); // keep badge visuals in sync after unlock state changes
       this._onBuildingCompleted(d);
       this._refreshMoreBadges();
     });
-    eventBus.on('building:started',       ()   => this._refreshStatusBar());
     eventBus.on('building:queueUpdated',  ()   => this._refreshMoreBadges()); // plot occupancy changed
     eventBus.on('building:relocated',     ()   => this._refreshMoreBadges());
-    eventBus.on('unit:trained',           d    => { this._refreshStatusBar(); if (d) this._onUnitTrained(d); });
-    eventBus.on('army:updated',           ()   => this._refreshStatusBar());
-    eventBus.on('tech:researched',        d    => { this._refreshStatusBar(); if (d) this._onTechResearched(d); this._refreshMoreBadges(); });
-    eventBus.on('tech:started',           ()   => this._refreshStatusBar());
+    eventBus.on('unit:trained',           d    => { if (d) this._onUnitTrained(d); });
+    eventBus.on('tech:researched',        d    => { if (d) this._onTechResearched(d); this._refreshMoreBadges(); });
     eventBus.on('ui:viewChanged',         v    => {
       if (v === 'base' || v === 'world') this._primaryView = v;
       this._updateFlipButton();
@@ -303,8 +269,6 @@ export class NavigationUI {
     eventBus.on('tradingpost:dotsChanged', ()  => this._refreshMoreBadges());
     // Building click → Train / Manage Squads now open compact modals (handled by
     // MilitaryUI / BarracksUI). NavigationUI no longer switches to a Military view.
-    eventBus.on('population:updated',     ()   => this._refreshStatusBar());
-    eventBus.on('buffs:updated',          buffs => this._updateBuffBadge(buffs));
     eventBus.on('building:cafeteria:shortfall', ({ severity, message } = {}) => {
       const title = severity === 'info' ? 'Restock Reminder' : 'Food Running Low';
       this._s.notifications?.show(severity ?? 'warning', title,
@@ -312,7 +276,6 @@ export class NavigationUI {
     });
     eventBus.on('challenges:updated',  challenges => this._updateChallengesBadge(challenges));
     eventBus.on('events:updated',       state      => { this._updateEventsBadge(state); this._refreshMoreBadges(); });
-    eventBus.on('user:vipUpdate',       ()         => this._renderProfile(this._s.user.getProfile()));
     eventBus.on('achievement:unlocked', d          => {
       if (devMute.isMuted('achievements')) return;
       this._s.notifications?.show('success', '🏆 Achievement Unlocked!', d?.name ?? 'Achievement unlocked');
@@ -602,127 +565,6 @@ export class NavigationUI {
     return null;
   }
 
-
-  _renderResources(snap) {
-    for (const key of Object.keys(RES_META)) {
-      if (key === 'xp') continue;
-      const res = snap[key];
-      if (!res) continue;
-      const valEl  = document.getElementById(`v-${key}`);
-      const rateEl = document.getElementById(`r-${key}`);
-      const capEl  = document.getElementById(`c-${key}`);
-      if (valEl)  tickTo(valEl, res.amount, fmt);
-      if (rateEl) rateEl.textContent = res.perSec > 0 ? `+${res.perSec.toFixed(1)}/s` : '';
-      if (capEl && res.cap !== Infinity) capEl.textContent = `/ ${fmt(res.cap)}`;
-      // Capacity fill-bar (HUD v2): drive the chip's ::after width via --fill.
-      const chip = document.getElementById(`res-${key}`);
-      if (chip && res.cap && res.cap !== Infinity) {
-        const pct = Math.max(0, Math.min(1, res.amount / res.cap));
-        chip.style.setProperty('--fill', pct.toFixed(3));
-        chip.title = `${RES_META[key]?.name ?? key}: ${fmt(res.amount)} / ${fmt(res.cap)}`;
-      }
-    }
-    // Cafeteria aggregate stock chip
-    this._renderCafeteriaChip();
-  }
-
-  _renderCafeteriaChip() {
-    const chip   = document.getElementById('res-cafeteria');
-    if (!chip) return;
-    const stocks = this._s.bm?.getCafeteriaStock?.() ?? [];
-    if (stocks.length === 0) { chip.style.display = 'none'; return; }
-    chip.style.display = '';
-    let totalFood = 0, totalWater = 0, totalCapFood = 0, totalCapWater = 0;
-    for (const s of stocks) {
-      totalFood    += s.stock.food;
-      totalWater   += s.stock.water;
-      totalCapFood += s.stockCap.food;
-      totalCapWater += s.stockCap.water;
-    }
-    const minStock = Math.min(totalFood, totalWater);
-    const minCap   = Math.min(totalCapFood, totalCapWater);
-    const valEl    = document.getElementById('v-cafeteria');
-    const capEl    = document.getElementById('c-cafeteria');
-    const rateEl   = document.getElementById('r-cafeteria');
-    if (valEl)  valEl.textContent  = fmt(Math.floor(minStock));
-    if (capEl)  capEl.textContent  = `/ ${fmt(minCap)}`;
-    // Color the chip when stock is low
-    const pct = minCap > 0 ? minStock / minCap : 1;
-    chip.style.borderColor = pct < 0.2 ? 'var(--clr-danger)' : '';
-    if (rateEl) rateEl.innerHTML = pct < 0.2 ? `${icon('warning')} Low` : '';
-  }
-
-  // ---- PROFILE ----
-  _renderProfile(profile) {
-    const nameEl  = document.getElementById('player-name');
-    const levelEl = document.getElementById('player-level');
-    const badgeEl = document.getElementById('vip-badge');
-    if (nameEl)  nameEl.textContent  = profile.username;
-    if (levelEl) levelEl.textContent = `Lv. ${profile.level}`;
-    // VIP badge
-    if (badgeEl) {
-      const tier = this._s.user?.getVipTier() ?? 0;
-      if (tier > 0) {
-        const tierCfg = VIP_TIERS.find(t => t.tier === tier);
-        badgeEl.innerHTML = `${icon('crown')} ${tierCfg?.label ?? `VIP ${tier}`}`;
-        badgeEl.title           = tierCfg?.description ?? '';
-        badgeEl.classList.remove('hidden');
-        badgeEl.dataset.vipTier = tier;
-      } else {
-        badgeEl.classList.add('hidden');
-      }
-    }
-  }
-
-  // ---- STATUS BAR ----
-  _refreshStatusBar() {
-    const el = id => document.getElementById(id);
-    if (el('sb-army')) el('sb-army').textContent = this._s.um.getTotalUnitCount?.() ?? 0;
-    const activeBld = this._s.bm.getAllBuildingsWithStatus().find(b => b.isBuilding);
-    if (el('sb-building')) el('sb-building').textContent = activeBld
-      ? `${activeBld.name} (${Math.max(0, Math.ceil((activeBld.constructionEndsAt - Date.now()) / 1000))}s)`
-      : 'None';
-    const activeRes = this._s.tech.getTechWithState().find(t => t.researchEndsAt);
-    if (el('sb-research')) el('sb-research').textContent = activeRes
-      ? `${activeRes.name} (${Math.max(0, Math.ceil((activeRes.researchEndsAt - Date.now()) / 1000))}s)`
-      : 'None';
-    const pop = this._s.rm.getPopulation();
-    if (el('sb-population')) el('sb-population').textContent = `${Math.floor(pop.current)} / ${pop.cap}`;
-    const mins = Math.floor((Date.now() - this._sessionStartMs) / 60000);
-    if (el('sb-time')) el('sb-time').textContent = mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h ${mins % 60}m`;
-  }
-
-  _flashSaveIndicator() {
-    const el = document.getElementById('sb-save');
-    if (!el) return;
-    el.textContent = '💾 Saving...'; el.style.color = 'var(--clr-gold)';
-    setTimeout(() => { el.textContent = '✅ Saved'; el.style.color = 'var(--clr-success)'; }, 1200);
-  }
-
-  // ---- BUFF BADGE ----
-  _updateBuffBadge(buffs) {
-    const badge = document.getElementById('buff-hud-badge');
-    if (!badge) return;
-    if (!buffs || buffs.length === 0) {
-      badge.classList.add('hidden');
-      return;
-    }
-    badge.classList.remove('hidden');
-    const shortest = Math.min(...buffs.map(b => b.remaining));
-    const secs = Math.ceil(shortest / 1000);
-    const mins = Math.floor(secs / 60);
-    const sec  = secs % 60;
-    const timeStr = mins > 0 ? `${mins}m ${sec < 10 ? '0' : ''}${sec}s` : `${secs}s`;
-    const countEl = badge.querySelector('#buff-badge-count');
-    const timerEl = badge.querySelector('#buff-badge-timer');
-    if (countEl) countEl.textContent = buffs.length;
-    if (timerEl) timerEl.textContent = timeStr;
-  }
-
-  _refreshBuffBadgeTick() {
-    const buffs = this._s.heroes?.getActiveBuffsWithRemaining?.() ?? [];
-    this._updateBuffBadge(buffs);
-  }
 
   // ---- MAIL BADGE ----
   _updateMailBadge(count) {

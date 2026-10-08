@@ -294,13 +294,13 @@ await withPage(async ({ page, errors, origin }) => {
   await page.waitForTimeout(200);
   await dismissOverlays(page);
   await page.evaluate(() => window.game.eventBus.emit('ui:openInventory'));
-  await page.waitForSelector('#inventory-panel.open', { timeout: 5000 });
-  await page.click('.inv-tab[data-tab="scroll"]');
+  await page.waitForSelector('#inv-root', { timeout: 5000 });
+  await page.click('.inv-rail__tab[data-tab="other"]');
   await page.click('.inv-tile[data-item-id="scroll_common"]');
   checks.push({ label: 'retired scroll shows no recruit redirect', ok: await page.locator('.inv-goto-recruit').count() === 0 });
   checks.push({ label: 'retired scroll shows a disabled Retired action explaining the retirement', ok: await page.locator('.inv-card-action button:disabled[title*="retired" i]').count() === 1 });
-  await page.click('#inv-panel-close');
-  await page.waitForSelector('#inventory-panel:not(.open)', { timeout: 5000 });
+  await page.click('#inv-root .modal-close');
+  await page.waitForSelector('#inv-root', { state: 'detached', timeout: 5000 });
 
   await page.evaluate(() => window.game.eventBus.emit('ui:navigateTo', 'heroes'));
   await page.waitForSelector('#view-heroes:not(.hidden)', { timeout: 5000 });
@@ -309,17 +309,17 @@ await withPage(async ({ page, errors, origin }) => {
   checks.push({ label: 'buff block no longer on the Heroes screen', ok: await page.locator('#view-heroes .heroes-buff-section, #view-heroes .inv-buff-section').count() === 0 });
 
   await page.evaluate(() => window.game.eventBus.emit('ui:openInventory'));
-  await page.waitForSelector('#inventory-panel.open', { timeout: 5000 });
-  checks.push({ label: 'buff block rehomed onto the Inventory panel', ok: await page.locator('#inventory-panel .inv-buff-section').count() === 1 });
+  await page.waitForSelector('#inv-root', { timeout: 5000 });
+  checks.push({ label: 'buff block no longer on the Inventory panel (Buffs panel owns it)', ok: await page.locator('#inv-root .inv-buff-section').count() === 0 });
 
-  await page.click('#inv-panel-close');
-  await page.waitForSelector('#inventory-panel:not(.open)', { timeout: 5000 });
+  await page.click('#inv-root .modal-close');
+  await page.waitForSelector('#inv-root', { state: 'detached', timeout: 5000 });
   await page.evaluate(() => window.game.inventory.addItem('card_hero_warlord', 1));
   await page.waitForTimeout(200);
   await dismissOverlays(page);
   await page.evaluate(() => window.game.eventBus.emit('ui:openInventory'));
-  await page.waitForSelector('#inventory-panel.open', { timeout: 5000 });
-  await page.click('.inv-tab[data-tab="special"]');
+  await page.waitForSelector('#inv-root', { timeout: 5000 });
+  await page.click('.inv-rail__tab[data-tab="heroes"]');
   await page.click('.inv-tile[data-item-id="card_hero_warlord"]');
   checks.push({ label: 'hero card action redirects rather than spending directly', ok: await page.locator('.inv-goto-recruit').count() === 1 && await page.locator('.inv-use-card').count() === 0 });
   const heroCardQtyBefore = await page.evaluate(() => window.game.inventory.getQuantity('card_hero_warlord'));
@@ -404,14 +404,14 @@ await withPage(async ({ page, errors, origin }) => {
 
   await dismissOverlays(page);
   await page.evaluate(() => window.game.eventBus.emit('ui:openInventory'));
-  await page.waitForSelector('#inventory-panel.open', { timeout: 5000 });
-  await page.click('.inv-tab[data-tab="boost"]');
+  await page.waitForSelector('#inv-root', { timeout: 5000 });
+  await page.click('.inv-rail__tab[data-tab="heroes"]');
   await page.click('.inv-tile[data-item-id="xpcard_normal"]');
   checks.push({ label: 'C1: xpcard is reachable in Inventory with a real action', ok: await page.locator('.inv-use-xp[data-item="xpcard_normal"]').count() === 1 });
 
-  await page.click('.inv-use-xp[data-item="xpcard_normal"]');
   await page.waitForSelector('.inv-hero-picker', { timeout: 5000 });
   await page.click(`.inv-pick-hero[data-hero="${c1HeroId}"]`);
+  await page.click('.inv-use-xp[data-item="xpcard_normal"]');
   await page.waitForTimeout(300);
 
   const c1QtyAfter  = await page.evaluate(() => window.game.inventory.getQuantity('xpcard_normal'));
@@ -424,8 +424,8 @@ await withPage(async ({ page, errors, origin }) => {
     ok: c1QtyAfter === c1QtyBefore - 1 && (c1HeroAfter.xp > c1HeroBefore.xp || c1HeroAfter.level > c1HeroBefore.level),
   });
 
-  await page.click('#inv-panel-close');
-  await page.waitForSelector('#inventory-panel:not(.open)', { timeout: 5000 });
+  await page.click('#inv-root .modal-close');
+  await page.waitForSelector('#inv-root', { state: 'detached', timeout: 5000 });
 
   await page.evaluate(() => {
     window.game.eventBus.emit('ui:devSetBuildingLevel', { buildingId: 'heroquarters', level: 3 });

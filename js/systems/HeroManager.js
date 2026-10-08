@@ -36,12 +36,6 @@ export class HeroManager {
     /** @type {Map<string, {heroId, level, xp, xpToNext, stars, effectiveStats, assignment}>} */
     this._owned = new Map();
 
-    /** Tracks active production buffs: [{value, endsAt}] */
-    this._activeBuffs = [];
-
-    /** Track previous buff count to detect expiry in update() */
-    this._lastBuffCount = 0;
-
     /** Per-tier pull counter since the last new-hero (stage 1) or shard-floor (stage 2) grant */
     this._pity = { normal: 0, epic: 0, legendary: 0 };
 
@@ -165,11 +159,6 @@ export class HeroManager {
   // =============================================
 
   getCombatBonuses(squadId = null)          { return this._combat.getCombatBonuses(squadId); }
-  getCategorizedBonuses(barracksInstanceId = null) { return this._combat.getCategorizedBonuses(barracksInstanceId); }
-  activateBuff(buffCfg)                     { return this._combat.activateBuff(buffCfg); }
-  getActiveBuffs()                          { return this._combat.getActiveBuffs(); }
-  getActiveBuffsWithRemaining()             { return this._combat.getActiveBuffsWithRemaining(); }
-  getActiveProductionMultiplier()           { return this._combat.getActiveProductionMultiplier(); }
 
   // =============================================
   // DATA ACCESS
@@ -177,8 +166,6 @@ export class HeroManager {
 
   getRosterWithState() {
     const goldAvailable = this._rm?.getSnapshot()?.gold?.amount ?? 0;
-    const now = Date.now();
-    this._activeBuffs = (this._activeBuffs ?? []).filter(b => b.endsAt > now);
 
     return Object.values(HEROES_CONFIG).map(cfg => {
       const owned      = this._owned.get(cfg.id);
@@ -244,14 +231,6 @@ export class HeroManager {
 
   update(dt) {
     this._grantPassiveXp(dt);
-    // Detect buff expiry and notify listeners
-    const now = Date.now();
-    const before = this._activeBuffs.length;
-    this._activeBuffs = this._activeBuffs.filter(b => b.endsAt > now);
-    if (this._activeBuffs.length !== before) {
-      eventBus.emit('buffs:updated', this.getActiveBuffsWithRemaining());
-      eventBus.emit('buffs:changed');
-    }
   }
 
   _grantPassiveXp(dt) {
@@ -269,14 +248,12 @@ export class HeroManager {
   serialize() {
     return {
       owned:       Object.fromEntries(this._owned),
-      activeBuffs: this._activeBuffs ?? [],
       pity:        { ...this._pity },
     };
   }
 
   deserialize(data) {
     if (!data) return;
-    this._activeBuffs = (data.activeBuffs ?? []).filter(b => b.endsAt > Date.now());
     this._pity = {
       normal:    data.pity?.normal    ?? 0,
       epic:      data.pity?.epic      ?? 0,

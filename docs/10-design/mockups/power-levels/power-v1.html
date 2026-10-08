@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Power and levels mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:hsl(30,10%,5%);--surf:hsl(30,9%,8%);--elev:hsl(30,8%,11%);--panel:hsl(30,8%,14%);--bd:hsl(30,10%,18%);--bdl:hsl(30,10%,27%);
+    --or:hsl(32,90%,55%);--orm:hsl(32,55%,18%);--tx:hsl(35,15%,93%);--tx2:hsl(35,10%,62%);--tx3:hsl(35,8%,42%);
+    --ok:hsl(90,45%,48%);--warn:hsl(45,90%,58%);--bad:hsl(5,70%,58%);--dia:hsl(190,70%,60%);
+    --c-troops:hsl(5,60%,55%);--c-heroes:hsl(275,45%,62%);--c-combat:hsl(32,90%,55%);--c-build:hsl(200,50%,55%);--c-res:hsl(160,40%,48%)}
+  *{box-sizing:border-box}
+  body{margin:0;background:#1b1916;color:var(--tx);font-family:Outfit,sans-serif;padding:24px 32px 60px}
+  h1{font:700 22px Oswald;letter-spacing:.04em;margin:0 0 4px} .sub{color:var(--tx2);margin:0 0 8px;font-size:14px;max-width:1100px}
+  .warnline{display:inline-block;background:hsl(45,40%,12%);border:1px solid hsl(45,40%,28%);color:var(--warn);font-size:12px;padding:4px 10px;border-radius:4px;margin-bottom:18px}
+  h2.sec{font:700 18px Oswald;letter-spacing:.08em;text-transform:uppercase;margin:28px 0 10px;color:var(--tx2)}
+  .opt{border:2px solid transparent;border-radius:10px;padding:14px;margin-bottom:18px;background:#24211d;cursor:pointer}
+  .opt.selected{border-color:var(--or)} .opt h3{font:700 16px Oswald;letter-spacing:.05em;margin:0 0 4px} .opt h3 b{color:var(--or)}
+  .opt p.d{margin:0 0 12px;color:var(--tx2);font-size:13px;max-width:1100px}
+  .wrap{display:grid;grid-template-columns:1fr 260px;gap:14px}
+  .notes{font-size:12px;color:var(--tx2);line-height:1.45} .notes div{margin-bottom:9px} .notes b{color:var(--tx)}
+  .frames{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
+  .fr{display:flex;flex-direction:column;gap:4px} .fr>span{font:600 10px Outfit;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3)}
+  .screen{background:var(--bg);border:1px solid var(--bd);border-radius:6px;overflow:hidden;position:relative;font-size:13px;cursor:default}
+  .s-desk{width:760px;max-width:100%;height:520px} .s-ph{width:360px;height:640px}
+  .city{position:absolute;inset:0;background:radial-gradient(ellipse at 35% 55%,hsl(30,12%,16%),var(--bg) 70%)}
+  .shade{position:absolute;inset:0;background:hsla(30,10%,3%,.6)}
+  .btn{background:linear-gradient(var(--or),hsl(30,88%,42%));color:#1a1108;font:700 12px Oswald;letter-spacing:.06em;border:0;padding:0 14px;height:34px;border-radius:5px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+  .btn.g{background:var(--panel);color:var(--tx);border:1px solid var(--bdl)}
+  .btn.sm{height:28px;padding:0 10px;font-size:11px}
+  .modal{position:absolute;display:flex;flex-direction:column;background:var(--surf);border:1px solid var(--bdl);box-shadow:0 20px 50px #000;overflow:hidden}
+  .s-desk .modal{left:40px;right:40px;top:30px;bottom:30px;border-radius:8px} .s-ph .modal{inset:0}
+  .mh{display:flex;align-items:center;gap:10px;padding:0 12px 0 14px;height:46px;border-bottom:1px solid var(--bd);background:linear-gradient(var(--elev),var(--surf));flex-shrink:0}
+  .mh .t{font:700 15px Oswald;letter-spacing:.1em;text-transform:uppercase} .mh .x{margin-left:auto;color:var(--tx3);font-size:16px}
+  .tabs{display:flex;gap:2px;padding:0 10px;border-bottom:1px solid var(--bd);flex-shrink:0}
+  .tab{color:var(--tx3);font:600 12px Outfit;letter-spacing:.05em;text-transform:uppercase;height:38px;padding:0 10px;display:flex;align-items:center}
+  .tab.on{color:var(--tx);box-shadow:inset 0 -2px var(--or)}
+  .mb{flex:1;overflow-y:auto;padding:14px}
+  .num{font:700 30px Oswald;letter-spacing:.02em;font-variant-numeric:tabular-nums}
+  .lbl{font:700 11px Oswald;letter-spacing:.12em;text-transform:uppercase;color:var(--tx2)}
+  .delta{font:600 12px Outfit;color:var(--ok)} .delta.neg{color:var(--bad)}
+
+  /* Breakdown A: stacked bar + rows */
+  .hero{display:flex;align-items:flex-end;gap:14px;margin-bottom:12px}
+  .stack{display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--panel);margin-bottom:14px}
+  .stack i{display:block;height:100%}
+  .cat{display:grid;grid-template-columns:12px 1fr auto auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--bd);cursor:pointer}
+  .cat .sw{width:12px;height:12px;border-radius:3px}
+  .cat b{font-size:13px} .cat small{display:block;color:var(--tx3);font-size:11px}
+  .cat .v{font:700 15px Oswald;font-variant-numeric:tabular-nums;text-align:right}
+  .cat .chev{color:var(--tx3)}
+  .cap{font:600 9px Outfit;letter-spacing:.06em;text-transform:uppercase;color:var(--warn);border:1px solid hsl(45,40%,30%);padding:0 4px;border-radius:3px;margin-left:6px}
+  .sub-rows{grid-column:1/-1;padding:4px 0 2px 22px;display:none}
+  .cat.open .sub-rows{display:block}
+  .sr{display:flex;justify-content:space-between;font-size:12px;color:var(--tx2);padding:3px 0} .sr em{font-style:normal;color:var(--tx);font-variant-numeric:tabular-nums}
+  .capbar{position:relative;height:6px;background:var(--panel);border-radius:3px;margin:6px 0 2px}
+  .capbar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px}
+  .capbar u{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--warn)}
+  .tip{margin-top:12px;background:var(--elev);border:1px solid var(--bd);border-radius:6px;padding:10px 12px;font-size:12px;color:var(--tx2)}
+  .tip b{color:var(--tx)}
+
+  /* Breakdown B: radar-ish tiles */
+  .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+  .tl{background:var(--elev);border:1px solid var(--bd);border-radius:8px;padding:10px;position:relative;overflow:hidden}
+  .tl::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--c)}
+  .tl .v{font:700 20px Oswald;font-variant-numeric:tabular-nums}
+  .tl .pc{font:600 11px Outfit;color:var(--tx3)}
+  .tl .go{margin-top:8px;font:700 11px Oswald;letter-spacing:.06em;color:var(--or)}
+  .ring{width:120px;height:120px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;position:relative}
+  .ring::after{content:"";position:absolute;inset:14px;border-radius:50%;background:var(--surf)}
+  .ring span{position:relative;z-index:1;text-align:center;font:700 18px Oswald;line-height:1.1} .ring span small{display:block;font:600 9px Outfit;color:var(--tx3);letter-spacing:.1em}
+
+  /* Recommended power */
+  .stages{display:flex;flex-direction:column;gap:8px}
+  .stg{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center;background:var(--elev);border:1px solid var(--bd);border-radius:8px;padding:10px}
+  .stg .ic{width:44px;height:44px;border-radius:8px;background:var(--panel);display:flex;align-items:center;justify-content:center;font-size:20px}
+  .stg b{font:700 14px Oswald;letter-spacing:.04em} .stg small{display:block;color:var(--tx3);font-size:11px}
+  .rp{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:13px;font:700 12px Oswald;border:1px solid;white-space:nowrap}
+  .rp.g{color:var(--ok);border-color:hsl(90,35%,30%);background:hsl(90,30%,10%)}
+  .rp.a{color:var(--warn);border-color:hsl(45,50%,32%);background:hsl(45,40%,10%)}
+  .rp.r{color:var(--bad);border-color:hsl(5,45%,35%);background:hsl(5,40%,11%)}
+  .gauge{width:200px}
+  .gauge .track{position:relative;height:8px;border-radius:4px;background:linear-gradient(90deg,var(--bad) 0 30%,var(--warn) 30% 60%,var(--ok) 60%)}
+  .gauge .you{position:absolute;top:-5px;width:4px;height:18px;border-radius:2px;background:var(--tx);box-shadow:0 0 0 2px var(--bg)}
+  .gauge .row{display:flex;justify-content:space-between;font-size:11px;color:var(--tx3);margin-top:6px} .gauge .row b{color:var(--tx);font-family:Oswald}
+  .verdict{font:700 11px Oswald;letter-spacing:.08em;text-transform:uppercase}
+  .poi{position:absolute;right:16px;top:16px;width:300px;background:var(--surf);border:1px solid var(--bdl);border-radius:8px;box-shadow:0 12px 30px #000;padding:12px}
+  .s-ph .poi{left:10px;right:10px;width:auto;top:auto;bottom:70px}
+  .poi h4{margin:0 0 2px;font:700 15px Oswald;letter-spacing:.05em} .poi small{color:var(--tx3)}
+  .poi .acts{display:flex;gap:6px;margin-top:10px}
+  .mapdot{position:absolute;width:44px;height:44px;border-radius:50%;background:radial-gradient(hsl(5,40%,30%),hsl(5,30%,14%));border:2px solid var(--bad);display:flex;align-items:center;justify-content:center;font-size:18px}
+  .mapdot .lv{position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);white-space:nowrap}
+
+  /* Level-up */
+  .lvl{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+  .card{width:min(420px,92%);background:linear-gradient(var(--elev),var(--surf));border:1px solid hsl(32,45%,32%);border-radius:10px;box-shadow:0 0 0 1px #000,0 30px 60px #000,0 0 80px hsla(32,90%,55%,.15);padding:18px;text-align:center;position:relative;overflow:hidden}
+  .card::before{content:"";position:absolute;left:50%;top:-120px;width:300px;height:240px;transform:translateX(-50%);background:radial-gradient(hsla(32,90%,55%,.25),transparent 70%)}
+  .card .big{font:700 52px Oswald;color:var(--or);line-height:1;position:relative} .card .big small{display:block;font:700 12px Oswald;letter-spacing:.3em;color:var(--tx2)}
+  .card .unl{margin:12px 0;font-size:12px;color:var(--tx2)}
+  .rw{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:12px 0}
+  .rw .it{background:var(--panel);border:1px solid var(--bd);border-radius:6px;padding:8px 4px;font:700 12px Oswald}
+  .rw .it span{display:block;font-size:22px}
+  .rw .it.ms{border-color:hsl(32,55%,35%);background:var(--orm)}
+  .nextm{font-size:11px;color:var(--tx3);margin-bottom:12px} .nextm b{color:var(--or)}
+  .banner{position:absolute;left:50%;top:60px;transform:translateX(-50%);width:min(420px,94%);display:grid;grid-template-columns:52px 1fr auto;gap:12px;align-items:center;background:linear-gradient(90deg,var(--orm),var(--elev));border:1px solid hsl(32,45%,32%);border-radius:8px;padding:10px 12px;box-shadow:0 12px 30px #000}
+  .banner .lv{font:700 26px Oswald;color:var(--or);text-align:center;line-height:1} .banner .lv small{display:block;font:600 9px Outfit;letter-spacing:.15em;color:var(--tx2)}
+  .banner b{font:700 13px Oswald;letter-spacing:.05em;display:block} .banner .pills{display:flex;gap:4px;margin-top:4px;flex-wrap:wrap}
+  .pill{display:inline-flex;gap:3px;align-items:center;font:700 11px Oswald;background:var(--panel);border:1px solid var(--bd);border-radius:10px;padding:1px 7px 1px 4px}
+  .hdr{position:absolute;top:0;left:0;right:0;height:46px;display:flex;align-items:center;gap:8px;padding:0 10px;background:linear-gradient(hsla(30,9%,8%,.96),hsla(30,9%,8%,.8));border-bottom:1px solid var(--bd)}
+  .plate{display:flex;align-items:center;gap:7px}
+  .plate .av{width:32px;height:32px;border-radius:6px;background:radial-gradient(circle at 40% 35%,hsl(30,30%,35%),hsl(30,20%,15%));border:1px solid var(--or)}
+  .plate b{font:700 13px Oswald;display:block} .plate small{color:var(--tx2);font-size:11px} .plate small em{color:var(--or);font-style:normal;font-weight:700}
+  .xpbar{width:90px;height:4px;border-radius:2px;background:var(--panel);overflow:hidden;margin-top:2px} .xpbar i{display:block;height:100%;background:var(--or)}
+  .pwfly{position:absolute;font:700 13px Oswald;color:var(--ok);animation:fly 1.6s ease-out infinite}
+  @keyframes fly{0%{opacity:0;transform:translateY(8px)}20%{opacity:1}100%{opacity:0;transform:translateY(-18px)}}
+  @media (prefers-reduced-motion:reduce){.pwfly{animation:none}}
+</style></head>
+<body>
+<h1>POWER &amp; LEVELS — v1 prototypes</h1>
+<p class="sub">These screens follow the decisions already made. Power is combat-weighted: buildings and other research count but are capped, and wounded troops don't count until healed. Power shows in the top bar and profile, as recommended power on enemies, and in battle reports. Player level is an activity and rewards meter, and HQ stays the gate. Click a card to select it. Click a category row to expand it.</p>
+<div class="warnline">All numbers are placeholders until the formula draft (<code>docs/research/power-levels-formula.md</code>) lands.</div>
+
+<h2 class="sec">1 · Profile: power breakdown (A) inside the current profile window</h2>
+<p class="sub">This section is built on the profile window as it exists today. It has a crown icon, your name and "Level N Commander" at the top, four button tabs (<b>Profile · Achievements · Account · Settings</b>), and a Profile tab holding an XP bar and 12 Statistics rows. The chosen breakdown (A) needs a home in it.</p>
+<div class="opt selected" data-opt="P-1">
+  <h3>PLACEMENT 1 — <b>Inside the Profile tab</b> · CHOSEN</h3>
+  <p class="d">The Profile tab becomes three blocks. <b>Level:</b> the existing XP bar, plus the level cap and XP bank line. <b>Power:</b> breakdown A. <b>Statistics:</b> the existing 12 rows, unchanged and collapsible. The tab row stays at four.</p>
+  <div class="wrap"><div class="frames" id="pa"></div>
+  <div class="notes"><div><b>Pros:</b> no new tab, and level, power and stats read as one "commander sheet". The header can show power next to the level.</div><div><b>Cons:</b> a long tab on a phone. Statistics is collapsed by default to keep it short.</div><div><b>Build note:</b> <code>SettingsUI.js</code> is 513 lines, so the profile modal moves into <code>js/ui/profile/</code> first.</div></div></div>
+</div>
+<div class="opt" data-opt="P-2">
+  <h3>PLACEMENT 2 — <b>A fifth "Power" tab</b></h3>
+  <p class="d">Breakdown A gets its own tab next to Profile. The Profile tab keeps the level and Statistics as they are today.</p>
+  <div class="wrap"><div class="frames" id="pb"></div>
+  <div class="notes"><div><b>Pros:</b> breakdown A gets the whole tab, and the Profile tab barely changes.</div><div><b>Cons:</b> five button tabs are cramped at 360px. Power is one tap further away.</div></div></div>
+</div>
+
+<h2 class="sec">2 · Recommended power on enemies</h2>
+<div class="opt" data-opt="R-A">
+  <h3>OPTION A — <b>Coloured power chip</b></h3>
+  <p class="d">Each campaign stage and world monster shows a chip with its recommended power, coloured by how your power compares. Green means you're comfortably stronger, amber means it's even, and red means you'll probably lose. The bands are placeholders.</p>
+  <div class="wrap"><div class="frames" id="ra"></div>
+  <div class="notes"><div><b>Pros:</b> compact and fits the existing stage cards and POI panel.</div><div><b>Cons:</b> one number hides the counter matchups. A hint line can name the enemy's main troop type.</div></div></div>
+</div>
+<div class="opt selected" data-opt="R-B">
+  <h3>OPTION B — <b>You-vs-enemy gauge</b> · CHOSEN</h3>
+  <p class="d">A gauge with red, amber and green zones and a marker for your squad's power, with a one-word verdict: Risky, Even or Favoured, plus the existing simulated win %. Tapping a marker <b>pops the card attached to that target</b>, with an arrow pointing at it. The card flips above or below and stays inside the screen. When you drag the map it <b>follows the target</b>, and it hides if the target goes off screen. List cards and markers keep the chip from A. <b>World map only:</b> the campaign keeps its own stage panel (<code>battle-tab.md</code>), with the same gauge placed inside it.</p>
+  <div class="wrap"><div class="frames" id="rb"></div>
+  <div class="notes"><div><b>Pros:</b> the clearest picture before you commit troops, and it uses the <b>squad</b> you're sending, not your whole power.</div><div><b>Cons:</b> takes more space, so it only fits panels, not list cards.</div></div></div>
+</div>
+
+<h2 class="sec">3 · Level up</h2>
+<div class="opt selected" data-opt="L-A">
+  <h3>OPTION A — <b>Celebration card</b> · CHOSEN</h3>
+  <p class="d">A centred card with the new level, its rewards, and the next milestone. Collect sends the rewards straight to the bag. Milestone levels get a highlighted reward. The level-up mail goes away. <b>Level-ups are queued:</b> during a critical moment the plate shows a waiting pip instead. When the moment ends, the queue releases as a <b>deck of cards, one per level</b>. Collect takes that level's rewards and shows the next card; <b>Collect all</b> clears the deck. Try it in the desktop frame.</p>
+  <div class="wrap"><div class="frames" id="la"></div>
+  <div class="notes"><div><b>Critical moments (the queue holds):</b> the battle scene or playback, a tutorial step, a confirm dialog, or any open modal.</div><div><b>Deck:</b> the lowest level is on top, with "1 of N" shown. Closing the deck without collecting keeps the rewards waiting behind the plate pip, so nothing is lost.</div><div><b>Pros:</b> a satisfying moment for every level, and it never cuts into a fight.</div><div><b>Cons:</b> a long deck after a big XP jump. Collect all keeps it to one tap.</div></div></div>
+</div>
+<div class="opt" data-opt="L-B">
+  <h3>OPTION B — <b>Top banner with auto-collect</b></h3>
+  <p class="d">A banner slides in under the header with the level and its rewards, then auto-collects. Milestone levels still open the card from A. The top-bar plate shows the XP bar and the power change. <b>Level-ups are queued:</b> during a critical moment the plate shows a waiting pip instead. When the moment ends, the queue releases <b>one stacked banner per level</b>.</p>
+  <div class="wrap"><div class="frames" id="lb"></div>
+  <div class="notes"><div><b>Critical moments (queue holds):</b> battle scene or playback, tutorial step, a confirm dialog, and an open modal for milestone cards only.</div><div><b>Stacking:</b> at most 3 banners show at once, with "+N more" for the rest. Each banner auto-collects its own level's rewards. A milestone card waits until the stack has cleared.</div><div><b>Pros:</b> never interrupts, and each level still gets its moment.</div><div><b>Cons:</b> ordinary level-ups are easy to miss, so the rewards also go in the Inventory "NEW" dot.</div></div></div>
+</div>
+
+<script>
+const CATS=[
+  {k:'troops',n:'Troops',c:'var(--c-troops)',v:612400,d:'+18.2K',sub:[['Infantry T5 × 820','214.6K'],['Cavalry T4 × 540','188.1K'],['Ranged T4 × 610','142.0K'],['Siege T3 × 120','67.7K'],['Wounded (not counted)','−41.3K']],go:'Train'},
+  {k:'heroes',n:'Heroes',c:'var(--c-heroes)',v:236900,d:'+4.1K',sub:[['Paladin ★4 Lv 38 (squad 1)','92.3K'],['Kaelen ★3 Lv 31 (squad 2)','71.8K'],['Warlord ★2 Lv 24 (HQ)','72.8K'],['Unassigned heroes','not counted']],go:'Heroes'},
+  {k:'combat',n:'Combat research & HQ',c:'var(--c-combat)',v:148200,d:'',sub:[['Infantry mastery Lv 4','52.1K'],['Armour plating Lv 3','40.4K'],['HQ Lv 6 attack/defence','55.7K']],go:'Research'},
+  {k:'build',n:'Buildings',c:'var(--c-build)',v:142000,cap:160000,d:'+1.2K',sub:[['Counted up to 16% of total','142.0K / 160.0K']],go:'Build'},
+  {k:'res',n:'Other research',c:'var(--c-res)',v:61200,cap:80000,d:'',sub:[['Counted up to 8% of total','61.2K / 80.0K']],go:'Research'}
+];
+const total=CATS.reduce((a,c)=>a+c.v,0);
+const f=n=>new Intl.NumberFormat('en',{notation:'compact',maximumFractionDigits:2}).format(n);
+const frames=(id,fn)=>{document.getElementById(id).innerHTML=`<div class="fr"><span>Desktop</span><div class="screen s-desk">${fn(false)}</div></div><div class="fr"><span>Phone 360</span><div class="screen s-ph">${fn(true)}</div></div>`};
+const shell=(title,body,tabs='')=>`<div class="city"></div><div class="shade"></div><div class="modal"><div class="mh"><span class="t">${title}</span><span class="x">✕</span></div>${tabs}<div class="mb">${body}</div></div>`;
+const STATS=[['Battles Won','148'],['Battles Lost','23'],['Units Trained','9,412'],['Buildings Built','214'],['Quests Completed','61'],['Technologies','38'],['Heroes Recruited','9'],['Market Trades','44'],['Login Streak','12 days'],['Wave High Score','31'],['Time Played','41h 12m'],['Achievements','27 / 64']];
+const profShell=(tabs,active,body)=>`<div class="city"></div><div class="shade"></div><div class="modal prof">
+  <div class="prof__top"><span class="prof__icon">👑</span><span><b>Commander Rook</b><small>Level 24 Commander · <em>⚔ ${new Intl.NumberFormat('en').format(total)}</em></small></span><span class="x">✕</span></div>
+  <div class="prof__tabs">${tabs.map(t=>`<span class="${t===active?'on':''}">${t}</span>`).join('')}</div>
+  <div class="mb">${body}</div></div>`;
+const levelBlock=`<div class="prof__sec"><div class="lbl">Level 24 · cap 25 at HQ 5</div><div class="prof__xp"><i style="width:62%"></i></div><small class="prof__xpt">4,060 / 6,560 XP to Level 25 · bank empty</small></div>`;
+const powerBlock=(collapsible)=>`<div class="prof__sec"><div class="hero"><div><div class="lbl">Power</div><div class="num">${new Intl.NumberFormat('en').format(total)}</div></div><div class="delta">▲ 23.5K today</div></div>
+  <div class="stack">${CATS.map(c=>`<i style="width:${c.v/total*100}%;background:${c.c}"></i>`).join('')}</div>
+  ${CATS.map((c,i)=>`<div class="cat ${i===0&&!collapsible?'open':''}" data-toggle><span class="sw" style="background:${c.c}"></span><span><b>${c.n}${c.cap?'<span class="cap">Cap</span>':''}</b><small>${Math.round(c.v/total*100)}% of power${c.d?` · <span class="delta">${c.d}</span>`:''}</small></span><span class="v">${f(c.v)}</span><span class="chev">▾</span>
+    <div class="sub-rows">${c.cap?`<div class="capbar"><i style="width:${c.v/c.cap*100}%;background:${c.c}"></i><u style="left:calc(100% - 2px)"></u></div>`:''}${c.sub.map(s=>`<div class="sr">${s[0]}<em>${s[1]}</em></div>`).join('')}</div></div>`).join('')}
+  <div class="tip"><b>Fastest gain:</b> healing 1,240 wounded troops returns <b>+41.3K</b>.</div></div>`;
+const statsBlock=(collapsed)=>`<div class="prof__sec cat ${collapsed?'':'open'}" data-toggle style="display:block;border-top:0"><div class="lbl" style="display:flex;justify-content:space-between">Statistics<span class="chev">${collapsed?'▸ 12':'▾'}</span></div>
+  <div class="sub-rows" style="padding-left:0">${STATS.map(([k,v])=>`<div class="sr">${k}<em>${v}</em></div>`).join('')}</div></div>`;
+const pstyle=document.createElement('style');pstyle.textContent=`
+  .s-desk .modal.prof{left:50%;right:auto;width:520px;max-width:calc(100% - 32px);transform:translateX(-50%)}
+  .prof__top{display:flex;gap:10px;align-items:center;padding:12px 14px 8px;flex-shrink:0}
+  .prof__icon{width:38px;height:38px;border-radius:8px;background:var(--orm);display:flex;align-items:center;justify-content:center;font-size:20px}
+  .prof__top b{font:700 16px Oswald;letter-spacing:.04em;display:block} .prof__top small{color:var(--tx2);font-size:12px} .prof__top small em{color:var(--or);font-style:normal;font-weight:700}
+  .prof__top .x{margin-left:auto;color:var(--tx3);font-size:16px}
+  .prof__tabs{display:flex;gap:4px;padding:0 14px 10px;flex-shrink:0}
+  .prof__tabs span{flex:1;text-align:center;font:600 11px Outfit;padding:7px 2px;border-radius:5px;border:1px solid var(--bd);color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .prof__tabs span.on{background:linear-gradient(var(--or),hsl(30,88%,42%));color:#1a1108;border-color:transparent}
+  .prof__sec{padding:10px 0;border-bottom:1px solid var(--bd)}
+  .prof__xp{height:8px;border-radius:4px;background:var(--panel);overflow:hidden;margin:6px 0 4px} .prof__xp i{display:block;height:100%;background:var(--or)}
+  .prof__xpt{color:var(--tx3);font-size:11px}`;
+document.head.appendChild(pstyle);
+
+const TABS4=['Profile','Achievements','Account','Settings'],TABS5=['Profile','Power','Achievements','Account','Settings'];
+frames('pa',ph=>profShell(TABS4,'Profile',levelBlock+powerBlock(true)+statsBlock(true)));
+frames('pb',ph=>profShell(TABS5,'Power',powerBlock(false)));
+
+const STG=[['1-4','Raider outpost',180000,'⚔'],['1-6','Bandit fort (elite)',820000,'☠'],['2-1','Scrapyard gang',1600000,'⚔']];
+const band=r=>r>=1.2?'g':r>=.9?'a':'r';
+const word={g:'Favoured',a:'Even',r:'Risky'};
+frames('ra',ph=>`<div class="city"></div>${ph?'':`<div class="mapdot" style="left:110px;top:200px">☠<span class="lv rp r">⚔ 1.6M</span></div><div class="mapdot" style="left:240px;top:330px;border-color:var(--ok);background:radial-gradient(hsl(90,25%,25%),hsl(90,20%,12%))">⚔<span class="lv rp g">⚔ 180K</span></div>`}
+  <div class="poi" ${ph?'':'style="top:16px"'}><div class="lbl" style="margin-bottom:6px">Chapter 1 · your power ${f(total)}</div><div class="stages">${STG.map(([id,n,p,ic])=>{const b=band(total/p);return `<div class="stg"><span class="ic">${ic}</span><span><b>${id} ${n}</b><small>Mostly infantry</small></span><span class="rp ${b}">⚔ ${f(p)}</span></div>`}).join('')}</div></div>`);
+
+const TARGETS=[
+  {id:'fort',x:260,y:250,ic:'☠',name:'Bandit Fort · Elite',sub:'Chapter 1 · Stage 6 · mostly infantry',rec:820000,sq:690000,win:.46},
+  {id:'camp',x:520,y:120,ic:'⚔',name:'Raider Camp',sub:'Level 3 · cavalry heavy',rec:180000,sq:690000,win:.94},
+  {id:'den',x:120,y:90,ic:'☣',name:'Scrapyard Gang',sub:'Chapter 2 · Stage 1 · siege',rec:1600000,sq:690000,win:.12}
+];
+const gaugeCard=t=>{const r=t.sq/t.rec,b=band(r),pos=Math.min(98,Math.max(2,(r-.6)/(1.6-.6)*100)),col=`var(--${b==='g'?'ok':b==='a'?'warn':'bad'})`;
+  return `<h4>${t.name}</h4><small>${t.sub}</small>
+  <div style="margin:10px 0 4px;display:flex;justify-content:space-between;align-items:center"><span class="lbl">Squad 1 vs enemy</span><span class="verdict" style="color:${col}">${word[b]} · ~${Math.round(t.win*100)}% win</span></div>
+  <div class="gauge" style="width:100%"><div class="track"><span class="you" style="left:${pos}%"></span></div><div class="row"><span>Your squad <b>${f(t.sq)}</b></span><span>Recommended <b>${f(t.rec)}</b></span></div></div>
+  <div class="acts"><button class="btn g sm">Change squad</button><span style="flex:1"></span><button class="btn">Attack</button></div>`};
+frames('rb',ph=>`<div class="map" style="position:absolute;inset:0;cursor:grab;touch-action:none"><div class="layer" style="position:absolute;left:0;top:0;width:1400px;height:1000px;background:radial-gradient(ellipse at 30% 40%,hsl(30,14%,17%),var(--bg) 60%),repeating-linear-gradient(0deg,transparent 0 59px,hsla(30,10%,30%,.12) 59px 60px),repeating-linear-gradient(90deg,transparent 0 59px,hsla(30,10%,30%,.12) 59px 60px)">
+  ${TARGETS.map(t=>{const b=band(t.sq/t.rec),c=b==='g'?'var(--ok)':b==='a'?'var(--warn)':'var(--bad)';return `<div class="mapdot" data-target="${t.id}" style="left:${t.x}px;top:${t.y}px;border-color:${c};cursor:pointer">${t.ic}<span class="lv rp ${b}">⚔ ${f(t.rec)}</span></div>`}).join('')}
+  </div></div><div class="anch hidden"><div class="anch__body"></div><i class="anch__arrow"></i></div>
+  <div style="position:absolute;left:8px;bottom:8px;font-size:11px;color:var(--tx3);pointer-events:none">Tap a marker · drag the map: the card stays attached</div>`);
+const style=document.createElement('style');style.textContent=`
+  .anch{position:absolute;width:300px;background:var(--surf);border:1px solid var(--bdl);border-radius:8px;box-shadow:0 12px 30px #000;padding:12px;z-index:5;transform-origin:var(--ox,50%) var(--oy,100%);animation:pop .18s ease-out}
+  .anch.hidden{display:none}
+  .anch h4{margin:0 0 2px;font:700 15px Oswald;letter-spacing:.05em} .anch small{color:var(--tx3)} .anch .acts{display:flex;gap:6px;margin-top:10px}
+  .anch__arrow{position:absolute;left:var(--ax,50%);width:12px;height:12px;background:var(--surf);border:1px solid var(--bdl);transform:translateX(-50%) rotate(45deg)}
+  .anch.above .anch__arrow{bottom:-7px;border-top:0;border-left:0} .anch.below .anch__arrow{top:-7px;border-bottom:0;border-right:0}
+  .mapdot.sel{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--or)}
+  @keyframes pop{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
+  @media (prefers-reduced-motion:reduce){.anch{animation:none}}`;
+document.head.appendChild(style);
+document.querySelectorAll('#rb .screen').forEach(scr=>{
+  const map=scr.querySelector('.map'),layer=scr.querySelector('.layer'),card=scr.querySelector('.anch'),body=card.querySelector('.anch__body');
+  let cam={x:0,y:0},sel=null,drag=null;
+  const W=()=>scr.clientWidth,H=()=>scr.clientHeight,GAP=14,M=8;
+  const place=()=>{
+    layer.style.transform=`translate(${cam.x}px,${cam.y}px)`;
+    if(!sel)return;
+    const t=TARGETS.find(x=>x.id===sel),sx=t.x+22+cam.x,sy=t.y+22+cam.y;
+    if(sx<0||sx>W()||sy<0||sy>H()){card.classList.add('hidden');return}
+    card.classList.remove('hidden');
+    const cw=Math.min(300,W()-2*M);card.style.width=cw+'px';const ch=card.offsetHeight;
+    const above=sy-22-GAP-ch>=M;
+    let left=Math.max(M,Math.min(sx-cw/2,W()-cw-M));
+    card.style.left=left+'px';card.style.top=(above?sy-22-GAP-ch:sy+22+GAP)+'px';
+    card.classList.toggle('above',above);card.classList.toggle('below',!above);
+    const ax=Math.max(16,Math.min(sx-left,cw-16));card.style.setProperty('--ax',ax+'px');card.style.setProperty('--ox',ax+'px');card.style.setProperty('--oy',above?'100%':'0');
+  };
+  const select=id=>{sel=id;scr.querySelectorAll('.mapdot').forEach(d=>d.classList.toggle('sel',d.dataset.target===id));
+    if(!id){card.classList.add('hidden');return}
+    body.innerHTML=gaugeCard(TARGETS.find(x=>x.id===id));card.style.animation='none';card.offsetHeight;card.style.animation='';place();};
+  map.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,cx:cam.x,cy:cam.y,moved:false};map.setPointerCapture(e.pointerId)});
+  map.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>4)drag.moved=true;
+    cam.x=Math.min(0,Math.max(W()-1400,drag.cx+dx));cam.y=Math.min(0,Math.max(H()-1000,drag.cy+dy));place()});
+  map.addEventListener('pointerup',e=>{const d=drag;drag=null;if(d&&!d.moved){const el=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-target]');select(el?el.dataset.target:null)}});
+  select('fort');
+});
+
+const hdr=(lv,xp)=>`<div class="hdr"><div class="plate"><span class="av"></span><span><b>Commander Rook</b><small>Lv ${lv} · <em>⚔ ${f(total)}</em></small><div class="xpbar"><i style="width:${xp}%"></i></div></span></div><span class="pwfly" style="left:150px;top:4px">▲ 4.1K</span></div>`;
+const DECK=[22,23,24,25];
+let deckPos=0;
+const lvCard=lv=>{const ms=lv%5===0;return `
+  <div class="big"><small>${ms?'MILESTONE':'LEVEL UP'}</small>${lv}</div>
+  <div class="unl">Commander level ${lv-1} → ${lv} · ${deckPos+1} of ${DECK.length}</div>
+  <div class="rw"><div class="it"><span>💎</span>${lv*2-8}</div><div class="it"><span>⏱</span>15m ×2</div><div class="it ${ms?'ms':''}"><span>${ms?'🎖':'📦'}</span>${ms?'Legend token':'Res crate'}</div><div class="it"><span>💰</span>${(lv*50/1000).toFixed(1)}K</div></div>
+  <div class="nextm">${ms?'Milestone reward highlighted':'Next milestone: <b>Lv 25</b> · Legendary recruit token'}</div>
+  <div style="display:flex;gap:6px"><button class="btn g" data-deck="all" style="flex:1;justify-content:center">Collect all (${DECK.length-deckPos})</button><button class="btn" data-deck="one" style="flex:1;justify-content:center">Collect</button></div>`};
+const deckHtml=()=>deckPos>=DECK.length
+  ?`<div class="card"><div class="big"><small>ALL COLLECTED</small>✓</div><div class="unl">${DECK.length} levels' rewards are in the bag.</div><button class="btn g" data-deck="reset" style="width:100%;justify-content:center">Replay demo</button></div>`
+  :`<div style="position:relative;width:min(420px,92%)">${DECK.slice(deckPos+1,deckPos+3).map((_,i)=>`<div class="card" style="position:absolute;inset:0;transform:translate(${(i+1)*6}px,${(i+1)*6}px);opacity:${.6-i*.2}"></div>`).reverse().join('')}<div class="card" style="width:100%">${lvCard(DECK[deckPos])}</div></div>`;
+const renderDeck=()=>{const d=document.querySelector('#la .s-desk .lvl');if(d)d.innerHTML=deckHtml()};
+document.getElementById('la').innerHTML=`
+  <div class="fr"><span>After a battle: queue released as a deck (interactive)</span><div class="screen s-desk"><div class="city"></div>${hdr(25,2)}<div class="shade"></div><div class="lvl"></div></div></div>
+  <div class="fr"><span>Phone · during battle: queued, no popup</span><div class="screen s-ph"><div class="city" style="background:radial-gradient(ellipse at 50% 60%,hsl(5,25%,14%),var(--bg) 70%)"></div>${hdr(21,96)}
+    <span style="position:absolute;left:38px;top:4px;min-width:18px;height:18px;border-radius:9px;background:var(--or);color:#1a1108;font:700 10px Outfit;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px var(--bg)">4</span>
+    <div style="position:absolute;inset:60px 10px 80px;border:1px dashed var(--bdl);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--tx3);font:700 14px Oswald;letter-spacing:.1em">BATTLE SCENE</div>
+    <div style="position:absolute;left:10px;right:10px;bottom:20px;font-size:11px;color:var(--tx3);text-align:center">4 level-ups waiting. They release when the battle results close.</div></div></div>`;
+renderDeck();
+document.addEventListener('click',e=>{const b=e.target.closest('[data-deck]');if(!b)return;
+  const a=b.dataset.deck;deckPos=a==='one'?deckPos+1:a==='all'?DECK.length:0;renderDeck();});
+
+const lvBanner=(lv,top,op,extra='')=>`<div class="banner" style="top:${top}px;opacity:${op}"><div class="lv"><small>LEVEL</small>${lv}</div><div><b>Commander level up!${extra}</b><div class="pills"><span class="pill">💎 ${lv*2-8}</span><span class="pill">⏱ 15m ×2</span><span class="pill">💰 ${(lv*50/1000).toFixed(1)}K</span></div></div><span style="font:600 10px Outfit;color:var(--ok)">Collected ✓</span></div>`;
+document.getElementById('lb').innerHTML=`
+  <div class="fr"><span>After a battle: queue released, stacked per level</span><div class="screen s-desk"><div class="city"></div>${hdr(25,2)}
+    ${lvBanner(22,60,1)}${lvBanner(23,138,.92)}${lvBanner(24,216,.84)}
+    <div style="position:absolute;left:50%;top:296px;transform:translateX(-50%);font:700 11px Oswald;letter-spacing:.06em;color:var(--tx2);background:var(--elev);border:1px solid var(--bd);border-radius:12px;padding:3px 10px">+1 more · Lv 25 milestone card next</div></div></div>
+  <div class="fr"><span>Phone · during battle: queued, no popup</span><div class="screen s-ph"><div class="city" style="background:radial-gradient(ellipse at 50% 60%,hsl(5,25%,14%),var(--bg) 70%)"></div>${hdr(21,96)}
+    <span style="position:absolute;left:38px;top:4px;min-width:18px;height:18px;border-radius:9px;background:var(--or);color:#1a1108;font:700 10px Outfit;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px var(--bg)">4</span>
+    <div style="position:absolute;inset:60px 10px 80px;border:1px dashed var(--bdl);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--tx3);font:700 14px Oswald;letter-spacing:.1em">BATTLE SCENE</div>
+    <div style="position:absolute;left:10px;right:10px;bottom:20px;font-size:11px;color:var(--tx3);text-align:center">4 level-ups waiting. They release when the battle results close.</div></div></div>`;
+
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-toggle]');if(t)t.classList.toggle('open');
+  const o=e.target.closest('.opt');if(!o)return;const grp=o.dataset.opt[0];
+  document.querySelectorAll(`.opt[data-opt^="${grp}-"]`).forEach(x=>x.classList.toggle('selected',x===o));
+});
+</script>
+</body></html>

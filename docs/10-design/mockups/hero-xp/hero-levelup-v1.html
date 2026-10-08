@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hero level-up mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:hsl(30,10%,5%);--surf:hsl(30,9%,8%);--elev:hsl(30,8%,11%);--panel:hsl(30,8%,14%);--bd:hsl(30,10%,18%);--bdl:hsl(30,10%,27%);
+    --or:hsl(32,90%,55%);--orm:hsl(32,55%,18%);--tx:hsl(35,15%,93%);--tx2:hsl(35,10%,62%);--tx3:hsl(35,8%,42%);
+    --ok:hsl(90,45%,48%);--warn:hsl(45,90%,58%);--bad:hsl(5,70%,58%);--epic:hsl(275,45%,62%)}
+  *{box-sizing:border-box}
+  body{margin:0;background:#1b1916;color:var(--tx);font-family:Outfit,sans-serif;padding:24px 32px 60px}
+  h1{font:700 22px Oswald;letter-spacing:.04em;margin:0 0 4px} .sub{color:var(--tx2);margin:0 0 18px;font-size:14px;max-width:1100px}
+  h2.sec{font:700 18px Oswald;letter-spacing:.08em;text-transform:uppercase;margin:24px 0 10px;color:var(--tx2)}
+  .wrap{display:grid;grid-template-columns:1fr 260px;gap:14px;background:#24211d;border-radius:10px;padding:14px;margin-bottom:18px}
+  .notes{font-size:12px;color:var(--tx2);line-height:1.45} .notes div{margin-bottom:9px} .notes b{color:var(--tx)}
+  .frames{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
+  .fr{display:flex;flex-direction:column;gap:4px} .fr>span{font:600 10px Outfit;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3)}
+  .screen{background:var(--bg);border:1px solid var(--bd);border-radius:6px;overflow:hidden;position:relative;font-size:13px}
+  .s-desk{width:860px;max-width:100%;height:560px} .s-ph{width:360px;height:700px}
+  button{font-family:inherit;cursor:pointer}
+  .btn{background:linear-gradient(var(--or),hsl(30,88%,42%));color:#1a1108;font:700 12px Oswald;letter-spacing:.06em;border:0;padding:0 14px;height:36px;border-radius:5px;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+  .btn:disabled{filter:grayscale(1) brightness(.6);cursor:default}
+  .btn.g{background:var(--panel);color:var(--tx);border:1px solid var(--bdl)} .btn.sm{height:30px;font-size:11px;padding:0 10px}
+  .lbl{font:700 11px Oswald;letter-spacing:.12em;text-transform:uppercase;color:var(--tx2)}
+
+  .hd{position:absolute;inset:0;display:grid;grid-template-columns:42% 1fr}
+  .s-ph .hd{grid-template-columns:1fr;grid-template-rows:200px 1fr}
+  .art{background:radial-gradient(ellipse at 50% 40%,hsl(275,25%,22%),var(--bg) 75%);display:flex;align-items:center;justify-content:center;font-size:110px;position:relative}
+  .s-ph .art{font-size:80px}
+  .info{padding:14px 16px;overflow:hidden;display:flex;flex-direction:column;gap:10px;background:var(--surf);border-left:1px solid var(--bd)}
+  .info h3{margin:0;font:700 22px Oswald;letter-spacing:.04em} .info h3 small{font:600 12px Outfit;color:var(--epic);margin-left:6px;letter-spacing:.06em}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .stats div{background:var(--elev);border:1px solid var(--bd);border-radius:6px;padding:6px 8px;font-size:11px;color:var(--tx3)} .stats b{display:block;font:700 15px Oswald;color:var(--tx)}
+  .xp{background:var(--elev);border:1px solid var(--bd);border-radius:8px;padding:10px}
+  .xp .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .xp .lv{font:700 16px Oswald} .xp .lv small{font:600 11px Outfit;color:var(--tx3);margin-left:6px}
+  .bar{height:8px;border-radius:4px;background:var(--panel);overflow:hidden;margin:8px 0 4px;position:relative} .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--or)} .bar u{position:absolute;top:0;bottom:0;background:hsla(90,45%,48%,.55)}
+  .xp small.t{color:var(--tx3);font-size:11px}
+  .tabsrow{display:flex;gap:4px} .tabsrow span{flex:1;text-align:center;font:600 11px Outfit;padding:7px;border:1px solid var(--bd);border-radius:5px;color:var(--tx3)}
+
+  .shade{position:absolute;inset:0;background:hsla(30,10%,3%,.55);z-index:3}
+  .sheet{position:absolute;z-index:4;background:var(--surf);border:1px solid var(--bdl);box-shadow:0 -10px 40px #000;display:flex;flex-direction:column}
+  .s-desk .sheet{right:16px;top:16px;bottom:16px;width:420px;border-radius:10px}
+  .s-ph .sheet{left:0;right:0;bottom:0;max-height:82%;border-radius:14px 14px 0 0}
+  .sh{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--bd)}
+  .sh .av{width:40px;height:40px;border-radius:8px;background:radial-gradient(hsl(275,25%,28%),hsl(275,20%,12%));display:flex;align-items:center;justify-content:center;font-size:22px}
+  .sh b{font:700 15px Oswald;display:block} .sh small{color:var(--tx3);font-size:11px} .sh .x{margin-left:auto;color:var(--tx3);font-size:16px;background:none;border:0}
+  .preview{padding:12px 14px;border-bottom:1px solid var(--bd);background:linear-gradient(90deg,var(--orm),var(--surf))}
+  .preview .big{font:700 22px Oswald} .preview .big em{font-style:normal;color:var(--ok)}
+  .preview .w{font-size:12px;color:var(--warn);margin-top:4px;min-height:16px}
+  .quick{display:flex;gap:6px;padding:10px 14px}
+  .quick .btn{flex:1}
+  .items{flex:1;overflow-y:auto;padding:0 14px}
+  .it{display:grid;grid-template-columns:40px 1fr auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--bd)}
+  .it .ic{width:40px;height:40px;border-radius:6px;background:var(--panel);display:flex;align-items:center;justify-content:center;font-size:20px}
+  .it b{font-size:13px} .it small{display:block;color:var(--tx3);font-size:11px}
+  .step{display:flex;align-items:center;gap:4px}
+  .step button{width:32px;height:32px;border-radius:5px;border:1px solid var(--bdl);background:var(--panel);color:var(--tx);font:700 16px Outfit}
+  .step span{min-width:34px;text-align:center;font:700 14px Oswald;font-variant-numeric:tabular-nums}
+  .grp{font:700 10px Oswald;letter-spacing:.12em;text-transform:uppercase;color:var(--tx3);padding:10px 0 2px;display:flex;justify-content:space-between}
+  .frag{opacity:.85}
+  .foot{padding:12px 14px;border-top:1px solid var(--bdl);display:flex;gap:8px}
+  .foot .btn{flex:1}
+
+  .inv{position:absolute;inset:0;display:grid;grid-template-columns:1fr 300px;background:var(--surf)}
+  .s-ph .inv{grid-template-columns:1fr;grid-template-rows:1fr auto}
+  .grid{padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px;align-content:start;overflow:hidden}
+  .tile{aspect-ratio:1;border-radius:6px;background:var(--panel);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:24px;position:relative}
+  .tile.sel{border-color:var(--or);box-shadow:0 0 0 1px var(--or)} .tile small{position:absolute;right:4px;bottom:2px;font:700 10px Oswald}
+  .det{border-left:1px solid var(--bd);padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--elev)}
+  .s-ph .det{border-left:0;border-top:1px solid var(--bdl)}
+  .det h4{margin:0;font:700 16px Oswald} .det p{margin:0;color:var(--tx2);font-size:12px;line-height:1.45}
+  .hint{font-size:11px;color:var(--tx3);background:var(--panel);border-radius:5px;padding:7px 9px}
+</style></head>
+<body>
+<h1>HERO LEVEL-UP — v1 prototype</h1>
+<p class="sub">XP items are no longer used from the Inventory. They are spent from a hero's own page, so a roster of 30 heroes never means picking from a list. The numbers use the real items (Tomes 250/1K/5K, XP cards 500/2.5K/12K, fragments 50) and the real hero curve <code>(100 + 20·(L−1)) × tier</code>. This one is Epic (×1.25), Lv 21, cap Lv 40. Try the steppers, <b>Next level</b> and <b>Fill to cap</b>.</p>
+
+<h2 class="sec">1 · Hero detail → Level up sheet</h2>
+<div class="wrap"><div class="frames" id="h"></div>
+<div class="notes">
+  <div><b>Entry:</b> a <b>Level up</b> button next to the XP bar. It replaces the inline Tome buttons.</div>
+  <div><b>Sheet:</b> every owned XP item with its value and a stepper. The preview shows "Lv 21 → 24" on the bar, plus the XP left over.</div>
+  <div><b>Next level</b> and <b>Fill to cap</b> fill the steppers with the least waste: large items first without going over, then the smallest item to finish.</div>
+  <div><b>Fragments</b> are listed separately and never auto-picked, because they are also the awakening and summon currency.</div>
+  <div><b>Over the cap:</b> the preview warns how much XP would be wasted. Items come in fixed sizes, so <b>Fill to cap</b> can overshoot by at most one smallest item. The warning shows the exact amount, for example "150 XP would be wasted", and you can step it down.</div>
+  <div><b>Phone:</b> a bottom sheet. <b>Desktop:</b> a panel over the info column.</div>
+</div></div>
+
+<h2 class="sec">2 · Inventory: XP item detail (no hero picker)</h2>
+<div class="wrap"><div class="frames" id="i"></div>
+<div class="notes">
+  <div>XP tomes and cards show what they do and how many you own, plus <b>Level a hero ›</b>, which opens the Heroes roster.</div>
+  <div>A hero fragment shows <b>Open Aldric Cross ›</b>, which goes straight to that hero's page.</div>
+  <div>The Trading Post's "Use" on these items routes the same way.</div>
+</div></div>
+
+<script>
+const TIER=1.25, CAP=40;
+const xpToNext=L=>Math.round((100+20*(L-1))*TIER);
+const ITEMS=[
+  {id:'xp_bundle_small',ic:'📖',n:'Tome (Small)',xp:250,own:14},
+  {id:'xp_bundle_medium',ic:'📚',n:'Tome (Medium)',xp:1000,own:6},
+  {id:'xp_bundle_large',ic:'📜',n:'Tome (Grand)',xp:5000,own:2},
+  {id:'xpcard_normal',ic:'📗',n:'Normal XP Card',xp:500,own:9},
+  {id:'xpcard_epic',ic:'📘',n:'Epic XP Card',xp:2500,own:3},
+  {id:'xpcard_legendary',ic:'📙',n:'Legendary XP Card',xp:12000,own:0},
+  {id:'fragment_paladin',ic:'✝️',n:'Fragment: Aldric Cross',xp:50,own:23,frag:true}
+];
+const fmt=n=>n.toLocaleString('en');
+function project(level,xp,add){
+  let l=level,x=xp+add,wasted=0;
+  while(l<CAP&&x>=xpToNext(l)){x-=xpToNext(l);l++}
+  if(l>=CAP){wasted=x;x=0}
+  return {l,x,wasted};
+}
+function xpNeededTo(level,xp,target){let n=-xp;for(let l=level;l<target;l++)n+=xpToNext(l);return Math.max(0,n)}
+function autoPick(state,target){
+  const need=xpNeededTo(state.level,state.xp,target);
+  const pool=ITEMS.filter(i=>!i.frag&&i.own>0).sort((a,b)=>b.xp-a.xp);
+  const q={};let left=need;
+  for(const it of pool){const n=Math.min(it.own,Math.floor(left/it.xp));if(n){q[it.id]=n;left-=n*it.xp}}
+  if(left>0){const small=[...pool].reverse().find(it=>it.own>(q[it.id]||0));if(small){q[small.id]=(q[small.id]||0)+1}}
+  return q;
+}
+class Box{
+  constructor(el,ph){this.el=el;this.ph=ph;this.reset()}
+  reset(){this.level=21;this.xp=300;this.q={};this.open=true;this.toast='';this.render()}
+  total(){return ITEMS.reduce((a,i)=>a+(this.q[i.id]||0)*i.xp,0)}
+  act(a,id){
+    const it=ITEMS.find(i=>i.id===id);
+    if(a==='inc'&&it&&(this.q[id]||0)<it.own)this.q[id]=(this.q[id]||0)+1;
+    if(a==='dec'&&it&&this.q[id])this.q[id]--;
+    if(a==='next')this.q=autoPick(this,Math.min(CAP,this.level+1));
+    if(a==='fill')this.q=autoPick(this,CAP);
+    if(a==='clear')this.q={};
+    if(a==='open'){this.open=true;this.toast=''}
+    if(a==='close')this.open=false;
+    if(a==='use'){const p=project(this.level,this.xp,this.total());const from=this.level;
+      ITEMS.forEach(i=>i.own-=(this.q[i.id]||0));this.level=p.l;this.xp=p.x;this.q={};this.open=false;
+      this.toast=`Lv ${from} → ${p.l}`;boxes.forEach(b=>b!==this&&b.render())}
+    if(a==='reset'){ITEMS.forEach(i=>i.own=i.base);boxes.forEach(b=>b.reset());return}
+    this.render();
+  }
+  render(){
+    const add=this.total(),p=project(this.level,this.xp,add),need=xpToNext(this.level);
+    const curPct=this.xp/need*100;
+    const prevPct=p.l>this.level?100-curPct:Math.min(100,(this.xp+add)/need*100)-curPct;
+    const rows=list=>list.map(i=>`<div class="it ${i.frag?'frag':''}"><span class="ic">${i.ic}</span><span><b>${i.n}</b><small>+${fmt(i.xp)} XP · own ${i.own}</small></span>
+      <span class="step"><button data-a="dec" data-id="${i.id}" ${!(this.q[i.id])?'disabled':''}>−</button><span>${this.q[i.id]||0}</span><button data-a="inc" data-id="${i.id}" ${(this.q[i.id]||0)>=i.own?'disabled':''}>+</button></span></div>`).join('');
+    const owned=ITEMS.filter(i=>i.own>0);
+    const sheet=this.open?`<div class="shade" data-a="close"></div><div class="sheet">
+      <div class="sh"><span class="av">🛡</span><span><b>Level up · Aldric Cross</b><small>Epic · cap Lv ${CAP} (Hero Quarters 10)</small></span><button class="x" data-a="close">✕</button></div>
+      <div class="preview"><div class="lbl">Preview</div><div class="big">Lv ${this.level}${p.l>this.level?` → <em>${p.l}</em>`:''} <span style="font:600 12px Outfit;color:var(--tx2)">+${fmt(add)} XP</span></div>
+        <div class="bar"><i style="width:${p.l>this.level?0:curPct}%"></i><u style="left:${p.l>this.level?0:curPct}%;width:${p.l>this.level?(p.l>=CAP?100:p.x/xpToNext(p.l)*100):Math.max(0,prevPct)}%"></u></div>
+        <div class="w">${p.wasted?`⚠ ${fmt(p.wasted)} XP would be wasted at the cap`:p.l<CAP?`${fmt(p.x)} / ${fmt(xpToNext(p.l))} XP into Lv ${p.l}`:'Reaches the cap exactly'}</div></div>
+      <div class="quick"><button class="btn g sm" data-a="next" ${this.level>=CAP?'disabled':''}>Next level</button><button class="btn g sm" data-a="fill" ${this.level>=CAP?'disabled':''}>Fill to cap</button><button class="btn g sm" data-a="clear">Clear</button></div>
+      <div class="items"><div class="grp"><span>XP items</span></div>${rows(owned.filter(i=>!i.frag))}
+        <div class="grp"><span>Fragments</span><span style="letter-spacing:0;text-transform:none;font:600 10px Outfit">also used for awakening · never auto-picked</span></div>${rows(owned.filter(i=>i.frag))}</div>
+      <div class="foot"><button class="btn" data-a="use" ${add?'':'disabled'}>Use · Lv ${this.level}${p.l>this.level?` → ${p.l}`:''}</button></div></div>`:'';
+    this.el.innerHTML=`<div class="hd"><div class="art">🛡</div><div class="info">
+      <h3>Aldric Cross<small>EPIC ★★★</small></h3>
+      <div class="stats"><div>HP<b>3,180</b></div><div>ATK<b>96</b></div><div>DEF<b>112</b></div></div>
+      <div class="xp"><div class="row"><span class="lv">Lv ${this.level}<small>cap ${CAP}</small></span><button class="btn sm" data-a="open" ${this.level>=CAP?'disabled':''}>${this.level>=CAP?'Max level':'Level up'}</button></div>
+        <div class="bar"><i style="width:${this.xp/need*100}%"></i></div><small class="t">${fmt(this.xp)} / ${fmt(need)} XP${this.toast?` · <b style="color:var(--ok)">${this.toast}</b>`:''}</small></div>
+      <div class="tabsrow"><span>Skills</span><span>Aura</span><span>Assign</span></div></div></div>${sheet}
+      <button class="btn g sm" data-a="reset" style="position:absolute;left:8px;top:8px;z-index:5">Reset demo</button>`;
+  }
+}
+ITEMS.forEach(i=>i.base=i.own);
+document.getElementById('h').innerHTML=`<div class="fr"><span>Desktop · hero detail with sheet open</span><div class="screen s-desk" data-box></div></div><div class="fr"><span>Phone 360 · bottom sheet</span><div class="screen s-ph" data-box></div></div>`;
+const boxes=[...document.querySelectorAll('[data-box]')].map(el=>new Box(el,el.classList.contains('s-ph')));
+document.addEventListener('click',e=>{const t=e.target.closest('[data-a]');if(!t)return;const b=boxes.find(x=>x.el.contains(t));b&&b.act(t.dataset.a,t.dataset.id)});
+
+const invDet=(frag)=>frag
+  ?`<div class="det"><div class="lbl">Hero fragment</div><h4>✝️ Fragment: Aldric Cross</h4><p>Awakening and summon currency for Aldric Cross. It can also be spent as hero XP (+50) from his page.</p><div class="hint">Own 23 · 30 needed for ★4</div><button class="btn">Open Aldric Cross ›</button></div>`
+  :`<div class="det"><div class="lbl">Hero XP</div><h4>📘 Epic XP Card</h4><p>Grants 2,500 Hero XP. Spend it from a hero's page with <b>Level up</b>.</p><div class="hint">Own 3 · Used from the hero screen</div><button class="btn">Level a hero ›</button></div>`;
+const tiles=['📖','📚','📜','📗','📘','✝️','🪵','⏱','⏱','💎','📦','🎟'];
+document.getElementById('i').innerHTML=[['Desktop · XP card selected',false,'s-desk'],['Phone 360 · fragment selected',true,'s-ph']].map(([l,frag,cls])=>`<div class="fr"><span>${l}</span><div class="screen ${cls}" style="height:${cls==='s-ph'?520:360}px"><div class="inv"><div class="grid">${tiles.map((t,k)=>`<div class="tile ${(!frag&&k===4)||(frag&&k===5)?'sel':''}">${t}<small>${[14,6,2,9,3,23,4,2,5,40,1,1][k]}</small></div>`).join('')}</div>${invDet(frag)}</div></div></div>`).join('');
+</script>
+</body></html>

@@ -1,433 +1,158 @@
-/** Player inventory as a right-side slide-in panel (event: ui:openInventory). No purchasing here — buy from Shop first. */
-import { eventBus }        from '../../core/EventBus.js';
-import { HEROES_CONFIG,
-         FRAGMENTS_PER_SHARD } from '../../entities/GAME_DATA.js';
-import { icon } from '../icons.js';
-import { InventoryBuffSection } from '../inventory/InventoryBuffSection.js';
-
-const RARITY_META = {
-  common:    { label: 'Common',    color: 'var(--clr-tier-common)'    },
-  rare:      { label: 'Rare',      color: 'var(--clr-tier-rare)'      },
-  legendary: { label: 'Legendary', color: 'var(--clr-tier-legendary)' },
-};
-
-// Item types grouped into the top tab bar (each tab shows a count badge).
-const TABS = [
-  { id: 'special',  label: `${icon('gift')} Special`,  types: ['hero_card', 'hero_card_universal', 'hero_fragment'] },
-  { id: 'resource', label: `${icon('box')} Resource`, types: ['resource_bundle'] },
-  { id: 'speedup',  label: `${icon('speedup')} Speedup`,  types: ['speed_boost'] },
-  { id: 'boost',    label: `${icon('flask-potion')} Boost`,    types: ['buff', 'xp_bundle', 'xp_card'] },
-  { id: 'scroll',   label: `${icon('scroll')} Scroll`,   types: ['recruitment_scroll'] },
-];
+import { eventBus } from '../../core/EventBus.js';
+import { swapModal, closeModal } from '../uiUtils.js';
+import { TABS, TAB_OF_TYPE, bucket } from '../inventory/inventoryTabs.js';
+import { InventoryRail } from '../inventory/InventoryRail.js';
+import { InventoryGrid } from '../inventory/InventoryGrid.js';
+import { InventoryDetail } from '../inventory/InventoryDetail.js';
+import { InventoryHeader } from '../inventory/InventoryHeader.js';
+import { MODAL_HTML } from '../inventory/inventoryModalHtml.js';
 
 export class InventoryUI {
-  /** @param {{ inventory, heroes, notifications }} systems */
   constructor(systems) {
     this._s = systems;
-    this._renderDebounceTimer = null;
-    // New-item tracking — populated on grantRewards(), cleared when panel opens/closes.
-    this._newItemIds    = new Set(); // item-type reward IDs shown with gold highlight
-    this._hasNewRewards = false;     // true if any reward arrived while panel was closed
-    this._clearNewTimer = null;
-    this._activeTab      = null;     // selected tab id (reset on close → re-evaluated on open)
-    this._selectedItemId = null;     // tile whose detail popover is shown
-    this._buffSection    = new InventoryBuffSection(systems);
-  }
-
-  // ─────────────────────────────────────────────
-  // BADGE
-  // ─────────────────────────────────────────────
-
-  _updateInventoryBadge() {
-    const badge = document.getElementById('inventory-badge');
-    if (!badge) return;
-    if (this._hasNewRewards) {
-      badge.classList.remove('hidden');
-    } else {
-      badge.classList.add('hidden');
-    }
-  }
-
-  _clearNewItems() {
-    clearTimeout(this._clearNewTimer);
-    this._newItemIds.clear();
+    this._activeTab = 'all';
+    this._selectedId = null;
+    this._newIds = new Set();
     this._hasNewRewards = false;
-    this._updateInventoryBadge();
-    if (this._isOpen()) this._render();
+    this._buckets = null;
+    this._pendingItemId = undefined;
+    this._onClose = () => this._handleClosed();
   }
 
   init() {
-    eventBus.on('ui:openInventory',  () => this._open());
-    eventBus.on('inventory:updated', (payload) => {
-      // If this update came from grantRewards(), fire the floating reward animation
-      // and track which items are new for badge + card highlight.
-      if (payload?.rewards?.length) {
-        eventBus.emit('ui:rewardAnimation', payload.rewards);
-        this._hasNewRewards = true;
-        for (const r of payload.rewards) {
-          if (r.type === 'item') this._newItemIds.add(r.itemId);
-        }
-        this._updateInventoryBadge();
-      }
-      if (!this._isOpen()) return;
-      // Debounce rapid updates (e.g. rapid shop purchases) so hero picker isn't destroyed mid-use
-      clearTimeout(this._renderDebounceTimer);
-      this._renderDebounceTimer = setTimeout(() => this._render(), 100);
-    });
-    eventBus.on('buffs:updated', () => this._buffSection.refresh());
-    eventBus.on('buff:activated', d => {
-      this._s.notifications?.show('success', '⛏️ Buff Active!', `+${(d.value * 100).toFixed(0)}% production for ${(d.durationMs / 60000).toFixed(0)}m`);
-    });
+    eventBus.on('ui:openInventory', (payload) => this._handleOpenRequest(payload?.itemId));
+    eventBus.on('inventory:updated', (payload) => this._handleUpdated(payload));
+    eventBus.on('buffs:changed', () => this._header?.patch());
   }
-
-  // ─────────────────────────────────────────────
-  // OPEN / CLOSE
-  // ─────────────────────────────────────────────
 
   _isOpen() {
-    return document.getElementById('inventory-panel')?.classList.contains('open') ?? false;
+    return !!this._grid && !!document.getElementById('inv-root');
   }
 
-  _open() {
-    const overlay = document.getElementById('inventory-panel-overlay');
-    const panel   = document.getElementById('inventory-panel');
-    if (!overlay || !panel) return;
-    // Toggle: tapping the dock button again closes the panel.
-    if (this._isOpen()) { this._close(); return; }
-    overlay.classList.add('open');
-    panel.classList.add('open');
-    this._render();
-    overlay.onclick = e => { if (e.target === overlay) this._close(); };
-    // Dismiss the dot badge immediately; let card highlights linger for 3 s then fade.
+  _handleOpenRequest(itemId) {
+    if (!this._isOpen()) return this._open(itemId);
+    if (itemId) return this._focusItem(itemId);
+    closeModal(this._onClose);
+  }
+
+  _open(itemId) {
+    this._pendingItemId = itemId ?? null;
+    swapModal(MODAL_HTML, this._onClose, () => this._build());
+  }
+
+  _build() {
+    const root = document.getElementById('inv-root');
+    const itemId = this._pendingItemId;
+    this._pendingItemId = undefined;
+    if (!root) return;
+    document.getElementById('modal-content')?.classList.add('inv-modal-host');
+    this._cacheDom(root);
+    this._buckets = bucket(this._s.inventory.getItems());
+    this._activeTab = 'all';
+    this._selectedId = null;
+    this._rail.render(this._buckets, this._activeTab, this._newTabIds());
+    this._showTab('all');
+    if (itemId) this._focusItem(itemId);
     this._hasNewRewards = false;
-    this._updateInventoryBadge();
-    if (this._newItemIds.size > 0) {
-      clearTimeout(this._clearNewTimer);
-      this._clearNewTimer = setTimeout(() => this._clearNewItems(), 3000);
-    }
+    this._updateBadge();
   }
 
-  _close() {
-    document.getElementById('inventory-panel-overlay')?.classList.remove('open');
-    document.getElementById('inventory-panel')?.classList.remove('open');
-    // Clear highlights and badge on close.
-    clearTimeout(this._clearNewTimer);
-    this._newItemIds.clear();
+  _cacheDom(root) {
+    this._header = new InventoryHeader(root, this._s.buffs, () => eventBus.emit('ui:openBuffs'));
+    this._rail = new InventoryRail(root.querySelector('.inv-modal__rail'), { onSelect: id => this._switchTab(id) });
+    this._grid = new InventoryGrid(root.querySelector('.inv-modal__grid'), { onSelect: id => this._select(id) });
+    this._emptyEl = root.querySelector('.inv-modal__empty');
+    this._detail = new InventoryDetail(root.querySelector('.inv-modal__detail'), this._s, {
+      onClose: () => closeModal(this._onClose),
+    });
+    this._emptyEl.querySelector('button').addEventListener('click', () => {
+      closeModal(this._onClose);
+      eventBus.emit('ui:openTradingTab', { tab: 'supply' });
+    });
+  }
+
+  _handleClosed() {
+    document.getElementById('modal-content')?.classList.remove('inv-modal-host');
+    this._newIds.clear();
     this._hasNewRewards = false;
-    this._activeTab = null;
-    this._selectedItemId = null;
-    this._updateInventoryBadge();
+    this._selectedId = null;
+    this._header = this._rail = this._grid = this._emptyEl = this._detail = null;
+    this._updateBadge();
   }
 
-  // ─────────────────────────────────────────────
-  // RENDER
-  // ─────────────────────────────────────────────
-
-  _render() {
-    const panel = document.getElementById('inventory-panel');
-    if (!panel) return;
-
-    const allItems    = this._s.inventory.getItems();
-    const ownedItems  = allItems.filter(i => i.quantity > 0);
-    const ownedHeroIds = new Set(
-      this._s.heroes?.getRosterWithState?.().filter(h => h.isOwned).map(h => h.id) ?? []
-    );
-
-    // Empty inventory — no tabs/grid.
-    if (ownedItems.length === 0) {
-      panel.innerHTML = `
-        ${this._headerHtml()}
-        <div class="inv-panel-body">
-          <div class="inv-empty">
-            <div class="inv-empty-icon">${icon('backpack')}</div>
-            <div class="inv-empty-title">Your inventory is empty</div>
-            <div class="inv-empty-sub">Buy items from the <strong>${icon('gift')} Shop</strong> tab.</div>
-          </div>
-        </div>`;
-      panel.querySelector('.inv-panel-body').appendChild(this._buffSection.build());
-      this._bindListeners(panel);
-      return;
+  _handleUpdated(payload) {
+    const rewards = payload?.rewards;
+    if (rewards?.length) {
+      eventBus.emit('ui:rewardAnimation', rewards);
+      this._hasNewRewards = !this._isOpen();
+      for (const r of rewards) if (r.type === 'item') this._newIds.add(r.itemId);
+      this._updateBadge();
     }
-
-    // Per-tab item buckets + count badges.
-    const tabs = TABS.map(t => {
-      const items = ownedItems.filter(i => t.types.includes(i.type));
-      return { ...t, items, count: items.reduce((s, i) => s + i.quantity, 0) };
-    });
-    const nonEmpty = tabs.filter(t => t.items.length > 0);
-
-    // Choose the active tab: keep the current one if it still has items, else
-    // prefer a tab holding a newly granted item, else the first non-empty tab.
-    if (!this._activeTab || !nonEmpty.some(t => t.id === this._activeTab)) {
-      const newTab = nonEmpty.find(t => t.items.some(i => this._newItemIds.has(i.id)));
-      this._activeTab = (newTab ?? nonEmpty[0] ?? tabs[0]).id;
-      this._selectedItemId = null;
-    }
-    const active = tabs.find(t => t.id === this._activeTab);
-
-    const tabsHtml = tabs.map(t => `
-      <button class="inv-tab${t.id === this._activeTab ? ' inv-tab--active' : ''}"
-              data-tab="${t.id}" ${t.items.length ? '' : 'disabled'}>
-        <span class="inv-tab__label">${t.label}</span>
-        ${t.count ? `<span class="inv-tab__count">${t.count}</span>` : ''}
-      </button>`).join('');
-
-    const gridHtml = active.items.map(item => {
-      const isNew = this._newItemIds.has(item.id);
-      const sel   = this._selectedItemId === item.id;
-      const rarity = RARITY_META[item.rarity] ? item.rarity : 'common';
-      return `
-        <button class="inv-tile inv-tile--${rarity}${isNew ? ' inv-tile--new' : ''}${sel ? ' inv-tile--selected' : ''}"
-                data-item-id="${item.id}" title="${item.name}">
-          <span class="inv-tile__icon">${item.icon}</span>
-          <span class="inv-tile__qty">${item.quantity}</span>
-        </button>`;
-    }).join('');
-
-    // Detail popover for the selected tile (reuses the existing action builder).
-    const selItem = this._selectedItemId
-      ? active.items.find(i => i.id === this._selectedItemId)
-      : null;
-    const detailHtml = selItem ? this._detailHtml(selItem, ownedHeroIds) : '';
-
-    panel.innerHTML = `
-      ${this._headerHtml()}
-      <div class="inv-tabs">${tabsHtml}</div>
-      <div class="inv-panel-body">
-        <div class="inv-grid">${gridHtml}</div>
-      </div>
-      ${detailHtml}`;
-
-    panel.querySelector('.inv-panel-body').appendChild(this._buffSection.build());
-    this._bindListeners(panel);
+    if (this._isOpen()) this._refresh();
   }
 
-  _headerHtml() {
-    return `
-      <div class="inv-panel-header">
-        <span class="inv-panel-title">${icon('backpack')} Inventory</span>
-        <button class="btn btn-sm btn-ghost" id="inv-panel-close">✕</button>
-      </div>`;
+  _refresh() {
+    this._buckets = bucket(this._s.inventory.getItems());
+    const items = this._buckets[this._activeTab];
+    this._selectedId = this._grid.patch(items, this._selectedId, this._newIds);
+    this._detail.patch(this._selectedItem());
+    this._syncChrome(items);
   }
 
-  _detailHtml(item, ownedHeroIds) {
-    const rarityM = RARITY_META[item.rarity] ?? {};
-    const meta = rarityM.label
-      ? `<span style="color:${rarityM.color}">${rarityM.label}</span> · ×${item.quantity}`
-      : `×${item.quantity}`;
-    return `
-      <div class="inv-detail">
-        <div class="inv-detail__head">
-          <span class="inv-detail__icon">${item.icon}</span>
-          <div class="inv-detail__info">
-            <div class="inv-detail__name">${item.name}</div>
-            <div class="inv-detail__meta">${meta}</div>
-          </div>
-        </div>
-        ${item.description ? `<div class="inv-detail__desc">${item.description}</div>` : ''}
-        <div class="inv-card-action">${this._buildActionHtml(item, ownedHeroIds)}</div>
-      </div>`;
+  _switchTab(tabId) {
+    eventBus.emit('ui:click');
+    this._showTab(tabId);
   }
 
-  _buildActionHtml(item, ownedHeroIds) {
-    // ── Recruitment Scrolls (retired, legacy-save residue only) ──────────
-    if (item.type === 'recruitment_scroll') {
-      return `<button class="btn btn-xs btn-ghost" disabled title="Recruitment scrolls have been retired — use Recruit Tokens instead.">Retired</button>`;
-    }
-
-    // ── Specific Hero Cards ───────────────────────────────────────────────
-    if (item.type === 'hero_card') {
-      const alreadyOwned = item.targetHeroId && ownedHeroIds.has(item.targetHeroId);
-      if (alreadyOwned) return `<button class="btn btn-xs btn-ghost" disabled>Owned</button>`;
-      return `<button class="btn btn-xs btn-gold inv-goto-recruit">Recruit</button>`;
-    }
-
-    // ── Universal Hero Cards — fix: check if ALL heroes of tier are owned ─
-    if (item.type === 'hero_card_universal') {
-      const tier          = item.targetTier;
-      const heroesOfTier  = Object.values(HEROES_CONFIG).filter(h => h.tier === tier);
-      const allOwned      = heroesOfTier.length > 0 && heroesOfTier.every(h => ownedHeroIds.has(h.id));
-      if (allOwned) return `<button class="btn btn-xs btn-ghost" disabled title="All ${tier} heroes owned">All Owned</button>`;
-      return `<button class="btn btn-xs btn-gold inv-goto-recruit">Recruit</button>`;
-    }
-
-    // ── Hero Fragments ────────────────────────────────────────────────────
-    if (item.type === 'hero_fragment') {
-      const heroId     = item.targetHeroId;
-      const needed     = FRAGMENTS_PER_SHARD[HEROES_CONFIG[heroId]?.tier ?? 'normal'] ?? 8;
-      const canConvert = ownedHeroIds.has(heroId); // owned heroes can receive XP from fragments
-      return `
-        <div class="inv-frag-actions">
-          ${canConvert
-            ? `<button class="btn btn-xs btn-primary inv-convert-frag" data-item="${item.id}" data-hero="${heroId}">→ XP</button>`
-            : ''}
-          <span class="inv-frag-hint">${item.quantity}/${needed}</span>
-        </div>`;
-    }
-
-    // ── XP Bundles / XP Cards ──────────────────────────────────────────────
-    if (item.type === 'xp_bundle' || item.type === 'xp_card') {
-      return `<button class="btn btn-xs btn-primary inv-use-xp" data-item="${item.id}">Apply</button>`;
-    }
-
-    // ── Resource Bundles ─────────────────────────────────────────────────
-    if (item.type === 'resource_bundle') {
-      return `<button class="btn btn-xs btn-success inv-use-res" data-item="${item.id}">Open</button>`;
-    }
-
-    // ── Buffs ─────────────────────────────────────────────────────────────
-    if (item.type === 'buff') {
-      return `<button class="btn btn-xs btn-primary inv-use-buff" data-item="${item.id}">Activate</button>`;
-    }
-    // ── Speed Boosts ─────────────────────────────────────────────────────────
-    if (item.type === 'speed_boost') {
-      return `<span class="inv-speed-hint">Use from queue ⏩</span>`;
-    }
-    return '';
+  _showTab(tabId) {
+    this._activeTab = tabId;
+    const items = this._buckets[tabId];
+    this._selectedId = items.some(i => i.id === this._selectedId) ? this._selectedId : (items[0]?.id ?? null);
+    this._grid.build(items, this._selectedId, this._newIds);
+    this._detail.show(this._selectedItem());
+    this._rail.setActive(tabId);
+    this._syncChrome(items);
   }
 
-  // ─────────────────────────────────────────────
-  // LISTENERS
-  // ─────────────────────────────────────────────
-
-  _bindListeners(panel) {
-    panel.querySelector('#inv-panel-close')?.addEventListener('click', () => {
-      eventBus.emit('ui:click');
-      this._close();
-    });
-
-    // ── Tab switching ─────────────────────────────────────────────────────
-    panel.querySelectorAll('.inv-tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        eventBus.emit('ui:click');
-        this._activeTab = tab.dataset.tab;
-        this._selectedItemId = null;
-        this._render();
-      });
-    });
-
-    // ── Tile selection → show detail popover ──────────────────────────────
-    panel.querySelectorAll('.inv-tile').forEach(tile => {
-      tile.addEventListener('click', () => {
-        eventBus.emit('ui:click');
-        const id = tile.dataset.itemId;
-        this._selectedItemId = this._selectedItemId === id ? null : id;
-        this._render();
-      });
-    });
-
-    // ── Recruitment Scrolls / Hero Cards → redirect to Hero Quarters Recruit tab ─
-    panel.querySelectorAll('.inv-goto-recruit').forEach(btn => {
-      btn.addEventListener('click', () => {
-        eventBus.emit('ui:click');
-        this._close();
-        eventBus.emit('ui:navigateTo', 'heroes');
-        eventBus.emit('ui:openHeroesTab', 'recruit');
-      });
-    });
-
-    // ── Hero Fragments → convert to XP ───────────────────────────────────
-    panel.querySelectorAll('.inv-convert-frag').forEach(btn => {
-      btn.addEventListener('click', e => {
-        eventBus.emit('ui:click');
-        const itemId = e.currentTarget.dataset.item;
-        const heroId = e.currentTarget.dataset.hero;
-        const r = this._s.inventory.useItem(itemId, { heroId });
-        if (!r.success) {
-          eventBus.emit('ui:error');
-          this._s.notifications?.show('warning', 'Cannot Convert', r.reason);
-        } else {
-          this._s.notifications?.show('success', '🔮 Fragment Converted!', `+${r.xpAmount ?? 50} XP granted.`);
-        }
-      });
-    });
-
-    // ── XP Bundles → hero picker ──────────────────────────────────────────
-    panel.querySelectorAll('.inv-use-xp').forEach(btn => {
-      btn.addEventListener('click', e => {
-        eventBus.emit('ui:click');
-        const itemId = e.currentTarget.dataset.item;
-        const card   = e.currentTarget.closest('.inv-detail');
-        this._showHeroPicker(itemId, card);
-      });
-    });
-
-    // ── Resource Bundles → open ───────────────────────────────────────────
-    panel.querySelectorAll('.inv-use-res').forEach(btn => {
-      btn.addEventListener('click', e => {
-        eventBus.emit('ui:click');
-        const itemId = e.currentTarget.dataset.item;
-        const r = this._s.inventory.useItem(itemId);
-        if (!r.success) {
-          eventBus.emit('ui:error');
-          this._s.notifications?.show('warning', 'Cannot Open', r.reason);
-        } else {
-          const grants = Object.entries(r.grants ?? {})
-            .map(([k, v]) => `+${v.toLocaleString()} ${k}`).join(', ');
-          this._s.notifications?.show('success', '📦 Bundle Opened!', grants);
-        }
-      });
-    });
-
-    // ── Buffs → activate ─────────────────────────────────────────────────
-    panel.querySelectorAll('.inv-use-buff').forEach(btn => {
-      btn.addEventListener('click', e => {
-        eventBus.emit('ui:click');
-        const itemId = e.currentTarget.dataset.item;
-        const r = this._s.inventory.useItem(itemId);
-        if (!r.success) {
-          eventBus.emit('ui:error');
-          this._s.notifications?.show('warning', 'Cannot Activate', r.reason);
-        }
-      });
-    });
+  _syncChrome(items) {
+    this._markTabSeen();
+    this._rail.patch(this._buckets, this._newTabIds());
+    this._header.patch();
+    this._emptyEl.classList.toggle('hidden', items.length > 0);
   }
 
-  // ─────────────────────────────────────────────
-  // HERO PICKER (inline, for XP bundles)
-  // ─────────────────────────────────────────────
+  _select(id) {
+    eventBus.emit('ui:click');
+    this._selectedId = id;
+    this._grid.select(id);
+    this._detail.show(this._selectedItem());
+  }
 
-  _showHeroPicker(bundleId, rowEl) {
-    document.getElementById('inv-hero-picker')?.remove();
+  _selectedItem() {
+    return this._buckets.all.find(i => i.id === this._selectedId) ?? null;
+  }
 
-    const ownedHeroes = this._s.heroes?.getRosterWithState?.().filter(h => h.isOwned) ?? [];
-    if (ownedHeroes.length === 0) {
-      this._s.notifications?.show('warning', 'No Heroes', 'Recruit a hero first.');
-      return;
+  _focusItem(itemId) {
+    const item = this._buckets.all.find(i => i.id === itemId);
+    if (!item) return;
+    this._selectedId = itemId;
+    this._showTab(TAB_OF_TYPE[item.type] ?? 'all');
+  }
+
+  _markTabSeen() {
+    if (this._activeTab === 'all') return;
+    for (const item of this._buckets[this._activeTab]) this._newIds.delete(item.id);
+  }
+
+  _newTabIds() {
+    const tabs = new Set();
+    for (const tab of TABS) {
+      if (tab.id !== 'all' && this._buckets[tab.id].some(i => this._newIds.has(i.id))) tabs.add(tab.id);
     }
+    return tabs;
+  }
 
-    const picker = document.createElement('div');
-    picker.id = 'inv-hero-picker';
-    picker.className = 'inv-hero-picker';
-    picker.innerHTML = `
-      <div class="inv-picker-label">Choose hero to receive XP:</div>
-      ${ownedHeroes.map(h => `
-        <button class="btn btn-xs inv-pick-hero" data-hero="${h.id}">
-          ${h.icon} ${h.name} <span class="inv-pick-lv">Lv.${h.level}</span>
-        </button>`).join('')}
-      <button class="btn btn-xs btn-ghost" id="inv-picker-cancel">Cancel</button>`;
-
-    rowEl?.after(picker);
-
-    picker.querySelector('#inv-picker-cancel')?.addEventListener('click', () => {
-      eventBus.emit('ui:click');
-      picker.remove();
-    });
-
-    picker.querySelectorAll('.inv-pick-hero').forEach(btn => {
-      btn.addEventListener('click', e => {
-        eventBus.emit('ui:click');
-        const heroId = e.currentTarget.dataset.hero;
-        const r = this._s.inventory.useItem(bundleId, { heroId });
-        picker.remove();
-        if (!r.success) {
-          eventBus.emit('ui:error');
-          this._s.notifications?.show('warning', 'Cannot Apply', r.reason);
-        } else {
-          const hero = ownedHeroes.find(h => h.id === heroId);
-          this._s.notifications?.show('success', '📖 XP Applied!', `+${r.xpAmount?.toLocaleString() ?? '?'} XP → ${hero?.name ?? heroId}`);
-        }
-      });
-    });
+  _updateBadge() {
+    document.getElementById('inventory-badge')?.classList.toggle('hidden', !this._hasNewRewards);
   }
 }

@@ -83,11 +83,13 @@
   /* =========================================
    * LAYOUT
    * ========================================= */
-  --header-height:     48px;
+  --header-height:     calc(48px + env(safe-area-inset-top, 0px));
   --bottom-nav-height: 64px;
   --bq-panel-width:    210px;
   --bq-toggle-width:   38px;
   --dock-clearance:    calc(58px + var(--space-3) * 2 + env(safe-area-inset-bottom, 0px));
+  --panel-modal-w:     min(960px, 95vw);
+  --panel-modal-h:     min(80vh, 680px);
   --sidebar-width:     220px;   /* kept for legacy refs during transition */
   --sidebar-collapsed: 60px;
   --radius-sm:         4px;
@@ -147,4 +149,9 @@
   --z-tooltip:    400;
   --z-scene:      500;
   --z-float:      600;
+  --z-confirm:    950;  /* above the legacy inventory panel (900/901) */
+}
+
+@media (max-width: 700px) {
+  :root { --header-height: calc(86px + env(safe-area-inset-top, 0px)); }
 }
