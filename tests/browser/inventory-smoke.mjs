@@ -1,4 +1,5 @@
 import { withPage, report, dismissOverlays } from './harness.mjs';
+import { inventoryRouteChecks } from './inventoryRouteSteps.mjs';
 
 const waitGame = (page) => page.waitForFunction(() => !!window.game?.eventBus, null, { timeout: 20_000 });
 const openInventory = async (page) => {
@@ -20,7 +21,7 @@ await withPage(async ({ page, errors, origin }) => {
   await waitGame(page);
   await page.waitForTimeout(800);
   await dismissOverlays(page);
-  await page.addStyleTag({ content: '#notification-container, #notification-container * { pointer-events: none !important; }' });
+  await page.addStyleTag({ content: '#notification-container, #notification-container * { pointer-events: none !important; } .dev-widget, .dev-dashboard, .dev-dashboard__toggle { display: none !important; }' });
 
   await page.evaluate(() => {
     const inv = window.game.inventory;
@@ -100,22 +101,20 @@ await withPage(async ({ page, errors, origin }) => {
     }),
   });
 
-  await selectTile(page, 'xp_bundle_medium');
-  await page.click('.inv-hero-chip >> nth=1');
+  await page.evaluate(() => window.game.inventory.addItem('res_bundle_stone_t1', 4));
+  await page.waitForTimeout(150);
+  await selectTile(page, 'res_bundle_stone_t1');
   await page.fill('.inv-qty__num', '3');
   await page.dispatchEvent('.inv-qty__num', 'change');
-  await page.evaluate(() => window.game.inventory.addItem('res_bundle_stone_t1', 1));
+  await page.evaluate(() => window.game.inventory.addItem('res_bundle_wood_t1', 1));
   await page.waitForTimeout(150);
   const qtyKept = await page.inputValue('.inv-qty__num') === '3';
-  await page.evaluate(() => window.game.inventory.removeItem('xp_bundle_medium', 2));
+  await page.evaluate(() => window.game.inventory.removeItem('res_bundle_stone_t1', 2));
   await page.waitForTimeout(150);
   const qtyClamped = await page.inputValue('.inv-qty__num') === '2' && await page.inputValue('.inv-qty__slider') === '2';
   checks.push({
-    label: 'hero choice survives external update',
-    ok: await page.evaluate(() => {
-      const chips = [...document.querySelectorAll('.inv-hero-chip')];
-      return chips.length >= 2 && chips[1].classList.contains('inv-hero-chip--selected') && !chips[0].classList.contains('inv-hero-chip--selected');
-    }) && qtyKept && qtyClamped,
+    label: 'quantity survives external update',
+    ok: qtyKept && qtyClamped,
   });
   await closeInventory(page);
 
@@ -173,12 +172,10 @@ await withPage(async ({ page, errors, origin }) => {
   });
   await page.waitForTimeout(300);
   checks.push({
-    label: 'trading post xp card opens inventory',
-    ok: tpUse && await page.locator('#inv-root').count() === 1
-      && !(await page.evaluate(() => window.__toasts.some(t => /Select a hero/i.test(t))))
-      && await page.locator('.inv-tile--selected[data-item-id="xp_bundle_small"]').count() === 1,
+    label: 'trading post xp card routes to heroes',
+    ok: tpUse && await page.locator('#inv-root').count() === 0
+      && await page.evaluate(() => !document.getElementById('view-heroes').classList.contains('hidden')),
   });
-  if (await page.locator('#inv-root').count()) await closeInventory(page);
 
   await page.evaluate(() => window.game.eventBus.emit('ui:navigateTo', 'base'));
   await dismissOverlays(page);
@@ -286,10 +283,10 @@ await withPage(async ({ page, errors, origin }) => {
   await openInventory(page);
   await page.click('.inv-rail__tab[data-tab="heroes"]');
   await selectTile(page, 'fragment_warlord');
-  const ownedFrag = await page.evaluate(() => [...document.querySelectorAll('.inv-hero-chip')].map(c => c.dataset.hero));
+  const ownedFrag = await page.evaluate(() => [...document.querySelectorAll('[data-act="goto-hero"]')].map(c => c.dataset.hero));
   await selectTile(page, 'fragment_paladin');
   const lockedFrag = await page.evaluate(() => ({
-    chips: document.querySelectorAll('.inv-hero-chip').length,
+    chips: document.querySelectorAll('[data-act="goto-hero"]').length,
     hint: document.querySelector('.inv-detail__hint')?.textContent,
     recruit: !!document.querySelector('.inv-goto-recruit'),
     slider: !!document.querySelector('.inv-qty__slider'),
@@ -317,7 +314,7 @@ await withPage(async ({ page, errors, origin }) => {
   const narrow = await page.evaluate(() => {
     const d = document.querySelector('.inv-modal__detail');
     const r = d.getBoundingClientRect();
-    const btn = document.querySelector('.inv-use-n');
+    const btn = document.querySelector('[data-act="goto-hero"]');
     const b = btn.getBoundingClientRect();
     return {
       visible: r.width > 0 && r.height > 0,
@@ -328,6 +325,7 @@ await withPage(async ({ page, errors, origin }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await closeInventory(page);
 
+  checks.push(...await inventoryRouteChecks(page));
   checks.push({ label: 'zero page errors', ok: errors.length === 0 });
   report('inventory-smoke', checks, errors);
 });

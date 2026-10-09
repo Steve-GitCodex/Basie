@@ -1,6 +1,7 @@
 /** Barrel re-export — game data lives under js/entities/data/, split by domain. */
 
 export { BUILDINGS_CONFIG, QUEUE_CONFIG, HQ_UNLOCK_TABLE } from './data/buildings.js';
+export { BUILDING_CURVE, ERA_HQ, HQ_MAX } from './data/buildingCurve.js';
 export { UNITS_CONFIG, UNIT_TIER_REQUIREMENTS } from './data/units.js';
 export {
   HERO_CLASSIFICATIONS, BUFF_CATEGORIES, AURA_BUFF_CATEGORY,

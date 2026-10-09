@@ -421,14 +421,14 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  min-height: 34px;
-  padding: 0 var(--space-3) 0 var(--space-1);
+  min-height: 32px;
+  padding: 0 9px 0 4px;
   font-size: 0.6875rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--badge-accent);
   border: 1px solid color-mix(in srgb, var(--badge-accent) 40%, transparent);
-  border-radius: var(--radius-md);
+  border-radius: 16px;
   background: color-mix(in srgb, var(--badge-accent) 10%, var(--clr-bg-surface));
   cursor: pointer;
   flex-shrink: 0;

@@ -129,3 +129,23 @@ test('getRateBreakdown with zero base returns a finite multiplier', () => {
   assert.equal(b.base, 0);
   assert.ok(Number.isFinite(b.multiplier));
 });
+
+test('cap floors survive building-driven setCap and never shrink a larger cap', () => {
+  const rm = new ResourceManager();
+  rm.setCapFloors({ wood: 2000 });
+  assert.equal(rm._resources.wood.cap >= 2000, true);
+  rm.setCap('wood', 100);
+  assert.equal(rm._resources.wood.cap, 2000);
+  rm.setCap('wood', 5000);
+  assert.equal(rm._resources.wood.cap, 5000);
+  rm.setCap('stone', 100);
+  assert.equal(rm._resources.stone.cap, 100);
+});
+
+test('setAmount sets an exact stockpile and clamps at zero', () => {
+  const rm = new ResourceManager();
+  rm.setAmount('iron', 1234);
+  assert.equal(rm._resources.iron.amount, 1234);
+  rm.setAmount('iron', -5);
+  assert.equal(rm._resources.iron.amount, 0);
+});

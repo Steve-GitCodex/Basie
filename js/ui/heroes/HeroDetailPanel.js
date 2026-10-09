@@ -9,6 +9,7 @@ import { squadNameForHero } from './heroSquadLookup.js';
 import { detailNavHtml, neighbourIds } from './heroDetailNav.js';
 import { detailTabsHtml, selectDetailTab, patchDetailTabs } from './heroDetailTabs.js';
 import { unlockPathHtml } from './heroUnlockPath.js';
+import { LevelUpSheet } from './LevelUpSheet.js';
 
 const AURA_LABELS = {
   attack_boost:  'Attack Boost',
@@ -16,12 +17,6 @@ const AURA_LABELS = {
   crit_chance:   'Crit Chance',
   defense_boost: 'Defense Boost',
 };
-
-const XP_BUNDLES = [
-  { id: 'xp_bundle_small',  label: 'Tome +250' },
-  { id: 'xp_bundle_medium', label: 'Tome +1K'  },
-  { id: 'xp_bundle_large',  label: 'Tome +5K'  },
-];
 
 const finite = (value, fallback) => (Number.isFinite(value) ? value : fallback);
 
@@ -53,11 +48,13 @@ export class HeroDetailPanel {
     this._renderedOwned = null;
     this._onBack = null;
     this._order = () => [];
+    this._levelUp = null;
   }
 
   init(rootEl) {
     this._root = rootEl;
     rootEl.addEventListener('click', e => this._onClick(e));
+    this._levelUp = new LevelUpSheet(document.body, this._s);
   }
 
   onBack(cb) { this._onBack = cb; }
@@ -65,7 +62,7 @@ export class HeroDetailPanel {
   setOrder(fn) { this._order = fn; }
 
   showHero(heroId) {
-    if (heroId !== this._heroId) this._tab = 'skills';
+    if (heroId !== this._heroId) { this._tab = 'skills'; this._levelUp?.close(); }
     this._heroId = heroId;
     this.render();
   }
@@ -96,8 +93,7 @@ export class HeroDetailPanel {
     if (xpLabel) xpLabel.textContent = xpText(hero);
     const xpFill = this._root.querySelector('.hq-bar--xp > i');
     if (xpFill) xpFill.style.width = `${xpPct(hero)}%`;
-    const tomes = this._root.querySelector('.hq-xp__tomes');
-    if (tomes) tomes.innerHTML = this._tomesHtml();
+    this._patchLevelUpButton(hero);
     const chip = this._root.querySelector('.hq-detail__chip');
     if (chip) chip.innerHTML = statusChipHtml(hero, { squadName: this._squadName(hero) });
     const unlock = this._root.querySelector('.hq-unlock');
@@ -167,21 +163,25 @@ export class HeroDetailPanel {
       <div class="hq-xp">
         <div class="hq-xp__row">
           <span class="hq-xp__text">${xpText(hero)}</span>
-          <span class="hq-xp__tomes">${this._tomesHtml()}</span>
+          ${this._levelUpButtonHtml(hero)}
         </div>
         <span class="hq-bar hq-bar--xp"><i style="width:${xpPct(hero)}%"></i></span>
       </div>`;
   }
 
-  _tomesHtml() {
-    const owned = XP_BUNDLES
-      .map(b => ({ ...b, qty: this._s.inventory?.getQuantity(b.id) ?? 0 }))
-      .filter(b => b.qty > 0);
-    if (owned.length === 0) return `<span class="hero-xp-hint">Buy Tomes from the <strong>Shop</strong></span>`;
-    return owned.map(b => `
-      <button type="button" class="btn btn-xs hq-btn-secondary btn-xp-bundle" data-action="tome" data-bundle="${b.id}">
-        ${b.label} <span class="xp-qty-badge">×${b.qty}</span>
-      </button>`).join('');
+  _atCap(hero) { return hero.level >= this._s.heroes.levelCap(); }
+
+  _levelUpButtonHtml(hero) {
+    const capped = this._atCap(hero);
+    return `<button type="button" class="btn btn-xs btn-primary hq-xp__levelup" data-action="levelup"${capped ? ' disabled' : ''}>${capped ? 'Max level' : 'Level up'}</button>`;
+  }
+
+  _patchLevelUpButton(hero) {
+    const btn = this._root.querySelector('.hq-xp__levelup');
+    if (!btn) return;
+    const capped = this._atCap(hero);
+    btn.disabled = capped;
+    btn.textContent = capped ? 'Max level' : 'Level up';
   }
 
   _footerHtml(hero) {
@@ -200,10 +200,10 @@ export class HeroDetailPanel {
     if (!hero) return;
     eventBus.emit('ui:click');
     const handlers = {
-      'nav-back':     () => this._onBack?.(),
+      'nav-back':     () => { this._levelUp.close(); this._onBack?.(); },
       'nav-go':       () => this.showHero(el.dataset.heroId),
       'tab':          () => { this._tab = el.dataset.tab; selectDetailTab(this._root, this._tab); },
-      'tome':         () => this._useTome(hero, el.dataset.bundle),
+      'levelup':      () => this._levelUp.open(hero.id),
       'awaken':       () => this._report(this._s.heroes.awakenHero(hero.id), 'Cannot Awaken'),
       'level-skill':  () => this._levelSkill(hero, el.dataset.skillId),
       'change-post':  () => {
@@ -215,11 +215,6 @@ export class HeroDetailPanel {
       'goto-recruit': () => eventBus.emit('ui:openHeroesTab', 'recruit'),
     };
     handlers[el.dataset.action]?.();
-  }
-
-  _useTome(hero, bundleId) {
-    const r = this._s.inventory.useItem(bundleId, { heroId: hero.id });
-    this._report(r, 'Cannot Apply', '📖 XP Applied!', `+${r.xpAmount?.toLocaleString() ?? '?'} XP applied!`);
   }
 
   _levelSkill(hero, skillId) {

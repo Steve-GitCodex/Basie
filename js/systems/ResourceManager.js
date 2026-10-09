@@ -8,6 +8,7 @@ import { DIFFICULTY_MODIFIERS, INVENTORY_ITEMS } from '../entities/GAME_DATA.js'
 import { TUTORIAL_STEPS } from './TutorialManager.js';
 import { BUILDINGS_CONFIG } from '../entities/data/buildings.js';
 import { productionLayers, layerMultiplier } from './resource/productionLayers.js';
+import { upgradeCost } from './building/buildingCurve.js';
 
 export class ResourceManager {
   constructor() {
@@ -38,6 +39,7 @@ export class ResourceManager {
     this._baseRates = {};
     /** Population is a pseudo-resource — not spent/earned like others. */
     this._population = { current: 0, cap: 0 };
+    this._capFloors = {};
     /** Cafeteria food-stock capacity (sum of all cafeteria instances). Updated by BuildingManager. */
     this._foodCapacity = 0;
     /** Cafeteria water-stock capacity (sum of all cafeteria instances). Updated by BuildingManager. */
@@ -275,8 +277,23 @@ export class ResourceManager {
    */
   setCap(resource, newCap) {
     if (this._resources[resource]) {
-      this._resources[resource].cap = newCap;
+      this._resources[resource].cap = Math.max(newCap, this._capFloors[resource] ?? 0);
     }
+  }
+
+  /** Transient (never serialized) minimum caps that setCap() never undercuts. @see docs/20-decisions/0048-dev-cap-floor.md */
+  setCapFloors(floors) {
+    this._capFloors = { ...floors };
+    for (const [key, floor] of Object.entries(floors)) {
+      const res = this._resources[key];
+      if (res) res.cap = Math.max(res.cap, floor);
+    }
+  }
+
+  setAmount(resource, amount) {
+    if (!this._resources[resource]) return;
+    this._resources[resource].amount = Math.max(0, amount);
+    this._uiDirty = true;
   }
 
   // =============================================
@@ -422,14 +439,8 @@ export class ResourceManager {
         targetLevel = 2;
       }
 
-      // Calculate cost at target level using cost multiplier
-      const multiplier = building.costMultiplier ?? 1.0;
-      const levelMultiplier = Math.pow(multiplier, targetLevel - 1);
-
-      // Add this building's cost to the running total
-      for (const [resource, baseCost] of Object.entries(building.baseCost)) {
-        const actualCost = baseCost * levelMultiplier;
-        costs[resource] += actualCost;
+      for (const [resource, amount] of Object.entries(upgradeCost(building, targetLevel - 1))) {
+        costs[resource] += amount;
       }
     }
 

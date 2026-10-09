@@ -46,11 +46,13 @@
   <link rel="stylesheet" href="css/components/heroes-recruit.css" />
   <link rel="stylesheet" href="css/components/heroes-pull.css" />
   <link rel="stylesheet" href="css/components/heroes-assign.css" />
+  <link rel="stylesheet" href="css/components/hero-levelup.css" />
   <link rel="stylesheet" href="css/components/tutorial.css" />
   <link rel="stylesheet" href="css/components/events.css" />
   <link rel="stylesheet" href="css/components/research.css" />
   <link rel="stylesheet" href="css/components/icons.css" />
   <link rel="stylesheet" href="css/components/hud.css" />
+  <link rel="stylesheet" href="css/components/chip-popover.css" />
   <link rel="stylesheet" href="css/components/trading-post.css" />
   <link rel="stylesheet" href="css/components/trading-supply.css" />
   <link rel="stylesheet" href="css/components/trading-premium.css" />
@@ -100,7 +102,7 @@
     <!-- HEADER -->
     <header class="game-header" id="game-header">
       <div class="hud-plate">
-        <div class="player-chip" id="player-chip" title="Profile & Settings">
+        <div class="player-chip" id="player-chip">
           <span class="player-avatar" id="player-avatar"><span class="icon icon--crown icon--gold"></span></span>
           <div class="player-data">
             <span class="player-name" id="player-name">Commander</span>
@@ -190,7 +192,7 @@
             <span class="res-rate" id="r-money"></span>
           </div>
         </div>
-        <div class="resource-chip resource-chip--premium" id="res-diamond" title="Diamond">
+        <div class="resource-chip resource-chip--premium" id="res-diamond">
           <span class="res-icon res-icon--diamond"></span>
           <div class="res-data">
             <span class="res-value" id="v-diamond">0</span>
@@ -199,8 +201,9 @@
             <span class="res-cap" id="c-diamond"></span>
             <span class="res-rate" id="r-diamond"></span>
           </div>
+          <span class="res-plus" aria-hidden="true">+</span>
         </div>
-        <button class="buff-hud-badge buff-hud-badge--idle" id="buff-hud-badge" title="Buffs — click to manage">
+        <button class="buff-hud-badge buff-hud-badge--idle" id="buff-hud-badge">
           <span class="buff-hud-badge__ring"><span class="icon icon--flask-potion"></span></span>
           <span id="buff-badge-label">Buffs</span>
         </button>

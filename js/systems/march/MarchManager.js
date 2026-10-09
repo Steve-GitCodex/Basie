@@ -9,10 +9,11 @@
  * Loot/resources are carried home and credited on return.
  */
 import { eventBus } from '../../core/EventBus.js';
-import { WORLD_MAP, BUILDINGS_CONFIG } from '../../entities/GAME_DATA.js';
+import { WORLD_MAP } from '../../entities/GAME_DATA.js';
 import { armySpeed, distance, travelMs, loadCapacity } from './marchMath.js';
 import { canDispatch } from './marchRules.js';
 import { resolveArrival } from './marchResolver.js';
+import { levelStatsAt } from '../building/trainingSlots.js';
 import { logisticSpeedMult } from '../world/regionBuffs.js';
 
 export class MarchManager {
@@ -33,7 +34,7 @@ export class MarchManager {
   _rallyStats() {
     const lvl = this._rallyLevel();
     if (lvl <= 0) return null;
-    return BUILDINGS_CONFIG.rallypoint?.levelStats?.[lvl - 1] ?? null;
+    return levelStatsAt('rallypoint', lvl);
   }
 
   /** Total march slots granted by the built Rally Point (0 if not built). */

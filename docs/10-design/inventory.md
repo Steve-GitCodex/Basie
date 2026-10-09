@@ -5,8 +5,7 @@ The bag as a Mail-style modal: category rail, rarity grid, and a detail column t
 a browser): `docs/10-design/mockups/inventory-buffs/inventory-v1.html`, **option B (centered modal)** plus the per-type detail
 states. Research: `docs/research/inventory-buffs-codebase.md`.
 
-> **Pending change (ADR 0046, not built):** XP tomes, XP cards and fragments-as-XP move off the Inventory. Their detail
-> shows "Level a hero ›" / "Open <hero> ›" and the hero picker is removed. See `hero-levelup.md`.
+> **XP items route to Heroes (ADR 0046, built 2026-10-08):** XP tomes and XP cards show "Used from the hero screen" and "Level a hero ›"; fragments of owned heroes show "Open <hero> ›". The hero picker is removed. See `hero-levelup.md`.
 
 ## Rules
 
@@ -21,9 +20,9 @@ states. Research: `docs/research/inventory-buffs-codebase.md`.
 - Grid tiles are built once per tab and patched in place; rarity stripe, tier tag, NEW marker. When the selected item runs out
   the next tile in the tab is selected, and an item arriving in an empty tab is selected; an empty tab shows "Get more in Supply".
 - Under 720 px the detail column stacks below the grid (one column, scrollable) instead of hiding.
-- Detail column per type: quantity stepper + slider + preview line (`previewUse`) + Use 1 / Use xN for bundles and XP items
-  (hero chips choose the target; a hero fragment offers only its own hero, and when that hero is unowned shows owned / needed
-  fragments plus the Recruit route; heroes at the level cap gain nothing, so the items are kept and the use fails with "Hero is at max level."); speedups show the running job and open `SpeedupPicker` ("Nothing to speed up" otherwise);
+- Detail column per type: quantity stepper + slider + preview line (`previewUse`) + Use 1 / Use xN for bundles
+  (XP items have no Use here: they route to Heroes; a fragment of an owned hero offers "Open <hero> ›", and an unowned hero shows owned / needed
+  fragments plus the Recruit route); speedups show the running job and open `SpeedupPicker` ("Nothing to speed up" otherwise);
   boosts show the replace warning and Activate / View buffs; hero cards offer Recruit (a disabled "Owned" / "All Owned" when nothing is left to recruit); retired scroll is a disabled "Retired".
 - Over-cap bundles preview per resource: requested amount, and the free room in amber when something would be lost.
 

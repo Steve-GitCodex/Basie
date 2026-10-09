@@ -198,23 +198,6 @@
   background: #34c475;
 }
 
-/* XP bundle inline apply buttons in Heroes tab */
-.btn-xp-bundle {
-  font-size: 0.72rem;
-  padding: 3px 9px;
-}
-
-.xp-qty-badge {
-  opacity: 0.75;
-  font-size: 0.68rem;
-}
-
-.hero-xp-hint {
-  font-size: 0.75rem;
-  color: var(--text-secondary, #888);
-  font-style: italic;
-}
-
 /* ============================================================
    Speed-Up Picker (shared across Build / Train / Research)
    ============================================================ */

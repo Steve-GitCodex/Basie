@@ -2,8 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { buildingRules } from '../../js/systems/building/buildingRules.js';
+import { upgradeCost } from '../../js/systems/building/buildingCurve.js';
 
-const { scaleCost, checkRequirements, collectMissing, checkCondition } = buildingRules;
+const { checkRequirements, collectMissing, checkCondition } = buildingRules;
 
 function ctx({ levels = {}, population = { current: 0, cap: 0 } } = {}) {
   return {
@@ -13,17 +14,19 @@ function ctx({ levels = {}, population = { current: 0, cap: 0 } } = {}) {
 }
 
 test('cost at level zero is the base cost', () => {
-  assert.deepEqual(scaleCost({ wood: 100, stone: 50 }, 1.6, 0), { wood: 100, stone: 50 });
+  const cfg = { baseCost: { wood: 100, stone: 50 } };
+  assert.deepEqual(upgradeCost(cfg, 0), { wood: 100, stone: 50 });
 });
 
-test('cost scales geometrically and floors to whole resources', () => {
-  assert.deepEqual(scaleCost({ wood: 100 }, 1.6, 1), { wood: 160 });
-  assert.deepEqual(scaleCost({ wood: 100 }, 1.6, 2), { wood: 256 });
-  assert.deepEqual(scaleCost({ wood: 80 }, 1.5, 3), { wood: 270 });
+test('cost scales on the shared curve and floors to whole resources', () => {
+  const cfg = { baseCost: { wood: 100 } };
+  assert.deepEqual(upgradeCost(cfg, 1), { wood: 165 });
+  assert.deepEqual(upgradeCost(cfg, 2), { wood: 272 });
+  assert.deepEqual(upgradeCost({ baseCost: { wood: 80 } }, 3), { wood: 359 });
 });
 
-test('a multiplier of 1 never raises the cost', () => {
-  assert.deepEqual(scaleCost({ wood: 100 }, 1, 9), { wood: 100 });
+test('cost keeps every resource of the base cost', () => {
+  assert.deepEqual(Object.keys(upgradeCost({ baseCost: { wood: 10, iron: 5 } }, 4)), ['wood', 'iron']);
 });
 
 test('no requirements is always met', () => {

@@ -8,6 +8,8 @@ import { eventBus } from '../core/EventBus.js';
 import { WoundedPool } from './units/woundedPool.js';
 import { defaultRowFor, isValidRow, resolveSquadRows, assignSlotRows, occupiedSlots, acceptedStoredRows, serializeSlotRows, deserializeSlotRows } from './units/squadRows.js';
 import { UNITS_CONFIG, BUILDINGS_CONFIG, UNIT_TIER_REQUIREMENTS } from '../entities/GAME_DATA.js';
+import { trainingSlotAt } from './building/trainingSlots.js';
+import { levelTable } from './building/levelTable.js';
 import { COMBAT_RULES } from '../entities/data/combatRules.js';
 
 export class UnitManager {
@@ -141,9 +143,7 @@ export class UnitManager {
           const nxtTierCfg = nxtCfg?.tiers?.[nxtTier - 1] ?? nxtCfg;
           // B1: apply building-level speed bonus; B2: use upgradeTime for upgrade jobs
           const nxtBldgLevel = this._bm.getLevelOf(buildingId);
-          const nxtBldgCfg   = BUILDINGS_CONFIG[buildingId];
-          const nxtSlotIdx   = nxtBldgCfg?.trainingSlots ? Math.min(nxtBldgLevel - 1, nxtBldgCfg.trainingSlots.length - 1) : -1;
-          const nxtSlotEntry = nxtSlotIdx >= 0 ? nxtBldgCfg.trainingSlots[nxtSlotIdx] : null;
+          const nxtSlotEntry = trainingSlotAt(buildingId, nxtBldgLevel);
           const nxtTimeMultiplier = nxtSlotEntry?.trainTimeMultiplier ?? 1;
           const durSec = next.type === 'upgrade'
             ? (nxtTierCfg?.upgradeTime ?? Math.ceil((nxtTierCfg?.trainTime ?? 10) * 0.35))
@@ -182,9 +182,7 @@ export class UnitManager {
     const cfg      = UNITS_CONFIG[unitId];
     const tierCfg  = cfg?.tiers?.[tier - 1] ?? cfg;
     const bldgLevel  = this._bm.getLevelOf(buildingId);
-    const bldgCfg    = BUILDINGS_CONFIG[buildingId];
-    const slotIdx    = bldgCfg?.trainingSlots ? Math.min(bldgLevel - 1, bldgCfg.trainingSlots.length - 1) : -1;
-    const slotEntry  = slotIdx >= 0 ? bldgCfg.trainingSlots[slotIdx] : null;
+    const slotEntry  = trainingSlotAt(buildingId, bldgLevel);
     const timeMult   = slotEntry?.trainTimeMultiplier ?? 1;
     const durSec     = item.type === 'upgrade'
       ? (tierCfg?.upgradeTime ?? Math.ceil((tierCfg?.trainTime ?? 10) * 0.35))
@@ -310,7 +308,7 @@ export class UnitManager {
     // Building tier gate + batch size cap (from trainingSlots table)
     const bldgLevel   = this._bm.getLevelOf(requiredBldg ?? '');
     const bldgCfg     = BUILDINGS_CONFIG[requiredBldg];
-    const slotEntry   = bldgCfg?.trainingSlots?.[Math.min(bldgLevel - 1, (bldgCfg.trainingSlots?.length ?? 1) - 1)];
+    const slotEntry   = trainingSlotAt(requiredBldg, bldgLevel);
     if (slotEntry) {
       const maxTier = slotEntry.maxTrainableTier ?? 99;
       if (tier > maxTier) {
@@ -432,9 +430,7 @@ export class UnitManager {
     const upgradeTimeSec = destTierCfg.upgradeTime ?? Math.ceil((destTierCfg.trainTime ?? 10) * 0.35);
     // B1: apply building-level speed bonus for upgrades
     const upgBldgLevel  = this._bm.getLevelOf(cfg.buildingId ?? '');
-    const upgBldgCfg    = BUILDINGS_CONFIG[cfg.buildingId];
-    const upgSlotIdx    = upgBldgCfg?.trainingSlots ? Math.min(upgBldgLevel - 1, upgBldgCfg.trainingSlots.length - 1) : -1;
-    const upgSlotEntry  = upgSlotIdx >= 0 ? upgBldgCfg.trainingSlots[upgSlotIdx] : null;
+    const upgSlotEntry  = trainingSlotAt(cfg.buildingId, upgBldgLevel);
     const upgTimeMultiplier = upgSlotEntry?.trainTimeMultiplier ?? 1;
     const trainMs  = upgradeTimeSec * 1000 * count * this._trainMultiplier() * upgTimeMultiplier;
     const isFirst  = upgBuildingQueue.length === 0;
@@ -486,9 +482,7 @@ export class UnitManager {
       const nxtTierCfg = nxtCfg?.tiers?.[nxtTier - 1] ?? nxtCfg;
       // B1: apply building-level speed bonus; B2: use upgradeTime for upgrade jobs
       const cxlBldgLevel = this._bm.getLevelOf(buildingId);
-      const cxlBldgCfg   = BUILDINGS_CONFIG[buildingId];
-      const cxlSlotIdx   = cxlBldgCfg?.trainingSlots ? Math.min(cxlBldgLevel - 1, cxlBldgCfg.trainingSlots.length - 1) : -1;
-      const cxlSlotEntry = cxlSlotIdx >= 0 ? cxlBldgCfg.trainingSlots[cxlSlotIdx] : null;
+      const cxlSlotEntry = trainingSlotAt(buildingId, cxlBldgLevel);
       const cxlTimeMultiplier = cxlSlotEntry?.trainTimeMultiplier ?? 1;
       const cxlDurSec = next.type === 'upgrade'
         ? (nxtTierCfg?.upgradeTime ?? Math.ceil((nxtTierCfg?.trainTime ?? 10) * 0.35))
@@ -659,10 +653,7 @@ export class UnitManager {
    */
   _getBuildingSlots(buildingId) {
     const level = this._bm.getLevelOf(buildingId);
-    const cfg   = BUILDINGS_CONFIG[buildingId];
-    if (!cfg?.trainingSlots || level <= 0) return 1;
-    const idx = Math.min(level - 1, cfg.trainingSlots.length - 1);
-    return cfg.trainingSlots[idx]?.concurrentSlots ?? 1;
+    return trainingSlotAt(buildingId, level)?.concurrentSlots ?? 1;
   }
 
   renameSquad(squadId, newName) {
@@ -739,7 +730,7 @@ export class UnitManager {
           ? (this._bm.getInstanceLevelOf?.(instId) ?? this._bm.getLevelOf('barracks'))
           : this._bm.getLevelOf('barracks');
         if (bldgLevel > 0) {
-          const stats   = levelStats[Math.min(bldgLevel - 1, levelStats.length - 1)];
+          const stats   = levelTable(levelStats, bldgLevel - 1, 'barracks.levelStats');
           const cap     = stats?.slotCapacity ?? Infinity;
           const existing = squad.slotUnits?.get(slotIndex);
           const existingCount = (existing?.tierKey === tierKey ? existing.count : 0);

@@ -1,3 +1,4 @@
+import { levelupChecks } from './heroLevelupSteps.mjs';
 import { withPage, bootGuestSandbox, dismissOverlays, report } from './harness.mjs';
 
 async function openHero(page, heroId) {
@@ -407,11 +408,9 @@ await withPage(async ({ page, errors, origin }) => {
   await page.waitForSelector('#inv-root', { timeout: 5000 });
   await page.click('.inv-rail__tab[data-tab="heroes"]');
   await page.click('.inv-tile[data-item-id="xpcard_normal"]');
-  checks.push({ label: 'C1: xpcard is reachable in Inventory with a real action', ok: await page.locator('.inv-use-xp[data-item="xpcard_normal"]').count() === 1 });
+  checks.push({ label: 'C1: xpcard is reachable in Inventory with a real action', ok: await page.locator('[data-act="goto-heroes"]').count() === 1 });
 
-  await page.waitForSelector('.inv-hero-picker', { timeout: 5000 });
-  await page.click(`.inv-pick-hero[data-hero="${c1HeroId}"]`);
-  await page.click('.inv-use-xp[data-item="xpcard_normal"]');
+  await page.evaluate(id => window.game.inventory.useItem('xpcard_normal', { qty: 1, heroId: id }), c1HeroId);
   await page.waitForTimeout(300);
 
   const c1QtyAfter  = await page.evaluate(() => window.game.inventory.getQuantity('xpcard_normal'));
@@ -547,6 +546,8 @@ await withPage(async ({ page, errors, origin }) => {
     getComputedStyle(document.querySelector('#heroes-roster-grid')).gridTemplateColumns.split(' ').length);
   checks.push({ label: 'at phone width the gallery is two columns', ok: phoneColumns === 2 });
   await page.setViewportSize({ width: 1280, height: 800 });
+
+  checks.push(...await levelupChecks(page));
 
   report('heroes-smoke', checks, errors);
 });

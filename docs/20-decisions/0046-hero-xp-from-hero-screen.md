@@ -1,6 +1,6 @@
 # 0046 — Hero XP items are spent from the hero screen, not the Inventory
 
-Date: 2026-10-07 · Status: accepted (design; not built) · Design page: `docs/10-design/hero-levelup.md` ·
+Date: 2026-10-07 · Status: accepted · built 2026-10-08 · Design page: `docs/10-design/hero-levelup.md` ·
 Mockup: `docs/10-design/mockups/hero-xp/hero-levelup-v1.html` · Partly supersedes ADR 0039 decision 3
 
 ## Context

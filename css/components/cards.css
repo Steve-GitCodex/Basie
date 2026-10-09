@@ -491,27 +491,6 @@
 .req-missing   { background: rgba(255,255,255,0.03); border: 1px solid var(--clr-border); color: var(--clr-text-muted); }
 .req-icon      { font-size: 1rem; }
 
-.btn-xp-bundle {
-  font-size: 0.65rem;
-  padding: 3px 8px;
-  border-radius: var(--radius-full);
-  background: hsla(215,50%,18%,0.8);
-  border: 1px solid var(--clr-tier-rare-muted);
-  color: var(--clr-tier-rare);
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-  font-weight: 600;
-  font-family: var(--font-mono);
-}
-.btn-xp-bundle:hover:not(:disabled) {
-  background: var(--clr-tier-rare-muted);
-  border-color: var(--clr-tier-rare);
-}
-.btn-xp-disabled, .btn-xp-bundle:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
 .btn-disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ── Hero card: old .card-icon override ── */
@@ -950,28 +929,6 @@
 .inv-item-name   { font-size: 0.6rem; font-weight: 600; color: var(--clr-text-primary); line-height: 1.3; }
 .inv-item-meta   { font-size: 0.55rem; font-weight: 600; }
 .inv-item-qty    { font-size: var(--text-sm); font-weight: 700; font-family: var(--font-mono); color: var(--clr-gold); }
-
-/* ── Hero picker inside inventory modal ───────── */
-.inv-hero-picker {
-  position: sticky;
-  bottom: 0;
-  background: var(--clr-bg-panel);
-  border-top: 1px solid var(--clr-border);
-  padding: var(--space-4);
-  border-radius: var(--radius-lg);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  margin-top: var(--space-2);
-}
-.inv-picker-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: var(--text-sm);
-  color: var(--clr-text-secondary);
-}
-.inv-picker-list { display: flex; gap: var(--space-2); flex-wrap: wrap; }
 
 /* ==============================================
  * HERO STATION SECTION (Building Cards)

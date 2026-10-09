@@ -92,3 +92,12 @@ test('heroStorageBonus 0.2 raises finite caps by 20% and leaves diamond Infinity
   assert.equal(boosted.caps.wood, Math.floor(base.caps.wood * 1.2));
   assert.equal(boosted.caps.diamond, Infinity);
 });
+
+test('a storehouse past the end of its storageCap arrays throws instead of contributing 0', () => {
+  const pastEnd = BUILDINGS_CONFIG.storehouse.storageCap.wood.length;
+  const buildings = new Map([['storehouse', [{ instanceId: 'storehouse_0', level: pastEnd }]]]);
+  assert.throws(
+    () => buildingEconomy.computeStorageCaps(buildings, {}),
+    new RegExp(`storehouse\.storageCap\.wood: no entry for level ${pastEnd}`),
+  );
+});

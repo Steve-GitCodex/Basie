@@ -1,6 +1,6 @@
 # 0041 — Top bar: two tiers on narrow screens, responsive header height
 
-Date: 2026-10-07 · Status: accepted (design; not built) · Design page: `docs/10-design/topbar.md` ·
+Date: 2026-10-07 · Status: accepted · built 2026-10-08 (as-built divergences: ADR 0047) · Design page: `docs/10-design/topbar.md` ·
 Mockup: `docs/10-design/mockups/topbar-mail/topbar-v1.html` (option B)
 
 ## Context

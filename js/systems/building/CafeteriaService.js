@@ -13,7 +13,9 @@
  */
 import { eventBus }         from '../../core/EventBus.js';
 import { BUILDINGS_CONFIG } from '../../entities/GAME_DATA.js';
+import { levelTable } from './levelTable.js';
 
+const HOUSE_POP_PER_LEVEL = BUILDINGS_CONFIG.house.populationCapacityPerLevel;
 const RESTOCK_INTERVAL   = 30;   // seconds between auto-restock passes
 const POOL_RESERVE       = 50;   // keep this much food/water in the global pool on auto-restock
 const REMINDER_INTERVAL  = 90;   // min seconds between cafeteria reminders (polite, non-spammy)
@@ -40,8 +42,8 @@ export class CafeteriaService {
     const fp = cfg?.foodCapacityPerLevel  ?? 200;
     const wp = cfg?.waterCapacityPerLevel ?? 200;
     return {
-      food:  Array.isArray(fp) ? (fp[level] ?? 0) : fp * level,
-      water: Array.isArray(wp) ? (wp[level] ?? 0) : wp * level,
+      food:  Array.isArray(fp) ? levelTable(fp, level, 'cafeteria.foodCapacityPerLevel') : fp * level,
+      water: Array.isArray(wp) ? levelTable(wp, level, 'cafeteria.waterCapacityPerLevel') : wp * level,
     };
   }
 
@@ -263,7 +265,7 @@ export class CafeteriaService {
     const pop = this._rm.getPopulation();
     return (this._getInstances('house')).reduce((s, h) => {
       if ((h.level ?? 0) <= 0) return s;
-      return s + Math.min(pop.current, h.level * 10) * this._perCapita(h.level);
+      return s + Math.min(pop.current, h.level * HOUSE_POP_PER_LEVEL) * this._perCapita(h.level);
     }, 0);
   }
 
@@ -283,7 +285,7 @@ export class CafeteriaService {
 
     // Drain food/water from cafeteria stock to feed each populated house.
     for (const houseInst of houseInstances) {
-      const people     = Math.min(population.current, houseInst.level * 10);
+      const people     = Math.min(population.current, houseInst.level * HOUSE_POP_PER_LEVEL);
       const perCapita  = this._perCapita(houseInst.level);
       let remainFood   = people * perCapita * dt;
       let remainWater  = people * perCapita * dt;

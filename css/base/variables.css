@@ -143,6 +143,7 @@
    * ========================================= */
   --z-base:       1;
   --z-overlay:    100;
+  --z-popover:    150;  /* header chip popover: above the header, below modals */
   --z-modal:      200;
   --z-nav:        210;  /* bottom tab bar — always above modals/panels */
   --z-toast:      300;

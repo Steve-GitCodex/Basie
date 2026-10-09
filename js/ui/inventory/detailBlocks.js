@@ -15,15 +15,6 @@ export function headHtml(item) {
     <div class="inv-detail__desc">${escapeHtml(item.description ?? '')}</div>`;
 }
 
-function chipsHtml(heroes) {
-  if (!heroes.length) return '<div class="inv-detail__hint inv-detail__hint--warn">Recruit a hero first</div>';
-  const chips = heroes.map(h => `
-    <button type="button" class="inv-hero-chip inv-pick-hero" data-act="chip" data-hero="${escapeHtml(h.id)}">
-      <span>${h.icon ?? '🦸'}</span>${escapeHtml(h.name)} <small>Lv ${h.level}</small>
-    </button>`).join('');
-  return `<div class="inv-hero-picker">${chips}</div>`;
-}
-
 function qtyHtml() {
   return `
     <div class="inv-detail__qty">
@@ -35,13 +26,21 @@ function qtyHtml() {
     <div class="inv-detail__preview"></div>`;
 }
 
-function useActsHtml(itemId, isHero) {
-  const xp = isHero ? ' inv-use-xp' : '';
+function useActsHtml(itemId) {
   return `
     <div class="inv-detail__acts">
       <button type="button" class="btn btn-sm btn-ghost inv-use-one" data-act="one" data-item="${itemId}">Use 1</button>
-      <button type="button" class="btn btn-sm btn-success inv-use-n${xp}" data-act="many" data-item="${itemId}">Use</button>
+      <button type="button" class="btn btn-sm btn-success inv-use-n" data-act="many" data-item="${itemId}">Use</button>
     </div>`;
+}
+
+function heroRouteHtml(item, roster) {
+  if (item.type !== 'hero_fragment') {
+    return '<div class="inv-detail__hint">Used from the hero screen</div>' + mainActHtml('Level a hero ›', 'goto-heroes');
+  }
+  const hero = roster.find(h => h.id === item.targetHeroId);
+  const label = `Open ${escapeHtml(hero?.name ?? item.targetHeroId)} ›`;
+  return `<div class="inv-detail__acts"><button type="button" class="btn btn-sm btn-success inv-act-main" data-act="goto-hero" data-hero="${escapeHtml(item.targetHeroId)}">${label}</button></div>`;
 }
 
 function mainActHtml(label, act, cls = 'btn-success') {
@@ -74,9 +73,9 @@ function ownedCardHtml(item, roster) {
   return null;
 }
 
-export function actionHtml(action, item, heroes, roster = []) {
-  if (action === 'use') return qtyHtml() + useActsHtml(item.id, false);
-  if (action === 'hero') return chipsHtml(heroes) + qtyHtml() + useActsHtml(item.id, true);
+export function actionHtml(action, item, roster = []) {
+  if (action === 'use') return qtyHtml() + useActsHtml(item.id);
+  if (action === 'hero') return heroRouteHtml(item, roster);
   if (action === 'speedup') return '<div class="inv-detail__hint"></div>' + mainActHtml('Use on timer', 'timer');
   if (action === 'boost') return BOOST_ACTS;
   if (action === 'fragment') return '<div class="inv-detail__hint"></div>' + mainActHtml('Recruit in Hero Quarters ›', 'recruit', 'inv-goto-recruit');

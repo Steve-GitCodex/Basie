@@ -20,6 +20,7 @@
 import { NavigationUI } from './controllers/NavigationUI.js';
 import { ResourceChips } from './hud/ResourceChips.js';
 import { PlayerPlate }   from './hud/PlayerPlate.js';
+import { ChipPopover }   from './hud/ChipPopover.js';
 import { BuildingsUI }  from './controllers/BuildingsUI.js';
 import { BarracksUI }   from './controllers/BarracksUI.js';
 import { HeroesUI }     from './controllers/HeroesUI.js';
@@ -72,6 +73,10 @@ export class UIManager {
     });
     this._resourceChips = new ResourceChips({ rm: systems.rm, bm: systems.bm });
     this._playerPlate   = new PlayerPlate({ user: systems.user });
+    this._chipPopover   = new ChipPopover({ rm: systems.rm, bm: systems.bm, user: systems.user, buffSystems: {
+      buffs: systems.buffs, worldMap: systems.worldMap, tech: systems.tech, user: systems.user, bm: systems.bm,
+      heroes: systems.heroes, events: systems.events, rm: systems.rm,
+    } });
 
     this._buildings = new BuildingsUI({
       rm:            systems.rm,
@@ -216,6 +221,7 @@ export class UIManager {
     this._navigation.init();
     this._resourceChips.init();
     this._playerPlate.init();
+    this._chipPopover.init();
     this._buildings.init();
     this._barracks.init();
     this._military.init();

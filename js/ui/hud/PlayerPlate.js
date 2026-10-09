@@ -1,6 +1,5 @@
 import { eventBus } from '../../core/EventBus.js';
 import { VIP_TIERS } from '../../entities/GAME_DATA.js';
-import { icon } from '../icons.js';
 
 export class PlayerPlate {
   constructor({ user }) {
@@ -33,7 +32,7 @@ export class PlayerPlate {
     const tier = this._user?.getVipTier() ?? 0;
     if (tier <= 0) { badge.classList.add('hidden'); return; }
     const tierCfg = VIP_TIERS.find(t => t.tier === tier);
-    badge.innerHTML = `${icon('crown')} ${tierCfg?.label ?? `VIP ${tier}`}`;
+    badge.textContent = tierCfg?.label ?? `VIP ${tier}`;
     badge.title = tierCfg?.description ?? '';
     badge.classList.remove('hidden');
     badge.dataset.vipTier = tier;

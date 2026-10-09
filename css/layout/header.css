@@ -10,7 +10,7 @@
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, max-content) minmax(0, 1fr) auto;
   grid-template-areas: "plate res wallet";
   align-items: center;
   column-gap: var(--space-3);
@@ -21,13 +21,13 @@
   flex-shrink: 0;
 }
 
-.hud-plate { grid-area: plate; min-width: 0; }
+.hud-plate { grid-area: plate; min-width: 0; justify-self: start; max-width: 100%; }
 
 .resource-bar {
   grid-area: res;
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 7.5rem);
+  grid-auto-columns: max-content;
   justify-content: start;
   gap: var(--space-2);
   min-width: 0;
@@ -40,114 +40,122 @@
   gap: var(--space-2);
 }
 
-/* Chips: icon beside a value over a capacity line */
 .game-header .resource-chip {
   position: relative;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  grid-template-areas: "icon value" "icon cap";
+  display: flex;
   align-items: center;
-  column-gap: 6px;
+  gap: 5px;
   min-width: 0;
-  min-height: 34px;
-  padding: 3px 8px 5px 6px;
+  min-height: 32px;
+  padding: 0 9px 0 4px;
   overflow: hidden;
-  line-height: 1.1;
+  background: var(--clr-bg-elevated);
+  border: 1px solid var(--clr-border);
+  border-radius: 16px;
+  box-shadow: none;
 }
 .game-header .res-data,
 .game-header .res-rate-col { display: contents; }
-.game-header .res-icon { grid-area: icon; }
-.game-header .res-name { display: none; }
+.game-header .res-name,
+.game-header .res-cap,
+.game-header .res-rate { display: none; }
+.game-header .res-icon {
+  width: 18px;
+  height: 18px;
+  background: color-mix(in hsl, var(--rc, var(--clr-text-secondary)) 30%, var(--clr-bg-elevated));
+  box-shadow: none;
+}
+.game-header .res-icon::before { width: 11px; height: 11px; }
 .game-header .res-value {
-  grid-area: value;
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
-  font-size: 0.8125rem;
+  font-family: var(--font-heading);
+  font-size: 14px;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-}
-.game-header .res-cap {
-  grid-area: cap;
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  font-size: 0.6875rem;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-.game-header .res-cap:empty { display: none; }
-.game-header .res-rate {
-  grid-area: rate;
-  display: none;
-  min-height: 0;
-  font-size: 0.6875rem;
 }
 
+.game-header .resource-bar .resource-chip::before {
+  content: "";
+  position: absolute;
+  left: 12px; right: 12px; bottom: 2px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--clr-bg-panel);
+}
 .game-header .resource-bar .resource-chip::after {
   content: "";
   position: absolute;
-  left: 6px; right: 8px; bottom: 2px;
+  left: 12px; right: 12px; bottom: 2px;
   height: 2px;
   border-radius: 2px;
-  background: var(--rc, #6a9cb5);
+  background: var(--rc, var(--clr-text-secondary));
   transform: scaleX(var(--fill, 0));
   transform-origin: left;
   opacity: 0.85;
   transition: transform 0.3s ease;
 }
-#res-wood  { --rc: var(--clr-res-wood); }
-#res-stone { --rc: var(--clr-res-stone); }
-#res-food  { --rc: var(--clr-res-food); }
-#res-iron  { --rc: var(--clr-res-iron); }
-#res-water { --rc: var(--clr-res-water); }
+#res-wood    { --rc: var(--clr-res-wood); }
+#res-stone   { --rc: var(--clr-res-stone); }
+#res-food    { --rc: var(--clr-res-food); }
+#res-iron    { --rc: var(--clr-res-iron); }
+#res-water   { --rc: var(--clr-res-water); }
+#res-money   { --rc: var(--clr-res-money); }
+#res-diamond { --rc: var(--clr-res-diamond); }
 
-.resource-chip--near .res-cap { color: var(--clr-warning); }
-.resource-chip--full .res-cap {
-  color: var(--clr-danger);
-  animation: capacity-pulse 2.4s ease-in-out infinite;
+.game-header .resource-chip--near {
+  border-color: color-mix(in srgb, var(--clr-warning) 55%, transparent);
 }
-.resource-chip--low { border-color: var(--clr-danger); }
+.game-header .resource-bar .resource-chip--near::after { background: var(--clr-warning); }
+.game-header .resource-chip--full {
+  border-color: color-mix(in srgb, var(--clr-danger) 60%, transparent);
+  animation: chip-full-pulse 1.6s ease-in-out infinite;
+}
+.game-header .resource-bar .resource-chip--full::after { background: var(--clr-danger); }
+.game-header .resource-chip--low { border-color: var(--clr-danger); }
 
-@keyframes capacity-pulse {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.45; }
+@keyframes chip-full-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50%      { box-shadow: 0 0 0 3px color-mix(in srgb, var(--clr-danger) 18%, transparent); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .resource-chip--full .res-cap { animation: none; }
+  .game-header .resource-chip--full { animation: none; }
 }
 
 .hud-wallet .resource-chip { flex-shrink: 0; }
-.resource-chip--premium {
-  background: linear-gradient(180deg, hsla(45, 45%, 16%, 0.72), hsla(40, 42%, 10%, 0.88));
-  border: 1px solid hsla(45, 70%, 55%, 0.35);
+.game-header .res-plus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 2px;
+  border-radius: 50%;
+  background: var(--clr-success);
+  color: var(--clr-bg-base);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
 }
-#res-diamond.resource-chip--premium {
-  background: linear-gradient(180deg, hsla(190, 45%, 16%, 0.72), hsla(195, 45%, 10%, 0.88));
-  border-color: hsla(190, 70%, 55%, 0.4);
-}
-.resource-chip--premium .res-value { font-weight: 700; }
 
-/* Player Chip in Header */
 .player-chip {
   position: relative;
+  width: fit-content;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   min-height: 34px;
   max-width: 100%;
-  padding: 3px 9px 3px 4px;
-  background: var(--clr-bg-elevated);
-  border: 1px solid var(--clr-border);
-  border-radius: var(--radius-full);
+  padding: 0 6px 0 0;
+  border-radius: 8px;
   cursor: pointer;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
+  transition: background var(--transition-fast);
 }
-
-.player-chip:hover {
-  background: hsla(205, 40%, 14%, 0.9);
-  border-color: hsla(32, 70%, 55%, 0.5);
-}
+.player-chip:hover,
+.player-chip[aria-expanded="true"] { background: color-mix(in srgb, var(--clr-text-primary) 6%, transparent); }
+.game-header [role="button"]:focus-visible { outline: 2px solid var(--clr-primary); outline-offset: 1px; }
 
 .player-data {
   display: flex;
@@ -161,41 +169,40 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: var(--text-sm);
-  font-weight: 600;
+  font-family: var(--font-heading);
+  font-size: 13px;
+  font-weight: 700;
   color: var(--clr-text-primary);
 }
 
 .player-level {
   font-size: 0.6875rem;
-  color: var(--clr-primary-light);
+  color: var(--clr-text-secondary);
   font-weight: 500;
 }
 
-@media (min-width: 1200px) {
-  .resource-bar { grid-auto-columns: minmax(0, 8.75rem); }
-  .game-header .resource-chip {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-areas: "icon value rate" "icon cap rate";
-  }
-  .game-header .res-rate { display: block; align-self: center; }
-}
-
-@media (max-width: 1000px) {
-  .game-header .resource-chip {
-    column-gap: 3px;
-    padding: 2px 3px 4px;
-  }
-  .game-header .res-icon { width: 16px; height: 16px; }
-  .game-header .res-icon::before { width: 11px; height: 11px; }
-  .game-header .res-value { font-size: 0.75rem; }
-  .game-header .resource-bar .resource-chip::after { left: 3px; right: 3px; }
+.game-header .player-avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  font-size: 1.05rem;
+  flex-shrink: 0;
+  border: 1px solid var(--clr-primary);
+  border-radius: 6px;
+  background: var(--clr-bg-elevated);
 }
 
 @media (min-width: 701px) and (max-width: 1000px) {
-  .player-name { max-width: 7ch; }
-  #buff-badge-label,
-  .hud-wallet .res-cap { display: none; }
+  .game-header { column-gap: var(--space-2); padding-inline: var(--space-2); }
+  .resource-bar,
+  .hud-wallet { gap: 4px; }
+  .game-header .resource-chip { gap: 4px; padding: 0 7px 0 3px; }
+}
+
+@media (min-width: 701px) and (max-width: 800px) {
+  .game-header #buff-badge-label { display: none; }
+  .player-name { max-width: 10ch; }
 }
 
 @media (max-width: 700px) {
@@ -213,21 +220,49 @@
     justify-content: stretch;
     gap: 4px;
   }
+  .game-header .resource-bar .resource-chip {
+    justify-content: center;
+    gap: 4px;
+    padding: 0 4px;
+    border-radius: 6px;
+  }
+  .game-header .resource-bar .res-icon { width: 16px; height: 16px; }
+  .game-header .resource-bar .res-icon::before { width: 10px; height: 10px; }
+  .game-header .resource-bar .res-value { font-size: 13px; }
+  .game-header .resource-bar .resource-chip::before,
+  .game-header .resource-bar .resource-chip::after { left: 6px; right: 6px; }
+}
+
+@media (max-width: 700px) {
+  .game-header .resource-bar--six { gap: 3px; }
+  .game-header .resource-bar--six .resource-chip { gap: 3px; padding: 0 3px; }
+  .game-header .resource-bar--six .res-icon { width: 14px; height: 14px; }
+  .game-header .resource-bar--six .res-icon::before { width: 9px; height: 9px; }
+  .game-header .resource-bar--six .res-value { font-size: 12px; }
 }
 
 @media (max-width: 400px) {
   #res-money,
-  #buff-badge-label { display: none; }
+  .game-header #buff-badge-label { display: none; }
 }
 
 /* Achievements unclaimed badge — gold to distinguish from red mail badge */
 #achievements-badge {
+  top: -4px;
+  right: auto;
+  left: 26px;
   background: var(--clr-gold, #f59e0b);
   color: #000;
   font-size: 0.6875rem;
 }
 
-.player-avatar { font-size: 1.05rem; flex-shrink: 0; }
+#buff-badge-label {
+  display: inline-block;
+  text-align: center;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.buff-hud-badge:not(.buff-hud-badge--idle) #buff-badge-label { min-width: 10ch; }
 
 /* VIP Badge on player chip */
 .vip-badge {

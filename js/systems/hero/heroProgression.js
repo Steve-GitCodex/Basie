@@ -6,6 +6,7 @@ import {
   AWAKENING_CONFIG,
   XP_CONFIG,
 } from '../../entities/GAME_DATA.js';
+import { xpToNext as xpToNextFor } from './heroXpPlan.js';
 import { reconcileSkillLevels, effectValueAt, isUnlocked, groupedSkillsFor } from './heroSkills.js';
 
 export class HeroProgression {
@@ -15,8 +16,7 @@ export class HeroProgression {
 
   /** XP required to advance from `level` to `level + 1` for a given tier. */
   xpToNext(level, tier) {
-    const tierMult = XP_CONFIG.tierMult[tier] ?? 1;
-    return Math.round((XP_CONFIG.baseXpPerLevel + XP_CONFIG.xpPerLevelStep * (level - 1)) * tierMult);
+    return xpToNextFor(level, tier);
   }
 
   /** Hero level cap, gated by Hero Quarters level. */

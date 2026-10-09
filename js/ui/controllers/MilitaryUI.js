@@ -13,6 +13,7 @@ import { eventBus } from '../../core/EventBus.js';
 import { UNITS_CONFIG, BUILDINGS_CONFIG, UNIT_TIER_REQUIREMENTS } from '../../entities/GAME_DATA.js';
 import { RES_META, fmt } from '../uiUtils.js';
 import { icon, iconFromEmoji } from '../icons.js';
+import { levelTable } from '../../systems/building/levelTable.js';
 
 /** Trainer buildings, in pager order. */
 const MILITARY_BUILDINGS = [
@@ -56,9 +57,9 @@ export class MilitaryUI {
   }
 
   _slotData(buildingId, level) {
-    const cfg   = BUILDINGS_CONFIG[buildingId];
-    const slots = cfg?.trainingSlots ?? [];
-    return slots[Math.min(Math.max(level - 1, 0), slots.length - 1)] ?? null;
+    const slots = BUILDINGS_CONFIG[buildingId]?.trainingSlots;
+    if (!slots) return null;
+    return levelTable(slots, Math.max(level - 1, 0), `${buildingId}.trainingSlots`);
   }
 
   /** Per-tier derived state: locked? reason? owned count? affordability? */

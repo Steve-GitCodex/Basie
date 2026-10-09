@@ -1,8 +1,13 @@
-# Hero level-up sheet (target design, not built)
+# Hero level-up sheet (built 2026-10-08)
 
 Hero XP items are spent from the hero's own page, through a **Level up** sheet. The Inventory and Trading Post route
 there; they never pick a hero. Decided 2026-10-07 (ADR 0046). Mockup:
 `docs/10-design/mockups/hero-xp/hero-levelup-v1.html`.
+
+**Built (2026-10-08).** Three deviations from the rules below:
+- On desktop the sheet is a viewport-fixed 420px right-hand panel, not literally over the info column (phone, 700px and below, is the bottom sheet as designed).
+- Use issues one `useItem` per row and stops before a row once the hero reaches the level cap; the remaining items stay owned.
+- `hero:levelUp` events are coalesced per hero per tick into one "<name> Lv a → b" toast (also for battle XP); the sheet itself toasts "+N XP" only when no level was crossed.
 
 ## Rules
 

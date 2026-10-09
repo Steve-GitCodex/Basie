@@ -14,6 +14,7 @@
 export class TooltipService {
   constructor() {
     this._el = null;
+    this._pointerType = 'mouse';
   }
 
   init() {
@@ -25,9 +26,14 @@ export class TooltipService {
 
     // Use event delegation on the document so dynamically-created elements
     // with [data-tooltip] or [data-tooltip-html] are handled without re-registering listeners.
+    document.addEventListener('pointerdown', e => { this._pointerType = e.pointerType; }, true);
+    document.addEventListener('pointerover', e => { this._pointerType = e.pointerType; }, true);
+
     document.addEventListener('mouseover', e => {
       const target = e.target.closest('[data-tooltip], [data-tooltip-html]');
       if (!target) return;
+      if (target.hasAttribute('data-tooltip-mouse-only') && this._pointerType !== 'mouse') return;
+      if (target.getAttribute('aria-expanded') === 'true') { this._hide(); return; }
       const isHtml = 'tooltipHtml' in target.dataset;
       const text   = isHtml ? target.dataset.tooltipHtml : target.dataset.tooltip;
       if (!text) return;
@@ -85,7 +91,9 @@ export class TooltipService {
     el.style.removeProperty('opacity');
 
     // Trigger transition
-    requestAnimationFrame(() => el.classList.add('visible'));
+    requestAnimationFrame(() => {
+      if (target.getAttribute('aria-expanded') !== 'true') el.classList.add('visible');
+    });
   }
 
   _hide() {

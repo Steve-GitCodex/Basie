@@ -1,10 +1,12 @@
 // @see docs/20-decisions/0033-dev-launcher.md — injected only by the Basie launcher.
-import { sanitizeSlotName } from '/js/core/devSlots.js';
+import { sanitizeSlotName, listDevSlots } from '/js/core/devSlots.js';
 
 const params = new URLSearchParams(location.search);
 const IS_DEV = params.has('dev');
 const TAG = IS_DEV ? `dev:${sanitizeSlotName(params.get('dev'))}` : 'normal';
 const LOG_URL = '/__basie/log';
+const SLOTS_URL = '/__basie/slots';
+const SLOT_POLL_MS = 2000;
 const FLUSH_MS = 500;
 const DEDUPE_MS = 2000;
 const POLL_MS = 1000;
@@ -106,7 +108,20 @@ function listenForChanges() {
   events.addEventListener('reload', () => (IS_DEV ? location.reload() : showChangedNote()));
 }
 
+function reportSlots() {
+  let last = null;
+  const check = () => {
+    const slots = JSON.stringify(listDevSlots(localStorage));
+    if (slots === last) return;
+    last = slots;
+    fetch(SLOTS_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: slots }).catch(() => {});
+  };
+  check();
+  setInterval(check, SLOT_POLL_MS);
+}
+
 captureErrors();
+reportSlots();
 hookLogManager();
 listenForChanges();
 setInterval(flush, FLUSH_MS);

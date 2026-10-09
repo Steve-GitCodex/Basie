@@ -20,8 +20,9 @@ There is **no bottom tab bar** (ADR 0003). The shell is a game HUD layered over 
   offline earnings), whose close callbacks grant rewards. Layers above a panel (`confirmDialog`, `confirmReplace`,
   `SpeedupPicker`) swallow their own Escape first (`preventDefault`).
 - View switching is centralized in `NavigationUI._switchView` / `ui:navigateTo`.
-- HUD: resource bar is `.resource-chip` components (`hud.css`), header actions, player
-  chip. Icons are the unified SVG `icon()` system (50 SVGs in
+- HUD: two-tier header built in `js/ui/hud/` (resource chips, player plate, chip popover; `docs/10-design/topbar.md`), styled
+  by `css/layout/header.css` + `css/components/chip-popover.css`. There is no `#hud-rail`.
+  Icons are the unified SVG `icon()` system (50 SVGs in
   `assets/icons/svg/`) — no emoji in UI.
 
 ## Conventions

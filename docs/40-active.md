@@ -13,13 +13,71 @@
   `js/ui/combat/scene/`, `battle-{scene,field,results}.css`, new tests and `battle-scene-smoke`; deleted
   `BattlePlayback`/`battleFlow`/`battleResultHtml`/`playbackSteps`), plus **Buffs**, the **Inventory modal** and the **Mail hub** (below).
   Tree is commit-ready.
-- Baseline: `npm test` **1123/1123**; `node scripts/check-comments.mjs` **12 violations, all pre-existing**;
+- Baseline: `npm test` **1184/1184**; `node scripts/check-comments.mjs` **12 violations, all pre-existing**;
   boot / tutorial / combat / battle-scene / world / heroes / trading / buffs / inventory / mail / dev-dashboard smokes PASS; dev-smoke PASS except the
   known `dev-anchor-nudger`.
 
+## Dev-session resource caps (2026-10-08)
+
+- `?dev` now grants exactly 500M of each resource, and caps are pinned at 2B by a transient cap floor
+  (`ResourceManager.setCapFloors`, re-asserted on every dev boot). See ADR 0048. Unit tests: 1143/1143. dev-smoke has a new
+  check that passes; `dev-anchor-nudger` `variantFile` still fails, which was already happening before this change.
+
+## Launcher session picker (2026-10-08)
+
+- `run.bat` now starts only the server. It no longer opens a tab. It prints a numbered session list (normal plus every known dev
+  slot), and `[l]` reprints the list and asks for a number. `[o]`/`[d]` are gone. `run.bat dev [slot]` and `run.bat normal` still open a tab.
+- The page bridge POSTs `listDevSlots(localStorage)` to `/__basie/slots` on load and whenever the list changes (2 s poll). The launcher
+  saves it to the gitignored `.basie-launcher-slots.json` so the list is ready at the next startup. The slot list is per origin, so a
+  slot only appears after a tab on that port has loaded once since the slot was created. See ADR 0049. `npm test` 1155/1155; launcher smoke PASS.
+
+## Hero level-up sheet — COMPLETE (2026-10-08, uncommitted)
+
+Plan `2026-10-07-hero-levelup-sheet.md` (ADR 0046). Design: `docs/10-design/hero-levelup.md`.
+
+- **What landed:** `js/systems/hero/heroXpPlan.js` (pure: `xpToNext` single source, `HeroProgression.xpToNext` delegates; `project`, `xpNeeded`, `autoPick`).
+  `js/ui/heroes/LevelUpSheet.js` + `levelUpRows.js` + `css/components/hero-levelup.css`: steppers, preview, Next level / Fill to cap / Clear,
+  Fragments never auto-picked, waste warning, empty state, `role=dialog` focus handling. Mounted on `document.body` at `calc(--z-nav + 20)`;
+  desktop = viewport-fixed 420px right panel, phone (<=700px) = bottom sheet. Closes on Escape, shade, or `ui:viewChanged` away from heroes;
+  re-syncs in place on `inventory:updated` / `heroes:updated` / `building:completed`.
+- **Use:** one `useItem` per row; stops before a row once the hero hits `levelCap` (remaining items stay owned).
+  `levelUpCoalescer.js`: HeroesUI merges `hero:levelUp` per hero per tick into one "<name> Lv a → b" toast (also battle XP); the sheet toasts "+N XP" only when no level crossed.
+- **Hero detail:** Tome buttons and `XP_BUNDLES` removed; Level up / Max level button (disabled at cap). `HeroManager.levelCap()` is a public read.
+- **Inventory:** hero picker removed (chips, `_heroes`/`_heroId`, picker CSS). XP items show "Used from the hero screen" + "Level a hero ›"; fragments of owned heroes "Open <hero> ›"
+  (`ui:navigateTo` heroes + `ui:openHeroDetail`); unowned-hero fragments keep progress + Recruit. `useItemFlow` 'hero' action navigates to Heroes (Trading Post Use routes there too).
+  Dead CSS removed (`.btn-xp-bundle`, `.xp-qty-badge`, `.hero-xp-hint`, `.inv-hero-picker`, `.inv-picker-*`).
+- **Tests:** `heroXpPlan.test.js`, `levelUpCoalescer.test.js`; browser step modules `heroLevelupSteps.mjs` (heroes-smoke) and `inventoryRouteSteps.mjs` (inventory + trading smokes).
+  `npm test` 1184/1184; check-comments 12 (pre-existing); heroes (3 consecutive), boot, tutorial, trading smokes PASS.
+- **Known issues:** inventory-smoke 'full storage preview shows requested amount and room per resource' fails, and also failed before this plan (likely the dev cap floor, ADR 0048).
+  Desktop sheet is a right panel, not over the info column (CSS-only to change). At cap with XP wasted the gain bar fills to 100%. Double-click on Use may leak a click under the closed sheet (parked).
+  Item list is frozen at sheet open; LevelUpSheet bus subscriptions are never removed (singleton). No smoke for the HQ-upgrade cap refresh; the "+N XP" toast text has no automated check.
+- **Next steps:** Steve commits. Fix the inventory-smoke storage-preview failure in a separate session. Remaining plans: 2, 3, 4.
+
+## Building levels: safety foundation — COMPLETE (2026-10-08, uncommitted)
+
+Plan `2026-10-07-building-levels-safety.md` (ADR 0044), run subagent-driven; final review Ready.
+
+- **What landed:** `js/systems/building/buildingCurve.js` + data `js/entities/data/buildingCurve.js` (`BUILDING_CURVE`,
+  `ERA_HQ`, `HQ_MAX = 30`). Every cost and time site (BuildingManager charge + price, BuildingInfoPanel, tutorial estimate in
+  ResourceManager) uses `upgradeCost`/`upgradeTime`. `buildingRules.scaleCost` and every `costMultiplier` are deleted.
+  `levelTable.js` replaces silent `?? 0`/`?? null`/`Math.min(level-1, …)` lookups and throws `<id>.<field>: no entry for level N`;
+  `trainingSlots.js` (`trainingSlotAt`/`levelStatsAt`, null at level 0) consolidates the training-slot and Rally Point lookups.
+  Cafeteria reads `house.populationCapacityPerLevel`. `gameData.test.js` validates every per-level table against `maxLevel`.
+- **Balance:** HQ 1–10 cost and time are unchanged exactly. **Non-HQ buildings now use the 1.65 curve** (their multipliers were 1.6–2.5),
+  so high-multiplier buildings such as Hero Quarters are much cheaper at L10. This is intended by ADR 0044; plan 2 trims base costs.
+  The Info panel now shows the floored price that is actually charged (it used to round).
+- **Data gaps:** none. Every table already covered `maxLevel` (Rally Point `maxLevel` is 6 with 6 rows).
+- **Tests:** `npm test` 1171/1171; check-comments 12 (pre-existing); boot / tutorial / heroes / world smokes PASS.
+- **Carry into plan 2 (scale):** `bandedFactor` plateaus silently past the last band's `upTo` (add a guard test: last band ≥ `HQ_MAX`
+  and ≥ every `maxLevel`); the HQ parity test in `buildingCurve.test.js` hard-codes `1.65`/`< 10` on purpose; add `levelCap`
+  clamp tests and `trainingSlotAt`/`levelStatsAt` unit tests; `MilitaryUI._slotData` is still a hand-written slot lookup;
+  `levelStatsAt` could move to a neutral file name. Tiny tidies: the regex in `buildingEconomy.test.js` (`\.` inside a template
+  literal) and a dynamic `import()` in `buildingCurve.test.js`.
+- **Next steps:** Steve commits. Next plan: `2026-10-07-building-levels-scale.md` in a fresh session.
+
 ## PENDING PLANS — read this first (2026-10-07)
 
-Six plans are written and not built. Each one is self-contained (spec links, constraints, failing tests first,
+Five plans were written; A, B and 1 are built. Each one is self-contained (spec links, constraints, failing tests first,
 checkpoints).
 
 **One plan per session (Steve's rule).** Never run two plans in one session, and never run a plan in the session that
@@ -31,9 +89,9 @@ Follow the session protocol in `CLAUDE.md`, which means updating this file and t
 
 | # | Plan | Depends on | What it does |
 |---|---|---|---|
-| A | `2026-10-07-topbar-two-tier.md` | none (independent) | Responsive two-tier header, compact values, chip popover (ADR 0041) |
-| B | `2026-10-07-hero-levelup-sheet.md` | none (independent) | Hero XP items are spent only from the hero page, through a Level up sheet (steppers, preview, Next level / Fill to cap). The Inventory and Trading Post route to Heroes (ADR 0046) |
-| 1 | `2026-10-07-building-levels-safety.md` | none | Shared `buildingCurve.js`, `levelTable` (no silent 0/null), per-level table validation. **No balance change.** |
+| A | `2026-10-07-topbar-two-tier.md` | none (independent) | **BUILT 2026-10-08** (ADR 0041, 0047). Responsive two-tier header, compact values, chip popover |
+| B | `2026-10-07-hero-levelup-sheet.md` | none (independent) | **BUILT 2026-10-08** (ADR 0046). Hero XP items are spent only from the hero page, through a Level up sheet (steppers, preview, Next level / Fill to cap). The Inventory and Trading Post route to Heroes (ADR 0046) |
+| 1 | `2026-10-07-building-levels-safety.md` | none | **BUILT 2026-10-08.** Shared `buildingCurve.js`, `levelTable` (no silent 0/null), per-level table validation. HQ 1–10 unchanged; non-HQ buildings moved onto the shared curve. |
 | 2 | `2026-10-07-building-levels-scale.md` | 1 | Max levels to 30, cap rule, HQ chain, tables to 30, gate remap `M`, prod/crates, UI for 30 rows, progression smoke, extensibility guard tests (ADR 0044) |
 | 3 | `2026-10-07-power-stat.md` | 2 (A optional) | `powerMath` + `PowerManager`, enemy power in the stage generator, monster rescale (ADR 0043), profile split + Power block, top-bar power, battle-report power, gauge (campaign panel + anchored world card) (ADR 0045) |
 | 4 | `2026-10-07-player-levels.md` | 2 (3 recommended first, for the Profile Level block) | Level curve, cap and bank, new XP sources, march/survival XP limits, rewards, queued level-up deck (ADR 0045) |
@@ -102,7 +160,49 @@ See "Built to extend" in `building-levels.md` and `power-levels.md`.
   3. `2026-10-07-power-stat.md`
   4. `2026-10-07-player-levels.md`
 
-  Mail is built. The top bar plan is still independent.
+  Mail and the top bar are built.
+
+## Top bar — COMPLETE (2026-10-08, uncommitted)
+
+ADR 0041 (built) + ADR 0047 (as-built divergences), design `docs/10-design/topbar.md`, plan `2026-10-07-topbar-two-tier.md`.
+
+- **What landed:**
+  - Responsive `--header-height` (48 / 86px + safe-area inset), two tiers at 700px and below, `--six` cell mode for the cafeteria.
+  - Single-line pill chips with a 2px fill bar (cap text hidden, exact numbers in the popover); near and full states.
+  - Chip popover with rate and "Full in", a disabled storage action, money and diamond routes.
+  - Cafeteria hover tooltip and popover (Restock, Open cafeteria); `BuildingManager.getCafeteriaDepletion()`.
+  - Mouse-only tooltips on popover chips (`data-tooltip-mouse-only`, `TooltipService`).
+  - Commander popover (plate: name, Level, XP, VIP, Profile button) and buff popover (Active buffs list, Open buffs button);
+    every header element opens the same single popover. The plate's direct profile click and the badge's direct click are gone.
+  - Buff badge reserved width. Dead `sb-*` writes, `#btn-settings` binding and `.hud-rail*` removed.
+- **New files:** `js/ui/hud/{hudFormat,ResourceChips,PlayerPlate,ChipPopover,cafeteriaPopover,commanderPopover}.js`,
+  `js/ui/buffs/buffPopover.js`, `css/components/chip-popover.css`,
+  `tests/browser/{hud-smoke,hudCafeteriaSteps,hudCommanderSteps,hudBuffSteps}.mjs`,
+  `tests/unit/{hudFormat,cafeteriaPopover,commanderPopover,buffPopover}.test.js`.
+- **Tests:** `npm test` **1155/1155**; check-comments **12** (pre-existing); hud-smoke, buffs-smoke, boot-smoke and
+  tutorial-smoke PASS. The hud smokes clear dev cap floors (`rm.setCapFloors?.({})`) before setting caps (ADR 0048 floors caps
+  at 2B under `?dev`).
+- **Deferred minors:**
+  - `ratesChanged` shares the popover tick throttle.
+  - `resize` closes the popover on a mobile URL-bar height change.
+  - No smoke for a popover open across the 700px tier.
+  - The 701-800px band caps the name at 9ch.
+  - Pen input counts as non-mouse.
+  - The hud-smoke touch check launches its own browser outside `withPage` error capture.
+  - `emptyInSec` takes the max over instances, which overstates when stock is uneven.
+  - Cafeteria Restock is a UI-side write (`bm.restockCafeteria`); an intent event or `bm.restockAllCafeterias()` would fix the
+    ADR 0001 drift.
+  - The commander popover re-places on every `user:xpGained` event.
+  - The hud smokes hide a `#modal-overlay` left open by earlier buff steps (test leakage).
+  - ChipPopover's long-lived listeners are never unsubscribed (guarded by `_key`).
+  - `UIManager.js` (743) and `NavigationUI.js` (615) are pre-existing god files.
+- **Known issues (for the ADR 0048 owner, not the top bar):**
+  - `inventory-smoke` "full storage preview shows requested amount and room per resource" fails: under the new floors the dev
+    stockpile (500M) no longer overflows its cap (2B), so there is no "storage room" text.
+  - `trading-smoke.mjs:~267` calls `setCap` under `?dev` without clearing the floors.
+- **Next steps:** Steve commits. Power slot on the plate waits for plan 3 (power stat). Run the remaining pending plans.
+- **Env note:** Playwright had to be reinstalled at `BASIE_PW_ROOT` (the temp dir was wiped): `npm install playwright` +
+  `npx playwright install chromium` there.
 
 ## Shared panel frame — DONE (2026-10-07, uncommitted)
 
@@ -397,7 +497,7 @@ are `staticFiles`, `logView`, `watcher`, `server`, `hotkeys`, `browser`, `launch
 Features:
 - page-load summary lines, with missing files in red plus a bell
 - in-browser errors printed in the terminal, tagged `[normal]` / `[dev:<slot>]`
-- hotkeys `[o] [d] [n] [t] [v] [c] [q]`
+- hotkeys `[l] [n] [t] [v] [c] [q]` (session picker, ADR 0049)
 - dev tabs auto-reload on JS/asset changes; CSS hot-swaps everywhere; normal tabs only get a note
 
 The one game change is `window.game.log = logManager` in `main.js`. Tests: 5 unit files (+35 tests) and

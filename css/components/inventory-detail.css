@@ -45,26 +45,6 @@
 .inv-detail__preview { min-height: 1.3em; font-size: 12px; font-weight: 700; color: var(--clr-success); }
 .inv-detail__warn { color: var(--clr-warning); font-weight: 600; }
 
-.inv-hero-picker { display: flex; flex-wrap: wrap; gap: 5px; }
-.inv-hero-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  font-size: 11px;
-  border: 1px solid var(--clr-border-light);
-  border-radius: 12px;
-  background: var(--clr-bg-panel);
-  color: var(--clr-text-secondary);
-  cursor: pointer;
-}
-.inv-hero-chip small { color: var(--clr-text-muted); }
-.inv-hero-chip--selected {
-  border-color: var(--clr-primary);
-  color: var(--clr-text-primary);
-  background: var(--clr-bg-active);
-}
-
 .inv-detail__hint {
   padding: 6px 8px;
   font-size: 11px;

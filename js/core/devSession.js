@@ -4,6 +4,8 @@ import { sanitizeSlotName } from './devSlots.js';
 
 const RES_KEYS = ['wood', 'stone', 'iron', 'food', 'water', 'money'];
 const TICK_DT = 300;
+export const DEV_GRANT = 5e8;
+export const DEV_CAP = 2e9;
 
 export function isDevSession() {
   return new URLSearchParams(location.search).has('dev');
@@ -34,9 +36,13 @@ export function runDevSession({ engine, userManager, resourceManager, buildingMa
   log(`dev session ready — world unlocked, HQ Lv.${buildingManager.getHQLevel()}`);
 }
 
+export function applyDevCapFloors(rm) {
+  rm.setCapFloors(Object.fromEntries(RES_KEYS.map(k => [k, DEV_CAP])));
+}
+
 function _flood(rm) {
-  for (const k of RES_KEYS) rm.setCap(k, 1e9);
-  rm.add(Object.fromEntries(RES_KEYS.map(k => [k, 1e7])));
+  applyDevCapFloors(rm);
+  for (const k of RES_KEYS) rm.setAmount(k, DEV_GRANT);
 }
 
 function _drainBuilds(bm) {

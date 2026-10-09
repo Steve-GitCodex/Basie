@@ -2,6 +2,7 @@
 import { eventBus } from '../../core/EventBus.js';
 import { UNITS_CONFIG, BUILDINGS_CONFIG, HEROES_CONFIG, HERO_CLASSIFICATIONS } from '../../entities/GAME_DATA.js';
 import { icon, iconFromEmoji } from '../icons.js';
+import { levelStatsAt } from '../../systems/building/trainingSlots.js';
 import { TIER_CSS_SUFFIX, escapeHtml } from '../uiUtils.js';
 import { createSlotRowToggle } from '../barracks/slotRowToggle.js';
 
@@ -412,12 +413,11 @@ export class BarracksUI {
 
       const _squadData = this._s.um?.getSquad(squadId);
       const _bm        = this._s.um?._bm;
-      const _bldgCfg   = BUILDINGS_CONFIG['barracks'];
       const _instId    = _squadData?.barracksInstanceId;
       const _bldgLvl   = _instId
         ? (_bm?.getInstanceLevelOf?.(_instId) ?? _bm?.getLevelOf?.('barracks') ?? 0)
         : (_bm?.getLevelOf?.('barracks') ?? 0);
-      const _lvStats   = _bldgCfg?.levelStats?.[Math.min(_bldgLvl - 1, (_bldgCfg?.levelStats?.length ?? 1) - 1)];
+      const _lvStats   = levelStatsAt('barracks', _bldgLvl);
       const _slotCap   = _lvStats?.slotCapacity ?? Infinity;
       const _curSlotUnit = this._s.um?.getSlotUnit(squadId, slotIndex);
 

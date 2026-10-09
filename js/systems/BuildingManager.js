@@ -19,6 +19,7 @@ import {
   BUILDINGS_CONFIG, QUEUE_CONFIG, CATEGORY_ZONE, inBounds, rectHitsSkeleton,
 } from '../entities/GAME_DATA.js';
 import { buildingRules } from './building/buildingRules.js';
+import { upgradeCost, upgradeTime } from './building/buildingCurve.js';
 import { buildQueue } from './building/buildQueue.js';
 import { buildingEconomy } from './building/buildingEconomy.js';
 import { heroBuildModifiers } from './building/heroBuildModifiers.js';
@@ -396,12 +397,12 @@ export class BuildingManager {
 
     const pendingLevel = effectiveLevel + 1;
 
-    const cost = this._heroCost(buildingRules.scaleCost(cfg.baseCost, cfg.costMultiplier, effectiveLevel));
+    const cost = this._heroCost(upgradeCost(cfg, effectiveLevel));
     if (!this._rm.canAfford(cost)) return { success: false, reason: 'Insufficient resources.' };
 
     this._rm.spend(cost);
 
-    let buildTimeSec = cfg.buildTime * (effectiveLevel === 0 ? 1 : pendingLevel);
+    let buildTimeSec = upgradeTime(cfg, pendingLevel);
     if (this._techBonuses.buildTimeReduction) {
       const reduction = Math.min(0.80, this._techBonuses.buildTimeReduction);
       buildTimeSec = Math.max(1, Math.floor(buildTimeSec * (1 - reduction)));
@@ -483,6 +484,15 @@ export class BuildingManager {
   // ─────────────────────────────────────────────
 
   getCafeteriaStock() { return this._cafeteria.getStock(); }
+  getCafeteriaDepletion() {
+    const stocks = this._cafeteria.getStock();
+    if (stocks.length === 0) return { drainPerSec: 0, emptyInSec: Infinity };
+    const readings = stocks.map(s => this._cafeteria.depletionOf(s));
+    return {
+      drainPerSec: readings[0].drainRatePerSec,
+      emptyInSec: Math.max(...readings.map(r => r.depletionSec)),
+    };
+  }
   restockCafeteria(instanceId, foodAmount, waterAmount) { return this._cafeteria.restock(instanceId, foodAmount, waterAmount); }
   enableAutomation(type) { this._cafeteria.enableAutomation(type); }
   getAutomations() { return this._cafeteria.getAutomations(); }
@@ -547,7 +557,7 @@ export class BuildingManager {
         const effectiveLevel = completedLevel + queuedCount;
         const activeForInst = queuedForInst.find(q => q.endsAt != null) ?? null;
         const isActivelyBuilding = activeForInst != null;
-        const nextCost = this._heroCost(buildingRules.scaleCost(cfg.baseCost, cfg.costMultiplier, effectiveLevel));
+        const nextCost = this._heroCost(upgradeCost(cfg, effectiveLevel));
         const reqCheck = buildingRules.checkRequirements(cfg.requires, this._rulesCtx);
         const lvlReqCheck = buildingRules.checkRequirements(cfg.levelRequirements?.[effectiveLevel + 1], this._rulesCtx);
         const finalReqMet = reqCheck.met && lvlReqCheck.met;
@@ -559,7 +569,7 @@ export class BuildingManager {
         ];
 
         const rawNextBuildTime = effectiveLevel < cfg.maxLevel
-          ? cfg.buildTime * (effectiveLevel === 0 ? 1 : effectiveLevel + 1)
+          ? upgradeTime(cfg, effectiveLevel + 1)
           : null;
         let nextLevelBuildTime = rawNextBuildTime;
         if (rawNextBuildTime !== null && this._techBonuses.buildTimeReduction) {
@@ -863,7 +873,7 @@ export class BuildingManager {
           || buildingRules.collectMissing(cfg.requires, this._rulesCtx).join(', ')
           || 'Locked');
       const availableIdx = this._findAvailableInstance(cfg.id);
-      const cost = this._heroCost(buildingRules.scaleCost(cfg.baseCost, cfg.costMultiplier, 0));
+      const cost = this._heroCost(upgradeCost(cfg, 0));
       // Free placement always has room in the buildable rect; the packer seats it.
       const hasFreePlot = true;
       out.push({

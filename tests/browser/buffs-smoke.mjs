@@ -29,6 +29,7 @@ await withPage(async ({ page, errors, origin }) => {
   });
 
   await page.click('#buff-hud-badge');
+  await page.click('[data-pop="buffs"]');
   await page.waitForTimeout(200);
   const panelOpen = await hasClass('#buffs-panel', 'open');
 

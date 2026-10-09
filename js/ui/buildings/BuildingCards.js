@@ -4,6 +4,7 @@ import { RES_META, fmt, TIER_CSS_SUFFIX } from '../uiUtils.js';
 import { BUILDINGS_CONFIG, HEROES_CONFIG, HQ_UNLOCK_TABLE, UNITS_CONFIG, TECH_CONFIG } from '../../entities/GAME_DATA.js';
 import { icon, iconFromEmoji } from '../icons.js';
 import { cardIconHtml } from './buildingIcons.js';
+import { levelTable } from '../../systems/building/levelTable.js';
 
 export class BuildingCards {
   /** @param {{ bm, rm, heroes, notifications, requestRender:()=>void }} deps */
@@ -231,8 +232,8 @@ export class BuildingCards {
     const cafeteriaStockHtml = (b.id === 'cafeteria' && b.level > 0) ? (() => {
       const _cfp = BUILDINGS_CONFIG['cafeteria']?.foodCapacityPerLevel  ?? 200;
       const _cwp = BUILDINGS_CONFIG['cafeteria']?.waterCapacityPerLevel ?? 200;
-      const stockCap = Array.isArray(_cfp) ? (_cfp[b.level] ?? 0) : _cfp * b.level;
-      const wtrCap   = Array.isArray(_cwp) ? (_cwp[b.level] ?? 0) : _cwp * b.level;
+      const stockCap = Array.isArray(_cfp) ? levelTable(_cfp, b.level, 'cafeteria.foodCapacityPerLevel') : _cfp * b.level;
+      const wtrCap   = Array.isArray(_cwp) ? levelTable(_cwp, b.level, 'cafeteria.waterCapacityPerLevel') : _cwp * b.level;
       const food  = Math.floor(b.stock?.food  ?? 0);
       const water = Math.floor(b.stock?.water ?? 0);
       const depletionStr = (() => {
@@ -254,7 +255,7 @@ export class BuildingCards {
     // Pre-compute restock cap for cafeteria data-cap attribute (array-safe)
     const _rcfp = BUILDINGS_CONFIG['cafeteria']?.foodCapacityPerLevel ?? 200;
     const cafRestockCap = b.id === 'cafeteria'
-      ? (Array.isArray(_rcfp) ? (_rcfp[b.level] ?? 0) : _rcfp * b.level)
+      ? (Array.isArray(_rcfp) ? levelTable(_rcfp, b.level, 'cafeteria.foodCapacityPerLevel') : _rcfp * b.level)
       : 0;
 
     const queueBadgeHtml = b.queuedCount > 0 && !b.isActivelyBuilding
@@ -419,8 +420,8 @@ export class BuildingCards {
           Object.entries(b.storageCap).forEach(([res, capPerLv]) => {
             const resIcon = RES_META[res]?.icon ?? res;
             const lv  = b.level;
-            const cur = Array.isArray(capPerLv) ? fmt(capPerLv[lv] ?? 0) : fmt(capPerLv * lv);
-            const nxt = Array.isArray(capPerLv) ? fmt(capPerLv[lv + 1] ?? 0) : fmt(capPerLv * (lv + 1));
+            const cur = Array.isArray(capPerLv) ? fmt(levelTable(capPerLv, lv, `${b.id}.storageCap.${res}`)) : fmt(capPerLv * lv);
+            const nxt = Array.isArray(capPerLv) ? fmt(levelTable(capPerLv, lv + 1, `${b.id}.storageCap.${res}`)) : fmt(capPerLv * (lv + 1));
             ttParts.push(`<div class="tt-row"><span class="tt-label">${resIcon} Cap</span><span>+${cur} → <strong>+${nxt}</strong></span></div>`);
           });
         }

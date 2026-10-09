@@ -21,19 +21,13 @@ function resourceToast(systems, cfg, result) {
   systems.notifications?.show('success', cfg.name, text);
 }
 
-function xpToast(systems, heroId, result) {
-  const hero = (systems.heroes?.getRosterWithState?.() ?? []).find(h => h.id === heroId);
-  systems.notifications?.show('success', 'XP Applied', `+${fmt(result.xpAmount ?? 0)} XP to ${hero?.name ?? heroId}`);
-}
-
-function applyUse(systems, itemId, cfg, action, qty, heroId) {
-  const result = systems.inventory.useItem(itemId, { qty, heroId });
+function applyUse(systems, itemId, cfg, qty) {
+  const result = systems.inventory.useItem(itemId, { qty });
   if (!result.success) {
     warn(systems, result.reason);
     return result;
   }
-  if (action === 'hero') xpToast(systems, heroId, result);
-  else resourceToast(systems, cfg, result);
+  resourceToast(systems, cfg, result);
   return result;
 }
 
@@ -67,7 +61,7 @@ async function activateBoost(systems, itemId) {
   return result;
 }
 
-export async function useItemFlow({ systems, itemId, qty = 1, heroId = null, anchorEl = null }) {
+export async function useItemFlow({ systems, itemId, qty = 1, anchorEl = null }) {
   const cfg = INVENTORY_ITEMS[itemId];
   const action = cfg && ACTION_OF_TYPE[cfg.type];
   if (!action || action === 'none') return null;
@@ -78,9 +72,10 @@ export async function useItemFlow({ systems, itemId, qty = 1, heroId = null, anc
     eventBus.emit('ui:openHeroesTab', 'recruit');
     return null;
   }
-  if (action === 'hero' && !heroId) {
-    eventBus.emit('ui:openInventory', { itemId });
+  if (action === 'hero') {
+    eventBus.emit('ui:navigateTo', 'heroes');
+    if (cfg.type === 'hero_fragment') eventBus.emit('ui:openHeroDetail', cfg.targetHeroId);
     return null;
   }
-  return applyUse(systems, itemId, cfg, action, qty, heroId);
+  return applyUse(systems, itemId, cfg, qty);
 }

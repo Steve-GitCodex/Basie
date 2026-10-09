@@ -4,13 +4,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveSafePath, contentType, injectBridge } from './staticFiles.mjs';
 import { isTrustedRequest, sanitizeClientEntries } from './requestGuards.mjs';
+import { sanitizeSlotList } from './sessions.mjs';
 
 const BRIDGE_FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), 'client', 'bridge.js');
 const MAX_LOG_BODY = 64 * 1024;
 const HEARTBEAT_MS = 15_000;
 const NO_STORE = { 'Cache-Control': 'no-store' };
 
-export function createLauncherServer({ root, onRequest, onClientLog, onWarn }) {
+export function createLauncherServer({ root, onRequest, onClientLog, onSlots = () => {}, onWarn }) {
   const clients = new Set();
   let warnedBadPayload = false;
 
@@ -27,6 +28,7 @@ export function createLauncherServer({ root, onRequest, onClientLog, onWarn }) {
       send(res, 200, await fs.readFile(BRIDGE_FILE, 'utf8'), { 'Content-Type': contentType(BRIDGE_FILE) }),
     'GET /__basie/events': (req, res) => openEventStream(req, res),
     'POST /__basie/log': (req, res) => receiveClientLog(req, res),
+    'POST /__basie/slots': (req, res) => receiveSlots(req, res),
   };
 
   function openEventStream(req, res) {
@@ -36,7 +38,16 @@ export function createLauncherServer({ root, onRequest, onClientLog, onWarn }) {
     req.on('close', () => clients.delete(res));
   }
 
-  function receiveClientLog(req, res) {
+  function receiveSlots(req, res) {
+    readJson(req, res, (raw) => {
+      const slots = sanitizeSlotList(raw);
+      if (!slots) return send(res, 400);
+      send(res, 204);
+      onSlots(slots);
+    });
+  }
+
+  function readJson(req, res, handle) {
     const chunks = [];
     let size = 0;
     req.on('data', (c) => {
@@ -50,22 +61,27 @@ export function createLauncherServer({ root, onRequest, onClientLog, onWarn }) {
     });
     req.on('end', () => {
       if (res.writableEnded) return;
-      let entries;
+      let raw;
+      try { raw = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { raw = undefined; }
       try {
-        entries = sanitizeClientEntries(JSON.parse(Buffer.concat(chunks).toString('utf8')));
-      } catch { entries = null; }
+        handle(raw);
+      } catch (e) {
+        onWarn(`${req.url} handler failed: ${e.message}`);
+        if (!res.writableEnded) send(res, 500);
+      }
+    });
+  }
+
+  function receiveClientLog(req, res) {
+    readJson(req, res, (raw) => {
+      const entries = sanitizeClientEntries(raw);
       if (!entries) {
         if (!warnedBadPayload) onWarn('bad client log payload');
         warnedBadPayload = true;
-        send(res, 400);
-        return;
+        return send(res, 400);
       }
       send(res, 204);
-      try {
-        onClientLog(entries);
-      } catch (e) {
-        onWarn(`client log handler failed: ${e.message}`);
-      }
+      onClientLog(entries);
     });
   }
 

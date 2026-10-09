@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import os from 'node:os';
 import { loadPlaywright, collectErrors, bootGuestSandbox, report } from './harness.mjs';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -23,7 +24,8 @@ async function waitFor(check, timeoutMs) {
 
 const touch = (file) => fs.writeFileSync(file, fs.readFileSync(file));
 
-const launcher = spawn(process.execPath, ['scripts/launcher/launch.mjs', '--no-open', '--port', String(PORT)], { cwd: REPO_ROOT });
+const SLOTS_FILE = join(fs.mkdtempSync(join(os.tmpdir(), 'basie-launcher-')), 'slots.json');
+const launcher = spawn(process.execPath, ['scripts/launcher/launch.mjs', '--port', String(PORT), '--slots-file', SLOTS_FILE], { cwd: REPO_ROOT });
 let stdout = '';
 launcher.stdout.on('data', (d) => { stdout += d; });
 launcher.stderr.on('data', (d) => { stdout += d; });
@@ -35,6 +37,7 @@ let errors = [];
 try {
   const pingOk = await waitFor(async () => (await (await fetch(`${ORIGIN}/__basie/ping`)).json()).app === 'basie-launcher', 20_000);
   checks.push({ label: 'ping answers as basie-launcher', ok: pingOk });
+  checks.push({ label: 'startup lists sessions instead of opening a tab', ok: await waitFor(() => stdout.includes('[1] normal'), 3000) });
 
   const html = await (await fetch(`${ORIGIN}/`)).text();
   checks.push({ label: 'served index.html carries the bridge tag', ok: html.includes('/__basie/bridge.js') });
@@ -62,6 +65,11 @@ try {
   await pageB.goto(`${ORIGIN}/index.html?dev=smoke`, { waitUntil: 'domcontentloaded' });
   await pageB.waitForFunction(() => !!window.game?.eventBus, null, { timeout: 20_000 });
   await pageB.waitForTimeout(800);
+  checks.push({
+    label: 'a saved dev slot is reported into the terminal session list',
+    ok: await waitFor(() => /\[\d+\] dev:smoke/.test(stdout), 5000),
+  });
+  checks.push({ label: 'reported slots persist to the slots file', ok: fs.readFileSync(SLOTS_FILE, 'utf8').includes('smoke') });
 
   await pageA.evaluate(() => { window.__marker = 1; });
   touch(CSS_FILE);

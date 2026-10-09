@@ -24,9 +24,9 @@ Deep design lives in `docs/10-design/`; the session handoff is `docs/40-active.m
 
 Run order and how-to: `docs/40-active.md` "PENDING PLANS". Plans live in `docs/superpowers/plans/`.
 
-- [ ] Top bar, two tiers: `2026-10-07-topbar-two-tier.md` (ADR 0041, independent)
-- [ ] Hero level-up sheet, with XP items moved off the Inventory: `2026-10-07-hero-levelup-sheet.md` (ADR 0046, independent)
-- [ ] Building levels, safety foundation: `2026-10-07-building-levels-safety.md` (ADR 0044; must land first)
+- [x] Top bar, two tiers: `2026-10-07-topbar-two-tier.md` (ADR 0041, ADR 0047; built 2026-10-08)
+- [x] Hero level-up sheet, with XP items moved off the Inventory: `2026-10-07-hero-levelup-sheet.md` (ADR 0046, independent) — done 2026-10-08
+- [x] Building levels, safety foundation (built 2026-10-08): `2026-10-07-building-levels-safety.md` (ADR 0044; must land first)
 - [ ] Building levels, scale to HQ 30 + rebalance + content remap: `2026-10-07-building-levels-scale.md` (ADR 0044)
 - [ ] Power stat + monster rescale + gauges: `2026-10-07-power-stat.md` (ADRs 0045, 0043)
 - [ ] Player levels, curve/cap/bank, XP sources, rewards, level-up deck: `2026-10-07-player-levels.md` (ADR 0045)

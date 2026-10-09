@@ -1,4 +1,5 @@
 import { withPage, report, dismissOverlays } from './harness.mjs';
+import { tradingRouteChecks } from './inventoryRouteSteps.mjs';
 
 const waitGame = (page) => page.waitForFunction(() => !!window.game?.eventBus, null, { timeout: 20_000 });
 
@@ -338,6 +339,7 @@ await withPage(async ({ page, errors, origin }) => {
   });
   const clearCollapsed = await sidebarClearance(false);
 
+  const routeCheck = await tradingRouteChecks(page);
   report('trading-smoke', [
     { label: `content clears the open queue sidebar (right ${clearOpen.right} ≤ ${clearOpen.edge})`, ok: clearOpen.right <= clearOpen.edge },
     { label: `exchange chips stay inside the Exchange panel with the sidebar open (${chipOverflow} overflow)`, ok: chipOverflow === 0 },
@@ -378,5 +380,6 @@ await withPage(async ({ page, errors, origin }) => {
     { label: 'opening Market clears the trader dot', ok: traderDotAtHq2 && !traderDotAfterOpen && traderCards === 6 && /^leaves in \d\d:\d\d:\d\d$/.test(traderTimer ?? '') },
     { label: 'buying the first affordable slot shows Sold and owned count rises', ok: !!traderBefore.slotId && traderBought.label === 'Sold' && traderBought.disabled === true && traderBought.owned === traderBefore.owned + 1 },
     { label: 'trader state survives save + reload (same slotIds, sold flag kept)', ok: stockBefore.split(',').length === 6 && stockBefore === stockAfter && stockAfter.includes(traderBefore.slotId + ':true') && dotAfterReload === false },
+    routeCheck,
   ], errors);
 });

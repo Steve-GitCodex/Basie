@@ -8,7 +8,7 @@ import {
   SHOP_CONFIG, INVENTORY_ITEMS, PROD_BONUS_CONFIG, STAT_RULES,
   SURVIVAL_MONSTER, COMBAT_RULES, UNITS_CONFIG,
   DIAMOND_PACKAGES, findShopEntry,
-  TRADER_POOL, FEATURED_ENTRY_IDS, BUFF_STATS,
+  TRADER_POOL, FEATURED_ENTRY_IDS, BUFF_STATS, HQ_UNLOCK_TABLE,
 } from '../../js/entities/GAME_DATA.js';
 
 const allShopEntries = () => [
@@ -306,4 +306,63 @@ test('FEATURED_ENTRY_IDS all resolve via findShopEntry', () => {
 
 test('every buff item declares a known stat', () => {
   for (const it of Object.values(INVENTORY_ITEMS).filter(i => i.type === 'buff')) assert.ok(BUFF_STATS[it.stat], it.id);
+});
+
+const NON_BUILDING_REQUIREMENT_KEYS = new Set(['population']);
+
+function requirementProblems(owner, field, reqs, { allowNonBuilding = false } = {}) {
+  const problems = [];
+  for (const [key, level] of Object.entries(reqs ?? {})) {
+    const target = BUILDINGS_CONFIG[key];
+    if (!target) {
+      if (!(allowNonBuilding && NON_BUILDING_REQUIREMENT_KEYS.has(key))) {
+        problems.push(`${owner} ${field} names unknown building '${key}'`);
+      }
+    } else if (level > target.maxLevel) {
+      problems.push(`${owner} ${field} needs ${key} L${level} above its maxLevel ${target.maxLevel}`);
+    }
+  }
+  return problems;
+}
+
+test('building per-level tables cover every level up to maxLevel', () => {
+  const problems = [];
+  for (const b of buildings) {
+    const indexedByLevel = [
+      ...Object.entries(b.storageCap ?? {}).map(([k, arr]) => [`storageCap.${k}`, arr]),
+      ['foodCapacityPerLevel', b.foodCapacityPerLevel],
+      ['waterCapacityPerLevel', b.waterCapacityPerLevel],
+    ];
+    for (const [field, arr] of indexedByLevel) {
+      if (arr && arr.length < b.maxLevel + 1) {
+        problems.push(`${b.id} ${field} length ${arr.length} < maxLevel+1 (${b.maxLevel + 1})`);
+      }
+    }
+    for (const field of ['levelStats', 'trainingSlots']) {
+      if (b[field] && b[field].length < b.maxLevel) {
+        problems.push(`${b.id} ${field} length ${b[field].length} < maxLevel (${b.maxLevel})`);
+      }
+    }
+  }
+  assert.deepEqual(problems, []);
+});
+
+test('building level requirements and conditions stay within referenced maxLevels', () => {
+  const problems = [];
+  for (const b of buildings) {
+    problems.push(...requirementProblems(b.id, 'requires', b.requires));
+    for (const [lv, reqs] of Object.entries(b.levelRequirements ?? {})) {
+      if (Number(lv) > b.maxLevel) problems.push(`${b.id} levelRequirements key ${lv} > maxLevel ${b.maxLevel}`);
+      problems.push(...requirementProblems(b.id, `levelRequirements[${lv}]`, reqs, { allowNonBuilding: true }));
+    }
+    for (const slot of b.instanceSlots ?? []) {
+      problems.push(...requirementProblems(b.id, `instanceSlots[${slot.index}].condition`, slot.condition));
+    }
+  }
+  assert.deepEqual(problems, []);
+});
+
+test('HQ_UNLOCK_TABLE keys do not exceed townhall maxLevel', () => {
+  const over = Object.keys(HQ_UNLOCK_TABLE).filter(lv => Number(lv) > BUILDINGS_CONFIG.townhall.maxLevel);
+  assert.deepEqual(over, [], `HQ_UNLOCK_TABLE keys above townhall.maxLevel: ${over}`);
 });

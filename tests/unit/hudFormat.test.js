@@ -41,4 +41,6 @@ test('formatDuration', () => {
   assert.equal(formatDuration(12), '12s');
   assert.equal(formatDuration(245.5), '4m 05s');
   assert.equal(formatDuration(NaN), '0s');
+  assert.equal(formatDuration(Infinity), '—');
+  assert.equal(formatDuration(-Infinity), '—');
 });

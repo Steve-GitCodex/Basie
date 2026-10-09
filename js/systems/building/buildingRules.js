@@ -15,15 +15,6 @@ function reqName(bId) {
   return cfg?.shortName ?? cfg?.name ?? bId;
 }
 
-/** Cost of a level scaled geometrically from the base cost. */
-function scaleCost(baseCost, multiplier, currentLevel) {
-  const out = {};
-  for (const [res, amount] of Object.entries(baseCost)) {
-    out[res] = Math.floor(amount * Math.pow(multiplier, currentLevel));
-  }
-  return out;
-}
-
 /** First-failure prerequisite check. @returns {{ met: boolean, reason?: string }} */
 function checkRequirements(requires, ctx) {
   if (!requires) return { met: true };
@@ -68,4 +59,4 @@ function checkCondition(condition, ctx) {
   return Object.entries(condition).every(([bId, minLv]) => ctx.getLevelOf(bId) >= minLv);
 }
 
-export const buildingRules = { scaleCost, checkRequirements, collectMissing, checkCondition };
+export const buildingRules = { checkRequirements, collectMissing, checkCondition };

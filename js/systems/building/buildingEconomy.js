@@ -8,6 +8,7 @@
  * portable to an authoritative server.
  */
 import { BUILDINGS_CONFIG } from '../../entities/GAME_DATA.js';
+import { levelTable } from './levelTable.js';
 
 /**
  * Sum storage/population/cafeteria-stock caps across every built instance and
@@ -30,7 +31,7 @@ function computeStorageCaps(buildings, techBonuses = {}, heroStorageBonus = 0) {
         if ((inst.level ?? 0) <= 0) continue;
         for (const [res, perLevel] of Object.entries(cfg.storageCap)) {
           const contrib = Array.isArray(perLevel)
-            ? (perLevel[inst.level] ?? 0)
+            ? levelTable(perLevel, inst.level, `${id}.storageCap.${res}`)
             : perLevel * inst.level;
           caps[res] = (caps[res] ?? 0) + contrib;
         }
@@ -51,8 +52,8 @@ function computeStorageCaps(buildings, techBonuses = {}, heroStorageBonus = 0) {
       const wpArr = cfg.waterCapacityPerLevel ?? 200;
       for (const inst of instances) {
         const lv = inst.level ?? 0;
-        foodStoreCap  += Array.isArray(fpArr) ? (fpArr[lv] ?? 0) : lv * fpArr;
-        waterStoreCap += Array.isArray(wpArr) ? (wpArr[lv] ?? 0) : lv * wpArr;
+        foodStoreCap  += Array.isArray(fpArr) ? levelTable(fpArr, lv, 'cafeteria.foodCapacityPerLevel') : lv * fpArr;
+        waterStoreCap += Array.isArray(wpArr) ? levelTable(wpArr, lv, 'cafeteria.waterCapacityPerLevel') : lv * wpArr;
       }
     }
   }

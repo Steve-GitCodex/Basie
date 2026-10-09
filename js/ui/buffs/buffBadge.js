@@ -19,10 +19,6 @@ export class BuffBadge {
     this._el = document.getElementById('buff-hud-badge');
     this._labelEl = document.getElementById('buff-badge-label');
     if (!this._el || !this._labelEl) return;
-    this._el.addEventListener('click', () => {
-      eventBus.emit('ui:click');
-      eventBus.emit('ui:openBuffs');
-    });
     subscribeBuffRefresh(this._s, () => this._recompute(), ['world:buffExpired']);
     eventBus.on('tick:ui', () => this._paint());
     this._recompute();

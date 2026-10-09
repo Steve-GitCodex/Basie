@@ -10,6 +10,7 @@
 import { eventBus }         from '../../core/EventBus.js';
 import { RES_META, fmt }    from '../uiUtils.js';
 import { BUILDINGS_CONFIG } from '../../entities/GAME_DATA.js';
+import { upgradeCost, upgradeTime } from '../../systems/building/buildingCurve.js';
 import { GRIT_BUILDING_MAP } from '../city/cityAssets.js';
 import { icon, iconFromEmoji } from '../icons.js';
 import { buildingIconUrl } from './buildingIcons.js';
@@ -37,15 +38,12 @@ export class BuildingInfoPanel {
     const sprite   = buildingIconUrl(buildingId) ?? GRIT_BUILDING_MAP[buildingId]?.[1] ?? '';
     const hasEffectCol = this._hasPerLevelEffect(cfg);
 
-    // Per-level progression rows. Upgrade cost = baseCost × costMultiplier^(level-1);
-    // build time scales the same way BuildingManager does: base × level (×1 for Lv.1).
     const rows = [];
     for (let lvl = 1; lvl <= cfg.maxLevel; lvl++) {
-      const mult = Math.pow(cfg.costMultiplier ?? 1, lvl - 1);
-      const cost = Object.entries(cfg.baseCost ?? {})
-        .map(([res, amt]) => `<span class="binfo-cost">${RES_META[res]?.icon ?? '?'} ${fmt(Math.round(amt * mult))}</span>`)
+      const cost = Object.entries(upgradeCost(cfg, lvl - 1))
+        .map(([res, amt]) => `<span class="binfo-cost">${RES_META[res]?.icon ?? '?'} ${fmt(amt)}</span>`)
         .join(' ') || '—';
-      const buildSecs = Math.round((cfg.buildTime ?? 0) * (lvl === 1 ? 1 : lvl));
+      const buildSecs = Math.round(upgradeTime(cfg, lvl));
       const cls   = lvl === curLevel ? 'binfo-row binfo-row--current' : 'binfo-row';
       const effCell = hasEffectCol ? `<td>${this._effectAt(cfg, lvl)}</td>` : '';
       rows.push(`<tr class="${cls}"><td>Lv.${lvl}</td>${effCell}<td>${cost}</td><td>${fmt(buildSecs)}s</td></tr>`);

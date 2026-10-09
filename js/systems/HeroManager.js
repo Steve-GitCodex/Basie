@@ -63,6 +63,8 @@ export class HeroManager {
   exchangeTierShards(tier, heroId, count)  { return this._recruitment.exchangeTierShards(tier, heroId, count); }
   getPityState(tier)                       { return pityDisclosure(tier, this._pity?.[tier] ?? 0, this.rosterComplete(tier)); }
 
+  levelCap() { return this._progression.levelCap(); }
+
   /** Convert a hero fragment to XP on the target hero */
   useFragmentAsXP(fragmentItemId, heroId) { return this._progression.useFragmentAsXP(fragmentItemId, heroId); }
 

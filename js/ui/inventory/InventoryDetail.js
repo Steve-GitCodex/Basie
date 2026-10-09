@@ -7,6 +7,7 @@ import { ACTION_OF_TYPE } from './inventoryTabs.js';
 import { headHtml, actionHtml } from './detailBlocks.js';
 
 const BUSY_COOLDOWN_MS = 400;
+const ROUTE_ACTS = new Set(['recruit', 'goto-heroes', 'goto-hero']);
 const fmt = (n) => Number(n).toLocaleString();
 
 export class InventoryDetail {
@@ -17,8 +18,6 @@ export class InventoryDetail {
     this._item = null;
     this._action = null;
     this._qty = 1;
-    this._heroId = null;
-    this._heroes = [];
     this._els = {};
     this._busy = false;
     this._needed = 0;
@@ -35,14 +34,9 @@ export class InventoryDetail {
     const roster = this._s.heroes.getRosterWithState();
     this._action = ACTION_OF_TYPE[item.type] ?? 'none';
     this._qty = 1;
-    this._heroes = this._action === 'hero' ? roster.filter(h => h.isOwned) : [];
-    if (item.type === 'hero_fragment') {
-      this._heroes = this._heroes.filter(h => h.id === item.targetHeroId);
-      if (!this._heroes.length) this._action = 'fragment';
-    }
+    if (item.type === 'hero_fragment' && !roster.find(h => h.id === item.targetHeroId)?.isOwned) this._action = 'fragment';
     this._needed = roster.find(h => h.id === item.targetHeroId)?.fragmentsNeeded ?? 0;
-    this._heroId = this._heroes[0]?.id ?? null;
-    this._root.innerHTML = headHtml(item) + actionHtml(this._action, item, this._heroes, roster);
+    this._root.innerHTML = headHtml(item) + actionHtml(this._action, item, roster);
     this._cache();
     this._refresh();
   }
@@ -69,7 +63,6 @@ export class InventoryDetail {
     if (this._action === 'speedup') this._refreshSpeedup();
     if (this._action === 'boost') this._refreshBoost();
     if (this._action === 'fragment') this._els.hint.textContent = `Fragments ${this._item.quantity} / ${this._needed}`;
-    this._markHero();
   }
 
   _refreshQty() {
@@ -82,7 +75,7 @@ export class InventoryDetail {
     if (num.value !== value) num.value = value;
     one.hidden = owned < 2;
     many.textContent = owned < 2 ? 'Use' : `Use ×${this._qty}`;
-    one.disabled = many.disabled = this._busy || (this._action === 'hero' && !this._heroId);
+    one.disabled = many.disabled = this._busy;
     this._renderPreview();
   }
 
@@ -92,11 +85,6 @@ export class InventoryDetail {
     const result = this._s.inventory.previewUse(this._item.id, { qty: this._qty });
     if (!result.success) {
       el.textContent = result.reason ?? '';
-      return;
-    }
-    if (this._action === 'hero') {
-      const hero = this._heroes.find(h => h.id === this._heroId);
-      el.textContent = hero ? `+${fmt(result.xpAmount ?? 0)} XP to ${hero.name}` : '';
       return;
     }
     const grants = result.grants ?? {};
@@ -109,12 +97,6 @@ export class InventoryDetail {
     warn.className = 'inv-detail__warn';
     warn.textContent = ` (storage room: ${capped.map(res => `${fmt(grants[res] ?? 0)} ${res}`).join(', ')})`;
     el.append(warn);
-  }
-
-  _markHero() {
-    for (const chip of this._root.querySelectorAll('.inv-hero-chip')) {
-      chip.classList.toggle('inv-hero-chip--selected', chip.dataset.hero === this._heroId);
-    }
   }
 
   _runningTimer() {
@@ -158,22 +140,15 @@ export class InventoryDetail {
     const act = btn.dataset.act;
     if (act === 'dec') return this._setQty(this._qty - 1);
     if (act === 'inc') return this._setQty(this._qty + 1);
-    if (act === 'chip') return this._pickHero(btn.dataset.hero);
     if (act === 'buffs') return eventBus.emit('ui:openBuffs');
-    if (act === 'recruit') this._onClose();
+    if (ROUTE_ACTS.has(act)) this._onClose();
     this._run(act === 'one' ? 1 : this._qty, btn);
-  }
-
-  _pickHero(heroId) {
-    this._heroId = heroId;
-    this._markHero();
-    this._renderPreview();
   }
 
   async _run(qty, anchorEl) {
     this._setBusy(true);
     try {
-      await useItemFlow({ systems: this._s, itemId: this._item.id, qty, heroId: this._heroId, anchorEl });
+      await useItemFlow({ systems: this._s, itemId: this._item.id, qty, anchorEl });
     } finally {
       setTimeout(() => this._setBusy(false), BUSY_COOLDOWN_MS);
     }

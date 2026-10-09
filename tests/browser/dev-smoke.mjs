@@ -20,6 +20,10 @@ await withPage(async ({ page, errors, origin }) => {
       squadUnits: g.units.getSquads()[0]?.units?.reduce((a, u) => a + u.count, 0) ?? 0,
       worldShown: !document.querySelector('#view-world')?.classList.contains('hidden'),
       realSaveIntact: localStorage.getItem('basie_game_state') === sentinel,
+      devGrantUnderCap: ['wood', 'stone', 'iron', 'food', 'water', 'money'].every(k => {
+        const r = g.resources.getSnapshot()[k];
+        return r.amount >= 5e8 && r.cap === 2e9;
+      }),
     };
   }, SENTINEL);
 
@@ -30,6 +34,7 @@ await withPage(async ({ page, errors, origin }) => {
     { label: 'a march-ready squad exists', ok: state.squadUnits > 0 },
     { label: 'lands on the world map', ok: state.worldShown },
     { label: 'pre-existing real save left untouched', ok: state.realSaveIntact },
+    { label: 'dev starts with 500M of each resource under a 2B cap', ok: state.devGrantUnderCap },
   ], errors);
 
   // Dev level switcher widget — inspect any placed building's sprite at any level.

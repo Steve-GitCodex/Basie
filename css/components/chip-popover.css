@@ -1,0 +1,95 @@
+.chip-popover {
+  position: fixed;
+  z-index: var(--z-popover);
+  min-width: 200px;
+  max-width: calc(100vw - 16px);
+  padding: 10px 12px;
+  font-size: 12px;
+  background: var(--clr-bg-elevated);
+  border: 1px solid var(--clr-border-light);
+  border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.9);
+}
+.chip-popover[hidden],
+.chip-popover [hidden] { display: none; }
+
+.chip-popover__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  font-family: var(--font-heading);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.chip-popover__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 3px 0;
+  color: var(--clr-text-secondary);
+}
+.chip-popover__row b {
+  color: var(--clr-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.chip-popover__row b.chip-popover__bad { color: var(--clr-danger); }
+.chip-popover__row b[data-part="rate"] { color: var(--clr-success); }
+
+.chip-popover__bar {
+  height: 6px;
+  margin: 6px 0;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.6);
+  box-shadow: inset 0 0 0 1px var(--clr-border-light);
+  overflow: hidden;
+}
+.chip-popover__bar i {
+  display: block;
+  height: 100%;
+  background: var(--pop-res);
+}
+.chip-popover__bar i[data-state="near"] { background: var(--clr-warning); }
+.chip-popover__bar i[data-state="full"] { background: var(--clr-danger); }
+
+.chip-popover__acts {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.chip-popover__btn {
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 11px;
+}
+.chip-popover__btn--ghost {
+  background: var(--clr-bg-panel);
+  color: var(--clr-text-primary);
+  border: 1px solid var(--clr-border-light);
+}
+
+.chip-popover__note {
+  padding: 3px 0;
+  color: var(--clr-text-secondary);
+}
+
+.chip-popover__effect {
+  display: block;
+  font-style: normal;
+  color: var(--clr-success);
+}
+
+.chip-popover__row--buff { align-items: flex-start; }
+.chip-popover__buff {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.chip-popover__time {
+  flex: none;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}

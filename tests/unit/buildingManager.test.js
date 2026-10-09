@@ -475,3 +475,23 @@ test('heroes:updated recalculates storage caps with the hero storage bonus', () 
   eventBus.emit('heroes:updated', []);
   assert.ok(capturedWoodCap > baseline);
 });
+
+test('getCafeteriaDepletion reports shared drain and the longest time to empty', () => {
+  const rm = { ...stubRM(), getPopulation: () => ({ current: 5, cap: 999 }) };
+  const bm = new BuildingManager(rm);
+  bm._buildings.set('house', [{ instanceId: 'house_0', level: 1 }]);
+  bm._buildings.set('cafeteria', [
+    { instanceId: 'cafeteria_0', level: 1, stock: { food: 10, water: 40 } },
+    { instanceId: 'cafeteria_1', level: 1, stock: { food: 50, water: 30 } },
+  ]);
+  const { drainPerSec, emptyInSec } = bm.getCafeteriaDepletion();
+  assert.ok(Math.abs(drainPerSec - 0.1) < 1e-9);
+  assert.ok(Math.abs(emptyInSec - 300) < 1e-6);
+});
+
+test('getCafeteriaDepletion is Infinity with no drain or no cafeteria', () => {
+  const bm = makeManager(1);
+  assert.deepEqual(bm.getCafeteriaDepletion(), { drainPerSec: 0, emptyInSec: Infinity });
+  bm._buildings.set('cafeteria', [{ instanceId: 'cafeteria_0', level: 1, stock: { food: 5, water: 5 } }]);
+  assert.deepEqual(bm.getCafeteriaDepletion(), { drainPerSec: 0, emptyInSec: Infinity });
+});

@@ -1,10 +1,14 @@
-# Building levels (target design, not built)
+# Building levels (target design; foundation built, scale not built)
 
 Buildings go to **30 levels (HQ 30)**, with one shared cost/time curve, a cap tied to HQ, and an HQ prerequisite chain.
 HQ 1–10 keeps today's cost and time. Decided 2026-10-07 (ADR 0044).
 
 - Proposal and numbers: `docs/research/building-levels.md` §3.
 - Codebase impact: `docs/research/building-levels-codebase.md`.
+- **Foundation built (2026-10-08):** `js/systems/building/buildingCurve.js` (`costFactor`/`timeFactor`/`prodFactor`,
+  `levelCap`, `eraAt`, `upgradeCost`, `upgradeTime`; constants in `js/entities/data/buildingCurve.js`), `levelTable.js`
+  (per-level lookups throw on a gap instead of returning 0/null) + `trainingSlots.js`, and per-level table validation in
+  `tests/unit/gameData.test.js`. `costMultiplier` is gone; every building uses the shared curve. `maxLevel`s are unchanged.
 
 ## Max levels
 

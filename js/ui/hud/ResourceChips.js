@@ -2,10 +2,10 @@ import { eventBus } from '../../core/EventBus.js';
 import { RES_META } from '../uiUtils.js';
 import { tickTo } from '../fx/numberTicker.js';
 import { icon } from '../icons.js';
-import { compact, fillState, fillRatio } from './hudFormat.js';
+import { compact, fillState, fillRatio, LOW_STOCK_RATIO } from './hudFormat.js';
+import { cafeteriaTotals, cafeteriaTipHtml } from './cafeteriaPopover.js';
 
 const TICK_THROTTLE_MS = 500;
-const LOW_STOCK_RATIO = 0.2;
 const RESOURCE_KEYS = Object.keys(RES_META).filter(key => key !== 'xp');
 
 export class ResourceChips {
@@ -15,11 +15,14 @@ export class ResourceChips {
     this._lastTickAt = 0;
     this._chips = new Map();
     this._cafeteria = null;
+    this._bar = null;
   }
 
   init() {
+    this._bar = document.getElementById('resource-bar');
     for (const key of RESOURCE_KEYS) this._chips.set(key, this._cacheChip(key));
     this._cafeteria = this._cacheChip('cafeteria');
+    this._cafeteria.chip?.removeAttribute('title');
     eventBus.on('resources:tick', snap => this._onTick(snap));
     eventBus.on('resources:ratesChanged', snap => this.render(snap));
     this.render(this._rm.getSnapshot());
@@ -61,8 +64,11 @@ export class ResourceChips {
     const els = this._cafeteria;
     if (!els.chip) return;
     const stocks = this._bm?.getCafeteriaStock?.() ?? [];
-    if (stocks.length === 0) { els.chip.style.display = 'none'; return; }
-    els.chip.style.display = '';
+    const shown = stocks.length > 0;
+    els.chip.style.display = shown ? '' : 'none';
+    this._bar?.classList.toggle('resource-bar--six', shown);
+    if (!shown) return;
+    els.chip.dataset.tooltipHtml = cafeteriaTipHtml(cafeteriaTotals(this._bm));
     const sum = pick => stocks.reduce((total, s) => total + pick(s), 0);
     const stock = Math.min(sum(s => s.stock.food), sum(s => s.stock.water));
     const cap = Math.min(sum(s => s.stockCap.food), sum(s => s.stockCap.water));

@@ -39,7 +39,7 @@ import { UIManager }           from './ui/UIManager.js';
 import { TimerService }        from './ui/TimerService.js';
 import { TooltipService }      from './ui/TooltipService.js';
 import { FirebaseDataManager, IS_CONFIGURED } from './core/FirebaseDataManager.js';
-import { isDevSession, devSlotName, runDevSession } from './core/devSession.js';
+import { isDevSession, devSlotName, runDevSession, applyDevCapFloors } from './core/devSession.js';
 import { devSlotKey } from './core/devSlots.js';
 import { DevDashboard } from './ui/dev/DevDashboard.js';
 import { devMute } from './core/devMute.js';
@@ -619,6 +619,7 @@ function launchGame(authScreen, gameShell, externalState = null) {
   // On subsequent launches, start immediately.
   const startEngine = () => {
     if (DEV) {
+      applyDevCapFloors(resourceManager);
       engine.start();
       if (!savedState) {
         runDevSession({ engine, userManager, resourceManager, buildingManager, unitManager, eventBus, logManager });

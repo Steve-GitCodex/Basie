@@ -3,6 +3,7 @@ import { HeroRosterPanel } from '../heroes/HeroRosterPanel.js';
 import { HeroDetailPanel } from '../heroes/HeroDetailPanel.js';
 import { HeroAssignmentPanel } from '../heroes/HeroAssignmentPanel.js';
 import { RecruitPanel } from '../heroes/RecruitPanel.js';
+import { createLevelUpCoalescer } from '../heroes/levelUpCoalescer.js';
 import { stopClips } from '../heroes/heroCardView.js';
 
 const TABS = ['roster', 'recruit', 'assign'];
@@ -58,7 +59,9 @@ export class HeroesUI {
     });
     eventBus.on('heroes:updated',    () => this._patchActive());
     eventBus.on('inventory:updated', () => this._patchActive());
-    eventBus.on('hero:levelUp',  d => this._s.notifications?.show('success', '⚔️ Hero Level Up!', `${d.name} reached Lv.${d.level}!`));
+    eventBus.on('building:completed', () => this._patchActive());
+    const recordLevelUp = createLevelUpCoalescer(b => this._s.notifications?.show('success', '⚔️ Hero Level Up!', `${b.name} Lv ${b.from} → ${b.to}`));
+    eventBus.on('hero:levelUp', recordLevelUp);
     eventBus.on('hero:awakened', d => this._s.notifications?.show('success', '✨ Awakened!', `${d.name} is now ★${d.stars}!`));
   }
 

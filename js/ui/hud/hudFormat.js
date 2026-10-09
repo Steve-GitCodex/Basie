@@ -3,6 +3,8 @@ const compactFormatter = new Intl.NumberFormat('en', {
   maximumFractionDigits: 1
 });
 
+export const LOW_STOCK_RATIO = 0.2;
+
 export function compact(n) {
   const floored = Math.floor(n);
   if (floored < 1000) {
@@ -42,6 +44,9 @@ export function timeToFull(amount, cap, perSec) {
 }
 
 export function formatDuration(sec) {
+  if (sec === Infinity || sec === -Infinity) {
+    return '—';
+  }
   let total = Number.isNaN(sec) ? 0 : Math.max(0, Math.floor(sec));
   const hours = Math.floor(total / 3600);
   const minutes = Math.floor((total % 3600) / 60);

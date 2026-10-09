@@ -240,10 +240,6 @@ export class NavigationUI {
       eventBus.emit('ui:click');
       eventBus.emit('ui:openInventory');
     });
-    document.getElementById('player-chip')?.addEventListener('click', () => {
-      eventBus.emit('ui:click');
-      eventBus.emit('ui:openProfile');
-    });
   }
 
   // ---- EVENT SUBSCRIPTIONS ----
