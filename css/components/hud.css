@@ -342,7 +342,8 @@
 .binfo-table-wrap {
   border: 1px solid var(--clr-border);
   border-radius: var(--radius-md);
-  overflow: hidden;
+  overflow-y: auto;
+  max-height: min(380px, 48vh);
 }
 .binfo-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
 .binfo-table thead th { position: sticky; top: 0; background: hsla(214, 38%, 14%, 0.98); }
@@ -473,3 +474,10 @@
   background: hsla(210, 30%, 14%, 0.4); border-radius: var(--radius-md);
   border: 1px dashed var(--clr-border);
 }
+
+.binfo-pop {
+  margin: 6px 0;
+  color: var(--clr-success);
+  font-weight: 600;
+}
+.binfo-pop--warn { color: var(--clr-danger); }

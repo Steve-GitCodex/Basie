@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 
 import { eventBus } from '../../js/core/EventBus.js';
 import { ResourceManager } from '../../js/systems/ResourceManager.js';
+import { prodFactor } from '../../js/systems/building/buildingCurve.js';
+import { POPULATION_MAX } from '../../js/entities/GAME_DATA.js';
 
 function withMode(mode, fn) {
   eventBus.emit('game:modeChanged', { mode });
@@ -148,4 +150,18 @@ test('setAmount sets an exact stockpile and clamps at zero', () => {
   assert.equal(rm._resources.iron.amount, 1234);
   rm.setAmount('iron', -5);
   assert.equal(rm._resources.iron.amount, 0);
+});
+
+test('recalculateRates multiplies per-level production by prodFactor(level)', () => {
+  const rm = new ResourceManager();
+  rm.recalculateRates([{ effects: { iron: 0.5 }, level: 20 }]);
+  assert.ok(Math.abs(rm._resources.iron.perSec - 0.5 * prodFactor(20)) < 1e-9);
+  rm.recalculateRates([{ effects: { iron: 0.5 }, level: 4 }]);
+  assert.equal(rm._resources.iron.perSec, 2);
+});
+
+test('setPopulationCap clamps at POPULATION_MAX', () => {
+  const rm = new ResourceManager();
+  rm.setPopulationCap(POPULATION_MAX + 500);
+  assert.equal(rm.getPopulation().cap, POPULATION_MAX);
 });

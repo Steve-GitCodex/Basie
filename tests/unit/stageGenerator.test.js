@@ -9,15 +9,16 @@ const build = (knobs = CAMPAIGN_CHAPTER_KNOBS, overrides = {}) =>
   buildCampaignStages(CAMPAIGNS_CONFIG, MONSTERS_CONFIG, knobs, overrides);
 const byId = (stages, id) => stages.find(s => s.id === id);
 
-test('builds 10 chapters x (4 regular + boss + elite) = 60 stages with spec ids', () => {
+test('builds every chapter x (4 regular + boss + elite) stages with spec ids', () => {
   const stages = build();
-  assert.equal(stages.length, 60);
+  const perChapter = CAMPAIGN_CHAPTER_KNOBS.regularCount + 2;
+  assert.equal(stages.length, CAMPAIGNS_CONFIG.length * perChapter);
   const ch1 = stages.slice(0, 6).map(s => s.id);
   assert.deepEqual(ch1, ['ch1_s1', 'ch1_s2', 'ch1_s3', 'ch1_s4', 'goblin_camp', 'ch1_elite']);
   assert.equal(stages[6].id, 'ch2_s1');
   assert.equal(stages[6].chapter, 2);
   assert.equal(stages[10].id, 'bandit_camp');
-  assert.equal(new Set(stages.map(s => s.id)).size, 60);
+  assert.equal(new Set(stages.map(s => s.id)).size, stages.length);
 });
 
 test('every boss stage is its unchanged monster, as a copy', () => {
@@ -124,7 +125,7 @@ test('round par by kind', () => {
 test('stage carries the chapter requires and 1-based chapter', () => {
   const stages = build();
   assert.equal(byId(stages, 'ch1_s1').requires, null);
-  assert.deepEqual(byId(stages, 'ch3_s1').requires, { townhall: 3 });
+  assert.deepEqual(byId(stages, 'ch3_s1').requires, { townhall: 4 });
   assert.equal(byId(stages, 'ch3_s1').chapter, 3);
   assert.equal(byId(stages, 'ch3_s2').index, 2);
 });

@@ -1,8 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { createChangeFilter, fingerprintFile, listFiles } from './changeFilter.mjs';
 
 const WATCHED_DIRS = ['js', 'css', 'assets'];
 const WATCHED_FILES = ['index.html'];
+const PRIMED_DIRS = ['js', 'css'];
 const TEMP_FILE = /(~|\.swp|\.tmp)$|(^|\/)#[^/]*#$/;
 
 export class ChangeBatcher {
@@ -35,11 +37,15 @@ export class ChangeBatcher {
 
 export function startWatcher({ root, onBatch, warn }) {
   const batcher = new ChangeBatcher({ onBatch });
+  const filter = createChangeFilter({ fingerprint: rel => fingerprintFile(path.join(root, rel)) });
+  filter.prime([...PRIMED_DIRS.flatMap(dir => listFiles(root, dir)), ...WATCHED_FILES]);
   const watchers = [];
   const watch = (target, rel, opts) => {
     try {
       watchers.push(fs.watch(path.join(root, target), opts, (_evt, name) => {
-        if (name) batcher.add(rel(String(name)));
+        if (!name) return;
+        const file = rel(String(name)).replace(/\\/g, '/');
+        if (!TEMP_FILE.test(file) && filter.isRealChange(file)) batcher.add(file);
       }));
     } catch (e) {
       warn(`not watching ${target}: ${e.code ?? e.message}`);

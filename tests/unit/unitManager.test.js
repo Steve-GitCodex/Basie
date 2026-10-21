@@ -260,3 +260,25 @@ test('deserialize re-flows stored rows over the cap', () => {
   assert.deepEqual(rows, ['front', 'front', 'mid', 'mid']);
   assert.equal(fresh.getSquad(squadId).slotRows.has(2), false);
 });
+
+function tierGateManager(hallAndHqLevel, masteryLevel) {
+  const bm = {
+    ...stubBM(),
+    getLevelOf: () => hallAndHqLevel,
+    getHQUnlockedIds: () => new Set(['infantry']),
+  };
+  const um = new UnitManager(stubRM(), bm);
+  um.setTechnologyManager({ getLevelOf: id => (id === 'infantry_mastery' ? masteryLevel : 0) });
+  return um;
+}
+
+test('infantry T4 stays locked at hall/HQ 8 even with mastery', () => {
+  const r = tierGateManager(8, 1).train('infantry', 1, 4);
+  assert.equal(r.success, false);
+  assert.match(r.reason, /Lv\.9/);
+});
+
+test('infantry T4 trains at hall/HQ 9 with Infantry Mastery 1', () => {
+  const r = tierGateManager(9, 1).train('infantry', 1, 4);
+  assert.equal(r.success, true, r.reason);
+});

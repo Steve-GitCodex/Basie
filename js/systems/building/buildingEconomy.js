@@ -7,7 +7,7 @@
  * Extracted from BuildingManager to keep the economy formulas testable and
  * portable to an authoritative server.
  */
-import { BUILDINGS_CONFIG } from '../../entities/GAME_DATA.js';
+import { BUILDINGS_CONFIG, POPULATION_MAX } from '../../entities/GAME_DATA.js';
 import { levelTable } from './levelTable.js';
 
 /**
@@ -37,8 +37,6 @@ function computeStorageCaps(buildings, techBonuses = {}, heroStorageBonus = 0) {
         }
       }
     }
-
-    // Population cap from houses — use config-driven value, hard ceiling 1000
     if (id === 'house') {
       const popPerLevel = cfg.populationCapacityPerLevel ?? 10;
       for (const inst of instances) {
@@ -67,7 +65,7 @@ function computeStorageCaps(buildings, techBonuses = {}, heroStorageBonus = 0) {
 
   return {
     caps: finalCaps,
-    popCap: Math.min(popCap, 1000),
+    popCap: Math.min(popCap, POPULATION_MAX),
     foodStoreCap,
     waterStoreCap,
   };

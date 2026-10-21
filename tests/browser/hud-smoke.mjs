@@ -1,6 +1,5 @@
 import { cafeteriaChecks, sixCellChecks } from './hudCafeteriaSteps.mjs';
 import { commanderChecks } from './hudCommanderSteps.mjs';
-import { commanderChecks } from './hudCommanderSteps.mjs';
 import { buffEmptyChecks, buffPopoverChecks } from './hudBuffSteps.mjs';
 import { popoverRouteChecks, popoverModalChecks, popoverKeyboardChecks, plateWidthChecks } from './hudPopoverSteps.mjs';
 import { withPage, report, dismissOverlays, loadPlaywright } from './harness.mjs';
@@ -313,7 +312,6 @@ await withPage(async ({ page, errors, origin }) => {
   checks.push(...await buffPopoverChecks(page, buffName));
   checks.push(...await cafeteriaChecks(page));
   checks.push(...await sixCellChecks(page));
-  checks.push(...await commanderChecks(page));
   checks.push(...await commanderChecks(page));
   checks.push(...await touchCheck(origin));
 

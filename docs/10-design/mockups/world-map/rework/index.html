@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Basie · World map rework prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800&family=Outfit:wght@400;500;600;700;800&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/shell.css">
+<link rel="stylesheet" href="css/chrome.css">
+<link rel="stylesheet" href="css/panels.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs id="iconDefs"></defs></svg>
+
+<header class="top">
+  <h1>Prototype · World map rework<small>provinces, tiers, connections, sketch fog</small></h1>
+  <div class="legend">
+    <span><span class="tag tag--new">NEW</span> new element</span>
+    <span><span class="tag tag--imp">IMPROVED</span> change to an existing surface</span>
+    <span>no tag = today's UI</span>
+  </div>
+  <div class="mode"><button id="mGuided" class="on">Guided</button><button id="mExplore">Explore</button></div>
+</header>
+
+<main class="stage" id="stage">
+  <div class="frame-wrap" id="wrap">
+    <div class="frame" id="frame">
+      <canvas id="map" width="1280" height="800"></canvas>
+      <div id="maptags"></div>
+      <div id="hud"></div>
+      <div id="layer"></div>
+      <div id="overlay"></div>
+      <div class="spot" id="spot"></div>
+      <div id="rings"></div>
+    </div>
+  </div>
+</main>
+
+<section class="caption" id="caption"></section>
+<section class="explore" id="explore"></section>
+
+<script src="js/assets.js"></script>
+<script src="js/geom.js"></script>
+<script src="js/placement.js"></script>
+<script src="js/worldgen.js"></script>
+<script src="js/sprites.js"></script>
+<script src="js/terrain.js"></script>
+<script src="js/poiArt.js"></script>
+<script src="js/mapLayers.js"></script>
+<script src="js/overlays.js"></script>
+<script src="js/renderer.js"></script>
+<script src="js/chrome.js"></script>
+<script src="js/cards.js"></script>
+<script src="js/panels.js"></script>
+<script src="js/marches.js"></script>
+<script src="js/steps.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

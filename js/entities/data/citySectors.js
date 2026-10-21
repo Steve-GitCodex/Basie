@@ -32,7 +32,7 @@ export const CORE_RECT = {
 const CLEAR_COST_BASE = { wood: 600, stone: 400, iron: 150 };
 const RING_COST_STEP = 2.5;
 const RING_CLEAR_TIME = { 1: 120, 2: 300 };
-const RING_HQ_GATE = { 1: 2, 2: 4 };
+const RING_HQ_GATE = { 1: 2, 2: 6 };
 
 function isCoreBlock(col, row) {
   return col >= CORE_MIN_COL && col <= CORE_MAX_COL &&

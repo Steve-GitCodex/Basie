@@ -14,7 +14,7 @@ const A = 'assets/tiles/buildings/ai';
  * Grit building set, rig-rendered to the tile grid from CC0 packs (Quaternius
  * Ultimate Fantasy RTS / Farm Buildings / Zombie Apocalypse, Kenney Survival Kit) —
  * ADR 0009/0010.
- * Level-keyed evolution sprites; buckets map building level → {1,2,3+}. Trimmed to
+ * Era-keyed evolution sprites; buckets map building level via eraBucket. Trimmed to
  * content bbox at a shared scale so relative sizes are authored, not normalised.
  * Covers all 20 types; a type absent here falls back to a colored diamond.
  */
@@ -54,22 +54,27 @@ export const AI_BUILDING_MAP = {
   townhall: { 1: `${A}/townhall_S1.png`, 2: `${A}/townhall_S2.png`, 3: `${A}/townhall_S3.png`, 4: `${A}/townhall_S4.png` },
 };
 
+const LEVELS_PER_ART_BUCKET = 10;
+
+/** One art bucket per ten levels: 1 (L1–9), 2 (L10–19), 3 (L20–29), 4 (L30). */
+export function eraBucket(level) {
+  return 1 + Math.floor(Math.max(0, level | 0) / LEVELS_PER_ART_BUCKET);
+}
+
 function highestBucket(map, id, fallback) {
   const buckets = map[id];
   return buckets ? Math.max(...Object.keys(buckets).map(Number)) : fallback;
 }
 
 /** Building level → grit sprite bucket, clamped to that building's own highest
- *  available bucket (types top out at whatever levels their art ships — 3 today).
- *  A flat global clamp would silently fall back to bucket 1 art for any type once
- *  its real level exceeds the clamp — this keeps it "best available". */
+ *  available bucket so a level past the shipped art keeps the best available. */
 export function gritBucket(id, level) {
-  return Math.max(1, Math.min(highestBucket(GRIT_BUILDING_MAP, id, 3), level | 0));
+  return Math.min(highestBucket(GRIT_BUILDING_MAP, id, 3), eraBucket(level));
 }
 
 /** Building level → AI sprite stage, clamped to that type's highest stage. */
 export function stageBucket(id, level) {
-  return Math.max(1, Math.min(highestBucket(AI_BUILDING_MAP, id, 1), level | 0));
+  return Math.min(highestBucket(AI_BUILDING_MAP, id, 1), eraBucket(level));
 }
 
 /** Normalise a manifest anchor to `{ax, ay, s, r, k}`: scale (default 1),

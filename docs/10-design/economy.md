@@ -38,3 +38,10 @@ tooltip.
 
 Tuning values live in the data files (per-building/unit/POI), not inline in managers.
 Open balance questions are tracked in `docs/30-roadmap.md` (Phase 2 hardening list).
+
+## Building levels
+
+Buildings run to 30 levels on one shared curve (`js/systems/building/buildingCurve.js`), capped by the HQ level
+(`levelCap`), with the HQ chain from HQ 10. Production is `rate × prodFactor(level)`; storage tables grow geometrically
+past L10, and the money cap follows the era (5k at HQ 1 … 3.6M at HQ 26, 8.8M at HQ 30). Full rules:
+`building-levels.md` (ADR 0044, as-built values ADR 0051).

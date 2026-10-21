@@ -1,6 +1,7 @@
+import { HQ_MAX } from './buildingCurve.js';
+
 const PARTNERS = ['barracks', 'infantryhall', 'archeryrange', 'cavalrystable', 'siegeworkshop', 'storehouse'];
 const CHAIN_START = 10;
-const HQ_MAX_CHAIN = 30;
 
 const EXPLICIT = {
   3: { farm: 2 },
@@ -14,7 +15,7 @@ const EXPLICIT = {
 
 export function hqChain() {
   const chain = { ...EXPLICIT };
-  for (let level = CHAIN_START; level <= HQ_MAX_CHAIN; level++) {
+  for (let level = CHAIN_START; level <= HQ_MAX; level++) {
     chain[level] = { workshop: level - 1, [PARTNERS[(level - CHAIN_START) % PARTNERS.length]]: level - 1 };
   }
   return chain;

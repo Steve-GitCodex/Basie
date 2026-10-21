@@ -49,7 +49,7 @@ export const MONSTERS_CONFIG = {
     ],
     rewards: { money: 400, stone: 100, xp: 300 },
     maxRewardedWins: 4,
-    requires: { townhall: 3 },
+    requires: { townhall: 4 },
     campaignStage: 3,
   },
   troll_bridge: {
@@ -67,7 +67,7 @@ export const MONSTERS_CONFIG = {
     ],
     rewards: { money: 600, stone: 150, xp: 480 },
     maxRewardedWins: 4,
-    requires: { townhall: 4 },
+    requires: { townhall: 6 },
     campaignStage: 4,
   },
   undead_legion: {
@@ -85,7 +85,7 @@ export const MONSTERS_CONFIG = {
     ],
     rewards: { money: 800, iron: 100, xp: 600 },
     maxRewardedWins: 3,
-    requires: { townhall: 5 },
+    requires: { townhall: 9 },
     campaignStage: 5,
   },
   frost_giant: {
@@ -103,7 +103,7 @@ export const MONSTERS_CONFIG = {
     ],
     rewards: { money: 1200, stone: 300, iron: 80, xp: 900 },
     maxRewardedWins: 3,
-    requires: { townhall: 6 },
+    requires: { townhall: 12 },
     campaignStage: 6,
   },
   demon_gates: {
@@ -121,7 +121,7 @@ export const MONSTERS_CONFIG = {
     ],
     rewards: { money: 2000, iron: 300, stone: 500, xp: 1200 },
     maxRewardedWins: 3,
-    requires: { townhall: 7, heroquarters: 2 },
+    requires: { townhall: 15, heroquarters: 5 },
     campaignStage: 7,
   },
   dragon_lair: {
@@ -138,7 +138,7 @@ export const MONSTERS_CONFIG = {
     ],
     rewards: { money: 5000, iron: 500, xp: 2000 },
     maxRewardedWins: 2,
-    requires: { townhall: 7, heroquarters: 3 },
+    requires: { townhall: 18, heroquarters: 8 },
     campaignStage: 8,
   },
   corrupted_arena: {
@@ -156,7 +156,7 @@ export const MONSTERS_CONFIG = {
     ],
     rewards: { money: 10000, iron: 1000, stone: 1500, xp: 5000 },
     maxRewardedWins: 1,
-    requires: { townhall: 9, heroquarters: 4 },
+    requires: { townhall: 22, heroquarters: 10 },
     campaignStage: 9,
   },
   chaos_titan: {
@@ -174,7 +174,7 @@ export const MONSTERS_CONFIG = {
     ],
     rewards: { money: 15000, iron: 2000, xp: 8000 },
     maxRewardedWins: 1,
-    requires: { townhall: 10, heroquarters: 5 },
+    requires: { townhall: 26, heroquarters: 13 },
     campaignStage: 10,
   },
 };
@@ -182,14 +182,14 @@ export const MONSTERS_CONFIG = {
 export const CAMPAIGNS_CONFIG = [
   { stage: 1,  monsterId: 'goblin_camp',     name: 'Scav Territory',        icon: '🪓', requires: null },
   { stage: 2,  monsterId: 'bandit_camp',     name: 'Raider Hideout',        icon: '🗡️', requires: null },
-  { stage: 3,  monsterId: 'orc_warband',     name: 'The Mutant Wastes',     icon: '🧟', requires: { townhall: 3 } },
-  { stage: 4,  monsterId: 'troll_bridge',    name: 'The Blockade',          icon: '🧌', requires: { townhall: 4 } },
-  { stage: 5,  monsterId: 'undead_legion',   name: 'Quarantine Zone',       icon: '☣️', requires: { townhall: 5 } },
-  { stage: 6,  monsterId: 'frost_giant',     name: 'Coldsteel Hold',        icon: '🥶', requires: { townhall: 6 } },
-  { stage: 7,  monsterId: 'demon_gates',     name: 'Reactor Breach',        icon: '☢️', requires: { townhall: 7 } },
-  { stage: 8,  monsterId: 'dragon_lair',     name: 'Behemoth Peak',         icon: '🦂', requires: { townhall: 7, heroquarters: 3 } },
-  { stage: 9,  monsterId: 'corrupted_arena', name: 'The Blood Pit',         icon: '⚔️', requires: { townhall: 9, heroquarters: 4 } },
-  { stage: 10, monsterId: 'chaos_titan',     name: 'The Final Battle',      icon: '🌋', requires: { townhall: 10 } },
+  { stage: 3,  monsterId: 'orc_warband',     name: 'The Mutant Wastes',     icon: '🧟', requires: { townhall: 4 } },
+  { stage: 4,  monsterId: 'troll_bridge',    name: 'The Blockade',          icon: '🧌', requires: { townhall: 6 } },
+  { stage: 5,  monsterId: 'undead_legion',   name: 'Quarantine Zone',       icon: '☣️', requires: { townhall: 9 } },
+  { stage: 6,  monsterId: 'frost_giant',     name: 'Coldsteel Hold',        icon: '🥶', requires: { townhall: 12 } },
+  { stage: 7,  monsterId: 'demon_gates',     name: 'Reactor Breach',        icon: '☢️', requires: { townhall: 15, heroquarters: 5 } },
+  { stage: 8,  monsterId: 'dragon_lair',     name: 'Behemoth Peak',         icon: '🦂', requires: { townhall: 18, heroquarters: 8 } },
+  { stage: 9,  monsterId: 'corrupted_arena', name: 'The Blood Pit',         icon: '⚔️', requires: { townhall: 22, heroquarters: 10 } },
+  { stage: 10, monsterId: 'chaos_titan',     name: 'The Final Battle',      icon: '🌋', requires: { townhall: 26, heroquarters: 13 } },
 ];
 
 /**

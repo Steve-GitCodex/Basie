@@ -76,6 +76,7 @@ test('capacity is workers + 2 and rejects beyond it', () => {
 
 test('completing an active build refills a freed worker and cascades same-instance', () => {
   const bm = makeManager(1);
+  bm._buildings.set('townhall', [{ instanceId: 'townhall_0', level: 2 }]);
   bm.build('farm', 0);
   bm.build('farm', 0);
   const first = bm._buildQueue[0];
@@ -494,4 +495,47 @@ test('getCafeteriaDepletion is Infinity with no drain or no cafeteria', () => {
   assert.deepEqual(bm.getCafeteriaDepletion(), { drainPerSec: 0, emptyInSec: Infinity });
   bm._buildings.set('cafeteria', [{ instanceId: 'cafeteria_0', level: 1, stock: { food: 5, water: 5 } }]);
   assert.deepEqual(bm.getCafeteriaDepletion(), { drainPerSec: 0, emptyInSec: Infinity });
+});
+
+test('HQ level caps non-HQ upgrades: a farm at L1 under HQ 1 needs HQ 2', () => {
+  const bm = makeManager(1);
+  bm._buildings.set('farm', [{ instanceId: 'farm_0', level: 1 }]);
+  assert.deepEqual(bm.canUpgrade('farm', 0), { ok: false, reason: 'Requires HQ Lv.2' });
+  assert.ok(bm.getMissingRequirements('farm', 0).includes('Requires HQ Lv.2'));
+});
+
+test('Construction Hall is exempt from the HQ cap', () => {
+  const bm = makeManager(2);
+  bm._buildings.set('construction_hall', [{ instanceId: 'construction_hall_0', level: 1 }]);
+  assert.equal(bm.canUpgrade('construction_hall', 0).ok, true);
+});
+
+test('HQ 10 to 11 is gated on Workshop 10 and Infantry Hall 10', () => {
+  const bm = makeManager(1);
+  bm._buildings.set('townhall', [{ instanceId: 'townhall_0', level: 10 }]);
+  bm._buildings.set('workshop', [{ instanceId: 'workshop_0', level: 9 }]);
+  bm._buildings.set('barracks', [{ instanceId: 'barracks_0', level: 9 }]);
+  assert.equal(bm.canUpgrade('townhall', 0).ok, false);
+  const missing = bm.getMissingRequirements('townhall', 0).join(' | ');
+  assert.match(missing, /Workshop/i);
+  assert.match(missing, /Infantry Hall/i);
+});
+
+test('building snapshot carries the HQ cap gate in missingRequirements and requirementsMet', () => {
+  const bm = makeManager(1);
+  bm._buildings.set('farm', [{ instanceId: 'farm_0', level: 1 }]);
+  const farm = bm.getBuildingTypesWithInstances().find(t => t.id === 'farm');
+  const inst = farm.instances[0];
+  assert.ok(inst, 'farm instance present in snapshot');
+  assert.ok(inst.missingRequirements.includes('Requires HQ Lv.2'));
+  assert.equal(inst.requirementsMet, false);
+});
+
+test('a maxed Construction Hall shows no HQ gate', () => {
+  const bm = makeManager(1);
+  bm._buildings.set('townhall', [{ instanceId: 'townhall_0', level: 3 }]);
+  bm._buildings.set('construction_hall', [{ instanceId: 'construction_hall_0', level: 3 }]);
+  assert.ok(!bm.getMissingRequirements('construction_hall', 0).some(m => m.startsWith('Requires HQ')));
+  const hall = bm.getBuildingTypesWithInstances().find(t => t.id === 'construction_hall');
+  assert.ok(!hall.instances[0].missingRequirements.some(m => m.startsWith('Requires HQ')));
 });

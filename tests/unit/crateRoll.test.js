@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { rollCrate } from '../../js/systems/trading/crateRoll.js';
 import { createRng } from '../../js/systems/combat/seededRng.js';
 import { CRATE_TABLE } from '../../js/entities/GAME_DATA.js';
+import { prodFactor } from '../../js/systems/building/buildingCurve.js';
 
 const constant = (v) => () => v;
 
@@ -47,4 +48,15 @@ test('eligible restricts the resource pick, falling back to all when empty', () 
   assert.deepEqual(only.grants, { iron: 80 });
   const fallback = rollCrate({ hqLevel: 1, rng: constant(0), eligible: [] });
   assert.deepEqual(fallback.grants, { wood: 300 });
+});
+
+test('resources roll at HQ 20 scales by prodFactor', () => {
+  const roll = rollCrate({ hqLevel: 20, rng: constant(0) });
+  assert.deepEqual(roll.grants, { wood: Math.floor(300 * prodFactor(20)) });
+  assert.equal(roll.grants.wood, Math.floor(300 * 10 * 1.09 ** 10));
+});
+
+test('money roll at HQ 20 scales by prodFactor', () => {
+  const roll = rollCrate({ hqLevel: 20, rng: constant(0.99) });
+  assert.deepEqual(roll.grants, { money: Math.floor(CRATE_TABLE.moneyPerHqLevel * prodFactor(20)) });
 });

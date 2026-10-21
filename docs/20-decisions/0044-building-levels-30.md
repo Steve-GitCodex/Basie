@@ -1,6 +1,6 @@
 # 0044 — Buildings to 30 levels: shared curve, HQ cap and chain, content remap
 
-Date: 2026-10-07 · Status: accepted (design; not built) · Design page: `docs/10-design/building-levels.md` ·
+Date: 2026-10-07 · Status: built (2026-10-09; as-built rulings in ADR 0051) · Design page: `docs/10-design/building-levels.md` ·
 Research: `docs/research/building-levels.md`, `docs/research/building-levels-codebase.md`
 
 ## Context

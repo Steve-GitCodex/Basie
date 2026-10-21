@@ -44,7 +44,7 @@ export class BuildingsUI {
       notifications: systems.notifications,
     });
     this._buildables = new BuildablesPanel({ bm: systems.bm, rm: systems.rm });
-    this._info = new BuildingInfoPanel({ bm: systems.bm });
+    this._info = new BuildingInfoPanel({ bm: systems.bm, rm: systems.rm });
   }
 
   render() {

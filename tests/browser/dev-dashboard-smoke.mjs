@@ -1,4 +1,5 @@
 import { withPage, report } from './harness.mjs';
+import { MOCKUP_CATALOG } from '../../docs/10-design/mockups/catalog.js';
 
 const SLOT_KEY = 'basie_dev_save:smoke';
 const SENTINEL = '{"sentinel":"real-save","gameMode":"campaign"}';
@@ -48,8 +49,19 @@ await withPage(async ({ page, errors, origin }) => {
   await page.waitForTimeout(800);
   const reset = await readState(page);
 
+  const protoLink = await page.evaluate(() => {
+    const a = document.querySelector('.dev-dashboard [data-dev-prototypes]');
+    return a ? { href: a.href, newTab: a.target === '_blank' } : null;
+  });
+  await page.goto(protoLink?.href ?? `${origin}/docs/10-design/mockups/index.html`, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('.card', { timeout: 10_000 }).catch(() => {});
+  const galleryCards = await page.$$eval('.card', cards => cards.map(c => ({ href: c.href, newTab: c.target === '_blank' })));
+  const firstCardOk = galleryCards[0]
+    ? await page.evaluate(async (href) => (await fetch(href)).ok, galleryCards[0].href)
+    : false;
+
   report('dev-dashboard', [
-    { label: 'fresh slot runs the preset (HQ Lv.3)', ok: fresh.hq === 3 },
+    { label: 'fresh slot runs the preset (HQ Lv.4)', ok: fresh.hq === 4 },
     { label: 'preset result is saved to the slot key', ok: fresh.slotSaved },
     { label: 'all 4 tools mount inside the dashboard', ok: fresh.toolsInPanel === 4 },
     { label: 'no tool floats loose on <body>', ok: fresh.strayWidgets === 0 },
@@ -59,7 +71,11 @@ await withPage(async ({ page, errors, origin }) => {
     { label: 'backtick hides the dashboard', ok: hiddenAfterHotkey },
     { label: 'hidden state survives refresh', ok: stillHidden },
     { label: 'toggle button reopens it', ok: reopened },
-    { label: 'Reset slot re-runs the preset (HQ back to Lv.3)', ok: reset.hq === 3 },
+    { label: 'Reset slot re-runs the preset (HQ back to Lv.4)', ok: reset.hq === 4 },
     { label: 'real save still untouched after reset', ok: reset.realSaveIntact },
+    { label: 'dashboard links to the prototypes gallery in a new tab', ok: !!protoLink && protoLink.newTab },
+    { label: 'gallery lists every catalog entry', ok: galleryCards.length === MOCKUP_CATALOG.length },
+    { label: 'gallery cards open in a new tab', ok: galleryCards.length > 0 && galleryCards.every(c => c.newTab) },
+    { label: 'a gallery card opens a real page', ok: firstCardOk },
   ], errors);
 });

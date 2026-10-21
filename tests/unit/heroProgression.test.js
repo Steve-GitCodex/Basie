@@ -52,11 +52,11 @@ test('xpToNext scales with level and tier for a normal-tier hero', () => {
   assert.equal(h.xpToNext, Math.round((100 + 20 * 1) * 1.0));
 });
 
-test('level is capped at heroquarters level x 10', () => {
+test('level is capped at heroquarters level x 4', () => {
   const m = makeManager({ heroquartersLevel: 1 });
   m._recruitHero('shadowblade');
   m.awardHeroXP('shadowblade', 10_000_000);
-  assert.equal(m.getRosterWithState().find(x => x.id === 'shadowblade').level, 10);
+  assert.equal(m.getRosterWithState().find(x => x.id === 'shadowblade').level, 4);
 });
 
 test('XP awarded past the level cap is discarded, not banked', () => {
@@ -64,12 +64,12 @@ test('XP awarded past the level cap is discarded, not banked', () => {
   m._recruitHero('shadowblade');
   m.awardHeroXP('shadowblade', 10_000_000);
   const capped = m.getRosterWithState().find(x => x.id === 'shadowblade');
-  assert.equal(capped.level, 10);
+  assert.equal(capped.level, 4);
   assert.equal(capped.xp, 0);
 
   m.awardHeroXP('shadowblade', 5000);
   const stillCapped = m.getRosterWithState().find(x => x.id === 'shadowblade');
-  assert.equal(stillCapped.level, 10);
+  assert.equal(stillCapped.level, 4);
   assert.equal(stillCapped.xp, 0);
 });
 
@@ -77,11 +77,11 @@ test('raising heroquarters level raises the hero cap for further leveling', () =
   const m = makeManager({ heroquartersLevel: 1 });
   m._recruitHero('shadowblade');
   m.awardHeroXP('shadowblade', 10_000_000);
-  assert.equal(m.getRosterWithState().find(x => x.id === 'shadowblade').level, 10);
+  assert.equal(m.getRosterWithState().find(x => x.id === 'shadowblade').level, 4);
 
   m._bm = stubBM({ heroquartersLevel: 2 });
   m.awardHeroXP('shadowblade', 10_000_000);
-  assert.equal(m.getRosterWithState().find(x => x.id === 'shadowblade').level, 20);
+  assert.equal(m.getRosterWithState().find(x => x.id === 'shadowblade').level, 8);
 });
 
 test('a multi-level XP award recomputes xpToNext at each intermediate level', () => {
@@ -216,4 +216,12 @@ test('heroes outside the squad barracks are not in the awardBattleXP result', ()
   m.assignHeroToBuilding('paladin', 'barracks_1');
   const rows = m.awardBattleXP(500, 'squad_1');
   assert.deepEqual(rows.map((r) => r.heroId), ['warlord']);
+});
+
+test('levelCap is 4 x heroquarters level, reaching 100 at Hero Quarters 25', () => {
+  for (const heroquartersLevel of [1, 5, 13, 25]) {
+    const m = makeManager({ heroquartersLevel });
+    assert.equal(m._progression.levelCap(), 4 * heroquartersLevel);
+  }
+  assert.equal(makeManager({ heroquartersLevel: 25 })._progression.levelCap(), 100);
 });

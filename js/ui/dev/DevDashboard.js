@@ -9,6 +9,7 @@ import { DevSpriteSource } from './DevSpriteSource.js';
 const OPEN_KEY = 'basie_dev_dashboard_open';
 const HOTKEY = '`';
 const NEW_SLOT = '__new';
+const PROTOTYPES_URL = 'docs/10-design/mockups/index.html';
 
 export class DevDashboard {
   init({ slot, saveManager, getGameState, buildingManager }) {
@@ -55,6 +56,12 @@ export class DevDashboard {
       <details class="dev-dashboard__section" open>
         <summary>Tools</summary>
         <div class="dev-dashboard__tools" data-dev-tools></div>
+      </details>
+      <details class="dev-dashboard__section" open>
+        <summary>Prototypes</summary>
+        <div class="dev-dashboard__row">
+          <a class="dev-dashboard__link" href="${PROTOTYPES_URL}" target="_blank" rel="noopener" data-dev-prototypes>Open prototypes ↗</a>
+        </div>
       </details>
     `;
     return el;

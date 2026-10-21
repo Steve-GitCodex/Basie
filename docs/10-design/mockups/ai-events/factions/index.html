@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Basie · AI Factions prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800&family=Outfit:wght@400;500;600;700;800&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --clr-bg-base:hsl(30,10%,5%);--clr-bg-surface:hsl(30,9%,8%);--clr-bg-elevated:hsl(30,8%,11%);--clr-bg-panel:hsl(30,8%,14%);
+  --clr-bg-active:hsl(32,40%,14%);--clr-border:hsl(30,10%,18%);--clr-border-light:hsl(30,10%,27%);
+  --clr-primary:hsl(32,90%,55%);--clr-primary-dark:hsl(30,88%,40%);--clr-success:hsl(90,45%,48%);--clr-warning:hsl(48,95%,52%);
+  --clr-danger:hsl(0,85%,58%);--clr-text-primary:hsl(35,15%,93%);--clr-text-secondary:hsl(35,10%,62%);--clr-text-muted:hsl(35,8%,42%);
+  --font-heading:'Oswald',sans-serif;--font-body:'Outfit',sans-serif;--font-display:'Orbitron',sans-serif;
+  --you:#3ad17a;--scav:#b7d645;--red:#e05a3d;--cov:#6f9fd8;--rebel:#b07ad8;
+  --new:hsl(188,85%,58%);--imp:hsl(40,100%,62%);
+  --band-g:hsl(90,45%,48%);--band-a:hsl(40,95%,55%);--band-r:hsl(0,80%,60%);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:#0e0c0a;color:var(--clr-text-primary);font-family:var(--font-body);overflow:hidden;display:flex;flex-direction:column}
+button{font-family:inherit}
+.ic{width:16px;height:16px;flex:none;display:inline-block;vertical-align:middle}
+
+.top{display:flex;align-items:center;gap:18px;padding:8px 16px;border-bottom:1px solid var(--clr-border);background:var(--clr-bg-surface);flex:none;min-height:46px;flex-wrap:wrap}
+.top h1{margin:0;font:700 16px var(--font-heading);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.top h1 small{font:500 13px var(--font-body);letter-spacing:0;text-transform:none;color:var(--clr-text-secondary);margin-left:8px}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--clr-text-secondary);align-items:center;flex-wrap:wrap}
+.legend span{display:inline-flex;gap:6px;align-items:center}
+.mode{margin-left:auto;display:flex;border:1px solid var(--clr-border-light);border-radius:8px;overflow:hidden}
+.mode button{background:none;border:0;color:var(--clr-text-secondary);padding:6px 14px;font:600 12px var(--font-body);cursor:pointer}
+.mode button.on{background:var(--clr-bg-active);color:var(--clr-primary)}
+
+.tag{display:inline-flex;align-items:center;font:800 9px var(--font-body);letter-spacing:.09em;padding:2px 5px;border-radius:3px;line-height:1;white-space:nowrap;vertical-align:middle}
+.tag--new{background:var(--new);color:#03222a}
+.tag--imp{background:var(--imp);color:#2b1a00}
+.tag--prop{background:var(--cov);color:#0b1626}
+.is-new{outline:1.5px solid hsla(188,85%,58%,.8);outline-offset:2px}
+.is-imp{outline:1.5px dashed hsla(40,100%,62%,.9);outline-offset:2px}
+.ctag{position:absolute;top:-8px;right:12px;z-index:3;display:flex;gap:4px}
+
+.stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:8px 0}
+.frame-wrap{position:relative;flex:none}
+.frame{position:absolute;left:0;top:0;width:1280px;height:800px;transform-origin:0 0;overflow:hidden;border-radius:6px;box-shadow:0 0 0 1px var(--clr-border),0 10px 40px #000;background:#0c0b0a;font-size:14px}
+.bg{position:absolute;inset:0;background:center/1280px 800px no-repeat}
+svg.map{position:absolute;inset:0;width:1280px;height:800px}
+svg.map .hit{cursor:pointer}
+.hot{position:absolute;border-radius:50%;cursor:pointer}
+
+.caption{height:178px;overflow:hidden;flex:none;width:min(1280px,calc(100vw - 32px));margin:0 auto 10px;background:var(--clr-bg-elevated);border:1px solid var(--clr-border-light);border-radius:12px;padding:12px 16px;display:grid;grid-template-columns:1fr auto;gap:6px 20px;align-items:center;align-content:start;box-shadow:0 8px 30px #000a}
+.caption__meta{display:flex;align-items:center;gap:12px;font-size:12px;color:var(--clr-text-secondary)}
+.caption__meta b{font:700 12px var(--font-heading);letter-spacing:.1em;text-transform:uppercase;color:var(--clr-primary)}
+.prog{display:flex;gap:3px;flex:1;max-width:420px}
+.prog i{flex:1;height:4px;border-radius:2px;background:var(--clr-bg-panel);cursor:pointer}
+.prog i.done{background:hsl(32,50%,32%)}.prog i.on{background:var(--clr-primary)}
+.caption h2{margin:2px 0 0;font:700 19px var(--font-heading);letter-spacing:.03em}
+.caption p{margin:2px 0 0;font-size:14px;line-height:1.45;color:var(--clr-text-primary);max-width:900px}
+.caption .was{font-size:12.5px;color:var(--clr-text-secondary);margin-top:4px;display:flex;gap:8px;align-items:baseline}
+.caption .was+.was{margin-top:2px}
+.caption .off{font-size:12px;color:var(--imp);margin-top:4px}
+.nav{grid-row:1 / span 4;grid-column:2;display:flex;flex-direction:column;gap:6px;align-items:stretch}
+.nav .row{display:flex;gap:6px}
+.nav small{font-size:11px;color:var(--clr-text-muted);text-align:center}
+.btn{background:linear-gradient(var(--clr-primary),var(--clr-primary-dark));color:#1a1108;font:700 13px var(--font-heading);letter-spacing:.06em;border:0;padding:0 14px;height:32px;border-radius:6px;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer}
+.btn--ghost{background:var(--clr-bg-panel);color:var(--clr-text-primary);border:1px solid var(--clr-border-light)}
+.btn--sm{height:26px;padding:0 10px;font-size:11.5px}
+.btn[disabled]{opacity:.4;cursor:default}
+.nav .btn{min-width:96px;height:38px;font-size:14px}
+
+.explore{flex:none;width:min(1280px,calc(100vw - 32px));margin:0 auto 10px;background:var(--clr-bg-elevated);border:1px solid var(--clr-border-light);border-radius:12px;padding:10px 14px;display:none;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--clr-text-secondary)}
+.explore b{font:700 12px var(--font-heading);letter-spacing:.1em;text-transform:uppercase;color:var(--clr-primary)}
+.chip{background:var(--clr-bg-panel);border:1px solid var(--clr-border-light);color:var(--clr-text-primary);border-radius:14px;padding:4px 10px;font:600 12px var(--font-body);cursor:pointer}
+.chip.on{border-color:var(--clr-primary);color:var(--clr-primary)}
+body.is-explore .caption{display:none}
+body.is-explore .explore{display:flex}
+
+.spot{position:absolute;border-radius:12px;pointer-events:none;z-index:60;box-shadow:0 0 0 2px hsla(35,90%,85%,.85),0 0 0 3000px hsla(25,15%,3%,.6);transition:all .25s ease}
+.spot::after{content:"";position:absolute;inset:-6px;border-radius:16px;border:2px solid hsla(35,95%,70%,.8);animation:spotPulse 1.6s ease-out infinite}
+.ring{position:absolute;border-radius:50%;pointer-events:none;z-index:61;border:2px solid hsla(35,95%,70%,.9);animation:spotPulse 1.6s ease-out infinite}
+@keyframes spotPulse{0%{transform:scale(1);opacity:.9}100%{transform:scale(1.08);opacity:0}}
+body.is-explore .spot,body.is-explore .ring,body.off-script .spot,body.off-script .ring{display:none}
+
+.wm{position:absolute;top:60px;left:12px;width:220px;background:hsla(215,30%,10%,.94);border:1px solid var(--clr-border);border-radius:8px;padding:8px 12px;z-index:4;font-size:11px}
+.wm__head{font:700 10px var(--font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--clr-text-muted);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.wm__sec{font:700 9px var(--font-body);letter-spacing:.12em;text-transform:uppercase;margin:6px 0 2px;display:flex;align-items:center;gap:5px}
+.wm__sec--threat{color:var(--red)}.wm__sec--own{color:var(--clr-text-muted)}
+.wm__empty{text-align:center;color:var(--clr-text-muted);padding:6px 0}
+.wm__row{padding:6px 0;border-top:1px solid var(--clr-border);cursor:pointer}
+.wm__sec+.wm__row{border-top:0}
+.wm__top{display:flex;align-items:center;gap:6px;color:var(--clr-text-secondary)}
+.wm__top span:last-child{margin-left:auto;color:var(--clr-text-muted)}
+.wm__row--threat{background:hsla(0,60%,40%,.12);border-radius:5px;padding:6px;border-top:0;margin:2px -6px}
+.wm__row--threat .wm__top{color:hsl(10,80%,72%)}.wm__row--threat .wm__top span:last-child{color:hsl(10,70%,66%);font-weight:700}
+.wm__bar{height:3px;background:hsla(0,0%,100%,.12);border-radius:2px;margin-top:4px;overflow:hidden}
+.wm__bar i{display:block;height:100%;background:#6bd4ff}
+.wm__calm{display:flex;gap:6px;align-items:center;color:var(--clr-success);padding:4px 0}
+
+.banner{position:absolute;left:50%;top:56px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;border-radius:20px;padding:5px 6px 5px 14px;font-size:13px;white-space:nowrap;z-index:5;cursor:pointer;background:hsla(0,45%,11%,.96);border:1px solid hsl(0,55%,40%);box-shadow:0 6px 20px #0009}
+.banner b{font:700 13px var(--font-heading);letter-spacing:.06em;color:hsl(5,85%,64%)}
+.banner .t{font:700 13px var(--font-display);color:#fff}
+.banner--warn{background:hsla(48,40%,10%,.96);border-color:hsl(48,60%,35%)}.banner--warn b{color:var(--clr-warning)}
+
+.focus{position:absolute;left:12px;top:600px;width:220px;background:hsla(215,30%,10%,.94);border:1px solid var(--clr-border);border-radius:8px;padding:8px 10px;z-index:4;font-size:11px;color:var(--clr-text-secondary);cursor:pointer}
+.focus b{display:flex;align-items:center;gap:6px;color:var(--clr-text-primary);font:700 10px var(--font-body);letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px}
+.switch{margin-left:auto;width:26px;height:14px;border-radius:7px;background:var(--clr-bg-panel);position:relative;border:1px solid var(--clr-border-light)}
+.switch::after{content:"";position:absolute;top:1px;left:1px;width:10px;height:10px;border-radius:50%;background:var(--clr-text-muted)}
+.switch.on{background:hsl(40,60%,25%)}.switch.on::after{left:13px;background:var(--imp)}
+
+.tleg{position:absolute;right:12px;bottom:78px;width:176px;background:hsla(215,30%,10%,.96);border:1px solid var(--clr-border);border-radius:8px;padding:8px 12px;z-index:4;font-size:10px}
+.tleg__head{font:700 10px var(--font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--clr-text-muted);margin-bottom:8px}
+.tleg__row{display:flex;align-items:center;gap:8px;color:var(--clr-text-secondary);margin-bottom:6px}
+.tleg__row--own{color:var(--clr-text-primary);font-weight:600}
+.tleg__sw{width:12px;height:12px;border-radius:3px;flex:none;box-shadow:0 0 6px 1px currentColor}
+
+.more{position:absolute;right:12px;bottom:70px;width:224px;display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px;background:hsla(215,30%,11%,.97);border:1px solid hsl(215,20%,22%);border-radius:10px;z-index:20}
+.more__t{position:relative;height:58px;border-radius:7px;background:hsla(215,25%,20%,.55);border:1px solid hsla(215,25%,30%,.3);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;color:var(--clr-text-secondary);font-size:12px;cursor:pointer}
+.more__t .ic{width:20px;height:20px;color:hsl(215,10%,72%)}
+.more__t--dis{opacity:.4;cursor:default}
+.more__t .dot{position:absolute;top:6px;right:8px;width:8px;height:8px;border-radius:50%;background:var(--clr-danger)}
+.more__t .soon{position:absolute;top:5px;right:5px;font:700 8px var(--font-body);color:var(--clr-success);border:1px solid var(--clr-success);border-radius:6px;padding:1px 4px}
+.more__t .tag{position:absolute;top:4px;left:5px}
+.fabring{position:absolute;left:1219px;top:739px;width:48px;height:48px;border-radius:50%;box-shadow:0 0 0 2px var(--clr-primary);z-index:21;pointer-events:none}
+
+.acard{position:absolute;background:hsl(30,30%,11%);border:1px solid hsl(30,22%,22%);border-radius:12px;box-shadow:0 14px 40px #000c;z-index:12;font-size:12px}
+.acard__stripe{height:4px;border-radius:12px 12px 0 0;background:var(--c)}
+.acard__arrow{position:absolute;width:14px;height:14px;background:hsl(30,30%,11%);border:1px solid hsl(30,22%,22%);transform:rotate(45deg)}
+.acard__arrow--down{bottom:-8px;border-top:0;border-left:0}
+.acard__arrow--left{left:-8px;border-top:0;border-right:0}
+.acard__arrow--right{right:-8px;border-bottom:0;border-left:0}
+.acard__head{display:flex;gap:10px;align-items:center;padding:10px 12px 6px}
+.acard__icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:hsl(30,15%,8%);border:2.5px solid var(--c);color:#fff;flex:none}
+.acard__icon .ic{width:18px;height:18px}
+.acard h3{margin:0;font:700 15px var(--font-display);letter-spacing:.02em}
+.acard__sub{font-size:11px;color:var(--clr-text-muted)}
+.acard__x{margin-left:auto;align-self:flex-start;background:none;border:0;color:var(--clr-text-muted);cursor:pointer;padding:2px}
+.acard__body{padding:2px 12px 8px}
+.acard__actions{display:flex;gap:6px;padding:4px 12px 12px}
+.acard__actions button{flex:1;padding:8px 6px;border-radius:8px;border:1px solid var(--clr-border);background:hsl(30,32%,16%);color:var(--clr-text-primary);font:600 12px var(--font-body);cursor:pointer}
+.acard__actions button.pri{border-color:hsla(10,90%,65%,.6)}
+.acard__actions button[disabled]{opacity:.45;cursor:default}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:3px 0;color:var(--clr-text-secondary)}
+.kv b{color:var(--clr-text-primary);font-weight:600;text-align:right}
+.why{margin:6px 0;padding:6px 8px;border-left:3px solid var(--c,var(--red));background:hsla(0,0%,0%,.25);border-radius:0 5px 5px 0;color:var(--clr-text-secondary);line-height:1.4}
+.why b{color:var(--clr-text-primary)}
+.sect{position:relative;margin:8px 0 2px;padding:8px;border-radius:8px;background:hsla(0,0%,100%,.03)}
+.sect__h{font:700 9.5px var(--font-body);letter-spacing:.12em;text-transform:uppercase;color:var(--clr-text-muted);margin-bottom:4px;display:flex;gap:6px;align-items:center}
+.band{display:inline-flex;align-items:center;gap:4px;font:700 11px var(--font-body);padding:1px 7px;border-radius:10px;border:1px solid currentColor}
+.band--g{color:var(--band-g)}.band--a{color:var(--band-a)}.band--r{color:var(--band-r)}
+.stagebar{display:flex;gap:3px;margin:6px 0 2px}
+.stagebar span{flex:1;text-align:center;font:600 9.5px var(--font-body);letter-spacing:.04em;padding:3px 0;border-radius:3px;background:var(--clr-bg-panel);color:var(--clr-text-muted)}
+.stagebar span.done{color:var(--clr-text-secondary);background:hsl(0,15%,16%)}
+.stagebar span.now{background:var(--red);color:#fff}
+.meter{height:6px;border-radius:3px;background:hsla(0,0%,100%,.08);overflow:hidden;margin:4px 0}
+.meter i{display:block;height:100%;background:var(--c,var(--clr-primary))}
+.verdict{font:700 12px var(--font-heading);letter-spacing:.04em;padding:6px 8px;border-radius:5px;text-align:center;margin-top:6px}
+.verdict--r{color:var(--band-r);background:hsl(0,30%,12%)}.verdict--a{color:var(--band-a);background:hsl(40,35%,11%)}.verdict--g{color:var(--band-g);background:hsl(90,25%,10%)}
+
+.sheet{position:absolute;left:410px;bottom:77px;width:460px;background:hsl(30,30%,12%);border:1px solid var(--clr-border);border-radius:12px;box-shadow:0 12px 40px #000c;padding:16px;z-index:14}
+.sheet__head{display:flex;align-items:center}
+.sheet__head h3{margin:0;font:700 16px var(--font-display)}
+.seg{display:flex;margin:14px 0 2px;border:1px solid var(--clr-border-light);border-radius:8px;position:relative}
+.seg button:first-of-type{border-radius:7px 0 0 7px}.seg button:last-of-type{border-radius:0 7px 7px 0}
+.seg button{flex:1;background:none;border:0;color:var(--clr-text-secondary);padding:7px;font:600 12px var(--font-body);cursor:pointer;text-align:left}
+.seg button small{display:block;font-weight:400;font-size:10.5px;color:var(--clr-text-muted)}
+.seg button.on{background:hsl(32,45%,20%);color:var(--clr-text-primary)}
+.squad{display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--clr-border);border-radius:8px;background:hsl(30,28%,15%);margin-top:6px;font-size:13px}
+.squad b{font-weight:700}.squad small{margin-left:auto;font-size:11px;color:var(--clr-text-muted)}
+.squad.sel{border-color:var(--clr-primary);background:hsl(32,50%,22%)}
+.go{width:100%;padding:11px;border:0;border-radius:8px;background:hsl(80,55%,38%);color:#fff;font:700 14px var(--font-body);cursor:pointer;margin-top:10px}
+.eta{font-size:11px;color:var(--clr-text-muted);margin-top:8px}
+
+.toasts{position:absolute;top:60px;right:20px;width:300px;display:flex;flex-direction:column;gap:8px;z-index:30}
+.toast{position:relative;display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-radius:12px;background:var(--clr-bg-elevated);border:1px solid var(--clr-border-light);box-shadow:0 8px 24px #000b}
+.toast .ic{width:18px;height:18px;margin-top:1px}
+.toast__t{font-weight:600;font-size:12.5px}.toast__m{font-size:11px;color:var(--clr-text-secondary);margin-top:2px}
+.toast--ok{border-color:var(--clr-success)}.toast--ok .ic{color:var(--clr-success)}
+.toast--bad{border-color:var(--clr-danger)}.toast--bad .ic{color:var(--clr-danger)}
+.toast--mail{border-color:var(--clr-primary)}.toast--mail .ic{color:var(--clr-primary)}
+
+.shade{position:absolute;inset:0;background:hsla(30,10%,3%,.7);z-index:40}
+.modal{position:absolute;left:160px;top:80px;width:960px;height:640px;background:var(--clr-bg-surface);border:1px solid hsl(32,55%,35%);border-radius:14px;box-shadow:0 0 34px hsla(32,90%,55%,.18),0 20px 50px #000;z-index:41;display:flex;flex-direction:column;overflow:visible}
+.modal__inner{display:flex;flex-direction:column;height:100%;border-radius:14px;overflow:hidden}
+.mhead{display:flex;align-items:center;gap:12px;height:56px;padding:0 16px;border-bottom:1px solid var(--clr-border);background:var(--clr-bg-elevated);flex:none}
+.mhead h2{margin:0;font:700 18px var(--font-heading);letter-spacing:.08em;text-transform:uppercase;display:flex;gap:8px;align-items:center}
+.mhead .muted{font-size:12px;color:var(--clr-text-secondary);flex:1}
+.mx{width:32px;height:32px;border:1px solid var(--clr-border);border-radius:8px;background:var(--clr-bg-panel);color:var(--clr-text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.mbody{flex:1;display:grid;grid-template-columns:230px 1fr;min-height:0}
+.hub{padding:12px;border-right:1px solid var(--clr-border);background:var(--clr-bg-base);display:flex;flex-direction:column;gap:8px;overflow:visible}
+.mt{position:relative;display:flex;align-items:center;gap:12px;min-height:56px;padding:8px 12px;border:1px solid var(--clr-border);border-radius:8px;background:var(--clr-bg-elevated);cursor:pointer}
+.mt.on{border-color:var(--clr-primary);background:var(--clr-bg-active)}
+.mt .ic{width:18px;height:18px}
+.mt__name{font:700 14px var(--font-heading);letter-spacing:.06em;text-transform:uppercase;display:block}
+.mt__meta{font-size:11.5px;color:var(--clr-text-secondary);white-space:nowrap}
+.mt__bd{position:absolute;left:24px;top:6px;background:var(--clr-danger);color:#fff;font:700 10px var(--font-body);border-radius:8px;padding:1px 5px}
+.mt .tag{position:absolute;top:-7px;right:10px}
+.lhead{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--clr-border);font:700 14px var(--font-heading);letter-spacing:.08em;text-transform:uppercase;flex:none}
+.lhead small{font:500 12px var(--font-body);letter-spacing:0;text-transform:none;color:var(--clr-text-muted)}
+.list{flex:1;overflow:hidden;padding:8px;display:flex;flex-direction:column;gap:6px}
+.col{display:flex;flex-direction:column;min-height:0}
+.mr{position:relative;border:1px solid var(--clr-border);border-radius:8px;background:var(--clr-bg-elevated)}
+.mr__top{display:grid;grid-template-columns:10px 22px 1fr auto auto;gap:10px;align-items:center;padding:10px 12px;cursor:pointer;min-height:56px}
+.mr__dot{width:7px;height:7px;border-radius:50%;background:var(--clr-primary)}.mr__dot.read{background:none}
+.mr__top .ic{width:20px;height:20px}
+.mr__subj{font-weight:700;font-size:13.5px}.mr__from{display:block;font-size:11px;color:var(--clr-text-muted)}
+.mr__star{color:var(--clr-text-muted)}
+.exp{display:inline-flex;align-items:center;gap:4px;font:600 11px var(--font-body);color:var(--clr-warning);border:1px solid hsl(48,50%,30%);border-radius:10px;padding:2px 8px;white-space:nowrap}
+.exp--dead{color:var(--clr-text-muted);border-color:var(--clr-border-light)}
+.mr__x{padding:0 14px 12px 44px;font-size:13px;line-height:1.5;color:var(--clr-text-secondary)}
+.letter{background:linear-gradient(hsl(35,20%,13%),hsl(35,15%,10%));border:1px solid hsl(35,20%,22%);border-radius:8px;padding:10px 14px;color:var(--clr-text-primary);font-size:13.5px}
+.letter p{margin:0 0 6px}
+.sig{font:700 12px var(--font-heading);letter-spacing:.06em;text-align:right;color:var(--c)}
+.conseq{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+.conseq div{background:var(--clr-bg-panel);border-radius:6px;padding:7px 10px;font-size:12px}
+.conseq b{display:block;font:700 11px var(--font-heading);letter-spacing:.06em;text-transform:uppercase;margin-bottom:2px}
+.conseq .y b{color:var(--clr-success)}.conseq .n b{color:var(--clr-danger)}
+.mr__btns{display:flex;gap:8px;align-items:center}
+
+.fd{padding:14px 16px;overflow:hidden;display:flex;flex-direction:column;gap:10px}
+.fhead{display:grid;grid-template-columns:56px 1fr auto;gap:12px;align-items:center}
+.portrait{width:56px;height:56px;border-radius:12px;border:2.5px solid var(--c);display:flex;align-items:center;justify-content:center;background:hsl(30,15%,8%);color:#fff}
+.portrait .ic{width:26px;height:26px}
+.fname{font:700 19px var(--font-heading);letter-spacing:.06em}
+.muted{color:var(--clr-text-muted);font-size:12px}
+.quote{font-style:italic;color:var(--clr-text-secondary);font-size:12.5px;margin-top:2px}
+.ptag{font:600 10px var(--font-body);letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--clr-border-light);color:var(--clr-text-secondary);padding:2px 7px;border-radius:3px;white-space:nowrap}
+.card{position:relative;background:var(--clr-bg-elevated);border:1px solid var(--clr-border);border-radius:8px;padding:10px 12px}
+.cols{display:grid;grid-template-columns:1.1fr 1fr;gap:10px;min-height:0}
+.lbl{font:700 10px var(--font-body);letter-spacing:.12em;text-transform:uppercase;color:var(--clr-text-muted);margin-bottom:4px;display:flex;justify-content:space-between;align-items:center}
+.standbar{position:relative;height:9px;border-radius:5px;margin:8px 0 3px;background:linear-gradient(90deg,hsl(0,70%,48%) 0 20%,hsl(20,60%,42%) 20% 40%,hsl(35,8%,45%) 40% 60%,hsl(100,30%,40%) 60% 80%,var(--clr-success) 80%)}
+.standbar u{position:absolute;top:-4px;bottom:-4px;width:4px;margin-left:-2px;background:#fff;border-radius:2px;box-shadow:0 0 0 2px #000}
+.bands{display:flex;justify-content:space-between;font:600 9px var(--font-body);letter-spacing:.05em;text-transform:uppercase;color:var(--clr-text-muted)}
+.mod{display:grid;grid-template-columns:36px 1fr auto;gap:8px;font-size:12px;padding:5px 4px;border-top:1px solid var(--clr-border);align-items:center}
+.mod .v{font:700 13px var(--font-heading);text-align:right}.mod .v.p{color:var(--clr-success)}.mod .v.n{color:var(--clr-danger)}
+.mod small{color:var(--clr-text-muted);font-size:11px;white-space:nowrap}
+.mod--new{background:hsla(32,80%,50%,.14);border-radius:4px}
+.pips{display:flex;gap:4px;margin-top:4px}.pips i{flex:1;height:7px;border-radius:2px;background:var(--clr-bg-panel)}.pips i.on{background:var(--clr-warning)}
+.dip{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--clr-border);font-size:12px}
+.dip:first-of-type{border-top:0}
+.dip small{display:block;color:var(--clr-text-muted);font-size:11px}
+.ftile .ic{width:20px;height:20px}
+.ftile__st{display:block;font-size:11px;color:var(--clr-text-secondary);line-height:1.3}
+.hubsec{font:700 9.5px var(--font-body);letter-spacing:.12em;text-transform:uppercase;color:var(--clr-text-muted);margin:6px 2px 0}
+
+.wb{position:absolute;left:400px;top:92px;width:480px;background:var(--clr-bg-surface);border:1px solid var(--clr-border-light);border-radius:14px;z-index:41;box-shadow:0 20px 60px #000}
+.wb__h{padding:16px 18px 10px;display:flex;gap:12px;align-items:center;border-bottom:1px solid var(--clr-border)}
+.wb__h .ic{width:30px;height:30px;color:var(--clr-primary)}
+.wb__title{font:700 20px var(--font-display)}
+.wb__sub{font-size:12px;color:var(--clr-text-secondary)}
+.wb__sec{padding:8px 18px}
+.wb__st{font:700 10px var(--font-body);letter-spacing:.12em;text-transform:uppercase;color:var(--clr-text-muted);margin-bottom:4px;display:flex;gap:6px;align-items:center}
+.wb__ln{display:grid;grid-template-columns:20px 1fr;gap:10px;padding:5px 0;font-size:12.5px;line-height:1.4}
+.wb__ln .ic{margin-top:1px}
+.wb__ln em{display:block;font-style:normal;color:var(--clr-text-muted);font-size:11px}
+.wb__threat{margin:4px 0;background:hsl(0,35%,10%);border:1px solid hsl(0,45%,30%);border-radius:8px;padding:10px 12px}
+.wb__count{font:700 22px var(--font-display);color:hsl(5,85%,64%)}
+.res{display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:var(--clr-text-secondary)}
+.res b{color:var(--clr-success);font-weight:600}
+.wb__act{display:flex;gap:8px;padding:12px 18px 16px}
+
+.result{position:absolute;left:470px;top:150px;width:340px;background:hsl(30,30%,11%);border:1px solid hsl(90,35%,32%);border-radius:12px;box-shadow:0 16px 50px #000;z-index:13;overflow:visible}
+.result__h{padding:14px;text-align:center;border-bottom:1px solid var(--clr-border)}
+.result__h .ic{width:30px;height:30px;color:var(--clr-success)}
+.result__t{font:700 18px var(--font-display);color:var(--clr-success);margin-top:4px}
+.result__body{padding:8px 14px 4px;font-size:12px}
+.vs{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;text-align:center;margin:4px 0 8px}
+.vs b{display:block;font:700 15px var(--font-heading)}
+.vs small{color:var(--clr-text-muted);font-size:11px}
+
+.toast__btn{margin-top:6px}
+.fabpulse{position:absolute;left:1213px;top:733px;width:60px;height:60px;border-radius:50%;border:2px solid var(--clr-danger);z-index:21;pointer-events:none;animation:spotPulse 1.6s ease-out infinite}
+.fabtag{position:absolute;left:1196px;top:716px;z-index:22}
+.learned{position:absolute;left:12px;top:250px;width:220px;background:hsla(0,30%,10%,.95);border:1px solid hsl(0,40%,30%);border-radius:8px;padding:9px 11px;z-index:4;font-size:11px;color:var(--clr-text-secondary)}
+.learned h4{margin:0 0 5px;font:700 10px var(--font-body);letter-spacing:.1em;text-transform:uppercase;color:hsl(8,80%,68%);display:flex;gap:6px;align-items:center}
+.learned .kv{padding:2px 0;font-size:11px}
+.learned p{margin:6px 0 0;line-height:1.4}
+
+.mr--report .mr__x{padding:0 12px 12px}
+.rp__bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:11.5px;color:var(--clr-text-secondary);margin-bottom:8px}
+.tierpips{display:inline-flex;gap:3px;vertical-align:middle}.tierpips i{width:14px;height:6px;border-radius:2px;background:var(--clr-bg-panel)}.tierpips i.on{background:var(--clr-warning)}
+.agechip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--clr-border-light);border-radius:10px;padding:1px 8px}
+.agechip--stale{color:var(--clr-warning);border-color:hsl(48,50%,30%)}
+.rtabs{display:flex;gap:2px;border-bottom:1px solid var(--clr-border);margin-bottom:10px}
+.rtab{background:none;border:0;border-bottom:2px solid transparent;color:var(--clr-text-secondary);padding:7px 12px;font:600 12px var(--font-body);cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.rtab.on{color:var(--clr-primary);border-bottom-color:var(--clr-primary)}
+.rtab .ic{width:13px;height:13px}
+.rpane{font-size:12px;min-height:300px}
+.rgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.heroes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.hero{background:var(--clr-bg-panel);border:1px solid var(--clr-border);border-radius:8px;padding:8px;display:grid;grid-template-columns:38px 1fr;gap:8px;align-items:center;position:relative}
+.hero__pt{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid var(--rc);background:hsl(30,15%,8%)}
+.hero__pt .ic{width:18px;height:18px;color:#fff}
+.hero b{display:block;font-size:12.5px}.hero small{display:block;font-size:10.5px;color:var(--clr-text-muted)}
+.hero .stars{color:var(--clr-warning);font-size:10px;letter-spacing:1px}
+.hero .sk{grid-column:1 / -1;font-size:10.5px;color:var(--clr-text-secondary);border-top:1px solid var(--clr-border);padding-top:4px}
+.locked{display:flex;align-items:center;gap:6px;color:var(--clr-text-muted);font-size:11px;font-style:italic}
+.locked .ic{width:12px;height:12px}
+.hero--locked{justify-content:center;display:flex;text-align:center}
+.sqt{width:100%;border-collapse:collapse;margin-bottom:8px}
+.sqt th{font:700 9.5px var(--font-body);letter-spacing:.1em;text-transform:uppercase;color:var(--clr-text-muted);text-align:left;padding:4px 6px;border-bottom:1px solid var(--clr-border)}
+.sqt td{padding:5px 6px;border-bottom:1px solid var(--clr-border);vertical-align:top}
+.sqt td small{display:block;color:var(--clr-text-muted);font-size:10.5px}
+.sqt .row{font:700 10px var(--font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--clr-text-secondary);width:52px}
+.sqhead{display:flex;justify-content:space-between;align-items:baseline;margin:2px 0 2px}
+.sqhead b{font:700 13px var(--font-heading);letter-spacing:.04em}
+.typ{display:inline-block;font:700 9px var(--font-body);letter-spacing:.06em;text-transform:uppercase;border-radius:3px;padding:1px 5px;margin-left:4px;vertical-align:1px}
+.typ--cav{background:hsl(30,40%,22%);color:hsl(30,80%,70%)}.typ--inf{background:hsl(210,25%,22%);color:hsl(210,60%,75%)}.typ--rng{background:hsl(120,20%,20%);color:hsl(110,45%,65%)}.typ--sie{background:hsl(0,0%,22%);color:#ccc}
+.tech{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center}
+.lv{display:flex;gap:2px}.lv i{width:9px;height:9px;border-radius:2px;background:var(--clr-bg-panel)}.lv i.on{background:var(--clr-primary)}
+.blur{filter:blur(3px);opacity:.5;pointer-events:none;user-select:none}
+.lockbox{position:relative;border-radius:8px}
+.lockbox .lockmsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:8px;font-size:12.5px;color:var(--clr-text-primary);background:hsla(30,10%,6%,.35)}
+.counsel{display:grid;grid-template-columns:20px 1fr;gap:8px;padding:6px 0;border-top:1px solid var(--clr-border);line-height:1.4}
+.counsel .ic{width:15px;height:15px;margin-top:1px}
+.prevtoggle{margin-left:auto;display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:var(--clr-text-secondary)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<!--ICONS-->
+<symbol id="i-arena" viewBox="-27 -27 54 54"><g> <path stroke="none" fill="currentColor" d="M9.6 -19.9 Q7.25 -22.85 8.35 -26 L8.65 -26.45 9 -26.65 Q12.25 -27.8 15.1 -25.4 18.2 -22.85 16.25 -19.25 L15.8 -18.8 Q12.25 -16.8 9.6 -19.9 M17.45 -16.35 Q19.65 -20.7 23.85 -21 L24.5 -20.9 24.95 -20.6 Q28 -17.3 26.55 -12.65 25.3 -7.5 20 -8 L19.55 -8.1 19.3 -7.7 Q16.2 -3.5 11.5 -5.8 7.3 -8.05 7 -12.4 L7.1 -13.1 7.35 -13.55 Q10.6 -16.7 15.1 -15.25 L16.85 -14.55 17.45 -16.35 M21.75 -0.75 Q25.25 -3.3 28.9 -1.8 L29.4 -1.45 29.65 -1.1 Q30.85 2.85 27.8 5.95 24.7 9.5 20.5 6.95 L20.15 6.65 19.85 6.9 Q15.6 9 12.6 5.25 10.05 1.6 11.55 -1.85 L11.9 -2.45 12.25 -2.65 Q16.2 -3.85 19.35 -0.85 L20.55 0.45 21.75 -0.75 M-21.75 -0.75 L-20.55 0.45 -19.35 -0.85 Q-16.2 -3.85 -12.25 -2.65 L-11.9 -2.45 -11.55 -1.85 Q-10.05 1.6 -12.6 5.25 -15.6 9 -19.85 6.9 L-20.15 6.65 -20.5 6.95 Q-24.7 9.5 -27.8 5.95 -30.85 2.85 -29.65 -1.1 L-29.4 -1.45 -28.9 -1.8 Q-25.25 -3.3 -21.75 -0.75 M-17.45 -16.35 L-16.85 -14.55 -15.1 -15.25 Q-10.6 -16.7 -7.35 -13.55 L-7.1 -13.1 -7 -12.4 Q-7.3 -8.05 -11.5 -5.8 -16.2 -3.5 -19.3 -7.7 L-19.55 -8.1 -20 -8 Q-25.3 -7.5 -26.55 -12.65 -28 -17.3 -24.95 -20.6 L-24.5 -20.9 -23.85 -21 Q-19.65 -20.7 -17.45 -16.35 M-9.6 -19.9 Q-12.25 -16.8 -15.8 -18.8 L-16.25 -19.25 Q-18.2 -22.85 -15.1 -25.4 -12.25 -27.8 -9 -26.65 L-8.65 -26.45 -8.35 -26 Q-7.25 -22.85 -9.6 -19.9 M15.95 23.4 Q16.85 24.2 17 25.45 17.1 26.65 16.3 27.65 15.5 28.55 14.3 28.7 13.05 28.8 12.1 28 6.85 23.6 0.15 21.4 -6.5 23.6 -11.75 28 -12.75 28.8 -13.95 28.7 -15.2 28.55 -16 27.65 -16.8 26.65 -16.65 25.45 -16.55 24.2 -15.6 23.4 -12.85 21.1 -9.7 19.3 L-13.75 19 Q-14.75 18.95 -15.45 18.4 -18.25 19.95 -21 17.7 -24.45 15.2 -23.9 11.35 L-23.75 10.95 -23.25 10.5 Q-20.15 8.65 -16.45 10.4 -15.65 10.8 -15.1 11.35 L-14.15 9.9 Q-11.7 6.6 -7.8 7.05 L-7.45 7.2 -7.05 7.7 Q-5.25 10.4 -6.45 13.65 L0.2 15.15 Q3.2 14.25 6.5 13.7 5.25 10.45 7.05 7.7 L7.45 7.2 7.8 7.05 Q11.7 6.6 14.15 9.9 L15.1 11.35 Q15.65 10.8 16.45 10.4 20.15 8.65 23.25 10.5 L23.75 10.95 23.9 11.35 Q24.45 15.2 21 17.7 18.35 19.85 15.6 18.5 14.9 18.95 14 19 L10.05 19.3 Q13.15 21.1 15.95 23.4"/> </g></symbol>
+<symbol id="i-base" viewBox="-27 -27 54 54"><g> <path stroke="none" fill="currentColor" d="M19 -16 L19 -4 Q19 -2.75 18.15 -1.85 L15 1.25 15 10.75 18.15 13.9 Q19 14.75 19 16 L19 20 Q19 21.25 18.15 22.15 17.25 23 16 23 L-16 23 Q-17.25 23 -18.1 22.15 -19 21.25 -19 20 L-19 16 Q-19 14.75 -18.1 13.9 L-15 10.75 -15 1.25 -18.1 -1.85 Q-19 -2.75 -19 -4 L-19 -16 Q-19 -17.25 -18.1 -18.1 -17.25 -19 -16 -19 L-12 -19 Q-10.75 -19 -9.85 -18.1 -9 -17.25 -9 -16 L-9 -11 -7 -11 -7 -16 Q-7 -17.25 -6.1 -18.1 -5.25 -19 -4 -19 L4 -19 Q5.25 -19 6.15 -18.1 7 -17.25 7 -16 L7 -11 9 -11 9 -16 Q9 -17.25 9.9 -18.1 10.75 -19 12 -19 L16 -19 Q17.25 -19 18.15 -18.1 19 -17.25 19 -16"/> </g></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="8,12 11,15 16,9"/></g></symbol>
+<symbol id="i-clock" viewBox="-27 -27 54 54"><g> <path stroke="none" fill="currentColor" d="M-11.8 -0.65 Q-17.65 -7.6 -18 -18 -18 -18.45 -18.3 -18.7 -18.6 -19 -19 -19 L-20.1 -19 -20.7 -19.25 -21 -20 -21 -26 -20.7 -26.65 -20.65 -26.7 -20 -27 20 -27 20.75 -26.7 21 -26 21 -20 20.8 -19.25 20.75 -19.2 20.1 -19 19 -19 Q18.6 -19 18.3 -18.7 18 -18.45 18 -18 17.65 -7.6 11.85 -0.65 L11.6 0 11.85 0.65 Q17.65 7.6 18 18.05 18 18.45 18.3 18.75 L19 19 20.1 19 20.75 19.3 21 20 21 26 20.8 26.75 20.75 26.8 20 27 -20 27 -20.7 26.75 -21 26 -21 20 -20.7 19.35 -20.65 19.3 Q-20.45 19 -20.1 19 L-19 19 -18.3 18.75 Q-18 18.45 -18 18.05 -17.65 7.6 -11.8 0.65 L-11.6 0 -11.8 -0.65 M4.15 -0.8 Q4.35 -1.65 5 -2.15 L5.2 -2.4 Q11.6 -8.3 12 -17.95 L11.9 -18.45 11.5 -18.85 11 -19 -10.95 -19 -11.45 -18.85 -11.8 -18.45 -11.95 -17.95 Q-11.6 -8.2 -5.05 -2.3 L-5 -2.25 -4.95 -2.2 Q-4.35 -1.65 -4.1 -0.8 L-4 0 -4.1 0.85 -4.15 1.05 -4.8 2.1 -5 2.25 Q-11.6 8.15 -11.95 18 L-11.8 18.5 -11.45 18.85 -10.95 19 11 19 11.5 18.85 11.9 18.5 12 17.95 Q11.6 8.15 5.05 2.25 4.4 1.7 4.15 1.05 L4.15 0.85 4 0 Q4 -0.4 4.15 -0.8 M-4 -10 L4 -10 Q4.85 -10 5.45 -9.4 6 -8.85 6 -8 6 -7.15 5.45 -6.55 L1.45 -2.55 Q0.85 -2 0 -2 -0.85 -2 -1.4 -2.55 L-5.4 -6.55 Q-6 -7.15 -6 -8 -6 -8.85 -5.4 -9.4 -4.85 -10 -4 -10 M-8.6 16 Q-7.6 9.85 -3.6 5.7 L-3.25 5.4 Q-2.2 4.3 -1.65 3 L1.65 3 Q2.2 4.3 3.3 5.4 L3.35 5.4 3.35 5.45 Q7.6 9.6 8.65 16 L-8.6 16"/> </g></symbol>
+<symbol id="i-column" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="3" rx="1"/><rect x="4" y="19" width="16" height="3" rx="1"/><rect x="7" y="5" width="3" height="14"/><rect x="14" y="5" width="3" height="14"/></g></symbol>
+<symbol id="i-combat" viewBox="-27 -27 54 54"><g> <path stroke="none" fill="currentColor" d="M9 -17.65 L8.9 -17.55 -7.15 -1.45 -8.35 -2.65 -8.1 -2.9 Q-7.8 -3.25 -7.8 -3.65 L-7.8 -4.1 Q-7.8 -4.7 -8.15 -5.2 L-8.25 -5.3 Q-8.8 -5.85 -9.45 -5.85 L-13.55 -5.85 Q-15.3 -5.85 -15.3 -4.1 L-15.3 0 Q-15.35 1.7 -13.55 1.7 L-13.2 1.7 -12.45 1.45 -12.1 1.1 -9.6 3.65 -12.3 6.35 -16.25 6.35 Q-18 6.35 -18 8.1 L-18 16.25 Q-18 18 -16.25 18 L-8.15 18 Q-7.45 18 -6.95 17.45 -6.4 16.95 -6.4 16.25 L-6.4 12.25 -3.7 9.55 -1.35 11.85 -1.1 12.05 -1.4 12.4 Q-1.75 12.7 -1.75 13.15 L-1.75 13.55 Q-1.8 15.25 0 15.25 L4.1 15.25 Q4.7 15.25 5.2 14.85 L5.4 14.65 Q5.8 14.2 5.8 13.55 L5.8 9.45 Q5.8 8.85 5.4 8.35 L5.3 8.25 Q4.75 7.75 4.1 7.75 L3.6 7.75 3.2 7.85 Q2.95 7.9 2.85 8.05 L2.65 8.3 1.45 7.1 17.5 -8.95 Q18 -9.5 18 -10.15 L18 -16.3 Q18 -17 17.5 -17.55 L17.35 -17.65 Q16.9 -18 16.25 -18 L10.15 -18 Q9.5 -18 9 -17.65 M-16.2 -32 L16.25 -32 Q32 -32 32 -16.2 L32 16.25 Q32 32 16.25 32 L-16.2 32 Q-32 32 -32 16.25 L-32 -16.2 Q-32 -32 -16.2 -32"/> </g></symbol>
+<symbol id="i-crown" viewBox="-27 -27 54 54"><g> <path stroke="none" fill="currentColor" d="M26 -9.65 L22 14.95 21.9 15.35 Q21.2 18.95 14.95 21.45 11.25 22.95 6.7 23.6 L0 24 -6.6 23.6 Q-11.25 22.95 -14.9 21.45 L-14.85 21.45 Q-21.2 18.95 -21.85 15.35 L-21.95 14.95 -25.95 -9.65 Q-26.1 -10.5 -25.6 -11.15 -25.15 -11.8 -24.35 -11.95 -23.6 -12.15 -22.9 -11.65 L-12.65 -4.8 -1.7 -23 -0.65 -23.85 Q0 -24.1 0.7 -23.85 L1.75 -23 12.65 -4.8 22.9 -11.65 Q23.6 -12.15 24.4 -11.95 25.15 -11.8 25.65 -11.15 26.1 -10.5 26 -9.65 M-5.4 8.6 Q-6 9.15 -6 10 -6 10.85 -5.4 11.45 L-1.4 15.45 Q-0.85 16 0 16 0.85 16 1.45 15.45 L5.45 11.45 Q6 10.85 6 10 6 9.15 5.45 8.6 L1.45 4.6 Q0.85 4 0 4 -0.85 4 -1.4 4.6 L-5.4 8.6"/> </g></symbol>
+<symbol id="i-economy" viewBox="-27 -27 54 54"><g> <path stroke="none" fill="currentColor" d="M9.8 -25.45 Q11.2 -24.65 10.95 -21.75 L10.95 -21.7 Q9.9 -14.95 6.15 -13.85 3.6 -12.75 0.1 -13.05 L-0.1 -13.05 Q-3.6 -12.75 -6.2 -13.85 -9.9 -14.95 -10.95 -21.7 L-10.95 -21.75 Q-11.2 -24.65 -9.8 -25.45 L-5.9 -25.35 -5.95 -25.35 Q-2.8 -24 0 -24 2.8 -24 5.9 -25.35 L9.8 -25.45 M0 26 Q-19.7 25.75 -18.95 12.85 -17.15 -2.4 -10.5 -8.6 -8.6 -10.6 -5.3 -9.7 -2.6 -8.7 -0.15 -8.7 2.6 -8.7 5.35 -9.7 8.65 -10.6 10.55 -8.6 17.15 -2.4 18.95 12.85 19.75 25.75 0 26 M26.5 -8.8 Q27.15 -7.75 26.9 -6.5 26.6 -5.3 25.55 -4.65 L24.65 -4.25 26.7 -0.25 Q27.2 0.95 26.75 2.1 26.25 3.25 25.1 3.75 L22.75 3.8 Q21.6 3.3 21.1 2.2 17.85 -5.2 11.2 -10.5 10.4 -11.1 10.15 -12 9.85 -12.9 10.15 -13.75 10.4 -14.65 11.2 -15.25 11.9 -15.9 12.8 -15.95 21.6 -16.7 26.5 -8.8"/> </g></symbol>
+<symbol id="i-envelope" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></g></symbol>
+<symbol id="i-fire" viewBox="-27 -27 54 54"><g> <path stroke="none" fill="currentColor" d="M15.3 -10.2 Q21.9 -0.8 20.85 8.65 L20.85 8.9 Q19.55 16.75 15.05 22 12.9 25.6 8.35 26.9 L8.4 26.75 Q9.6 23.85 8.35 18.7 L8.3 18.65 Q4.15 7.1 0.35 4.05 -0.35 3.45 -1.1 3.6 -2.05 3.65 -2.55 4.45 -3 5 -2.95 5.85 L-2.95 5.9 Q-2.85 10.65 -5.7 14.65 -9.25 18.25 -8.8 22.65 L-8.75 22.75 Q-8.35 25.3 -7.1 27 -18.9 24 -20.9 11.85 -21.85 3.1 -14.8 -4.1 -7.65 -13.7 -8 -25.15 -8.1 -26.3 -7.45 -27.05 -6.9 -27.9 -5.95 -27.95 -5.1 -28.1 -4.35 -27.45 6.55 -18.25 10.1 -5.3 10.95 -7.05 11.2 -9.05 11.3 -10.15 12.15 -10.8 12.85 -11.4 13.85 -11.2 14.7 -11.05 15.3 -10.2"/> </g></symbol>
+<symbol id="i-flask" viewBox="-27 -27 54 54"><g> <path stroke="none" fill="currentColor" d="M-8.9 -23.8 Q-8.75 -21.7 -6.55 -18.95 -5.9 -18.15 -5.9 -17.1 L-5.9 -5.95 Q-5.9 -5 -6.45 -4.2 L-23.15 19 Q-23.75 19.85 -23.75 20.85 -23.75 22.15 -22.9 23.1 -22.05 23.8 -20.8 23.8 L20.8 23.8 Q22.05 23.8 22.95 23.1 23.75 22.15 23.75 20.85 23.75 19.85 23.15 19 L6.5 -4.2 Q5.9 -5 5.9 -5.95 L5.9 -17.1 Q5.9 -18.15 6.55 -18.95 8.7 -21.65 8.9 -23.75 L8.85 -23.8 -8.85 -23.8 -8.85 -23.75 -8.9 -23.8 M-8.9 -29.8 L8.9 -29.8 Q11.65 -29.8 13.2 -27.95 14.95 -26.15 14.9 -23.8 15.05 -20.35 11.9 -16.05 L11.9 -6.9 28.05 15.5 28.05 15.55 Q29.75 17.95 29.75 20.85 29.75 24.5 27.4 27.15 L27.2 27.35 Q24.55 29.8 20.8 29.8 L-20.8 29.8 Q-24.55 29.8 -27.15 27.35 L-27.4 27.15 Q-29.75 24.5 -29.75 20.85 -29.75 17.95 -28.05 15.55 L-28 15.5 -11.9 -6.9 -11.9 -16.05 Q-15.05 -20.35 -14.9 -23.8 -14.95 -26.15 -13.2 -27.95 -11.65 -29.8 -8.9 -29.8 M12.5 9.25 L17.4 16.05 Q18.05 17 17.9 18.15 17.8 19.25 16.95 20.05 16.05 20.8 14.95 20.8 L-14.85 20.8 Q-16 20.8 -16.85 20.05 -17.75 19.25 -17.85 18.15 -17.95 17 -17.3 16.05 L-12.4 9.25 -11.35 8.35 Q-10.7 8 -9.95 8 L10.05 8 Q10.8 8 11.45 8.35 L12.5 9.25"/> </g></symbol>
+<symbol id="i-food" viewBox="-27 -27 54 54"><g> <path stroke="none" fill="currentColor" d="M16.65 -23.75 Q18.05 -22.4 18 -20.3 L18 -20.25 Q18.05 -18.25 16.6 -16.8 15.1 -15.3 13 -15.3 11 -15.3 9.5 -16.8 8.05 -18.25 8 -20.25 L8 -20.3 Q8.05 -22.35 9.55 -23.85 L12.35 -26.65 13.05 -26.95 13.75 -26.65 16.65 -23.75 M23 10.05 L23 14.2 Q22.95 16.15 21.55 17.55 L21.5 17.6 Q20.05 19.05 18 19.05 L16 18.65 16 26 15.7 26.7 15 27 11 27 Q10.6 27 10.3 26.7 10 26.4 10 26 L10 18.65 8 19.05 Q5.95 19.05 4.5 17.6 L4.5 17.55 Q3.05 16.15 3 14.2 L3 10.05 Q3 9.65 3.3 9.35 3.6 9.05 4 9.05 L8 9.05 10 9.45 10 6.65 8 7.05 Q5.95 7.05 4.5 5.6 L4.5 5.55 Q3.05 4.15 3 2.2 L3 -1.95 Q3 -2.35 3.3 -2.65 L4 -2.95 8 -2.95 10 -2.55 10 -5.35 8 -4.95 Q5.95 -4.95 4.5 -6.4 L4.5 -6.45 Q3.05 -7.85 3 -9.8 L3 -13.95 Q3 -14.35 3.3 -14.65 L4 -14.95 8 -14.95 Q10.05 -14.95 11.55 -13.5 L11.6 -13.5 Q12.65 -12.4 12.9 -10.95 L13 -10.2 13.1 -10.95 Q13.35 -12.4 14.45 -13.5 15.95 -14.95 18 -14.95 L22 -14.95 22.7 -14.65 23 -13.95 23 -9.8 Q22.95 -7.85 21.55 -6.45 L21.5 -6.4 Q20.05 -4.95 18 -4.95 L16 -5.35 16 -2.55 18 -2.95 22 -2.95 22.7 -2.65 23 -1.95 23 2.2 Q22.95 4.15 21.55 5.55 L21.5 5.6 Q20.05 7.05 18 7.05 L16 6.65 16 9.45 18 9.05 22 9.05 Q22.4 9.05 22.7 9.35 L23 10.05 M-9.35 -23.75 Q-7.95 -22.4 -8 -20.3 L-8 -20.25 Q-7.95 -18.25 -9.4 -16.8 -10.9 -15.3 -13 -15.3 -15 -15.3 -16.5 -16.8 -17.95 -18.25 -18 -20.25 L-18 -20.3 Q-17.95 -22.35 -16.45 -23.85 L-13.65 -26.65 -12.95 -26.95 Q-12.55 -26.95 -12.25 -26.65 L-9.35 -23.75 M-3 10.05 L-3 14.2 Q-3.05 16.15 -4.45 17.55 L-4.5 17.6 Q-5.95 19.05 -8 19.05 L-10 18.65 -10 26 Q-10 26.4 -10.3 26.7 -10.6 27 -11 27 L-15 27 -15.7 26.7 -16 26 -16 18.65 -18 19.05 Q-20.05 19.05 -21.5 17.6 L-21.5 17.55 Q-22.95 16.15 -23 14.2 L-23 10.05 -22.7 9.35 Q-22.4 9.05 -22 9.05 L-18 9.05 -16 9.45 -16 6.65 -18 7.05 Q-20.05 7.05 -21.5 5.6 L-21.5 5.55 Q-22.95 4.15 -23 2.2 L-23 -1.95 -22.7 -2.65 -22 -2.95 -18 -2.95 -16 -2.55 -16 -5.35 -18 -4.95 Q-20.05 -4.95 -21.5 -6.4 L-21.5 -6.45 Q-22.95 -7.85 -23 -9.8 L-23 -13.95 -22.7 -14.65 -22 -14.95 -18 -14.95 Q-15.95 -14.95 -14.45 -13.5 L-14.4 -13.5 Q-13.35 -12.4 -13.1 -10.95 L-13 -10.2 -12.9 -10.95 Q-12.65 -12.4 -11.55 -13.5 -10.05 -14.95 -8 -14.95 L-4 -14.95 -3.3 -14.65 Q-3 -14.35 -3 -13.95 L-3 -9.8 Q-3.05 -7.85 -4.45 -6.45 L-4.5 -6.4 Q-5.95 -4.95 -8 -4.95 L-10 -5.35 -10 -2.55 -8 -2.95 -4 -2.95 -3.3 -2.65 Q-3 -2.35 -3 -1.95 L-3 2.2 Q-3.05 4.15 -4.45 5.55 L-4.5 5.6 Q-5.95 7.05 -8 7.05 L-10 6.65 -10 9.45 -8 9.05 -4 9.05 Q-3.6 9.05 -3.3 9.35 -3 9.65 -3 10.05"/> </g></symbol>
+<symbol id="i-gear" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></g></symbol>
+<symbol id="i-gift" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20,12 20,22 4,22 4,12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></g></symbol>
+<symbol id="i-hammer" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 6l4 4"/><path d="M15 5l4 4-9 9-4-4z" transform="translate(-1 0)"/><path d="M14.5 4.5l5 5"/><path d="M5 21l4-4"/></g></symbol>
+<symbol id="i-house" viewBox="-27 -27 54 54"><g> <path stroke="none" fill="currentColor" d="M-26.1 -2.1 L-6.1 -22.1 Q-5.25 -23 -4 -23 L4 -23 Q5.25 -23 6.15 -22.1 L26.15 -2.1 Q27 -1.25 27 0 27 1.25 26.15 2.15 L22.15 6.15 Q21.25 7 20 7 L19 6.85 19 20 Q19 21.25 18.15 22.15 17.25 23 16 23 L8 23 Q6.75 23 5.9 22.15 5 21.25 5 20 L5 7 -5 7 -5 20 Q-5 21.25 -5.85 22.15 -6.75 23 -8 23 L-16 23 Q-17.25 23 -18.1 22.15 -19 21.25 -19 20 L-19 6.85 -20 7 Q-21.25 7 -22.1 6.15 L-26.1 2.15 Q-27 1.25 -27 0 -27 -1.25 -26.1 -2.1"/> </g></symbol>
+<symbol id="i-iron" viewBox="-27 -27 54 54"><g> <path stroke="none" fill="currentColor" d="M8 30 L-24 30 Q-25.95 30 -27.5 28.85 -29.1 27.7 -29.7 25.85 -30.3 23.95 -29.7 22.1 L-21.7 -1.9 -21 -3.3 -5 -27.3 Q-4.15 -28.6 -2.8 -29.3 -1.5 -30 0 -30 L16 -30 Q17.95 -30 19.5 -28.85 21.1 -27.75 21.7 -25.9 L29.7 -1.9 Q30.15 -0.55 29.95 0.8 29.75 2.15 29 3.35 L13 27.35 Q12.15 28.6 10.85 29.3 9.5 30 8 30 M-24 24 L8 24 0.35 1 -16.3 1 -24 24"/> </g></symbol>
+<symbol id="i-lightning" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="13,2 3,14 12,14 11,22 21,10 12,10 13,2"/></g></symbol>
+<symbol id="i-lock" viewBox="-27 -27 54 54"><g> <path stroke="none" fill="currentColor" d="M-8 -10 L-8 -6 8 -6 8 -10 Q8 -13.3 5.65 -15.65 3.3 -18 0 -18 -3.3 -18 -5.65 -15.7 L-5.7 -15.65 Q-8 -13.3 -8 -10 M16 -6 Q20 -6 20 -2 L20 22 Q20 23.95 19.05 24.95 18.05 26 16 26 L-16 26 Q-18.05 26 -19.05 24.95 -20 23.95 -20 22 L-20 -2 Q-20 -6 -16 -6 L-16 -10 Q-16 -16.6 -11.35 -21.3 L-11.3 -21.35 Q-6.6 -26 0 -26 6.6 -26 11.3 -21.3 16 -16.6 16 -10 L16 -6 M0 2 Q-2.05 2 -3.5 3.45 L-3.55 3.5 Q-5 4.95 -5 7 -5 9.05 -3.55 10.5 L-2.45 11.35 -2.1 11.75 -2 12.2 -2 15.75 Q-2 16.55 -1.4 17.15 -0.8 17.75 0 17.75 0.8 17.75 1.4 17.15 2 16.55 2 15.75 L2 12.2 2.15 11.75 2.5 11.35 3.5 10.55 3.55 10.5 Q5 9.05 5 7 5 4.95 3.5 3.45 2.05 2 0 2"/> </g></symbol>
+<symbol id="i-money" viewBox="-27 -27 54 54"><g> <path stroke="none" fill="currentColor" d="M0.5 -11.2 Q-1.7 -11.2 -2.75 -10.35 L-2.9 -10.2 Q-3.8 -9.4 -3.8 -7.8 -3.8 -6.45 -2.9 -5.7 L-2.7 -5.55 Q-1.4 -4.5 2.1 -3.4 6.6 -2 8.75 -0.7 L9 -0.5 Q11.2 0.95 12.45 2.95 L12.7 3.2 Q14 5.5 14 8.5 14 13.3 10.7 16.3 8.25 18.55 3.9 19.35 L3.9 20 Q3.9 24 -0.05 24 L-0.1 24 Q-2.05 24.05 -3 23 -4 22 -4 20 L-4 19.35 Q-8.4 18.5 -10.9 16.1 L-11 16 Q-12.45 14.6 -13.5 12.15 L-13.55 12 Q-14 11.1 -14 9.7 -14 8.05 -13 6.9 L-12.75 6.65 -12.5 6.4 Q-11.45 5.3 -9.7 5.3 -7.15 5.3 -5.85 7.5 L-5.75 7.7 -5.7 7.8 -5.4 8.6 -5.35 8.75 -5.3 9 Q-5.15 10 -4.4 10.8 -2.85 12 -0.1 12 2.55 12 3.95 10.95 L3.9 11.05 4.2 10.8 Q5.2 9.95 5.2 8.6 5.2 7.35 4.3 6.6 L4.2 6.5 4.15 6.45 Q2.8 5.25 -0.25 4.3 L-0.6 4.3 Q-6.4 2.65 -9.2 0.05 L-9.5 -0.1 Q-12.6 -3.1 -12.6 -7.8 -12.6 -12.5 -9.45 -15.4 L-9.5 -15.4 Q-7.3 -17.7 -3.5 -18.45 L-3.5 -20 Q-3.5 -24 0.5 -24 2.1 -24 3.3 -22.8 4.5 -21.6 4.5 -20 L4.5 -18.55 Q8.4 -17.6 10.7 -14.9 L10.7 -14.95 Q12.8 -12.75 13.3 -9.4 L13.3 -9.3 13.4 -8.5 13.4 -8.4 13.4 -8.3 Q13.4 -4 9.15 -4 L9.1 -4 Q6 -3.9 4.9 -7.3 L4.5 -8.6 3.9 -9.65 Q3.55 -9.8 3.45 -10.15 2.35 -11.2 0.5 -11.2"/> </g></symbol>
+<symbol id="i-more" viewBox="0 0 24 24"><g fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></g></symbol>
+<symbol id="i-quests" viewBox="-27 -27 54 54"><g> <path stroke="none" fill="currentColor" d="M-18 -25 L4 -25 Q6.5 -25 7.95 -23.95 10 -22.5 10 -19 L10 -2.9 Q8.75 -2.45 8.1 -1.25 L-1.8 15.95 Q-2.75 17.15 -2.35 19 L-2.3 19.15 -1.8 21 -18 21 Q-24 21 -24 15 L-24 -19 Q-24 -25 -18 -25 M19 3.9 L19.45 4.5 19.35 5.25 9.35 22.6 Q9.15 22.9 8.75 23.05 L3.3 24.5 2.55 24.4 Q2.2 24.2 2.1 23.8 L0.6 18.35 Q0.5 17.9 0.7 17.6 L10.7 0.25 11.3 -0.2 12.05 -0.1 19 3.9 M14.05 -2.85 L13.6 -3.45 Q13.5 -3.85 13.7 -4.2 L17.7 -11.15 18.3 -11.6 19.05 -11.5 26 -7.5 26.45 -6.9 26.35 -6.15 22.35 0.8 21.75 1.25 21 1.15 14.05 -2.85"/> </g></symbol>
+<symbol id="i-scroll" viewBox="-27 -27 54 54"><g> <path stroke="none" fill="currentColor" d="M-11.95 -17.85 L-18.9 -13.85 -19.65 -13.75 -20.25 -14.2 -24.25 -21.15 -24.35 -21.9 -23.9 -22.5 -16.95 -26.5 -16.2 -26.6 -15.6 -26.15 -11.6 -19.2 Q-11.4 -18.85 -11.5 -18.45 -11.65 -18.05 -11.95 -17.85 M-16.9 -11.1 L-9.95 -15.1 -9.2 -15.2 -8.6 -14.75 1.4 2.6 1.5 3.35 0 8.8 -0.45 9.4 -1.2 9.5 -6.65 8.05 -7.25 7.6 -17.25 -9.75 -17.35 -10.5 -16.9 -11.1 M3.9 0.95 L-1.65 -8.65 -1.6 -8.7 Q4.8 -12.7 11.15 -8.75 L26.65 1 Q30.85 3.6 30.45 6.55 30.85 9.4 26.65 12.05 L1.6 27.75 Q-4.75 31.7 -11.1 27.75 L-11.15 27.75 -26.6 18 -26.55 18 Q-30.8 15.4 -30.4 12.5 -30.8 9.6 -26.55 7 L-26.6 7 -15.2 -0.15 -9.85 9.1 -9.75 9.3 Q-9.1 10.35 -7.7 10.85 L-7.4 10.95 -1.95 12.4 -1.9 12.4 Q-0.35 12.8 1.05 12 2.5 11.2 2.9 9.55 L2.9 9.6 4.4 4.15 4.45 4 Q4.85 2.15 3.9 0.95"/> </g></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/> <line x1="21" y1="21" x2="16.65" y2="16.65"/></g></symbol>
+<symbol id="i-shield" viewBox="-27 -27 54 54"><g> <path stroke="none" fill="currentColor" d="M22.3 -19.55 Q24.4 -19.35 25.75 -17.75 27.15 -16.2 27 -14.1 26.25 4.45 16.3 16.8 10.2 24.3 2.35 28.05 L0.1 28.5 -2.15 28.05 Q-10.1 24.3 -16.2 16.8 -26.15 4.45 -26.9 -14.1 -27 -16.2 -25.65 -17.75 -24.3 -19.35 -22.2 -19.55 -13.35 -20.4 -4.4 -27 -2.4 -28.4 0.1 -28.4 2.5 -28.4 4.5 -27 13.45 -20.45 22.3 -19.55"/> </g></symbol>
+<symbol id="i-skull" viewBox="-27 -27 54 54"><g> <path stroke="none" fill="currentColor" d="M9 12 Q11.55 12 13.2 10.35 15 8.55 15 6 15 3.6 13.2 1.8 11.55 0 9 0 6.45 0 4.65 1.8 3 3.45 3 6 3 8.55 4.65 10.35 6.45 12 9 12 M-9 12 Q-6.45 12 -4.8 10.35 -3 8.55 -3 6 -3 3.6 -4.8 1.8 -6.45 0 -9 0 -11.55 0 -13.35 1.8 -15 3.45 -15 6 -15 8.55 -13.35 10.35 -11.55 12 -9 12 M0 -30 Q11.1 -30 19.05 -22.5 27 -15 27 -4.5 27 1.5 24 7.2 L24 12 Q24 14.55 22.2 16.35 20.55 18 18 18 L12 18 12 24 Q12 26.55 10.2 28.35 8.55 30 6 30 L-6 30 Q-8.55 30 -10.35 28.35 -12 26.55 -12 24 L-12 18 -18 18 Q-20.55 18 -22.35 16.35 -24 14.55 -24 12 L-24 7.2 Q-27 1.95 -27 -4.5 -27 -15 -19.05 -22.5 -11.25 -30 0 -30"/> </g></symbol>
+<symbol id="i-star-burst" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/></g></symbol>
+<symbol id="i-sword" viewBox="-27 -27 54 54"><g> <path stroke="none" fill="currentColor" d="M13.5 -26.45 Q14.25 -27 15.25 -27 L24.4 -27 Q25.35 -27 26.05 -26.45 L26.25 -26.3 Q27 -25.5 27 -24.45 L27 -15.2 Q27 -14.25 26.25 -13.4 L2.2 10.65 4 12.45 4.3 12.1 Q4.45 11.85 4.8 11.8 L5.4 11.65 6.15 11.65 Q7.15 11.65 7.95 12.4 L8.1 12.55 Q8.7 13.3 8.7 14.2 L8.7 20.35 Q8.7 21.3 8.1 22 L7.8 22.3 Q7.05 22.9 6.15 22.9 L0 22.9 Q-2.7 22.9 -2.6 20.35 L-2.6 19.75 Q-2.6 19.05 -2.1 18.6 L-1.65 18.1 -2 17.8 -5.55 14.35 -9.6 18.4 -9.6 24.4 Q-9.6 25.45 -10.4 26.2 -11.15 27 -12.2 27 L-24.35 27 Q-27 27 -27 24.4 L-27 12.15 Q-27 9.55 -24.35 9.55 L-18.45 9.55 -14.4 5.5 -18.15 1.65 -18.65 2.2 Q-19.1 2.55 -19.8 2.55 L-20.3 2.55 Q-23 2.55 -22.95 0 L-22.95 -6.15 Q-22.95 -8.75 -20.3 -8.75 L-14.15 -8.75 Q-13.2 -8.75 -12.35 -7.95 L-12.2 -7.8 Q-11.7 -7.05 -11.7 -6.15 L-11.7 -5.45 Q-11.7 -4.85 -12.15 -4.35 L-12.5 -3.95 -10.7 -2.15 13.35 -26.3 13.5 -26.45"/> </g></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></g></symbol>
+<symbol id="i-warning" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></g></symbol>
+<symbol id="i-wood" viewBox="-27 -27 54 54"><g> <path stroke="none" fill="currentColor" d="M2.35 -22.7 Q0.8 -25.4 -4.4 -24.95 -9.5 -24.55 -15.25 -21.2 -21 -17.95 -23.95 -13.7 -26.95 -9.45 -25.4 -6.75 -23.85 -4.1 -18.65 -4.55 -13.5 -5 -7.75 -8.25 -2 -11.6 0.9 -15.8 3.9 -20.05 2.35 -22.7 M16.75 -25.05 Q18.45 -26.9 20.85 -27 23.35 -27.1 25.15 -25.35 26.95 -23.7 27 -21.2 27.1 -18.7 25.5 -16.9 19.85 -10.2 23.35 1.3 L23.6 2.8 25.05 5.3 Q25.7 6.35 25.85 7.65 26.55 11.7 22.8 17.05 L22.85 17.05 Q19.3 22.3 12.25 26.4 5.2 30.4 -1.15 30.9 -7.95 31.45 -11 28.6 -12 27.8 -12.55 26.8 L-31.05 -5.2 Q-31.65 -6.2 -31.8 -7.35 -32.8 -11.55 -28.85 -17.05 -25.3 -22.4 -18.25 -26.4 -11.25 -30.5 -4.9 -30.9 L-4.85 -30.9 Q1.8 -31.5 4.95 -28.7 L6.5 -26.85 11.85 -17.55 Q13.55 -21.7 16.75 -25.05 M-4.6 -18.7 Q-3.85 -17.35 -5.35 -15.25 -6.8 -13.1 -9.65 -11.45 -12.55 -9.8 -15.1 -9.6 -17.7 -9.4 -18.45 -10.75 -19.25 -12.1 -17.75 -14.2 -16.3 -16.3 -13.4 -17.95 -10.55 -19.6 -8 -19.85 -5.4 -20.05 -4.6 -18.7"/> </g></symbol>
+<symbol id="i-world" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="3" y1="12" x2="21" y2="12"/><path d="M12 3c3 4 3 14 0 18M12 3c-3 4-3 14 0 18"/></g></symbol>
+<symbol id="i-x-circle" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></g></symbol>
+<!--/ICONS-->
+</defs></svg>
+
+<header class="top">
+  <h1>Prototype A · AI Factions<small>"Red Talon wants Red Lowlands back"</small></h1>
+  <div class="legend">
+    <span><span class="tag tag--new">NEW</span> new element</span>
+    <span><span class="tag tag--imp">IMPROVED</span> proposed change to an existing surface</span>
+    <span>no tag = today's UI</span>
+  </div>
+  <div class="mode"><button id="mGuided" class="on">Guided</button><button id="mExplore">Explore</button></div>
+</header>
+
+<main class="stage" id="stage">
+  <div class="frame-wrap" id="wrap">
+    <div class="frame" id="frame">
+      <div class="bg" id="bg"></div>
+      <svg class="map" id="map" viewBox="0 0 1280 800"></svg>
+      <div id="hud"></div>
+      <div id="layer"></div>
+      <div class="hot" style="left:712px;top:735px;width:46px;height:46px;z-index:6" data-act="mail" title="Mail"></div>
+      <div class="hot" style="left:1219px;top:739px;width:48px;height:48px;z-index:22" data-act="more" title="More"></div>
+      <div class="hot" style="left:578px;top:732px;width:124px;height:54px;border-radius:27px;z-index:6" data-act="flip" title="Base / World"></div>
+      <div class="spot" id="spot"></div>
+      <div id="rings"></div>
+    </div>
+  </div>
+</main>
+
+<section class="caption" id="caption"></section>
+<section class="explore" id="explore"></section>
+
+<script>
+const RED = '#e05a3d', SCAV = '#b7d645', YOU = '#3ad17a', COV = '#6f9fd8', REBEL = '#b07ad8', WARN = 'hsl(48,95%,52%)', NEWC = 'hsl(188,85%,58%)';
+const $ = id => document.getElementById(id);
+const I = (n, style = '') => `<svg class="ic" style="${style}"><use href="#i-${n}"/></svg>`;
+const NEW = '<span class="tag tag--new">NEW</span>';
+const IMP = '<span class="tag tag--imp">IMPROVED</span>';
+const PROP = '<span class="tag tag--prop">PROPOSAL</span>';
+
+const P = {
+  hold: [940, 726], camp: [812, 728], den: [378, 235], keep: [915, 245], rebel: [680, 462],
+  outpost: [403, 655], fort: [644, 610], meet: [752, 684],
+};
+const ROUTES = {
+  scouts: [[918, 722], [870, 700], [790, 706], [754, 676], [752, 660], [752, 650], [752, 640]],
+  column: [[916, 726], [890, 727], [860, 728], [832, 728]],
+  warband: [[796, 718], [772, 712], [754, 700], [752, 676], [752, 652], [722, 624], [664, 614]],
+  intercept: [[420, 660], [520, 720], [660, 712], [734, 686]],
+  reinforce: [[420, 648], [500, 590], [580, 584], [626, 604]],
+  scoutRun: [[420, 664], [600, 690], [800, 726], [914, 730]],
+  retreat: [[760, 690], [790, 716], [840, 726], [906, 726]],
+};
+
+function bez(pts) {
+  const [a, b, c, d] = pts;
+  return { d: `M${a} C${b} ${c} ${d}`, at: t => { const u = 1 - t; return [0, 1].map(k => u * u * u * a[k] + 3 * u * u * t * b[k] + 3 * u * t * t * c[k] + t * t * t * d[k]); } };
+}
+function chain(pts) {
+  if (pts.length === 4) return bez(pts);
+  const segs = [bez(pts.slice(0, 4)), bez(pts.slice(3, 7))];
+  return { d: segs[0].d + ' ' + segs[1].d.replace(/^M[^C]+/, ''), at: t => t < .5 ? segs[0].at(t * 2) : segs[1].at(t * 2 - 1) };
+}
+function pathFor(key) { const p = ROUTES[key]; return p.length === 7 ? chain(p) : p.length === 4 ? bez(p) : bez([p[0], p[1], p[2], p[3]]); }
+
+function mapNode({ p, r = 20, color, icon, lvl, faded, act, label, label2, isNew = true, prop }) {
+  const [x, y] = p;
+  const op = faded ? .62 : 1;
+  const ring = faded ? `stroke-dasharray="5 3"` : '';
+  const lbl = label ? textLabel(x, y + r + 15, label, label2, isNew, prop, color) : '';
+  return `<g class="hit" data-act="${act}" opacity="${op}">
+    ${isNew ? `<circle cx="${x}" cy="${y}" r="${r + 5}" fill="none" stroke="${NEWC}" stroke-width="1.5" opacity=".85"/>` : ''}
+    <circle cx="${x}" cy="${y}" r="${r}" fill="hsl(30,12%,9%)" stroke="${color}" stroke-width="3.5" ${ring}/>
+    <use href="#i-${icon}" x="${x - r * .55}" y="${y - r * .55}" width="${r * 1.1}" height="${r * 1.1}" style="color:#fff"/>
+    ${lvl ? `<g transform="translate(${x - r * .82} ${y - r * .82}) rotate(45)"><rect x="-9" y="-9" width="18" height="18" rx="2" fill="${color}" stroke="#0008"/></g>
+    <text x="${x - r * .82}" y="${y - r * .82 + 4.5}" text-anchor="middle" font-family="Outfit" font-weight="800" font-size="12" fill="#fff">${lvl}</text>
+    <rect x="${x - r * .82 + 11}" y="${y - r - 2}" width="24" height="3" rx="1" fill="#3ad17a"/>` : ''}
+  </g>${lbl}`;
+}
+function textLabel(x, y, t, t2, isNew, prop, color) {
+  const w = t.length * 6.6 + 10, tag = isNew ? (prop ? 'PROPOSAL' : 'NEW') : '';
+  const tw = tag ? tag.length * 6 + 8 : 0;
+  const total = w + (tag ? tw + 4 : 0), x0 = x - total / 2;
+  return `<g pointer-events="none">
+    <text x="${x0 + w / 2}" y="${y}" text-anchor="middle" font-family="Outfit" font-weight="800" font-size="11" letter-spacing=".4" fill="#fff" stroke="#000" stroke-width="3.2" paint-order="stroke">${t}</text>
+    ${tag ? `<rect x="${x0 + w + 4}" y="${y - 10}" width="${tw}" height="13" rx="3" fill="${prop ? COV : NEWC}"/><text x="${x0 + w + 4 + tw / 2}" y="${y - 0.5}" text-anchor="middle" font-family="Outfit" font-weight="800" font-size="8.5" letter-spacing=".8" fill="#03222a">${tag}</text>` : ''}
+    ${t2 ? `<text x="${x}" y="${y + 13}" text-anchor="middle" font-family="Outfit" font-weight="700" font-size="10" fill="${color}" stroke="#000" stroke-width="3" paint-order="stroke">${t2}</text>` : ''}
+  </g>`;
+}
+function pill(x, y, text, color, opts = {}) {
+  const w = text.length * 6.4 + 14;
+  return `<g ${opts.act ? `class="hit" data-act="${opts.act}"` : 'pointer-events="none"'}><rect x="${x - w / 2}" y="${y - 10}" width="${w}" height="19" rx="9.5" fill="hsla(20,20%,6%,.92)" stroke="${color}" stroke-width="1.2"/>
+    <text x="${x}" y="${y + 3.8}" text-anchor="middle" font-family="Outfit" font-weight="800" font-size="10.5" letter-spacing=".3" fill="${color}">${text}</text></g>`;
+}
+function mover(p, color, act) {
+  return `<g class="hit" data-act="${act}"><circle cx="${p[0]}" cy="${p[1]}" r="13" fill="${color}" opacity=".28"><animate attributeName="r" values="9;15;9" dur="1.8s" repeatCount="indefinite"/></circle>
+    <circle cx="${p[0]}" cy="${p[1]}" r="6.5" fill="${color}" stroke="#000" stroke-width="2"/></g>`;
+}
+function route(key, color, kind, arrow) {
+  const c = pathFor(key);
+  const dash = kind === 'dot' ? 'stroke-dasharray="1.5 6" stroke-linecap="round" stroke-width="3.2"' : 'stroke-dasharray="8 6" stroke-width="3"';
+  return { c, svg: `<path d="${c.d}" fill="none" stroke="#000" stroke-opacity=".55" stroke-width="6" stroke-linecap="round"/>
+    <path d="${c.d}" fill="none" stroke="${color}" ${dash} ${arrow ? `marker-end="url(#${arrow})"` : ''}><animate attributeName="stroke-dashoffset" from="28" to="0" dur="1.4s" repeatCount="indefinite"/></path>` };
+}
+
+const STAGES_LIVE = ['probe', 'mass', 'march'];
+function drawMap(s) {
+  $('bg').style.backgroundImage = `url(${s.bg === 'today' ? 'bg-world-today.jpg' : 'bg-world-held.jpg'})`;
+  const fog = s.bg === 'today';
+  const maskFill = fog ? 'rgb(21,16,13)' : 'rgb(75,52,44)';
+  const maskLine = fog ? 'rgb(23,18,15)' : 'rgb(79,56,48)';
+  let o = `<defs>
+    <marker id="aR" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="${RED}"/></marker>
+    <marker id="aG" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="${YOU}"/></marker>
+    <pattern id="scan" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="4" fill="${maskFill}"/><rect y="2" width="4" height="1" fill="${maskLine}"/></pattern>
+    <mask id="veilMask"><rect width="1280" height="800" fill="#fff"/>
+      <circle cx="${P.outpost[0]}" cy="${P.outpost[1]}" r="20" fill="#000"/>
+      ${s.stage !== 'lost' ? `<circle cx="${P.fort[0]}" cy="${P.fort[1]}" r="19" fill="#000"/>` : ''}
+      <rect x="518" y="728" width="246" height="72" fill="#000"/></mask>
+  </defs>`;
+  o += `<rect x="868" y="680" width="132" height="92" fill="url(#scan)"/>`;
+
+  const live = STAGES_LIVE.includes(s.stage) || s.stage === 'battle';
+  if (s.focus && live) o += `<rect x="280" y="50" width="720" height="723" fill="hsla(25,20%,4%,.58)" mask="url(#veilMask)" pointer-events="none"/>`;
+
+  if (s.proposal) o += `<rect x="523" y="56" width="474" height="234" rx="4" fill="hsla(212,55%,64%,.07)" stroke="${COV}" stroke-width="2" stroke-dasharray="8 6" pointer-events="none"/>` + pill(660, 290, 'PROPOSED · IRON COVENANT REGIONS', COV);
+
+  o += `<rect class="hit" data-act="card:region" x="521" y="534" width="238" height="194" fill="transparent"/>`;
+
+  const regionPill = { probe: ['WATCHED BY RED TALON SCOUTS', WARN], mass: ['TARGET · RED TALON MASSING', RED], march: ['WARBAND INBOUND · 18:40', RED] }[s.stage];
+  if (regionPill) {
+    const col = regionPill[1];
+    o += `<rect x="522" y="535" width="236" height="236" fill="none" stroke="${col}" stroke-width="2.5" stroke-dasharray="${s.stage === 'probe' ? '7 6' : '0'}" pointer-events="none"/>` + pill(615, 517, regionPill[0], col, { act: 'card:region' });
+  }
+  if (live || s.stage === 'after') o += `<circle cx="${P.fort[0]}" cy="${P.fort[1]}" r="20" fill="none" stroke="#fff" stroke-width="1.5" stroke-dasharray="3 3" pointer-events="none"/>` + textLabel(P.fort[0], P.fort[1] - 26, 'REAVER FORT', '', false);
+
+  o += mapNode({ p: P.den, r: 19, color: SCAV, icon: 'skull', lvl: 7, faded: true, act: 'card:den', label: 'SCAVENGER DEN', label2: 'seen through fog' });
+  o += mapNode({ p: P.keep, r: 19, color: COV, icon: 'shield', lvl: 9, faded: true, act: 'card:keep', label: 'COVENANT KEEP', label2: 'seen through fog', prop: true });
+  if (s.rebels) o += mapNode({ p: P.rebel, r: 16, color: REBEL, icon: 'fire', lvl: 2, act: 'card:rebel', label: 'ASH BROOD', label2: 'rebel camp · 1 of 3' });
+
+  if (s.stage === 'probe') {
+    const r = route('scouts', WARN, 'dot');
+    o += r.svg + mover(ROUTES.scouts[6], WARN, 'card:scouts') + pill(ROUTES.scouts[6][0] - 2, ROUTES.scouts[6][1] - 24, 'SCOUTS', WARN, { act: 'card:scouts' });
+  }
+  if (s.stage === 'mass') {
+    const r = route('column', RED, 'dash');
+    o += r.svg + mover(r.c.at(.45), RED, 'card:column');
+  }
+  if (s.stage === 'mass' || s.stage === 'march') {
+    const C = 2 * Math.PI * 21, f = s.stage === 'mass' ? .62 : .03;
+    o += `<g class="hit" data-act="card:camp">
+      <circle cx="${P.camp[0]}" cy="${P.camp[1]}" r="26" fill="none" stroke="${NEWC}" stroke-width="1.5" opacity=".85"/>
+      <circle cx="${P.camp[0]}" cy="${P.camp[1]}" r="21" fill="hsl(0,25%,9%)" stroke="hsla(8,70%,50%,.3)" stroke-width="5"/>
+      <circle cx="${P.camp[0]}" cy="${P.camp[1]}" r="21" fill="none" stroke="${RED}" stroke-width="5" stroke-dasharray="${C * f} ${C}" transform="rotate(-90 ${P.camp[0]} ${P.camp[1]})"/>
+      <use href="#i-sword" x="${P.camp[0] - 10}" y="${P.camp[1] - 10}" width="20" height="20" style="color:#fff"/></g>`;
+    o += textLabel(P.camp[0], P.camp[1] + 38, 'WAR CAMP', s.stage === 'mass' ? `62% · departs ${s.count}` : 'empty · warband left', true, false, RED);
+  }
+  if (s.stage === 'march') {
+    const w = route('warband', RED, 'dash', 'aR');
+    const wp = w.c.at(.2);
+    o += w.svg + mover(wp, RED, 'card:warband') + pill(wp[0] + 58, wp[1] - 16, 'WARBAND 18:40', RED, { act: 'card:warband' });
+    if (s.sent) {
+      const k = s.sent === 'intercept' ? 'intercept' : 'reinforce';
+      const g = route(k, YOU, 'dash', 'aG');
+      const gp = g.c.at(.5);
+      o += g.svg + mover(gp, YOU, 'card:squad') + pill(gp[0], gp[1] + 22, s.sent === 'intercept' ? 'SQUAD 1 → MEETING POINT · 4:10 AHEAD' : 'SQUAD 1 → REAVER FORT · 6:20', YOU, { act: 'card:squad' });
+      if (k === 'intercept') o += `<circle cx="${P.meet[0]}" cy="${P.meet[1]}" r="11" fill="hsla(140,60%,50%,.15)" stroke="${YOU}" stroke-width="2" stroke-dasharray="3 3" pointer-events="none"/>`;
+    }
+  }
+  if (s.stage === 'battle') {
+    o += `<g pointer-events="none"><circle cx="${P.meet[0]}" cy="${P.meet[1]}" r="20" fill="hsla(90,45%,48%,.25)" stroke="${YOU}" stroke-width="3"/><use href="#i-shield" x="${P.meet[0] - 10}" y="${P.meet[1] - 10}" width="20" height="20" style="color:#fff"/></g>`;
+  }
+  if (s.stage === 'after') {
+    const r = route('retreat', RED, 'dot', 'aR');
+    o += r.svg + mover(r.c.at(.55), RED, 'card:retreat') + pill(860, 700, 'SURVIVORS RETREATING', RED, { act: 'card:retreat' });
+  }
+
+  if (s.scoutSent) {
+    const r = route('scoutRun', YOU, 'dot', 'aG');
+    const sp = r.c.at(.55);
+    o += r.svg + mover(sp, YOU, 'card:hold') + pill(sp[0], sp[1] - 22, 'YOUR SCOUT · 3:20', YOU, { act: 'card:hold' });
+  }
+  const holdOpts = { p: P.hold, r: 22, color: RED, icon: 'fire', lvl: 9, act: 'card:hold', label: 'RED TALON HOLD' };
+  if (s.stage === 'lost') Object.assign(holdOpts, { faded: true, label2: 'seen through fog' });
+  o += mapNode(holdOpts);
+
+  if (s.stage === 'lost') {
+    o += pill(615, 517, 'LOST · BUFF GONE', RED) + pill(880, 517, 'FOGGED AGAIN · CASCADE', 'hsl(35,10%,72%)');
+    o += `<rect x="522" y="535" width="236" height="236" fill="none" stroke="${RED}" stroke-width="2.5" pointer-events="none"/>`;
+  }
+  $('map').innerHTML = o;
+}
+
+function marchesPanel(s) {
+  const threats = [], own = [];
+  if (s.stage === 'probe') threats.push({ act: 'card:scouts', icon: 'search', n: 'Red Talon scouts', t: 'watching', pct: 100, c: WARN });
+  if (s.stage === 'mass') threats.push({ act: 'card:camp', icon: 'sword', n: 'Massing → Red Lowlands', t: s.count, pct: 62, c: RED });
+  if (s.stage === 'march') threats.push({ act: 'card:warband', icon: 'sword', n: 'Warband → Red Lowlands', t: '18:40', pct: 42, c: RED });
+  if (s.scoutSent) own.push({ act: 'card:hold', icon: 'search', n: 'Scout → Red Talon Hold', t: '3:20', pct: 35 });
+  if (s.stage === 'march' && s.sent) own.push({ act: 'card:squad', icon: 'sword', n: s.sent === 'intercept' ? 'Squad 1 · intercept' : 'Squad 1 · reinforce', t: s.sent === 'intercept' ? '4:10' : '6:20', pct: 50 });
+  const calm = s.stage === 'after';
+  const rows = (list, threat) => list.map(r => `<div class="wm__row ${threat ? 'wm__row--threat' : ''}" data-act="${r.act}"><div class="wm__top">${I(r.icon, `width:13px;height:13px;color:${threat ? r.c : '#cfd6dc'}`)}<span>${r.n}</span><span>${r.t}</span></div><div class="wm__bar"><i style="width:${r.pct}%;${threat ? `background:${r.c}` : ''}"></i></div></div>`).join('');
+  const improved = threats.length || own.length || calm;
+  let h = `<div class="wm ${improved ? 'is-imp' : ''}" id="wm">${improved ? `<div class="ctag">${IMP}</div>` : ''}<div class="wm__head">Marches</div>`;
+  if (!improved) h += `<div class="wm__empty">No active marches</div>`;
+  else {
+    h += `<div class="wm__sec wm__sec--threat">${I('warning', 'width:11px;height:11px')} Threats</div>`;
+    h += threats.length ? rows(threats, true) : calm ? `<div class="wm__calm">${I('clock', 'width:13px;height:13px')} Calm · 11:52 left <span style="color:var(--clr-text-muted)">no countdowns</span></div>` : `<div class="wm__empty" style="padding:2px 0 0;text-align:left">None</div>`;
+    h += `<div class="wm__sec wm__sec--own">Your marches</div>` + (own.length ? rows(own, false) : `<div class="wm__empty" style="padding:2px 0 0;text-align:left">None</div>`);
+  }
+  return h + '</div>';
+}
+
+function banner(s) {
+  const b = {
+    probe: ['warn', 'search', 'RED TALON SCOUTS', 'are watching Red Lowlands', '', 'Respond', 'card:scouts'],
+    mass: ['', 'sword', 'RED TALON MASSING', 'for Red Lowlands · departs in', s.count, 'Defend', 'card:region'],
+    march: ['', 'sword', 'WARBAND INBOUND', 'Red Lowlands in', '18:40', s.sent ? 'Squad 1 sent' : 'Defend', 'card:warband'],
+  }[s.stage];
+  if (!b) return '';
+  return `<div class="banner ${b[0] ? 'banner--' + b[0] : ''} is-new" id="banner" data-act="${b[6]}"><div class="ctag" style="right:16px">${NEW}</div>${I(b[1], `color:${b[0] ? WARN : 'hsl(5,85%,64%)'}`)}<b>${b[2]}</b><span>${b[3]}</span>${b[4] ? `<span class="t">${b[4]}</span>` : ''}<button class="btn btn--sm">${b[5]}</button></div>`;
+}
+
+function focusChip(s) {
+  if (!STAGES_LIVE.includes(s.stage)) return '';
+  return `<div class="focus is-imp" id="focus" data-act="focus"><div class="ctag">${IMP}</div><b>Threat focus <span class="switch ${s.focus ? 'on' : ''}"></span></b>Unrelated map nodes dim while a plan targets you.</div>`;
+}
+
+function terrLegend() {
+  return `<div class="tleg" id="tleg"><div class="tleg__head">Territory</div>
+    <div class="tleg__row tleg__row--own"><span class="tleg__sw" style="color:${YOU};background:${YOU}"></span>My Territory</div>
+    <div class="tleg__row"><span class="tleg__sw" style="color:${SCAV};background:${SCAV}"></span>Scavenger Packs</div>
+    <div class="tleg__row"><span class="tleg__sw" style="color:${RED};background:${RED}"></span>Red Talon Raiders</div>
+    <div class="tleg__row"><span class="tleg__sw" style="color:${COV};background:${COV}"></span>Iron Covenant ${NEW}</div>
+    <div class="tleg__row" style="margin-bottom:0"><span class="tleg__sw" style="color:${REBEL};background:${REBEL}"></span>Rebels ${NEW}</div></div>`;
+}
+
+function moreGrid(s) {
+  const dot = ['calm', ...STAGES_LIVE].includes(s.stage);
+  const t = (icon, name, extra = '', cls = '', act = '') => `<div class="more__t ${cls}" ${act ? `data-act="${act}"` : ''}>${I(icon)}${name}${extra}</div>`;
+  return `<div class="more" id="more">
+    ${t('hammer', 'Build', '<span class="dot"></span>')}${t('quests', 'Quests')}
+    ${t('combat', 'Combat')}${t('economy', 'Economy')}
+    ${t('lightning', 'Events', '', '', 'events')}
+    <div class="more__t is-new" id="tileFactions" data-act="factions"><span class="tag tag--new">NEW</span>${I('shield', `color:${RED}`)}Factions${dot ? '<span class="dot"></span>' : ''}</div>
+    ${t('arena', 'Arena', '<span class="soon">SOON</span>', 'more__t--dis')}
+  </div><div class="fabring"></div>`;
+}
+
+function standingMods(s) {
+  const m = [[-20, 'Temperament: raiders', 'permanent'], [-25, 'You took Red Lowlands', 'fades in 2d 4h'], [8, 'You returned their wounded', 'fades in 6h']];
+  if (s.refused) m.push([-6, 'You refused their demand', 'fades in 18h', 1]);
+  if (s.stage === 'after' || s.stage === 'battle') m.push([-15, 'You broke their assault', 'fades in 3d', 1]);
+  if (s.stage === 'lost') m.push([12, 'Took back what was theirs', 'fades in 1d', 1]);
+  return m;
+}
+const sum = m => m.reduce((a, x) => a + x[0], 0);
+const bandOf = v => v <= -60 ? 'Hostile' : v <= -20 ? 'Unfriendly' : v < 20 ? 'Neutral' : v < 60 ? 'Friendly' : 'Allied';
+const holdPlan = s => ({ calm: 'Weighing an assault on Red Lowlands', probe: 'Probing Red Lowlands', mass: 'Massing for Red Lowlands', march: 'Assault on Red Lowlands', battle: 'Assault resolving', after: 'Licking wounds · calm 12h', lost: 'Fortifying Red Lowlands' }[s.stage]);
+const holdStage = s => ({ calm: -1, probe: 0, mass: 1, march: 2, battle: 3, after: 4, lost: 4 }[s.stage]);
+function stagebar(i) { return `<div class="stagebar">${['Probe', 'Massing', 'March', 'Battle', 'After'].map((n, k) => `<span class="${k < i ? 'done' : k === i ? 'now' : ''}">${n}</span>`).join('')}</div>`; }
+
+const CARDS = {
+  hold(s) {
+    const v = sum(standingMods(s));
+    return { c: RED, icon: 'fire', title: 'Red Talon Hold', sub: 'Faction base · Lv 9 · Frost Hold', isNew: true, pos: { left: 770, bottom: 106, w: 340, arrow: 'down', at: 170 },
+      body: `<div class="kv"><span>Leader</span><b>Warlord Vesk</b></div>
+        <div class="kv"><span>Standing</span><b style="color:var(--band-r)">${bandOf(v)} (${v})</b></div>
+        <div class="sect"><div class="sect__h">Current plan</div><b style="font-size:13px">${holdPlan(s)}</b>${holdStage(s) >= 0 ? stagebar(holdStage(s)) : ''}
+          <div class="why" style="--c:${RED}"><b>Why:</b> weak walls · grudge · you were away</div></div>
+        <div class="kv"><span>Garrison</span><b>≈ 3.9× your power <span class="band band--r">red</span></b></div>
+        <div class="kv"><span>Can be attacked</span><b style="color:var(--clr-text-secondary)">Very hard · scout first</b></div>`,
+      actions: `${s.scoutReport ? `<button data-act="report" id="lastScouted">Last scouted ${s.reportAge} ›</button>` : `<button data-act="sheet:scout">Scout</button>`}<button data-act="factions">Faction details</button><button class="pri" disabled>Attack</button>` };
+  },
+  den() {
+    return { c: SCAV, icon: 'skull', title: 'Scavenger Den', sub: 'Faction base · Lv 7 · Ashwood (fogged)', isNew: true, pos: { left: 412, top: 150, w: 320, arrow: 'left', at: 85 },
+      body: `<div class="why" style="--c:${SCAV}">Faction bases are known landmarks. You see them through fog, but not what surrounds them.</div>
+        <div class="kv"><span>Leader</span><b>Mother Rook</b></div><div class="kv"><span>Standing</span><b>Neutral (−4)</b></div>
+        <div class="kv"><span>Current plan</span><b>Watching you</b></div>`, actions: `<button data-act="tab:scav">Faction details</button>` };
+  },
+  keep() {
+    return { c: COV, icon: 'shield', title: 'Covenant Keep', sub: 'Faction base · Lv 9 · Behemoth Spire', isNew: true, prop: true, pos: { left: 560, top: 140, w: 320, arrow: 'right', at: 105 },
+      body: `<div class="why" style="--c:${COV}"><b>Open question:</b> the Iron Covenant's regions. Proposal: Vulture Ridge + Behemoth Spire, so the three factions surround you.</div>
+        <div class="kv"><span>Leader</span><b>Marshal Kane</b></div><div class="kv"><span>Standing</span><b style="color:var(--band-g)">Neutral (+14)</b></div>
+        <div class="kv"><span>Current plan</span><b>Gathering stone</b></div>`, actions: `<button data-act="tab:cov">Faction details</button>` };
+  },
+  region(s) {
+    if (s.stage === 'lost') return { c: RED, icon: 'skull', title: 'Red Lowlands', sub: 'Held by Red Talon Raiders', pos: { left: 470, bottom: 275, w: 340, arrow: 'down', at: 170 },
+      body: `<div class="why">Lost. The +10% food buff is gone and Frost Hold is fogged again. Red Talon fortifies it, so retaking it is harder for 6h.</div>`, actions: `<button class="pri">Attack Reaver Fort</button>` };
+    const threat = { probe: 'Scouts are watching', mass: `Massing · departs ${s.count}`, march: 'Warband arrives in 18:40' }[s.stage];
+    const incoming = ['mass', 'march'].includes(s.stage);
+    return { c: YOU, icon: 'shield', title: 'Red Lowlands', sub: 'Your territory · +10% food gather', pos: { left: 470, bottom: 275, w: 340, arrow: 'down', at: 170 },
+      body: `${threat ? `<div class="why" style="--c:${RED}">${I('warning', 'width:13px;height:13px;color:' + RED)} <b>${threat}</b></div>` : ''}
+      <div class="sect is-new" id="defense"><div class="ctag">${NEW}</div><div class="sect__h">Defense</div>
+        <div class="kv"><span>Walls</span><b>Level 3 · ≈ 30% of your power</b></div><div class="meter" style="--c:var(--clr-success)"><i style="width:30%"></i></div>
+        <div class="kv"><span>Stops on its own</span><b>Small raids</b></div>
+        <div class="kv"><span>Incoming</span><b style="color:${incoming ? 'var(--band-r)' : 'inherit'}">${incoming ? 'Warband ≈ 1.1× your power' : 'Nothing yet'}</b></div>
+        ${incoming ? `<div class="verdict verdict--r">Walls alone won't hold. Reinforce or intercept.</div>` : ''}
+        <div class="kv" style="margin-top:4px"><span>Garrison slots</span><b style="color:var(--clr-text-muted)">${I('lock', 'width:11px;height:11px')} later stage</b></div></div>`,
+      actions: `<button class="pri" data-act="sheet:reinforce">Reinforce (+30%)</button>${['mass', 'march'].includes(s.stage) ? `<button data-act="sheet:intercept">Intercept</button>` : ''}<button data-act="noop">Upgrade walls</button>` };
+  },
+  scouts() {
+    return { c: WARN, icon: 'search', title: 'Red Talon scouts', sub: 'From Red Talon Hold · watching Red Lowlands', isNew: true, pos: { left: 592, bottom: 186, w: 320, arrow: 'down', at: 160 },
+      body: `<div class="why" style="--c:${WARN}">They are reading your walls and whether you come to defend. Nothing is decided yet.</div>${stagebar(0)}`,
+      actions: `<button class="pri" data-act="noop">Chase off</button><button data-act="card:region">Check defenses</button>` };
+  },
+  column() {
+    return { c: RED, icon: 'sword', title: 'Supply column', sub: 'Red Talon Hold → war camp', isNew: true, pos: { left: 700, bottom: 100, w: 300, arrow: 'down', at: 160 },
+      body: `<div class="kv"><span>Carries</span><b>≈ 0.3× your power in troops</b></div><div class="why">Cut it and the camp fills more slowly, so the final strike is smaller.</div>`, actions: `<button class="pri" data-act="noop">Intercept column</button>` };
+  },
+  camp(s) {
+    const mass = s.stage === 'mass';
+    return { c: RED, icon: 'sword', title: 'Red Talon war camp', sub: 'Staging point · Frost Hold border', isNew: true, pos: { left: 640, bottom: 100, w: 330, arrow: 'down', at: 172 },
+      body: `<div class="kv"><span>Gathered</span><b>${mass ? '62% · troops arriving' : 'Empty · the warband left'}</b></div><div class="meter" style="--c:${RED}"><i style="width:${mass ? 62 : 3}%"></i></div>
+        <div class="kv"><span>Target</span><b>Red Lowlands</b></div>${stagebar(mass ? 1 : 2)}
+        ${mass ? `<div class="why">Raid the camp now and you only fight the 62% already there.</div>` : ''}`,
+      actions: mass ? `<button class="pri" data-act="noop">Raid camp</button><button data-act="card:region">Defend target</button>` : `<button data-act="card:warband">Track warband</button>` };
+  },
+  warband(s) {
+    return { c: RED, icon: 'sword', title: 'Red Talon warband', sub: 'War camp → Red Lowlands', isNew: true, pos: { left: 592, bottom: 166, w: 320, arrow: 'down', at: 160 },
+      body: `<div class="kv"><span>Arrives</span><b style="color:var(--band-r)">18:40</b></div><div class="kv"><span>Size</span><b>≈ 1.1× your power <span class="band band--a">amber</span></b></div>
+        <div class="why"><b>Why:</b> "Your walls are thin and you took what is ours."</div>`,
+      actions: `<button class="pri" data-act="sheet:intercept" ${s.sent ? 'disabled' : ''}>Intercept</button><button data-act="sheet:reinforce" ${s.sent ? 'disabled' : ''}>Reinforce</button>` };
+  },
+  squad(s) {
+    return { c: YOU, icon: 'sword', title: 'Squad 1', sub: s.sent === 'intercept' ? 'Intercepting · reaches the meeting point 4:10 ahead' : 'Reinforcing Red Lowlands', pos: { left: 420, bottom: 120, w: 300, arrow: 'down', at: 150 },
+      body: `<div class="kv"><span>Power</span><b>12.4k</b></div>`, actions: `<button data-act="noop">Recall</button>` };
+  },
+  retreat() {
+    return { c: RED, icon: 'sword', title: 'Warband survivors', sub: 'Retreating to Red Talon Hold', isNew: true, pos: { left: 700, bottom: 128, w: 300, arrow: 'down', at: 160 },
+      body: `<div class="kv"><span>Size</span><b>Small · lost 60%</b></div>`, actions: `<button class="pri" data-act="noop">Chase them down</button>` };
+  },
+  rebel() {
+    return { c: REBEL, icon: 'fire', title: 'Ash Brood', sub: 'Rebel camp · raiders · Command Ruin edge', isNew: true, pos: { left: 520, bottom: 374, w: 340, arrow: 'down', at: 160 },
+      body: `<div class="sect" style="margin-top:2px"><div class="sect__h">Grows if left alone</div>
+          <div class="stagebar"><span class="now" style="background:${REBEL}">Camp</span><span>Settlement</span><span>Stronghold</span></div>
+          <div class="meter" style="--c:${REBEL}"><i style="width:22%"></i></div>
+          <div class="kv"><span>Stronghold in</span><b>≈ 3 days</b></div>
+          <div class="why" style="--c:${REBEL}">A stronghold can take a region. Majors can fight rebels too; Red Talon has noticed this one.</div></div>
+        <div class="kv"><span>Archetype</span><b>Raiders · name "Ash Brood" generated</b></div>
+        <div class="kv"><span>Rebels alive</span><b>1 of 3 max</b></div>
+        <div class="kv"><span>Recommended</span><b>4.1k <span class="band band--g">green</span></b></div>`,
+      actions: `<button class="pri" data-act="noop">Attack</button><button data-act="noop">Scout</button>` };
+  },
+};
+
+function card(s) {
+  if (!s.card || !CARDS[s.card]) return '';
+  const c = CARDS[s.card](s), p = c.pos;
+  const posCss = `left:${p.left}px;width:${p.w}px;${p.top != null ? `top:${p.top}px` : `bottom:${p.bottom}px`}`;
+  const arrow = p.arrow === 'down' ? `<div class="acard__arrow acard__arrow--down" style="left:${p.at - 7}px"></div>` : `<div class="acard__arrow acard__arrow--${p.arrow}" style="top:${p.at - 7}px"></div>`;
+  const tags = `${IMP}${c.isNew ? (c.prop ? PROP : NEW) : ''}`;
+  return `<div class="acard is-imp" id="card" style="--c:${c.c};${posCss}">${arrow}<div class="ctag">${tags}</div><div class="acard__stripe"></div>
+    <div class="acard__head"><span class="acard__icon">${I(c.icon)}</span><div><h3>${c.title}</h3><div class="acard__sub">${c.sub}</div></div><button class="acard__x" data-act="close">${I('x-circle', 'width:18px;height:18px')}</button></div>
+    <div class="acard__body">${c.body}</div><div class="acard__actions">${c.actions}</div></div>`;
+}
+
+function sheet(s) {
+  if (!s.sheet) return '';
+  if (s.sheet === 'scout') return scoutSheet();
+  const int = s.sheet === 'intercept';
+  return `<div class="sheet" id="sheet"><div class="sheet__head"><h3>${int ? 'Intercept Red Talon warband' : 'Reinforce Red Lowlands'}</h3><button class="acard__x" data-act="close">${I('x-circle', 'width:18px;height:18px')}</button></div>
+    <div class="seg is-new" id="seg"><div class="ctag">${NEW}</div><button class="${int ? 'on' : ''}" data-act="sheet:intercept">Intercept<small>Meet them on the road · no wall bonus</small></button><button class="${int ? '' : 'on'}" data-act="sheet:reinforce">Reinforce<small>Fight behind the walls · +30%</small></button></div>
+    <div class="squad sel"><b>Squad 1</b><small>12.4k power · 4 units</small></div>
+    <div class="squad"><b>Squad 2</b><small>9.8k power · 3 units</small></div>
+    <div class="sect is-new" id="forecast" style="margin-top:12px"><div class="ctag">${NEW}</div><div class="sect__h">Forecast</div>
+      <div class="kv"><span>You vs warband</span><b>${int ? '12.4k vs ≈ 13.6k' : '12.4k + walls 3.7k (+30%) vs ≈ 13.6k'}</b></div>
+      <div class="verdict ${int ? 'verdict--a' : 'verdict--g'}">${int ? 'Amber · ≈ 55% win estimate' : 'Green · ≈ 80% win estimate'}</div>
+      <div class="kv" style="margin-top:4px"><span>${int ? 'Reach the meeting point' : 'Arrive before the strike'}</span><b style="color:var(--clr-success)">${int ? '4:10 before them' : '12:20 to spare'}</b></div></div>
+    <div class="eta">${int ? 'ETA to meeting point 14:30 · locked once you march' : 'ETA to Reaver Fort 6:20'}</div>
+    <button class="go" data-act="march">March</button></div>`;
+}
+
+function result(s) {
+  if (s.modal !== 'battle') return '';
+  return `<div class="result is-new" id="result"><div class="ctag">${NEW}</div><div class="result__h">${I('shield')}<div class="result__t">RED LOWLANDS HELD</div><div class="muted">Squad 1 caught the warband on the road</div></div>
+    <div class="result__body"><div class="vs"><div><b style="color:var(--you)">Squad 1</b><small>lost 1,120 · 70% wounded</small></div><span class="muted">vs</span><div><b style="color:var(--red)">Warband</b><small>lost 60% · retreating</small></div></div>
+    <div class="kv"><span>Red Talon standing</span><b style="color:var(--clr-danger)">−15 · you broke their assault</b></div>
+    <div class="kv"><span>Calm period</span><b>12h · no hostile countdowns</b></div>
+    <div class="kv"><span>Full report</span><b>Mail → Reports</b></div></div>
+    <div class="acard__actions" style="padding:8px 14px 14px"><button class="pri" data-act="mail:reports">Open report</button><button data-act="close">Close</button></div></div>`;
+}
+
+function toasts(s) {
+  if (!s.toasts || !s.toasts.length) return '';
+  return `<div class="toasts" id="toasts">${s.toasts.map(t => `<div class="toast toast--${t.k} ${t.isNew ? 'is-new' : ''}">${t.isNew ? `<div class="ctag">${NEW}</div>` : ''}${I(t.icon)}<div><div class="toast__t">${t.t}</div><div class="toast__m">${t.m}</div>${t.btn ? `<button class="btn btn--sm toast__btn" data-act="${t.act}">${t.btn}</button>` : ''}</div></div>`).join('')}</div>`;
+}
+
+function letters(s) {
+  const L = [];
+  if (s.stage === 'lost') L.push({ id: 'lost', c: RED, icon: 'fire', from: 'Warlord Vesk', subj: '"Red Lowlands is ours again."', body: ['Nobody came. Remember that next time you plant a flag on my road.'], note: 'Their grudge clears now they have it back (+12). Frost Hold is fogged again.' });
+  if (s.scavTruce) L.push({ id: 'truce', c: SCAV, icon: 'skull', from: 'Mother Rook', subj: 'Truce offer', exp: 'Expires in 5h 12m', body: ['The Talon bled on your road. A pity, for them.', 'Two quiet days between us, and some salvage to seal it.'], why: 'Why now: Red Talon lost 60% of a warband, and you look strong.', yes: ['Accept', 'Truce 48h · +20 standing · trust +1 · 8k wood + 5k food'], no: ['Decline', '−8 standing · Rook remembers'] });
+  if (s.stage === 'after') L.push({ id: 'over', c: RED, icon: 'fire', from: 'Warlord Vesk', subj: '"This isn\'t over."', body: ['Your road held. Your luck will not.', 'Enjoy the quiet. I am counting the days.'], note: 'New grudge: −15 standing, fades over 3 days. A 12h calm period has started.' });
+  if (['mass', 'march'].includes(s.stage)) L.push({ id: 'ult', c: RED, icon: 'fire', from: 'Warlord Vesk', subj: 'Ultimatum: Red Lowlands', exp: s.stage === 'march' ? null : `Expires when the camp departs · ${s.count}`, dead: s.stage === 'march', body: ['You took Red Lowlands while my riders slept. Bold.', 'My camp on the Frost Hold border is filling. Pay 25,000 iron and I turn them around. Refuse, and I take it back.'], yes: ['Pay 25k iron', 'Camp stands down · +12 standing · may demand again in 24h'], no: ['Refuse', 'Assault goes ahead · −6 standing'] });
+  L.push({ id: 'gift', c: COV, icon: 'gift', from: 'Marshal Kane', subj: 'Gift caravan: 6,000 stone', read: true, body: ['Good neighbours build strong walls.'], note: '+12 Iron Covenant standing (already counted).' });
+  return L;
+}
+function mailModal(s) {
+  const L = letters(s), dipUnread = L.filter(l => !l.read).length;
+  const battleN = ['battle', 'after'].includes(s.stage) || s.scavTruce ? 1 : 0;
+  const repN = battleN + (s.scoutReport ? 1 : 0);
+  const tiles = [['reports', 'combat', 'Reports', `${repN} mail · ${repN} unread`, repN], ['rewards', 'gift', 'Rewards', '2 mail · 2 unread', 2, 0, 'Claim 2'], ['diplomacy', 'scroll', 'Diplomacy', `${L.length} mail · ${dipUnread} unread`, dipUnread, 1], ['system', 'gear', 'System', '1 mail · 1 unread', 1, 0, 'Claim 1'], ['starred', 'star-burst', 'Starred', '0 mail · 0 unread'], ['trash', 'trash', 'Trash', '0 mail']];
+  const total = dipUnread + 3 + repN;
+  const cat = s.mailCat;
+  let list;
+  if (cat === 'diplomacy') list = L.map(l => mailRow(l, s)).join('');
+  else if (cat === 'reports' && repN) list = (s.scoutReport ? scoutReportRow(s) : '') + (battleN ? `<div class="mr"><div class="mr__top"><span class="mr__dot"></span>${I('combat', 'color:var(--you)')}<div><span class="mr__subj">Battle report: Red Lowlands held</span><span class="mr__from">Squad 1 · intercept · just now</span></div><span></span><span class="mr__star">★</span></div></div>` : '');
+  else list = `<div class="muted" style="padding:30px;text-align:center">Existing category, unchanged.</div>`;
+  const catName = tiles.find(t => t[0] === cat)[2];
+  return `<div class="shade" data-act="close"></div><div class="modal" id="modal"><div class="modal__inner">
+    <div class="mhead"><h2>${I('envelope', 'width:18px;height:18px')} Mail</h2><span class="muted">${total} unread</span><button class="btn btn--sm">Claim all (3)</button><button class="mx" data-act="close">${I('x-circle')}</button></div>
+    <div class="mbody"><nav class="hub">${tiles.map(([k, ic, n, m, b, isNew, claim]) => `<div class="mt ${k === cat ? 'on' : ''} ${isNew ? 'is-new' : ''}" data-act="cat:${k}" ${isNew ? 'id="dipTile"' : ''}>${isNew ? NEW : ''}${I(ic)}${b ? `<span class="mt__bd">${b}</span>` : ''}<div style="flex:1;min-width:0"><span class="mt__name">${n}</span><span class="mt__meta">${m}</span></div>${claim ? `<button class="btn btn--sm">${claim}</button>` : ''}</div>`).join('')}</nav>
+    <section class="col"><div class="lhead">${catName}<small>${cat === 'diplomacy' ? L.length + ' mail' : ''}</small></div><div class="list">${list}</div></section></div></div></div>`;
+}
+function mailRow(l, s) {
+  const open = s.mailRow === l.id;
+  const expPill = l.exp ? `<span class="exp is-new">${I('clock', 'width:12px;height:12px')} ${l.exp.replace('Expires when the camp departs · ', 'expires ').replace('Expires in ', '')}</span>` : l.dead ? `<span class="exp exp--dead">expired</span>` : '<span></span>';
+  return `<div class="mr ${open ? '' : ''}" id="row-${l.id}" style="--c:${l.c}"><div class="mr__top" data-act="row:${l.id}"><span class="mr__dot ${l.read ? 'read' : ''}"></span>${I(l.icon, `color:${l.c}`)}<div><span class="mr__subj">${l.subj}</span><span class="mr__from">${l.from} · just now</span></div>${expPill}<span class="mr__star">★</span></div>
+    ${open ? `<div class="mr__x"><div class="letter">${l.body.map(p => `<p>${p}</p>`).join('')}<div class="sig">${l.from}</div></div>
+      ${l.why ? `<div class="why" style="--c:${l.c}">${l.why}</div>` : ''}
+      ${l.exp ? `<div style="color:var(--clr-warning);font-size:12px;margin-top:8px;display:flex;gap:6px;align-items:center">${I('clock', 'width:13px;height:13px')} ${l.exp}</div>` : ''}
+      ${l.dead ? `<div class="muted" style="margin-top:8px">Too late to pay: the warband has left the camp.</div>` : ''}
+      ${l.yes ? `<div class="conseq is-new" style="position:relative"><div class="ctag">${NEW}</div><div class="y"><b>${l.yes[0]}</b>${l.yes[1]}</div><div class="n"><b>${l.no[0]}</b>${l.no[1]}</div></div>
+        <div class="mr__btns"><button class="btn" ${l.dead ? 'disabled' : ''} data-act="noop">${I(l.id === 'ult' ? 'iron' : 'check', 'width:14px;height:14px')} ${l.yes[0]}</button><button class="btn btn--ghost" ${l.dead ? 'disabled' : ''} data-act="noop">${l.no[0]}</button><button class="btn btn--ghost" style="margin-left:auto">${I('trash', 'width:14px;height:14px')} Delete</button></div>`
+      : `<div class="why" style="--c:${l.c}">${l.note}</div>`}</div>` : ''}</div>`;
+}
+
+const FACTIONS = {
+  red: s => ({ c: RED, icon: 'fire', n: 'Red Talon Raiders', who: 'Warlord Vesk · Hold Lv 9 · Frost Hold, Ember Reach', q: '"You walk our roads like you own them. You don\'t."', tags: ['Aggressive', 'Holds grudges', 'Strikes fast'], mods: standingMods(s), trust: 1, plan: holdPlan(s), why: s.stage === 'after' ? 'lost 60% of a warband · calm period' : 'weak walls · grudge · you were away', army: '≈ 1.1× your power', band: 'a', hates: 'You (grudge)', memory: s.stage === 'after' || s.stage === 'battle' ? [['Seen you defend', '1 of 1 strikes · now expects it'], ['Last beaten', 'today · backs off 12h'], ['Rivals', 'Scavengers smell weakness']] : [['Seen you defend', 'never tested · expects a weak response'], ['Last beaten', 'never'], ['Rivals', 'Scavengers (uneasy)']] }),
+  scav: () => ({ c: SCAV, icon: 'skull', n: 'Scavenger Packs', who: 'Mother Rook · Den Lv 7 · West Warrens, Ashwood', q: '"Everything is salvage, given time."', tags: ['Opportunist', 'Gift-giver', 'Betrays the stretched'], mods: [[-10, 'Temperament: opportunists', 'permanent'], [6, 'You paid their toll', 'fades in 14h']], trust: 1, plan: 'Watching you', why: 'waiting for you to look stretched', army: '≈ 0.8× your power', band: 'g', hates: 'Red Talon', memory: [['Seen you stretched', 'not yet'], ['Betrayal', 'trust very low · would be foreshadowed'], ['Rivals', 'Red Talon']] }),
+  cov: () => ({ c: COV, icon: 'shield', n: 'Iron Covenant', who: 'Marshal Kane · Keep Lv 9 · regions: proposal', q: '"We keep our word. See that you keep yours."', tags: ['Patient builder', 'Keeps deals', 'Few, heavy assaults'], mods: [[12, 'Gift caravan accepted', 'fades in 1d 6h'], [6, 'You returned their scouts', 'fades in 18h'], [-4, 'You out-expand them', 'live while you hold more']], trust: 4, plan: 'Gathering stone', why: 'grow before claiming a neutral region', army: '≈ 1.0× your power', band: 'a', hates: 'Scavenger Packs', memory: [['Deals kept', '3 of 3'], ['Seen you expand', '2 regions in 3 days'], ['Rivals', 'Scavenger Packs']] }),
+};
+function factionsModal(s) {
+  const tab = s.facTab, f = FACTIONS[tab](s), v = sum(f.mods);
+  const fl = k => { const x = FACTIONS[k](s), vv = sum(x.mods); return [x, vv]; };
+  const hub = ['red', 'scav', 'cov'].map(k => { const [x, vv] = fl(k); const attacking = k === 'red' && STAGES_LIVE.includes(s.stage);
+    return `<div class="mt ftile ${k === tab ? 'on' : ''}" data-act="tab:${k}">${I(x.icon, `color:${x.c}`)}<div style="min-width:0"><span class="mt__name" style="font-size:13px">${x.n}</span><span class="ftile__st">${bandOf(vv)} ${vv > 0 ? '+' : ''}${vv}<br>${attacking ? '<b style="color:var(--clr-danger)">plotting against you</b>' : x.plan}</span></div>${k === 'cov' ? `<span style="position:absolute;top:-7px;right:10px">${PROP}</span>` : ''}</div>`; }).join('');
+  return `<div class="shade" data-act="close"></div><div class="modal is-new" id="modal"><div class="ctag" style="top:-9px;right:24px">${NEW}</div><div class="modal__inner">
+    <div class="mhead"><h2>${I('shield', 'width:18px;height:18px')} Factions</h2><span class="muted">More → Factions, or tap a faction base</span><button class="mx" data-act="close">${I('x-circle')}</button></div>
+    <div class="mbody"><nav class="hub" id="facHub"><div class="hubsec">Major factions</div>${hub}
+      <div class="hubsec" style="margin-top:10px">Rebels · ${s.rebels ? 1 : 0} of 3</div>
+      <div class="mt ftile" data-act="${s.rebels ? 'card:rebel' : 'noop'}" style="opacity:${s.rebels ? 1 : .55}">${I('fire', `color:${REBEL}`)}<div><span class="mt__name" style="font-size:13px">${s.rebels ? 'Ash Brood' : 'None alive'}</span><span class="ftile__st">${s.rebels ? 'camp · ≈ 3d to stronghold' : 'next spawn in 1–3 days'}</span></div></div></nav>
+    <section class="fd" style="--c:${f.c}">
+      <div class="fhead"><div class="portrait">${I(f.icon)}</div><div><div class="fname">${f.n.toUpperCase()}</div><div class="muted">${f.who}</div><div class="quote">${f.q}</div></div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;max-width:210px">${f.tags.map(t => `<span class="ptag">${t}</span>`).join('')}</div></div>
+      <div class="cols">
+        <div class="card" id="standing"><div class="lbl"><span>Standing</span><b style="color:${v <= -20 ? 'var(--band-r)' : v >= 20 ? 'var(--band-g)' : 'var(--clr-text-primary)'};font:700 13px var(--font-heading);letter-spacing:.04em">${bandOf(v)} ${v > 0 ? '+' : ''}${v}</b></div>
+          <div class="standbar"><u style="left:${(v + 100) / 2}%"></u></div><div class="bands"><span>Hostile</span><span>Unfriendly</span><span>Neutral</span><span>Friendly</span><span>Allied</span></div>
+          <div style="margin-top:8px" id="reasons">${f.mods.map(m => `<div class="mod ${m[3] && s.hlReasons ? 'mod--new' : ''}"><span class="v ${m[0] >= 0 ? 'p' : 'n'}">${m[0] > 0 ? '+' : ''}${m[0]}</span><span>${m[1]}</span><small>${m[2]}</small></div>`).join('')}</div>
+          <div class="lbl" style="margin-top:10px"><span>Trust</span><span style="letter-spacing:0;text-transform:none;font-weight:500">${['very low', 'low', 'some', 'solid', 'high'][f.trust - 1]} · moves slowly, betrayal reads it</span></div>
+          <div class="pips">${[0, 1, 2, 3, 4].map(i => `<i class="${i < f.trust ? 'on' : ''}"></i>`).join('')}</div>
+          <div class="lbl" style="margin-top:12px"><span>Memory · how they adapt</span></div>${f.memory.map(([k, m]) => `<div class="kv" style="border-top:1px solid var(--clr-border)"><span>${k}</span><b>${m}</b></div>`).join('')}</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="card" id="intel"><div class="lbl"><span>Intel · scout tier 2</span></div>
+            <div class="kv"><span>Current plan</span><b>${f.plan}</b></div><div class="why" style="--c:${f.c}"><b>Why:</b> ${f.why}</div>
+            <div class="kv"><span>Army</span><b>${f.army} <span class="band band--${f.band}">${{ g: 'green', a: 'amber', r: 'red' }[f.band]}</span></b></div>
+            <div class="kv"><span>Hates most</span><b>${f.hates}</b></div></div>
+          <div class="card" id="diplo"><div class="lbl"><span>Diplomacy</span><span style="letter-spacing:0;text-transform:none;font-weight:500">shared cooldown 24h</span></div>
+            <div class="dip"><span>Send tribute<small>15k iron · +12 · ${tab === 'red' ? 'cancels a plan still massing' : 'buys goodwill'}</small></span><button class="btn btn--sm" data-act="noop">Send</button></div>
+            <div class="dip"><span>Propose truce<small>${v <= -20 ? 'Likely refused while Unfriendly' : 'Might accept'}</small></span><button class="btn btn--sm btn--ghost" data-act="noop">Propose</button></div>
+            <div class="dip"><span>Request help<small>${v >= 20 ? 'Available' : 'Needs Friendly, or Neutral + high trust'}</small></span><button class="btn btn--sm btn--ghost" ${v >= 10 && f.trust >= 4 ? '' : 'disabled'} data-act="noop">Ask</button></div></div>
+        </div></div>
+    </section></div></div></div>`;
+}
+
+function welcome() {
+  return `<div class="shade"></div><div class="wb is-imp" id="wb"><div class="ctag">${IMP}</div>
+    <div class="wb__h">${I('house')}<div><div class="wb__title">Welcome Back!</div><div class="wb__sub">Away for 9 hours 14 minutes</div></div></div>
+    <div class="wb__sec is-new" id="wbThreat" style="position:relative;margin:8px 10px 0;border-radius:8px"><div class="ctag">${NEW}</div><div class="wb__st" style="color:var(--clr-danger)">${I('warning', 'width:12px;height:12px')} Threat</div>
+      <div class="wb__threat"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:13.5px">Red Talon is massing for Red Lowlands</b><span class="wb__count">45:00</span></div>
+      <div style="font-size:12px;color:var(--clr-text-secondary);margin-top:4px">Their plan ripened while you were away. The strike was <b style="color:var(--clr-text-primary)">held for your return</b>. The countdown (at least 45 minutes) <b style="color:var(--clr-text-primary)">starts when you close this</b>, so reading costs nothing.</div></div></div>
+    <div class="wb__sec is-new" style="position:relative;margin:8px 10px 0;border-radius:8px"><div class="ctag">${NEW}</div><div class="wb__st">Factions</div>
+      <div class="wb__ln">${I('gift', `color:${COV}`)}<div><b>Iron Covenant</b> sent a gift caravan: 6,000 stone.<em>Mail → Diplomacy · standing +12</em></div></div>
+      <div class="wb__ln">${I('search', `color:${SCAV}`)}<div><b>Scavenger</b> scouts passed West Warrens.<em>Mother Rook is watching you</em></div></div>
+      <div class="wb__ln">${I('fire', `color:${REBEL}`)}<div><b>Ash Brood</b>, a rebel camp, appeared near Command Ruin.<em>About 3 days until it is a stronghold</em></div></div></div>
+    <div class="wb__sec"><div class="wb__st">Resources collected while away</div>
+      <div class="res"><span>wood</span><b>+48,200</b></div><div class="res"><span>stone</span><b>+31,050</b></div><div class="res"><span>iron</span><b>+22,400</b></div>
+      <div class="wb__ln is-new" id="wbStock" style="position:relative;margin-top:6px;padding:6px 8px;border-radius:6px;background:hsla(90,40%,40%,.1)"><div class="ctag">${NEW}</div>${I('check', 'color:var(--clr-success)')}<div><b>Everything above is already in your stockpile.</b><em>Neither button below loses anything.</em></div></div></div>
+    <div class="wb__act"><button class="btn" style="flex:1" data-act="defend">${I('shield', 'width:14px;height:14px')} Defend now</button><button class="btn btn--ghost" data-act="continue" id="wbContinue">Continue</button></div><div class="muted" style="padding:0 18px 12px;margin-top:-6px">"Continue" was "Collect &amp; Continue": gains are credited before this opens.</div></div>`;
+}
+
+const SCOUT_TABS = [['overview', 'search', 'Overview'], ['army', 'sword', 'Heroes & squads'], ['defense', 'shield', 'Defenses & loot'], ['tech', 'flask', 'Tech'], ['intent', 'scroll', 'Intent & counsel']];
+const RARITY = { legendary: ['Legendary', 'hsl(40,90%,58%)'], epic: ['Epic', 'hsl(275,60%,65%)'], normal: ['Normal', 'hsl(35,8%,55%)'] };
+const lockedRow = what => `<div class="locked">${I('lock')} Scout tier 3 reveals ${what}</div>`;
+const tierPips = n => `<span class="tierpips">${[1, 2, 3].map(i => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</span>`;
+
+function heroCard(h, t3) {
+  const [rl, rc] = RARITY[h.rarity];
+  return `<div class="hero" style="--rc:${rc}"><span class="hero__pt">${I(h.icon)}</span><div><b>${h.name}</b><small>"${h.title}"</small><small><span style="color:${rc}">${rl}</span> · Lv ${h.lvl} · <span class="stars">${'★'.repeat(h.stars)}<span style="color:var(--clr-border-light)">${'★'.repeat(5 - h.stars)}</span></span></small></div>
+    <div class="sk">${t3 ? `Skills: ${h.skills}` : lockedRow('skills')}</div></div>`;
+}
+const UNIT_TYPE = { cav: 'Cavalry', inf: 'Infantry', rng: 'Ranged', sie: 'Siege' };
+function squadTable(sq, t3) {
+  return `<div class="sqhead"><b>${sq.name}</b><span class="muted">${sq.role} · led by ${sq.hero}</span></div>
+    <table class="sqt"><tr><th>Row</th><th>Unit</th><th>Count</th><th>Wounded</th></tr>
+    ${sq.rows.map(([row, unit, typ, tier, band, exact, wnd, wndx]) => `<tr><td class="row">${row}</td><td>${unit}<span class="typ typ--${typ}">${UNIT_TYPE[typ]} T${tier}</span></td><td><b>${t3 ? exact : band}</b></td><td>${t3 ? wndx : wnd}</td></tr>`).join('')}</table>`;
+}
+const RT_HEROES = [
+  { name: 'Marcus Kestrel', title: 'The Warlord', rarity: 'legendary', lvl: 24, stars: 4, icon: 'crown', skills: 'Commanding Presence, Battle Cry, Charge' },
+  { name: 'Kira Nightwhisper', title: 'The Shadow Blade', rarity: 'normal', lvl: 18, stars: 2, icon: 'sword', skills: "Killer's Instinct, Poison Blade" },
+  { name: 'Juno Vane', title: 'The Signal Runner', rarity: 'epic', lvl: 15, stars: 2, icon: 'lightning', skills: 'Signal Boost, Static Ward (counter-scouting)' },
+];
+const RT_SQUADS = [
+  { name: 'Talon Riders', role: 'field army · massing force', hero: 'Marcus Kestrel', rows: [['Front', 'Knight', 'cav', 4, '~1.2k', '1,184', '~150', '143'], ['Mid', 'Lancer', 'cav', 3, '~900', '912', '~80', '77'], ['Back', 'Ranger', 'rng', 4, '~600', '588', '~20', '24']] },
+  { name: 'Hold Guard', role: 'garrison · stays home', hero: 'Kira Nightwhisper', rows: [['Front', 'Sergeant', 'inf', 3, '~1.5k', '1,530', '~60', '58'], ['Mid', 'Horseman', 'cav', 2, '~700', '694', '—', '0'], ['Back', 'Ballista', 'sie', 2, '~40', '38', '—', '0']] },
+];
+const RT_TECH = [['Steel Armor', 6, 10, '+defense, all troops'], ['Advanced Tactics', 4, 10, '+attack, all troops'], ['Battle Formations', 3, 5, 'row bonuses'], ['Cavalry Mastery', 2, 7, 'unlocks Knight T4 (their front row)'], ['Elite Training', 3, 5, 'faster training']];
+
+function scoutPane(s) {
+  const t3 = s.scoutT3;
+  const stale = s.reportAge !== 'just now';
+  if (s.scoutTab === 'overview') return `<div class="rgrid"><div class="card"><div class="lbl"><span>Target</span></div>
+      <div class="kv"><span>Base</span><b>Red Talon Hold · Lv 9</b></div><div class="kv"><span>Faction</span><b style="color:var(--red)">Red Talon Raiders</b></div>
+      <div class="kv"><span>Walls</span><b>Lv 7 · 85% intact</b></div><div class="kv"><span>Watch level</span><b>2 · one watchtower, Juno Vane</b></div></div>
+    <div class="card"><div class="lbl"><span>Power vs your Squad 1 (12.4k)</span></div>
+      <div class="kv"><span>Whole Hold</span><b>≈ 3.9× <span class="band band--r">red</span></b></div>
+      <div class="kv"><span>Talon Riders (field)</span><b>≈ 1.1× <span class="band band--a">amber</span></b></div>
+      <div class="kv"><span>Hold Guard (home)</span><b>≈ 0.8× <span class="band band--g">green</span></b></div>
+      <div class="kv"><span>Recommended to attack</span><b>48k</b></div></div></div>
+    <div class="card" style="margin-top:10px"><div class="lbl"><span>Report age</span></div>
+      <div class="kv"><span>Scouted</span><b>${s.reportAge}${stale ? ' · <span style="color:var(--clr-warning)">may be stale</span>' : ''}</b></div>
+      <div class="kv"><span>Goes stale</span><b>after ~6h, or when they change plan</b></div>
+      <div class="kv"><span>Detected?</span><b style="color:var(--clr-success)">No · a caught scout still brings a partial report, and costs −5 standing ("Scouted us")</b></div></div>`;
+  if (s.scoutTab === 'army') return `<div class="lbl"><span>Heroes · ${t3 ? 3 : 2} of 3 seen</span></div>
+    <div class="heroes">${heroCard(RT_HEROES[0], t3)}${heroCard(RT_HEROES[1], t3)}${t3 ? heroCard(RT_HEROES[2], t3) : `<div class="hero hero--locked">${lockedRow('the third commander')}</div>`}</div>
+    <div class="lbl"><span>Barracks · squads by row</span><span style="letter-spacing:0;text-transform:none;font-weight:500">${t3 ? 'exact counts (tier 3)' : 'counts banded at tier 2 · exact at tier 3'}</span></div>
+    <div class="rgrid">${RT_SQUADS.map(q => `<div>${squadTable(q, t3)}</div>`).join('')}</div>`;
+  if (s.scoutTab === 'defense') return `<div class="rgrid"><div class="card"><div class="lbl"><span>Garrison & defenses</span></div>
+      <div class="kv"><span>Walls</span><b>Lv 7 · 85% · +25% to defenders</b></div><div class="kv"><span>Towers</span><b>2 ballista towers · 1 watchtower</b></div>
+      <div class="kv"><span>Garrison stacks</span><b>Hold Guard + 2 militia (~400)</b></div><div class="kv"><span>Traps</span><b>${t3 ? 'Spike pits on the south road' : '<span class="muted">tier 3</span>'}</b></div></div>
+    <div class="card"><div class="lbl"><span>Loot on hand</span></div>
+      <div class="kv"><span>${I('iron', 'width:13px;height:13px')} Iron</span><b>~38k</b></div><div class="kv"><span>${I('food', 'width:13px;height:13px')} Food</span><b>~22k</b></div>
+      <div class="kv"><span>${I('wood', 'width:13px;height:13px')} Wood</span><b>~15k</b></div><div class="kv"><span>${I('money', 'width:13px;height:13px')} Money</span><b>~9k</b></div>
+      <div class="why" style="--c:var(--clr-primary)">A successful raid carries off up to 30% of this.</div></div></div>`;
+  if (s.scoutTab === 'tech') {
+    const rows = RT_TECH.map(([n, lv, max, note]) => `<span>${n}<small class="muted" style="display:block">${note}</small></span><span class="lv">${Array.from({ length: max }, (_, i) => `<i class="${i < lv ? 'on' : ''}"></i>`).join('')}<b style="margin-left:6px">Lv ${lv}</b></span>`).join('');
+    return `<div class="lbl"><span>Military research</span></div>${t3 ? `<div class="card tech">${rows}</div><div class="why" style="--c:var(--clr-primary);margin-top:10px">Cavalry Mastery 2 is why their front row is Knights (T4). Steel Armor 6 makes them tanky: bring more attack than you think.</div>`
+      : `<div class="lockbox"><div class="card tech blur">${rows}</div><div class="lockmsg">${I('lock', 'width:16px;height:16px')} Scout tier 3 reveals research levels</div></div><div class="muted" style="margin-top:8px">Raise your scouting (watchtower level, a scouting hero) or catch them with a low watch level.</div>`}`;
+  }
+  return `<div class="rgrid"><div class="card"><div class="lbl"><span>Intent</span></div>
+      <div class="kv"><span>Current plan</span><b>Weighing an assault on Red Lowlands</b></div>
+      <div class="why" style="--c:var(--red)"><b>Why:</b> weak walls · grudge · you were away</div>
+      ${t3 ? `<div class="kv"><span>Hidden agenda</span><b>Take Red Lowlands before the Scavengers move</b></div><div class="kv"><span>Betrayal risk</span><b>n/a · no deal with you · trust 1/5</b></div>` : `${lockedRow('their hidden agenda')}<div style="height:4px"></div>${lockedRow('betrayal risk (trust)')}`}</div>
+    <div class="card is-new" id="counsel"><div class="ctag">${NEW}</div><div class="lbl"><span>Counsel</span></div>
+      <div class="counsel" style="border-top:0">${I('shield', 'color:var(--clr-success)')}<span><b>Cavalry-heavy front (Knights T4) → lead with infantry.</b> Infantry beats cavalry (×1.15).</span></div>
+      <div class="counsel">${I('warning', 'color:var(--clr-warning)')}<span>Rangers in their back row beat infantry, but they are only hit once the front breaks.</span></div>
+      <div class="counsel">${I('sword', 'color:var(--clr-text-secondary)')}<span>Your Squad 1 vs Talon Riders: <span class="band band--a">amber</span> · Squad 2: <span class="band band--r">red</span></span></div>
+      <div class="counsel">${I('clock', 'color:var(--clr-text-secondary)')}<span>Only the Hold Guard is home while they mass: a raid then meets <span class="band band--g">green</span> odds.</span></div></div></div>`;
+}
+function scoutReportRow(s) {
+  const open = s.mailRow === 'scout';
+  const stale = s.reportAge !== 'just now';
+  return `<div class="mr mr--report is-new" id="row-scout" style="--c:${RED}"><div class="ctag">${NEW}</div><div class="mr__top" data-act="row:scout"><span class="mr__dot ${open ? 'read' : ''}"></span>${I('search', `color:${YOU}`)}<div><span class="mr__subj">Scout report: Red Talon Hold</span><span class="mr__from">Scout party · ${s.reportAge}</span></div><span class="agechip ${stale ? 'agechip--stale' : ''}">tier ${s.scoutT3 ? 3 : 2} of 3</span><span class="mr__star">★</span></div>
+    ${open ? `<div class="mr__x"><div class="rp__bar">Scout tier ${tierPips(s.scoutT3 ? 3 : 2)} <b style="color:var(--clr-text-primary)">${s.scoutT3 ? 3 : 2} of 3</b><span>· your scouting 2 vs their watch 2</span>
+      <span class="agechip ${stale ? 'agechip--stale' : ''}">${I('clock', 'width:11px;height:11px')} scouted ${s.reportAge}${stale ? ' · may be stale' : ''}</span>
+      <label class="prevtoggle" data-act="t3">${I('flask', 'width:12px;height:12px')} Prototype: preview tier 3 <span class="switch ${s.scoutT3 ? 'on' : ''}"></span></label></div>
+      <div class="rtabs">${SCOUT_TABS.map(([k, ic, n]) => `<button class="rtab ${s.scoutTab === k ? 'on' : ''}" data-act="stab:${k}">${I(ic)}${n}${k === 'tech' && !s.scoutT3 ? I('lock', 'width:10px;height:10px') : ''}</button>`).join('')}</div>
+      <div class="rpane" id="rpane">${scoutPane(s)}</div>
+      <div class="mr__btns" style="margin-top:10px"><button class="btn btn--sm" data-act="sheet:scout">Scout again</button><button class="btn btn--sm btn--ghost" data-act="card:hold">Show on map</button><button class="btn btn--sm btn--ghost" style="margin-left:auto">${I('trash', 'width:13px;height:13px')} Delete</button></div></div>` : ''}</div>`;
+}
+
+function learnedCard(s) {
+  if (!s.learned) return '';
+  return `<div class="learned is-new" id="learned"><div class="ctag">${NEW}</div><h4>${I('search', 'width:12px;height:12px')} What Red Talon learned</h4>
+    <div class="kv"><span>Your walls</span><b>Lv 3 · ≈ 30%</b></div><div class="kv"><span>Defended last time</span><b>never tested</b></div>
+    <div class="kv"><span>Your best squad</span><b>~12k</b></div><div class="kv"><span>Their read</span><b style="color:hsl(8,80%,68%)">assault will land</b></div>
+    <p>Their probe is them scouting you. Defend once, and next time they plan for it.</p></div>`;
+}
+
+function scoutSheet() {
+  return `<div class="sheet" id="sheet"><div class="sheet__head"><h3>Scout Red Talon Hold</h3><button class="acard__x" data-act="close">${I('x-circle', 'width:18px;height:18px')}</button></div>
+    <div class="squad sel" style="margin-top:12px"><b>Scout party</b><small>Scout (Cavalry T1) ×40 · Kaelen Thorne</small></div>
+    <div class="sect is-new" id="scoutForecast" style="margin-top:12px"><div class="ctag">${NEW}</div><div class="sect__h">Expected report</div>
+      <div class="kv"><span>Your scouting</span><b>2 · Kaelen Thorne "Trail Marks"</b></div>
+      <div class="kv"><span>Their watch level</span><b>2 · watchtower + counter-scouts</b></div>
+      <div class="kv"><span>Report tier</span><b>${tierPips(2)} 2 of 3</b></div>
+      <div class="kv"><span>Detection risk</span><b style="color:var(--clr-warning)">25% · caught = partial report, −5 standing</b></div></div>
+    <div class="eta">ETA 3:20 · the report lands in Mail → Reports</div>
+    <button class="go" data-act="march">Send scout</button></div>`;
+}
+
+function baseHud(s) {
+  return `<div class="fabpulse"></div><div class="fabtag">${NEW}</div>`;
+}
+
+const CONTINUE_TOAST = { k: 'bad', icon: 'sword', t: 'Red Talon departs in 45:00', m: 'Massing for Red Lowlands', isNew: true, act: 'defend', btn: 'Defend ›' };
+const DEFAULTS = { view: 'world', scoutSent: false, scoutReport: false, reportAge: '2h ago', scoutTab: 'overview', scoutT3: false, learned: false, bg: 'held', stage: 'calm', count: '1:10:00', sent: null, card: null, sheet: null, more: false, modal: null, mailCat: 'diplomacy', mailRow: null, facTab: 'red', toasts: [], focus: false, rebels: false, proposal: false, refused: false, hlReasons: false, scavTruce: false };
+
+const STEPS = [
+  { tag: 'Setting', title: 'You hold Red Lowlands', text: 'Yesterday you took Red Lowlands (green) from Red Talon Raiders. Taking it uncovered Frost Hold next door, their home region. This is the real world map, zoomed out.',
+    st: {}, spot: { rect: [516, 529, 488, 246] } },
+  { tag: 'Setting', title: 'Faction bases are landmarks', text: 'Each major faction now has a home base on the map. Red Talon Hold sits in Frost Hold. The Scavenger Den and the Iron Covenant Keep are faded: you can see them through fog, so an AI march never comes from nowhere.',
+    st: { proposal: true }, spot: { rect: [880, 676, 120, 104] }, rings: [[P.den, 34], [P.keep, 34]],
+    was: [['PROPOSAL', 'Iron Covenant regions are an open question. Proposal: Vulture Ridge + Behemoth Spire (dashed blue), so the three factions surround you.']] },
+  { tag: 'Intel', title: 'Tap the Hold', text: 'Tapping a base opens an intel card next to it: leader, standing, the current plan and why. Red Talon is weighing an assault on Red Lowlands because its walls are weak, it holds a grudge, and you were away.',
+    st: { card: 'hold' }, spot: { sel: '#card' },
+    was: [['IMPROVED', 'was: the bottom POI panel (Type and Status rows, one button). It has no room for a leader, a plan and its reasons, and it sits far from the node.']] },
+  { tag: 'Intel', title: 'More → Factions', text: 'A Factions tile joins the More grid. Its red dot means a faction has a plan aimed at you.',
+    st: { more: true, stage: 'calm' }, spot: { sel: '#tileFactions', pad: 6 } },
+  { tag: 'Intel', title: 'The Factions panel', text: 'Standing is the sum of named reasons, each fading on its own timer. Trust (the pips) moves slowly and is what betrayal reads. On the left: Red Talon is Unfriendly, the Scavengers are Neutral with low trust, and the Covenant keeps its deals.',
+    st: { modal: 'factions' }, spot: { sel: '#modal', pad: 4 } },
+  { tag: 'Scout', title: 'Scout them back', text: 'Before Red Talon moves, look at what they have. Scout on the Hold card opens a scout sheet: your scouting (2) against their watch level (2) predicts a tier 2 report, with a 25% chance of being caught.',
+    st: { sheet: 'scout' }, spot: { sel: '#sheet', pad: 4 } },
+  { tag: 'Scout', title: 'The scout rides out', text: 'The scout party leaves Your Outpost on a green dotted route to Red Talon Hold, and the Marches panel lists it under Your marches. The report comes back in 3:20.',
+    st: { scoutSent: true }, spot: { rect: [384, 628, 620, 160] }, rings: [] },
+  { tag: 'Scout', title: 'The report: overview', text: 'The report lands in Mail → Reports and expands in place, with five tabs. The header shows the scout tier (2 of 3) and its age, because reports go stale. The overview compares their forces with your Squad 1 in green, amber and red bands.',
+    st: { modal: 'mail', mailCat: 'reports', mailRow: 'scout', scoutReport: true, reportAge: 'just now' }, spot: { sel: '#row-scout', pad: 4 } },
+  { tag: 'Scout', title: 'Heroes and squads', text: 'Two of their three commanders show, with rarity, level and stars. Each squad lists its front, mid and back rows with real unit tiers and wounded; counts are banded at tier 2. Locked rows say what tier 3 would reveal.',
+    st: { modal: 'mail', mailCat: 'reports', mailRow: 'scout', scoutReport: true, reportAge: 'just now', scoutTab: 'army' }, spot: { sel: '#rpane', pad: 6 } },
+  { tag: 'Scout', title: 'Intent and counsel', text: 'The last tab turns the report into advice built on the counters. Their front is cavalry, so lead with infantry; your Squad 1 is amber against the Talon Riders. Their hidden agenda and betrayal risk need tier 3.',
+    st: { modal: 'mail', mailCat: 'reports', mailRow: 'scout', scoutReport: true, reportAge: 'just now', scoutTab: 'intent' }, spot: { sel: '#counsel', pad: 6 } },
+  { tag: 'Scout', title: 'What tier 3 adds', text: 'Better scouting unlocks exact counts, hero skills, the third commander, traps, the hidden agenda and military research. This is the Tech tab at tier 3 (the preview switch exists only in the prototype).',
+    st: { modal: 'mail', mailCat: 'reports', mailRow: 'scout', scoutReport: true, reportAge: 'just now', scoutTab: 'tech', scoutT3: true }, spot: { sel: '#rpane', pad: 6 } },
+  { tag: 'Probe', title: 'Scouts are watching', text: 'Red Talon scouts leave the Hold on a yellow dotted route and watch Red Lowlands. A yellow banner appears, and the Marches panel lists them under Threats.',
+    st: { stage: 'probe', focus: true }, spot: { rect: [516, 500, 488, 280] }, rings: [],
+    was: [['IMPROVED', 'Marches panel, was: one list where an enemy row looked like your own march.'], ['IMPROVED', 'Threat focus (bottom-left), was: every node at full strength, so new markers got lost.']] },
+  { tag: 'Probe', title: 'What they learned about you', text: 'Their probe is the mirror of your scout. This card shows what Red Talon now knows: walls level 3, never defended. That is why they plan an assault, and why defending once changes their next plan.',
+    st: { stage: 'probe', focus: true, learned: true }, spot: { sel: '#learned', pad: 6 } },
+  { tag: 'Massing', title: 'A war camp forms', text: 'A war camp forms on the Frost Hold border, fed by a supply column from the Hold. The ring fills as troops arrive, and the red banner counts down to departure: 1:10:00.',
+    st: { stage: 'mass', focus: true }, spot: { rect: [738, 684, 266, 112] }, rings: [] },
+  { tag: 'Massing', title: 'The ultimatum', text: 'Warlord Vesk writes in the new Diplomacy category of Mail: pay 25k iron and the camp stands down, or refuse. The expiry and both consequences show before you choose. In this story you refuse.',
+    st: { stage: 'mass', focus: true, modal: 'mail', mailRow: 'ult' }, spot: { sel: '#row-ult', pad: 4 }, rings: [] },
+  { tag: 'Massing', title: 'Check your defenses', text: 'Tapping Red Lowlands now shows a Defense block. Walls level 3 hold about 30% of your power, enough for small raids. The warband is about 1.1× your power, so the walls alone won\'t hold.',
+    st: { stage: 'mass', focus: true, refused: true, card: 'region' }, spot: { sel: '#defense', pad: 6 } },
+  { tag: 'March', title: 'The warband moves', text: 'The countdown hits zero and the warband leaves the empty camp on a red route to Reaver Fort, the region\'s stronghold. It arrives in 18:40. This is the intercept window.',
+    st: { stage: 'march', focus: true, refused: true }, spot: { rect: [612, 586, 336, 210] } },
+  { tag: 'March', title: 'Intercept', text: 'Tap the warband and choose Intercept. The existing march sheet gains a forecast: amber, about a 55% win estimate, and you reach the meeting point 4:10 before them. Reinforce would fight behind the walls (+30%) instead.',
+    st: { stage: 'march', focus: true, refused: true, sheet: 'intercept' }, spot: { sel: '#sheet', pad: 4 } },
+  { tag: 'March', title: 'Your squad heads out', text: 'Squad 1 leaves Your Outpost on the green route to the meeting point on the warband\'s road. The Marches panel shows it under Your marches, below the threat.',
+    st: { stage: 'march', focus: true, refused: true, sent: 'intercept' }, spot: { rect: [380, 596, 570, 196] }, rings: [[P.outpost, 24]] },
+  { tag: 'Battle', title: 'Held', text: 'Squad 1 meets the warband on the road and holds. The outcome was locked when the plan was telegraphed: what you did decided it, not a dice roll. The full report goes to Mail → Reports.',
+    st: { stage: 'battle', refused: true, modal: 'battle', toasts: [{ k: 'ok', icon: 'shield', t: 'Red Lowlands held', m: 'Battle report saved to Mail → Reports', isNew: true }] }, spot: { sel: '#result', pad: 4 } },
+  { tag: 'Aftermath', title: '"This isn\'t over."', text: 'Vesk writes back in his own voice. A 12h calm period starts: no hostile countdowns until it ends, and the Marches panel says so.',
+    st: { stage: 'after', refused: true, modal: 'mail', mailRow: 'over' }, spot: { sel: '#row-over', pad: 4 } },
+  { tag: 'Aftermath', title: 'Standing remembers', text: 'Two new reasons, highlighted, push Red Talon toward Hostile: you refused their demand, and you broke their assault. Each fades on its own timer, so the grudge cools if nothing else happens.',
+    st: { stage: 'after', refused: true, modal: 'factions', hlReasons: true }, spot: { sel: '#standing', pad: 4 } },
+  { tag: 'AI vs AI', title: 'The Scavengers smell weakness', text: 'Mother Rook saw Red Talon lose most of a warband, and she offers you a truce that expires in 5h. Accepting buys 48h of peace and a gift; declining costs standing. One faction is reacting to another.',
+    st: { stage: 'after', refused: true, modal: 'mail', mailRow: 'truce', scavTruce: true }, spot: { sel: '#row-truce', pad: 4 } },
+  { tag: 'Alternate', title: 'If nobody defends', text: 'The other ending, on today\'s real screenshot: the walls fall and Red Lowlands turns red, losing its buff. Frost Hold fogs over again (the cascade), but the Hold stays visible as a landmark. Vesk writes "Red Lowlands is ours again".',
+    st: { bg: 'today', stage: 'lost', refused: true, toasts: [{ k: 'bad', icon: 'skull', t: 'Red Lowlands lost', m: '+10% food buff removed · Frost Hold fogged again', isNew: true }, { k: 'mail', icon: 'envelope', t: 'Warlord Vesk', m: '"Red Lowlands is ours again."', isNew: true }] },
+    spot: { rect: [516, 500, 488, 280] } },
+  { tag: 'Offline', title: 'Strikes wait for you', text: 'If a plan ripens while you are offline, the strike is held. Welcome Back puts the threat first. Its 45:00 countdown starts only when you close it, and everything listed is already in your stockpile, so neither button loses anything.',
+    st: { stage: 'mass', count: '0:45:00', focus: true, modal: 'welcome' }, spot: { sel: '#wb', pad: 4 },
+    was: [['IMPROVED', 'was: "Welcome Back!" with resources, a flat "Completed While Away" list and "Collect & Continue". Now grouped by source, threat first.']] },
+  { tag: 'Offline', title: 'Choice 1: Defend now', text: 'Defend now closes Welcome Back, switches to World, centres on Red Lowlands and opens its card with Reinforce and Intercept ready. The countdown started on close and now reads 0:44:58.',
+    st: { stage: 'mass', count: '0:44:58', focus: true, card: 'region' }, spot: { sel: '#card', pad: 4 } },
+  { tag: 'Offline', title: 'Choice 2: Continue', text: 'Continue closes it and stays where you were, usually Base; the 45:00 starts now. The threat follows you: the red banner, a pulsing dot on More, and a toast with Defend ›. The Threats row and the pinned Events item wait on World and in Events.',
+    st: { view: 'base', stage: 'mass', count: '0:45:00', toasts: [CONTINUE_TOAST] }, spot: { rect: [396, 48, 872, 136] }, rings: [[[1243, 763], 36]] },
+  { tag: 'Rebels', title: 'Ash Brood', text: 'Rebels are generated minor factions. Ash Brood is a raider camp near Command Ruin. Left alone it grows camp → settlement → stronghold in about 3.5 days, and a stronghold can take a region. At most 3 rebels exist at once.',
+    st: { rebels: true, card: 'rebel' }, spot: { sel: '#card', include: [630, 440, 750, 514] } },
+];
+
+const PRESET_TITLES = [['Calm', 'You hold Red Lowlands'], ['Scout report', 'The report: overview'], ['Probe', 'Scouts are watching'], ['Massing', 'A war camp forms'], ['March', 'The warband moves'], ['Squad out', 'Your squad heads out'], ['Held', 'Held'], ['Aftermath', '"This isn\'t over."'], ['Lost', 'If nobody defends'], ['Offline return', 'Strikes wait for you'], ['Defend now', 'Choice 1: Defend now'], ['Continue', 'Choice 2: Continue'], ['Rebels', 'Ash Brood']];
+const EXPLORE_PRESETS = PRESET_TITLES.map(([n, t]) => [n, STEPS.findIndex(st => st.title === t)]);
+const REPORT_IDX = STEPS.findIndex(st => st.title === 'The report: overview');
+
+let idx = 0, mode = 'guided', state = null, offScript = false, presetIdx = 0;
+const stepState = i => Object.assign(structuredClone(DEFAULTS), { scoutReport: i >= REPORT_IDX }, structuredClone(STEPS[i].st));
+
+function render() {
+  const s = state;
+  drawMap(s);
+  if (s.view === 'base') { $('bg').style.backgroundImage = 'url(01-city-base-view.jpg)'; $('map').innerHTML = ''; $('hud').innerHTML = banner(s) + baseHud(s); }
+  else $('hud').innerHTML = marchesPanel(s) + banner(s) + focusChip(s) + terrLegend() + learnedCard(s);
+  let layer = card(s) + sheet(s) + result(s) + (s.more ? moreGrid(s) : '') + toasts(s);
+  if (s.modal === 'mail') layer += mailModal(s);
+  if (s.modal === 'factions') layer += factionsModal(s);
+  if (s.modal === 'welcome') layer += welcome();
+  $('layer').innerHTML = layer;
+  document.body.classList.toggle('off-script', offScript);
+  renderCaption();
+  renderExplore();
+  placeSpot();
+}
+
+function frameRect(el) {
+  const f = $('frame').getBoundingClientRect(), r = el.getBoundingClientRect(), k = scale;
+  return [(r.left - f.left) / k, (r.top - f.top) / k, r.width / k, r.height / k];
+}
+function placeSpot() {
+  const step = STEPS[idx], spot = $('spot');
+  $('rings').innerHTML = '';
+  if (mode !== 'guided' || offScript || !step.spot) { spot.style.display = 'none'; return; }
+  let r = step.spot.rect;
+  if (step.spot.sel) { const el = document.querySelector(step.spot.sel); if (el) { r = frameRect(el); const p = step.spot.pad ?? 8; r = [r[0] - p, r[1] - p, r[2] + p * 2, r[3] + p * 2]; } }
+  if (r && step.spot.include) { const [a, b, c, d] = step.spot.include; const x1 = Math.min(r[0], a), y1 = Math.min(r[1], b), x2 = Math.max(r[0] + r[2], c), y2 = Math.max(r[1] + r[3], d); r = [x1, y1, x2 - x1, y2 - y1]; }
+  if (!r) { spot.style.display = 'none'; return; }
+  Object.assign(spot.style, { display: 'block', left: r[0] + 'px', top: r[1] + 'px', width: r[2] + 'px', height: r[3] + 'px' });
+  $('rings').innerHTML = (step.rings || []).map(([p, rad]) => `<div class="ring" style="left:${p[0] - rad}px;top:${p[1] - rad}px;width:${rad * 2}px;height:${rad * 2}px"></div>`).join('');
+}
+
+function renderCaption() {
+  const st = STEPS[idx];
+  const was = (st.was || []).map(([k, t]) => `<div class="was"><span class="tag ${k === 'PROPOSAL' ? 'tag--prop' : 'tag--imp'}">${k}</span><span>${t}</span></div>`).join('');
+  $('caption').innerHTML = `<div class="caption__meta"><b>Step ${idx + 1} of ${STEPS.length} · ${st.tag}</b><div class="prog">${STEPS.map((_, i) => `<i class="${i < idx ? 'done' : i === idx ? 'on' : ''}" data-go="${i}" title="Step ${i + 1}: ${STEPS[i].title}"></i>`).join('')}</div></div>
+    <h2>${st.title}</h2><p>${st.text}</p>${was}${offScript ? '<div class="off">You clicked off-script. Next or Back returns to the story.</div>' : ''}
+    <div class="nav"><div class="row"><button class="btn btn--ghost" id="back" ${idx === 0 ? 'disabled' : ''}>Back</button><button class="btn" id="next" ${idx === STEPS.length - 1 ? 'disabled' : ''}>Next</button></div><small>or use ← → keys</small></div>`;
+}
+function renderExplore() {
+  $('explore').innerHTML = `<b>Explore</b><span>Jump to a moment:</span>${EXPLORE_PRESETS.map(([n, i], k) => `<button class="chip ${k === presetIdx ? 'on' : ''}" data-preset="${k}">${n}</button>`).join('')}<span style="margin-left:auto">Click map markers, Marches rows, the banner, Mail and More.</span>`;
+}
+
+function goStep(i) { idx = Math.max(0, Math.min(STEPS.length - 1, i)); state = stepState(idx); offScript = false; render(); }
+function setMode(m) {
+  mode = m; document.body.classList.toggle('is-explore', m === 'explore');
+  $('mGuided').classList.toggle('on', m === 'guided'); $('mExplore').classList.toggle('on', m === 'explore');
+  if (m === 'guided') { offScript = false; state = stepState(idx); }
+  else { const k = EXPLORE_PRESETS.reduce((best, [, i], j) => i <= idx ? j : best, 0); presetIdx = k; }
+  fit(); render();
+}
+
+function act(a) {
+  const s = state;
+  const [k, v] = a.split(':');
+  if (k === 'noop') return false;
+  if (k === 'close') { s.card = null; s.sheet = null; s.modal = null; s.more = false; s.toasts = []; return true; }
+  if (k === 'card') { s.view = 'world'; s.card = v; s.sheet = null; s.more = false; s.modal = null; if (v === 'rebel') s.rebels = true; return true; }
+  if (k === 'sheet') { s.view = 'world'; s.sheet = v; s.card = null; s.modal = null; if (v !== 'scout' && s.stage !== 'march') { s.stage = 'march'; s.bg = 'held'; } return true; }
+  if (k === 'march' && s.sheet === 'scout') { s.scoutSent = true; s.scoutReport = true; s.reportAge = 'just now'; s.sheet = null; s.toasts = [{ k: 'mail', icon: 'search', t: 'Scout party sent', m: 'The report lands in Mail → Reports', isNew: true, act: 'report', btn: 'Open report' }]; return true; }
+  if (k === 'march') { s.sent = s.sheet; s.sheet = null; s.card = null; return true; }
+  if (k === 'more') { s.more = !s.more; s.card = null; return true; }
+  if (k === 'factions') { s.modal = 'factions'; s.facTab = 'red'; s.more = false; s.card = null; return true; }
+  if (k === 'tab') { s.modal = 'factions'; s.facTab = v; s.card = null; return true; }
+  if (k === 'events') { s.more = false; s.toasts = [{ k: 'mail', icon: 'lightning', t: 'Events view', m: 'Covered by prototype B (events).', isNew: false }]; return true; }
+  if (k === 'mail') { s.modal = 'mail'; s.mailCat = 'diplomacy'; s.card = null; s.more = false; s.sheet = null; return true; }
+  if (k === 'cat') { s.mailCat = v; return true; }
+  if (k === 'row') { s.mailRow = s.mailRow === v ? null : v; return true; }
+  if (k === 'focus') { s.focus = !s.focus; return true; }
+  if (k === 'defend') { s.modal = null; s.view = 'world'; s.card = 'region'; s.toasts = []; if (s.count === '0:45:00') s.count = '0:44:58'; return true; }
+  if (k === 'continue') { s.modal = null; s.view = 'base'; s.toasts = [CONTINUE_TOAST]; return true; }
+  if (k === 'report') { s.modal = 'mail'; s.mailCat = 'reports'; s.mailRow = 'scout'; s.scoutTab = 'overview'; s.card = null; s.sheet = null; s.toasts = []; return true; }
+  if (k === 'stab') { s.scoutTab = v; return true; }
+  if (k === 't3') { s.scoutT3 = !s.scoutT3; return true; }
+  if (k === 'flip') { s.view = s.view === 'base' ? 'world' : 'base'; s.card = null; s.sheet = null; s.more = false; return true; }
+  return false;
+}
+
+document.addEventListener('click', e => {
+  const go = e.target.closest('[data-go]'); if (go) return goStep(+go.dataset.go);
+  if (e.target.closest('#next')) return goStep(idx + 1);
+  if (e.target.closest('#back')) return goStep(idx - 1);
+  const pr = e.target.closest('[data-preset]');
+  if (pr) { presetIdx = +pr.dataset.preset; idx = EXPLORE_PRESETS[presetIdx][1]; state = stepState(idx); state.card = state.card === 'rebel' ? null : state.card; return render(); }
+  const el = e.target.closest('[data-act]');
+  if (!el || !$('frame').contains(el)) return;
+  if (act(el.dataset.act)) { if (mode === 'guided') offScript = true; render(); }
+});
+document.addEventListener('keydown', e => {
+  if (mode !== 'guided') return;
+  if (e.key === 'ArrowRight') goStep(idx + 1);
+  if (e.key === 'ArrowLeft') goStep(idx - 1);
+});
+$('mGuided').onclick = () => setMode('guided');
+$('mExplore').onclick = () => setMode('explore');
+
+let scale = 1;
+function fit() {
+  const top = document.querySelector('.top').offsetHeight;
+  const cap = mode === 'guided' ? 188 : $('explore').offsetHeight + 10;
+  const availH = window.innerHeight - top - cap - 16, availW = window.innerWidth - 32;
+  scale = Math.min(availW / 1280, availH / 800, 1.25);
+  $('frame').style.transform = `scale(${scale})`;
+  $('wrap').style.width = 1280 * scale + 'px';
+  $('wrap').style.height = 800 * scale + 'px';
+}
+window.addEventListener('resize', () => { fit(); placeSpot(); });
+
+goStep(0); fit(); placeSpot();
+document.fonts && document.fonts.ready.then(() => { fit(); placeSpot(); });
+</script>
+</body>
+</html>

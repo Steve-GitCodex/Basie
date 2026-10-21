@@ -5,6 +5,7 @@ import { BUILDINGS_CONFIG, HEROES_CONFIG, HQ_UNLOCK_TABLE, UNITS_CONFIG, TECH_CO
 import { icon, iconFromEmoji } from '../icons.js';
 import { cardIconHtml } from './buildingIcons.js';
 import { levelTable } from '../../systems/building/levelTable.js';
+import { prodFactor } from '../../systems/building/buildingCurve.js';
 
 export class BuildingCards {
   /** @param {{ bm, rm, heroes, notifications, requestRender:()=>void }} deps */
@@ -195,9 +196,9 @@ export class BuildingCards {
       if (numericEffects.length > 0 && b.level > 0) {
         const parts = numericEffects.map(([res, rate]) => {
           const resIcon = RES_META[res]?.icon ?? res;
-          const cur  = +(rate * b.level).toFixed(1);
+          const cur  = +(rate * prodFactor(b.level)).toFixed(1);
           if (isMaxed_) return `${resIcon} ${cur}/s`;
-          const nxt  = +(rate * (b.level + 1)).toFixed(1);
+          const nxt  = +(rate * prodFactor(b.level + 1)).toFixed(1);
           return `${resIcon} ${cur}/s → ${nxt}/s`;
         });
         return `<div class="building-effect-label">${parts.join(' · ')}</div>`;
@@ -411,8 +412,8 @@ export class BuildingCards {
         if (numericEffects.length && b.level > 0) {
           numericEffects.forEach(([res, rate]) => {
             const resIcon = RES_META[res]?.icon ?? res;
-            const cur  = +(rate * b.level).toFixed(1);
-            const nxt  = +(rate * (b.level + 1)).toFixed(1);
+            const cur  = +(rate * prodFactor(b.level)).toFixed(1);
+            const nxt  = +(rate * prodFactor(b.level + 1)).toFixed(1);
             ttParts.push(`<div class="tt-row"><span class="tt-label">${resIcon} Rate</span><span>${cur}/s → <strong>${nxt}/s</strong></span></div>`);
           });
         }

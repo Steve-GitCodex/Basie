@@ -1,0 +1,1195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Basie Events Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800&family=Oswald:wght@500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg-base:hsl(30,10%,5%);--bg-surface:hsl(30,9%,8%);--bg-elev:hsl(30,8%,11%);--bg-panel:hsl(30,8%,14%);
+  --border:hsl(30,10%,18%);--border-l:hsl(30,10%,27%);
+  --primary:hsl(32,90%,55%);--primary-d:hsl(30,88%,40%);--success:hsl(90,45%,48%);--warning:hsl(48,95%,52%);--danger:hsl(0,85%,58%);
+  --tx1:hsl(35,15%,93%);--tx2:hsl(35,10%,62%);--tx3:hsl(35,8%,42%);
+  --f-head:'Oswald',sans-serif;--f-body:'Outfit',sans-serif;--f-disp:'Orbitron',sans-serif;
+  --me:#3ad17a;--red:#e05a3d;--scav:#b7d645;--iron:#6f9fd8;--rebel:#9b6bff;--storm:#7fb2e6;--contam:#e0559b;--neutral:#e2cf9f;
+  --world:hsl(200,45%,62%);--mile:#e2c36b;
+  --new:#22d3ee;--imp:#ffb627;
+  --page:#0d0c0a;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:#070605;color:var(--tx1);font-family:var(--f-body);overflow:hidden;height:100%}
+button{font-family:inherit;cursor:pointer}
+.ic{width:1em;height:1em;display:inline-block;vertical-align:-.14em;flex:none}
+
+#proto{min-height:52px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;padding:8px 16px;background:#0b0a09;border-bottom:1px solid #1f1c19}
+#proto h1{font:700 15px var(--f-head);letter-spacing:.06em;margin:0;text-transform:uppercase;white-space:nowrap}
+#proto h1 small{font:500 12px var(--f-body);color:var(--tx3);letter-spacing:0;text-transform:none;margin-left:8px}
+.legend{display:flex;gap:12px;align-items:center;font-size:12px;color:var(--tx2);white-space:nowrap}
+.legend .sw{display:inline-flex;align-items:center;gap:6px}
+.week{display:flex;gap:3px;margin-left:auto}
+.week span{font:600 11px var(--f-head);letter-spacing:.05em;color:var(--tx3);padding:4px 7px;border-radius:5px;border:1px solid #221f1b;text-transform:uppercase}
+.week span.on{color:#111;background:var(--primary);border-color:var(--primary)}
+.week span.span{color:var(--tx1);border-color:var(--primary)}
+.seg{display:flex;border:1px solid var(--border-l);border-radius:8px;overflow:hidden}
+.seg button{background:transparent;border:0;color:var(--tx2);font:600 12px var(--f-body);padding:6px 12px}
+.seg button.on{background:var(--primary);color:#16110a}
+.chk{font-size:12px;color:var(--tx2);display:flex;gap:6px;align-items:center;white-space:nowrap}
+
+#stage{position:relative;display:flex;flex-direction:column;align-items:center;padding-top:10px}
+#frameWrap{position:relative;overflow:hidden;border-radius:6px;box-shadow:0 0 0 1px #2a2622,0 20px 60px rgba(0,0,0,.6)}
+#frame{position:absolute;left:0;top:0;width:1280px;height:800px;transform-origin:0 0;overflow:hidden;background:var(--page)}
+
+#caption{margin-top:10px;width:1280px;max-width:calc(100vw - 24px);display:flex;gap:18px;align-items:stretch;background:linear-gradient(180deg,#191512,#120f0d);border:1px solid #3a2e22;border-radius:12px;padding:12px 16px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+#caption .meta{flex:none;width:210px;border-right:1px solid #2c241d;padding-right:14px;display:flex;flex-direction:column;gap:6px}
+#capStep{font:700 12px var(--f-head);letter-spacing:.08em;text-transform:uppercase;color:var(--primary)}
+#capTopic{font:600 19px var(--f-head);line-height:1.15}
+#capDay{font-size:12px;color:var(--tx3)}
+#capText{flex:1;font-size:15px;line-height:1.5;color:var(--tx1)}
+#capText b{color:#fff}
+#capLook{margin-top:7px;display:flex;flex-wrap:wrap;gap:6px}
+.look{font-size:11.5px;padding:2px 8px;border-radius:99px;border:1px solid;display:inline-flex;gap:5px;align-items:center}
+.look--new{color:var(--new);border-color:rgba(34,211,238,.5);background:rgba(34,211,238,.07)}
+.look--imp{color:var(--imp);border-color:rgba(255,182,39,.5);border-style:dashed;background:rgba(255,182,39,.07)}
+.look--old{color:var(--tx2);border-color:var(--border-l)}
+#caption .nav{flex:none;display:flex;flex-direction:column;gap:8px;justify-content:center;align-items:flex-end}
+#caption .nav .btns{display:flex;gap:8px}
+.pbtn{border:1px solid var(--border-l);background:#1d1915;color:var(--tx1);border-radius:8px;padding:8px 16px;font:600 13px var(--f-body)}
+.pbtn--go{background:linear-gradient(135deg,var(--primary),var(--primary-d));border-color:var(--primary);color:#1a1006}
+.pbtn:disabled{opacity:.35;cursor:default}
+.dots{display:flex;gap:4px;flex-wrap:wrap;max-width:320px;justify-content:flex-end}
+.dots i{width:9px;height:9px;border-radius:50%;background:#3a332c;cursor:pointer}
+.dots i.on{background:var(--primary)}
+.dots i.done{background:#7a5a35}
+.kbd{font-size:11px;color:var(--tx3)}
+#exploreHint{display:none;margin-top:10px;font-size:13px;color:var(--tx2);background:#15120f;border:1px solid #2c241d;border-radius:99px;padding:6px 14px}
+body.explore #caption{display:none}
+body.explore #exploreHint{display:block}
+body.explore #spot{display:none}
+
+.tg{position:absolute;z-index:3;font:700 9px var(--f-body);letter-spacing:.08em;padding:1px 5px;border-radius:4px;line-height:13px;pointer-events:none;white-space:nowrap}
+.tg--new{background:var(--new);color:#05262c;box-shadow:0 0 8px rgba(34,211,238,.55)}
+.tg--imp{background:var(--imp);color:#2b1a00;box-shadow:0 0 8px rgba(255,182,39,.45)}
+.tg.tl{top:-7px;left:8px}.tg.tr{top:-7px;right:8px}.tg.bl{bottom:-7px;left:8px}.tg.in{position:static;display:inline-block;vertical-align:2px;margin-left:6px}
+.is-new{position:relative;outline:1px solid rgba(34,211,238,.75);outline-offset:2px;box-shadow:0 0 14px rgba(34,211,238,.18)}
+.is-imp{position:relative;outline:1px dashed rgba(255,182,39,.85);outline-offset:3px}
+.was{font-size:11px;color:#c99b4a;font-style:italic}
+body.notags .tg,body.notags .was{display:none}
+body.notags .is-new,body.notags .is-imp{outline:none;box-shadow:none}
+
+#bg{position:absolute;inset:0;background-size:1280px 800px;background-repeat:no-repeat}
+#mapLayer,#pageLayer,#hudLayer,#modalLayer,#toastLayer{position:absolute;inset:0;pointer-events:none}
+#mapLayer>*,#pageLayer>*,#hudLayer>*,#modalLayer>*,#toastLayer>*{pointer-events:auto}
+#mapSvg{position:absolute;left:0;top:0;pointer-events:none}
+#spot{position:absolute;inset:0;pointer-events:none;z-index:60}
+#spot .ring{fill:none;stroke:#fff;stroke-width:2.5;animation:ringPulse 1.6s ease-in-out infinite}
+@keyframes ringPulse{0%,100%{stroke-opacity:1}50%{stroke-opacity:.35}}
+.mark{position:absolute;z-index:61;width:24px;height:24px;border-radius:50%;background:#fff;color:#111;font:800 13px var(--f-body);display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 3px rgba(0,0,0,.5),0 0 12px rgba(255,255,255,.6);pointer-events:none}
+
+.mk{position:absolute;width:0;height:0;cursor:pointer}
+.mk__node{position:absolute;left:-20px;top:-20px;width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 50% 40%,#22201c,#0d0c0b);border:3px solid var(--c);display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;box-shadow:0 0 0 2px rgba(0,0,0,.55),0 0 14px color-mix(in srgb,var(--c) 45%,transparent)}
+.mk--sm .mk__node{left:-16px;top:-16px;width:32px;height:32px;font-size:16px;border-width:2.5px}
+.mk__lvl{position:absolute;left:-27px;top:-30px;width:18px;height:18px;transform:rotate(45deg);background:var(--c);border:1.5px solid rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center}
+.mk__lvl b{transform:rotate(-45deg);font:800 11px var(--f-body);color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.6)}
+.mk__lbl{position:absolute;white-space:nowrap;font:700 11px var(--f-body);color:#fff;background:rgba(10,9,8,.86);border:1px solid color-mix(in srgb,var(--c) 70%,transparent);border-radius:5px;padding:2px 7px;line-height:15px;text-shadow:0 1px 1px #000}
+.mk__lbl small{display:block;font-weight:500;font-size:10px;color:var(--tx2)}
+.mk__lbl.b{left:0;top:24px;transform:translateX(-50%)}
+.mk__lbl.r{left:26px;top:0;transform:translateY(-50%)}
+.mk__lbl.l{right:26px;top:0;transform:translateY(-50%)}
+.mk__lbl.t{left:0;bottom:26px;transform:translateX(-50%)}
+.mk--faded{opacity:.55}
+.mk--hl .mk__node{outline:2px solid #fff;outline-offset:3px}
+.mk--plain .mk__lbl{border-color:rgba(255,255,255,.25)}
+.mk--ghost .mk__node{background:transparent;border:2px dashed rgba(255,255,255,.7);box-shadow:none}
+.callout{position:absolute;white-space:nowrap;font:700 11px var(--f-body);background:rgba(10,9,8,.9);border:1px solid var(--c);border-radius:6px;padding:4px 8px;color:#fff;line-height:15px}
+.callout small{display:block;font:500 10.5px var(--f-body);color:var(--tx2)}
+.callout .ttl{display:flex;gap:6px;align-items:center;color:var(--c);letter-spacing:.04em;text-transform:uppercase}
+.pill{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;font:700 10.5px var(--f-body);background:rgba(10,9,8,.92);border:1px solid var(--c);color:#fff;border-radius:99px;padding:1px 8px;line-height:15px;display:flex;gap:4px;align-items:center}
+.pill em{font-style:normal;color:var(--c)}
+.flow{animation:flow 1.2s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-24}}
+
+.wm{position:absolute;left:12px;top:60px;width:240px;background:hsla(215,30%,10%,.97);border:1px solid var(--border);border-radius:8px;padding:8px 12px}
+.wm__head{font:700 10px var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);margin-bottom:6px;display:flex;justify-content:space-between}
+.wm__sec{font:700 9px var(--f-body);letter-spacing:.1em;text-transform:uppercase;margin:6px 0 2px;display:flex;gap:6px;align-items:center}
+.wm__item{font-size:10.5px;padding:5px 0;border-top:1px solid var(--border)}
+.wm__sec+.wm__item{border-top:none}
+.wm__top{display:flex;justify-content:space-between;gap:6px;color:var(--tx2)}
+.wm__top b{font-weight:600;color:var(--tx1);display:flex;gap:5px;align-items:center}
+.wm__ph{color:var(--tx3);white-space:nowrap}
+.wm__bar{height:3px;background:rgba(255,255,255,.12);border-radius:2px;margin-top:4px;overflow:hidden}
+.wm__bar i{display:block;height:100%;background:#6bd4ff}
+.wm__note{font-size:10px;margin-top:3px;display:flex;gap:4px;align-items:center}
+.wm__empty{font-size:10px;color:var(--tx3);padding:4px 0;text-align:center}
+.wm__item--threat{border-left:2px solid var(--red);padding-left:7px;margin-left:-4px}
+.lf{position:absolute;left:12px;bottom:118px;display:flex;gap:4px;align-items:center;background:hsla(215,30%,10%,.92);border:1px solid var(--border);border-radius:8px;padding:5px 7px}
+.lf span{font:700 9px var(--f-body);letter-spacing:.08em;color:var(--tx3);text-transform:uppercase;margin-right:2px}
+.lf button{background:transparent;border:1px solid var(--border);color:var(--tx2);font:600 11px var(--f-body);border-radius:6px;padding:3px 7px}
+.lf button.on{background:hsl(32,50%,22%);border-color:var(--primary);color:var(--tx1)}
+.banner{position:absolute;left:50%;top:52px;transform:translateX(-50%);width:640px;height:40px;display:flex;align-items:center;gap:10px;padding:0 8px 0 6px;border-radius:9px;border:1px solid var(--bc);background:linear-gradient(90deg,var(--bg1),rgba(20,12,10,.95));box-shadow:0 6px 18px rgba(0,0,0,.5);z-index:8;cursor:pointer}
+.banner__ic{width:28px;height:28px;border-radius:50%;background:var(--bc);display:flex;align-items:center;justify-content:center;color:#1a0a06;font-size:15px}
+.banner__t{flex:1;font-size:13px;line-height:1.15}
+.banner__t small{display:block;font:700 9.5px var(--f-body);letter-spacing:.1em;color:var(--bc);text-transform:uppercase}
+.banner__cd{font:700 16px var(--f-disp);color:#fff;letter-spacing:.04em}
+.banner__cd small{font:500 10px var(--f-body);color:var(--tx2);margin-right:6px;letter-spacing:0}
+.banner__go{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:6px;font:600 12px var(--f-body);padding:5px 10px}
+.fab{position:absolute;left:1217px;top:737px;width:50px;height:50px;border-radius:50%;background:radial-gradient(circle at 50% 30%,#1c2b37,#0f1820);border:1px solid rgba(120,160,190,.28);display:flex;align-items:center;justify-content:center;color:#9aa3ab;font-size:22px;z-index:9}
+.dot{position:absolute;width:10px;height:10px;border-radius:50%;background:#e53935;box-shadow:0 0 0 2px #0b0b0b}
+.fab .dot{right:4px;top:5px}
+.mailbtn{position:absolute;left:722px;top:736px;width:46px;height:46px;border-radius:50%;background:radial-gradient(circle at 50% 30%,#1c2b37,#0f1820);border:1px solid rgba(120,160,190,.22);display:flex;align-items:center;justify-content:center;color:#e8e8e8;font-size:20px;z-index:9}
+.badge{position:absolute;right:-6px;top:-7px;min-width:17px;height:17px;border-radius:99px;background:#e53935;color:#fff;font:800 10px var(--f-body);display:flex;align-items:center;justify-content:center;padding:0 4px;box-shadow:0 0 0 2px #0b0b0b}
+.more{position:absolute;left:1045px;top:470px;width:222px;background:hsla(215,30%,10%,.97);border:1px solid var(--border);border-radius:10px;padding:8px;display:grid;grid-template-columns:1fr 1fr;gap:6px;z-index:9}
+.more__t{position:relative;height:58px;border-radius:7px;background:hsla(215,25%,16%,.85);border:1px solid rgba(255,255,255,.05);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;color:var(--tx2);font-size:11.5px}
+.more__t .ic{font-size:19px;color:#b9c0c6}
+.more__t .dot{right:7px;top:7px}
+.more__t--soon{opacity:.45}
+.more__t .soon{position:absolute;right:5px;top:4px;font:700 8px var(--f-body);border:1px solid var(--success);color:var(--success);border-radius:99px;padding:0 4px}
+.more__t .why{font-size:9.5px;color:#ff8a7a;line-height:1;margin-top:-2px}
+.more__t--ev{height:64px}
+
+.wpanel{position:absolute;left:50%;transform:translateX(-50%);bottom:76px;width:460px;background:hsl(30,30%,11%);border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.5);padding:16px;z-index:7}
+.wpanel__head{display:flex;gap:12px;align-items:center}
+.wpanel__icon{width:40px;height:40px;border-radius:50%;border:2px solid var(--c);display:flex;align-items:center;justify-content:center;font-size:20px;background:#141210}
+.wpanel__head h3{margin:0;font:700 16px var(--f-disp);letter-spacing:.02em}
+.wpanel__sub{font-size:10.5px;color:var(--tx3)}
+.wpanel__x{margin-left:auto;background:none;border:0;color:var(--tx3);font-size:16px}
+.wpanel__body{margin:12px 0;font-size:12px;color:var(--tx2)}
+.wpanel__row{display:flex;justify-content:space-between;padding:2px 0}
+.wpanel__row b{color:var(--tx1);font-weight:600}
+.evblock{margin-top:8px;padding:8px 10px;border-radius:8px;background:rgba(34,211,238,.05);border:1px solid rgba(34,211,238,.35)}
+.evblock__t{display:flex;align-items:center;gap:6px;font:600 12px var(--f-body);color:var(--tx1)}
+.wpanel__act{display:flex;gap:8px}
+.wbtn{flex:1;padding:10px;border-radius:8px;border:1px solid var(--border);background:hsl(30,32%,16%);color:var(--tx1);font:600 13px var(--f-body)}
+.wbtn--gather{border-color:rgba(120,210,255,.5)}
+
+.evpage{position:absolute;left:0;top:46px;width:1240px;height:678px;background:var(--page);padding:6px 16px 0 16px}
+.evhead{display:flex;align-items:flex-end;gap:16px;height:58px}
+.evhead h2{margin:0;font:700 26px var(--f-disp);display:flex;gap:8px;align-items:center}
+.evhead h2 .ic{font-size:20px}
+.evhead p{margin:2px 0 0;font-size:12px;color:var(--tx3)}
+.tabs{display:flex;gap:4px;margin-left:24px;margin-bottom:2px;position:relative}
+.tab{position:relative;background:var(--bg-elev);border:1px solid var(--border);color:var(--tx2);border-radius:8px;padding:7px 16px;font:600 14px var(--f-head);letter-spacing:.05em;text-transform:uppercase;display:flex;gap:7px;align-items:center}
+.tab.on{background:hsl(32,40%,18%);border-color:var(--primary);color:var(--tx1)}
+.tab .badge{position:static;box-shadow:none;height:16px;min-width:16px}
+.srclegend{margin-left:auto;display:flex;gap:6px;align-items:center;font-size:11px;color:var(--tx3);margin-bottom:4px}
+.src{display:inline-flex;align-items:center;gap:4px;font:700 9.5px var(--f-body);letter-spacing:.08em;text-transform:uppercase;padding:2px 7px 2px 6px;border-radius:99px;border:1px solid color-mix(in srgb,var(--c) 55%,transparent);color:var(--c);background:color-mix(in srgb,var(--c) 10%,transparent);white-space:nowrap}
+.evcols{display:flex;gap:14px;margin-top:12px;height:596px}
+.evleft{flex:1;display:flex;flex-direction:column;gap:12px;min-width:0}
+.evright{width:420px;flex:none;display:flex;flex-direction:column;gap:8px}
+.card{background:var(--bg-elev);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+.sechead{display:flex;align-items:center;gap:8px;font:600 13px var(--f-head);letter-spacing:.08em;text-transform:uppercase;color:var(--tx2)}
+.sechead small{font:500 11px var(--f-body);letter-spacing:0;text-transform:none;color:var(--tx3)}
+.calm{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px dashed var(--border-l);border-radius:10px;color:var(--tx2);font-size:12.5px;background:#11100e}
+.calm .ic{font-size:18px;color:var(--success)}
+.hostile{border:1px solid var(--red);background:linear-gradient(180deg,rgba(224,90,61,.13),rgba(224,90,61,.03) 70%),var(--bg-elev);border-radius:12px;padding:12px 16px}
+.hostile__top{display:flex;align-items:center;gap:12px}
+.crest{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;background:color-mix(in srgb,var(--c) 30%,#141210);border:2px solid var(--c);flex:none}
+.hostile__name{font:700 16px var(--f-head);letter-spacing:.03em}
+.hostile__name small{display:block;font:500 11.5px var(--f-body);color:var(--tx2);letter-spacing:0}
+.hostile__cd{margin-left:auto;text-align:right}
+.hostile__cd b{font:700 24px var(--f-disp);color:#fff}
+.hostile__cd small{display:block;font-size:11px;color:var(--tx3)}
+.stages{display:flex;align-items:center;gap:0;margin:10px 0 8px}
+.stg{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--tx3)}
+.stg i{width:16px;height:16px;border-radius:50%;border:2px solid var(--tx3);display:flex;align-items:center;justify-content:center;font-size:9px;color:#111;font-style:normal}
+.stg.done{color:var(--tx2)}.stg.done i{background:var(--tx2);border-color:var(--tx2)}
+.stg.now{color:#fff;font-weight:700}.stg.now i{border-color:var(--red);background:var(--red);box-shadow:0 0 0 3px rgba(224,90,61,.3)}
+.stgline{width:34px;height:2px;background:var(--border-l);margin:0 6px}
+.hostile__row{display:flex;gap:8px;align-items:center}
+.hostile__facts{font-size:11.5px;color:var(--tx2);flex:1;line-height:1.45}
+.hostile__facts b{color:var(--tx1)}
+.btn{border-radius:8px;padding:7px 13px;font:600 12.5px var(--f-body);border:1px solid var(--border-l);background:#24201b;color:var(--tx1);white-space:nowrap;display:inline-flex;gap:6px;align-items:center}
+.btn--pri{background:linear-gradient(135deg,var(--primary),var(--primary-d));border-color:var(--primary);color:#1a1006}
+.btn--red{border-color:rgba(224,90,61,.7);background:rgba(224,90,61,.16)}
+.btn--sm{padding:4px 9px;font-size:11.5px}
+.btn--ghost{background:transparent}
+.queued{margin-top:10px;display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px dashed rgba(183,214,69,.5);border-radius:8px;font-size:11.5px;color:var(--tx2);background:rgba(183,214,69,.04)}
+.queued b{color:var(--tx1)}
+.qtag{font:700 9px var(--f-body);letter-spacing:.1em;border-radius:4px;padding:2px 5px;background:#2b2722;color:var(--tx2);text-transform:uppercase;flex:none}
+.feat{background:linear-gradient(180deg,hsla(32,60%,30%,.18),transparent 55%),var(--bg-elev);border:1px solid hsla(32,70%,45%,.55);border-radius:12px;padding:14px 18px}
+.feat__top{display:flex;gap:14px;align-items:center}
+.feat__ic{width:52px;height:52px;border-radius:12px;background:radial-gradient(circle at 50% 35%,#4a4f57,#22252a);border:2px solid #9aa4b0;display:flex;align-items:center;justify-content:center;font-size:28px;color:#e6ebf0;flex:none}
+.feat__name{font:800 20px var(--f-disp);letter-spacing:.03em}
+.feat__meta{display:flex;gap:8px;align-items:center;margin-top:4px;font-size:12px;color:var(--tx2)}
+.feat__pts{margin-left:auto;text-align:right}
+.feat__pts b{font:800 28px var(--f-disp);color:#fff}
+.feat__pts small{display:block;font-size:11px;color:var(--tx3)}
+.track{position:relative;height:146px;margin:16px 46px 0 30px}
+.track__bar{position:absolute;left:0;right:0;top:52px;height:10px;border-radius:99px;background:#26221d;border:1px solid #39322a}
+.track__fill{position:absolute;left:0;top:0;bottom:0;border-radius:99px;background:linear-gradient(90deg,hsl(32,90%,45%),hsl(38,95%,58%));box-shadow:0 0 10px hsla(35,95%,55%,.5);transition:width .8s ease}
+.tier{position:absolute;top:43px;width:28px;margin-left:-14px;display:flex;flex-direction:column;align-items:center}
+.tier__n{width:28px;height:28px;border-radius:50%;background:#1b1815;border:2px solid #4a4037;display:flex;align-items:center;justify-content:center;font:800 12px var(--f-body);color:var(--tx3)}
+.tier--done .tier__n{background:var(--success);border-color:var(--success);color:#0f1a06}
+.tier--ready .tier__n{background:var(--primary);border-color:#ffd59a;color:#1a1006;box-shadow:0 0 0 4px hsla(32,90%,55%,.25),0 0 16px hsla(32,90%,55%,.8);animation:readyPulse 1.2s ease-in-out infinite}
+@keyframes readyPulse{50%{box-shadow:0 0 0 7px hsla(32,90%,55%,.12),0 0 22px hsla(32,90%,55%,.9)}}
+.tier__pts{font:600 10.5px var(--f-body);color:var(--tx3);margin-top:4px;white-space:nowrap}
+.tier__rw{display:flex;gap:3px;margin-top:4px}
+.rw{display:inline-flex;align-items:center;gap:3px;background:#1a1714;border:1px solid #2f2923;border-radius:99px;padding:1px 6px 1px 4px;font:600 10.5px var(--f-body);color:var(--tx1);white-space:nowrap}
+.rw .ic{font-size:11px}
+.tier__claim{margin-top:6px}
+.tier__got{margin-top:6px;font-size:10.5px;color:var(--success);display:flex;gap:3px;align-items:center}
+.tmark{position:absolute;top:0;display:flex;flex-direction:column}
+.tmark--pb{align-items:flex-start;transform:translateX(-1px)}
+.tmark--par{align-items:flex-end;transform:translateX(calc(-100% + 1px))}
+.tmark span{font:700 10px var(--f-body);white-space:nowrap;padding:1px 6px;border-radius:4px;display:flex;gap:4px;align-items:center}
+.tmark i{width:2px;height:22px;display:block}
+.tmark--pb span{background:#2c2722;color:#e8e0d4;border:1px solid #574b3e}.tmark--pb i{background:#c8b9a5}
+.tmark--par span{background:rgba(224,90,61,.18);color:#ffb3a3;border:1px solid var(--red)}.tmark--par i{background:var(--red)}
+.tmark--you span{background:var(--primary);color:#1a1006}.tmark--you i{background:var(--primary)}
+.earn{display:flex;gap:8px;align-items:center;margin-top:4px;font-size:11.5px;color:var(--tx2);white-space:nowrap}
+.earn .chipx{display:inline-flex;gap:5px;align-items:center;white-space:nowrap;background:#171411;border:1px solid var(--border);border-radius:7px;padding:4px 8px}
+.earn .chipx b{color:var(--primary)}
+.erow{position:relative;background:var(--bg-elev);border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;gap:10px}
+.erow__ic{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--c);background:color-mix(in srgb,var(--c) 14%,#121010);border:1px solid color-mix(in srgb,var(--c) 45%,transparent);flex:none}
+.erow__main{flex:1;min-width:0}
+.erow__t{display:flex;gap:7px;align-items:center;font:600 14px var(--f-head);letter-spacing:.02em}
+.erow__t .tm{margin-left:auto;font:600 11px var(--f-body);color:var(--tx2);white-space:nowrap;display:flex;gap:4px;align-items:center;letter-spacing:0}
+.erow__sub{font-size:11.5px;color:var(--tx2);margin-top:3px;line-height:1.35}
+.erow__sub b{color:var(--tx1)}
+.erow__bar{height:5px;border-radius:9px;background:#26221d;margin-top:6px;overflow:hidden}
+.erow__bar i{display:block;height:100%;background:var(--c)}
+.erow__act{display:flex;gap:6px;margin-top:7px;align-items:center}
+.erow--queued{border-style:dashed;background:transparent;opacity:.85}
+.erow--forecast{border-style:dashed}
+.erow--sel{border-color:var(--primary);background:hsl(32,30%,12%)}
+.detail{border:1px solid color-mix(in srgb,var(--rebel) 60%,transparent);background:linear-gradient(180deg,rgba(155,107,255,.10),transparent 60%),var(--bg-elev);border-radius:12px;padding:12px 16px}
+.slots{font:600 11px var(--f-body);color:var(--tx3);margin-left:auto;display:flex;gap:3px;align-items:center;letter-spacing:0;text-transform:none}
+.slots i{width:9px;height:9px;border-radius:2px;background:#2c2722;border:1px solid #3d352d}
+.slots i.f{background:var(--primary);border-color:var(--primary)}
+.result{font:700 10px var(--f-body);letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:4px}
+.result--win{background:rgba(58,209,122,.15);color:var(--me);border:1px solid rgba(58,209,122,.5)}
+.result--miss{background:rgba(255,255,255,.05);color:var(--tx3);border:1px solid var(--border-l)}
+.result--part{background:rgba(249,207,22,.1);color:var(--warning);border:1px solid rgba(249,207,22,.45)}
+.result--held{background:rgba(58,209,122,.15);color:var(--me);border:1px solid rgba(58,209,122,.5)}
+.minimap{width:150px;height:98px;border-radius:8px;border:1px solid var(--border-l);background-size:1280px 800px;position:relative;flex:none;overflow:hidden}
+.minimap i{position:absolute;width:14px;height:14px;border-radius:50%;border:2px solid var(--rebel);background:#191026;box-shadow:0 0 0 3px rgba(155,107,255,.35)}
+.objs{display:flex;flex-direction:column;gap:5px;margin-top:7px}
+.obj{display:flex;gap:7px;align-items:center;font-size:12px;color:var(--tx2)}
+.obj i{width:15px;height:15px;border-radius:4px;border:1.5px solid var(--tx3);display:flex;align-items:center;justify-content:center;font-size:9px;flex:none;font-style:normal}
+.obj.done{color:var(--tx3);text-decoration:line-through}.obj.done i{background:var(--success);border-color:var(--success);color:#0e1a05}
+.obj b{color:var(--tx1);text-decoration:none}
+.lifecycle{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;color:var(--tx3)}
+.lc{padding:3px 8px;border-radius:6px;border:1px solid var(--border-l);white-space:nowrap}
+.lc.now{border-color:var(--rebel);color:#fff;background:rgba(155,107,255,.18)}
+.lc.bad{border-color:rgba(224,90,61,.6);color:#ffb3a3}
+
+.cal{display:flex;flex-direction:column;gap:14px}
+.calweek h4{margin:0 0 6px;font:600 13px var(--f-head);letter-spacing:.08em;text-transform:uppercase;color:var(--tx2);display:flex;gap:8px;align-items:baseline}
+.calweek h4 small{font:500 11px var(--f-body);color:var(--tx3);letter-spacing:0;text-transform:none}
+.calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.calday{height:30px;border-radius:6px;background:#141210;border:1px solid var(--border);font:600 11px var(--f-body);color:var(--tx3);display:flex;align-items:center;justify-content:center;gap:5px}
+.calday.today{border-color:var(--primary);color:#fff;background:hsl(32,40%,16%)}
+.calbar{height:58px;border-radius:9px;padding:7px 10px;display:flex;flex-direction:column;justify-content:center;gap:2px;position:relative;overflow:hidden}
+.calbar b{font:700 13px var(--f-disp);letter-spacing:.03em;display:flex;gap:6px;align-items:center}
+.calbar small{font-size:11px;color:var(--tx2)}
+.calbar--feat{background:linear-gradient(90deg,hsla(32,80%,40%,.35),hsla(32,80%,40%,.15));border:1px solid hsla(32,80%,50%,.7)}
+.calbar--purge{background:linear-gradient(90deg,rgba(224,90,61,.28),rgba(224,90,61,.1));border:1px solid rgba(224,90,61,.6)}
+.calbar--quiet{background:repeating-linear-gradient(135deg,#15130f 0 8px,#1b1814 8px 16px);border:1px dashed var(--border-l);color:var(--tx2)}
+.calbar--quiet b{font:600 12px var(--f-head);letter-spacing:.08em;text-transform:uppercase;color:var(--tx2)}
+.calnote{font-size:12px;color:var(--tx2);line-height:1.5}
+.rot{display:flex;flex-direction:column;gap:5px;margin-top:8px}
+.rot div{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--tx2);padding:5px 8px;border-radius:6px;background:#141210;border:1px solid var(--border)}
+.rot div b{color:var(--tx1);font-weight:600}
+.rot div span{margin-left:auto;font-size:11px;color:var(--tx3)}
+.rot div.cur{border-color:var(--primary)}
+
+.hist{display:flex;flex-direction:column;gap:6px}
+.hrow{display:flex;align-items:center;gap:12px;background:#171513;border:1px solid var(--border);border-radius:9px;padding:9px 12px}
+.hrow__t{font:600 13.5px var(--f-body);width:250px;flex:none}
+.hrow__t small{display:block;font-size:11px;color:var(--tx3);font-weight:500}
+.hrow__src{width:132px;flex:none}
+.hrow__res{width:116px;flex:none;white-space:nowrap}
+.hrow__d{flex:1;font-size:11.5px;color:var(--tx2)}
+.hrow__rw{display:flex;gap:4px;flex:none}
+.hsum{display:flex;gap:10px}
+.hsum div{flex:1;background:var(--bg-elev);border:1px solid var(--border);border-radius:10px;padding:8px 12px}
+.hsum b{display:block;font:700 20px var(--f-disp)}
+.hsum small{font-size:11px;color:var(--tx3)}
+
+.mailveil{position:absolute;inset:0;background:rgba(5,5,5,.72);z-index:20}
+.mail{position:absolute;left:160px;top:80px;width:960px;height:640px;background:#141210;border:1px solid hsla(32,70%,45%,.55);border-radius:16px;box-shadow:0 0 40px hsla(32,90%,50%,.18),0 20px 60px rgba(0,0,0,.6);z-index:21;display:flex;flex-direction:column;overflow:hidden}
+.mail__head{height:56px;display:flex;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid var(--border);background:#181613}
+.mail__head h3{margin:0;font:700 18px var(--f-head);letter-spacing:.08em}
+.mail__head small{font-size:12px;color:var(--tx3)}
+.mail__x{width:30px;height:30px;border-radius:7px;border:1px solid var(--border-l);background:transparent;color:var(--tx2);font-size:14px;display:flex;align-items:center;justify-content:center}
+.mail__body{flex:1;display:flex;min-height:0}
+.mail__cats{width:230px;border-right:1px solid var(--border);padding:12px;display:flex;flex-direction:column;gap:8px}
+.mcat{position:relative;height:58px;border-radius:9px;background:#1c1a17;border:1px solid var(--border);display:flex;align-items:center;gap:10px;padding:0 10px;cursor:pointer}
+.mcat.on{border-color:var(--primary);background:hsl(32,30%,13%)}
+.mcat .ic{font-size:18px;color:#ddd}
+.mcat__n{font:700 14px var(--f-head);letter-spacing:.06em;text-transform:uppercase}
+.mcat__s{font-size:11px;color:var(--tx2)}
+.mcat .badge{left:18px;right:auto;top:6px}
+.mcat .btn{margin-left:auto}
+.mail__list{flex:1;display:flex;flex-direction:column;min-width:0}
+.mail__lh{height:48px;display:flex;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid var(--border)}
+.mail__lh h4{margin:0;font:700 14px var(--f-head);letter-spacing:.08em;text-transform:uppercase}
+.mail__lh small{font-size:11px;color:var(--tx3)}
+.mail__rows{padding:8px;display:flex;flex-direction:column;gap:6px}
+.mrow{position:relative;border:1px solid var(--border);border-radius:9px;background:#1b1916;padding:10px 12px;cursor:pointer}
+.mrow__top{display:flex;align-items:center;gap:10px}
+.mrow__dot{width:7px;height:7px;border-radius:50%;background:var(--primary);flex:none}
+.mrow__dot.read{background:transparent}
+.mrow__ic{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--c);background:color-mix(in srgb,var(--c) 15%,#121010);border:1px solid color-mix(in srgb,var(--c) 50%,transparent);flex:none}
+.mrow__s{font:600 13.5px var(--f-body)}
+.mrow__s small{display:block;font-size:11px;color:var(--tx3);font-weight:500}
+.mrow__r{margin-left:auto;display:flex;gap:8px;align-items:center}
+.mrow__star{color:#6b625a;font-size:14px}
+.mrow__body{margin:10px 0 0 47px;font-size:12.5px;color:var(--tx2);line-height:1.55}
+.mrow__body p{margin:0 0 6px}
+.mrow__body .quote{color:var(--tx1);font-style:italic}
+.mrow__acts{display:flex;gap:8px;margin-top:8px;align-items:center}
+.rgrid{display:flex;gap:8px;margin-top:6px}
+.rcell{width:96px;height:78px;border-radius:9px;background:#151311;border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:700 13px var(--f-body)}
+.rcell small{font-weight:500;font-size:11px;color:var(--tx3)}
+.milechip{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:11.5px;color:var(--tx2);padding:4px 10px;border-radius:8px;border:1px solid rgba(226,195,107,.5);background:rgba(226,195,107,.07)}
+.milechip b{color:var(--mile)}
+.pips{display:flex;gap:3px}.pips i{width:16px;height:5px;border-radius:3px;background:#3a332b}.pips i.f{background:var(--mile)}
+
+.toasts{position:absolute;right:16px;top:58px;width:320px;display:flex;flex-direction:column;gap:8px;z-index:30}
+.toast{position:relative;display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-radius:12px;background:hsla(30,8%,11%,.97);border:1px solid var(--tc,var(--border-l));box-shadow:0 8px 24px rgba(0,0,0,.7);animation:toastIn .45s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes toastIn{from{opacity:0;transform:translateX(60px)}to{opacity:1;transform:none}}
+.toast__ic{font-size:18px;color:var(--tc);margin-top:1px}
+.toast__t{font:600 12.5px var(--f-body)}
+.toast__m{font-size:11px;color:var(--tx2);margin-top:2px;line-height:1.35}
+.toast__f{display:flex;gap:6px;align-items:center;margin-top:5px}
+.toast__go{font:600 11px var(--f-body);color:var(--primary);margin-left:auto}
+
+.veil{position:absolute;inset:0;background:rgba(4,4,4,.74);z-index:40}
+.modal{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:var(--bg-elev);border:1px solid var(--border-l);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.7);z-index:41}
+.modal__top{display:flex;align-items:center;gap:12px;padding:16px 18px 10px}
+.modal__icon{width:44px;height:44px;border-radius:12px;background:hsl(32,40%,18%);border:1px solid var(--primary);display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--primary)}
+.modal__title{font:700 20px var(--f-disp)}
+.modal__sub{font-size:12px;color:var(--tx3)}
+.wb{width:560px}
+.wbsec{margin:0 18px 10px;border-radius:10px;border:1px solid var(--border);background:#151311;padding:8px 12px}
+.wbsec__h{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.wbline{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--tx2);padding:3px 0}
+.wbline b{color:var(--tx1);font-weight:600}
+.wbline .r{margin-left:auto;font-family:monospace;color:var(--success)}
+.wbthreat{margin:0 18px 10px;border-radius:10px;border:1px solid var(--red);background:linear-gradient(180deg,rgba(224,90,61,.16),rgba(224,90,61,.04));padding:10px 12px}
+.dir{width:1080px;padding:16px 20px}
+.dir h3{margin:0;font:700 20px var(--f-disp)}
+.dir__tag{display:inline-block;font:700 10px var(--f-body);letter-spacing:.1em;text-transform:uppercase;color:var(--tx2);border:1px solid var(--border-l);border-radius:4px;padding:2px 6px;margin-left:10px;vertical-align:4px}
+.dir__grid{display:grid;grid-template-columns:1.55fr 1fr;gap:14px;margin-top:12px}
+.dbox{background:#141210;border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+.dbox h4{margin:0 0 6px;font:600 13px var(--f-head);letter-spacing:.08em;text-transform:uppercase;color:var(--tx2)}
+.dbox p{margin:6px 0 0;font-size:12px;color:var(--tx2);line-height:1.5}
+.slotrow{display:flex;gap:8px;align-items:center;margin:6px 0}
+.slotrow .lab{width:84px;font:600 12px var(--f-head);letter-spacing:.05em;text-transform:uppercase;color:var(--tx2)}
+.slot{flex:1;height:32px;border-radius:7px;border:1px solid var(--c);background:color-mix(in srgb,var(--c) 14%,transparent);font-size:11.5px;display:flex;align-items:center;gap:5px;padding:0 8px;color:var(--tx1);white-space:nowrap;overflow:hidden}
+.slot--q{border-style:dashed;background:transparent;color:var(--tx3)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-archive" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21,8 21,21 3,21 3,8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></g></symbol>
+<symbol id="i-arena" viewBox="-27 -27 54 54"><g ><g> <path stroke="none" fill="currentColor" d="M9.6 -19.9 Q7.25 -22.85 8.35 -26 L8.65 -26.45 9 -26.65 Q12.25 -27.8 15.1 -25.4 18.2 -22.85 16.25 -19.25 L15.8 -18.8 Q12.25 -16.8 9.6 -19.9 M17.45 -16.35 Q19.65 -20.7 23.85 -21 L24.5 -20.9 24.95 -20.6 Q28 -17.3 26.55 -12.65 25.3 -7.5 20 -8 L19.55 -8.1 19.3 -7.7 Q16.2 -3.5 11.5 -5.8 7.3 -8.05 7 -12.4 L7.1 -13.1 7.35 -13.55 Q10.6 -16.7 15.1 -15.25 L16.85 -14.55 17.45 -16.35 M21.75 -0.75 Q25.25 -3.3 28.9 -1.8 L29.4 -1.45 29.65 -1.1 Q30.85 2.85 27.8 5.95 24.7 9.5 20.5 6.95 L20.15 6.65 19.85 6.9 Q15.6 9 12.6 5.25 10.05 1.6 11.55 -1.85 L11.9 -2.45 12.25 -2.65 Q16.2 -3.85 19.35 -0.85 L20.55 0.45 21.75 -0.75 M-21.75 -0.75 L-20.55 0.45 -19.35 -0.85 Q-16.2 -3.85 -12.25 -2.65 L-11.9 -2.45 -11.55 -1.85 Q-10.05 1.6 -12.6 5.25 -15.6 9 -19.85 6.9 L-20.15 6.65 -20.5 6.95 Q-24.7 9.5 -27.8 5.95 -30.85 2.85 -29.65 -1.1 L-29.4 -1.45 -28.9 -1.8 Q-25.25 -3.3 -21.75 -0.75 M-17.45 -16.35 L-16.85 -14.55 -15.1 -15.25 Q-10.6 -16.7 -7.35 -13.55 L-7.1 -13.1 -7 -12.4 Q-7.3 -8.05 -11.5 -5.8 -16.2 -3.5 -19.3 -7.7 L-19.55 -8.1 -20 -8 Q-25.3 -7.5 -26.55 -12.65 -28 -17.3 -24.95 -20.6 L-24.5 -20.9 -23.85 -21 Q-19.65 -20.7 -17.45 -16.35 M-9.6 -19.9 Q-12.25 -16.8 -15.8 -18.8 L-16.25 -19.25 Q-18.2 -22.85 -15.1 -25.4 -12.25 -27.8 -9 -26.65 L-8.65 -26.45 -8.35 -26 Q-7.25 -22.85 -9.6 -19.9 M15.95 23.4 Q16.85 24.2 17 25.45 17.1 26.65 16.3 27.65 15.5 28.55 14.3 28.7 13.05 28.8 12.1 28 6.85 23.6 0.15 21.4 -6.5 23.6 -11.75 28 -12.75 28.8 -13.95 28.7 -15.2 28.55 -16 27.65 -16.8 26.65 -16.65 25.45 -16.55 24.2 -15.6 23.4 -12.85 21.1 -9.7 19.3 L-13.75 19 Q-14.75 18.95 -15.45 18.4 -18.25 19.95 -21 17.7 -24.45 15.2 -23.9 11.35 L-23.75 10.95 -23.25 10.5 Q-20.15 8.65 -16.45 10.4 -15.65 10.8 -15.1 11.35 L-14.15 9.9 Q-11.7 6.6 -7.8 7.05 L-7.45 7.2 -7.05 7.7 Q-5.25 10.4 -6.45 13.65 L0.2 15.15 Q3.2 14.25 6.5 13.7 5.25 10.45 7.05 7.7 L7.45 7.2 7.8 7.05 Q11.7 6.6 14.15 9.9 L15.1 11.35 Q15.65 10.8 16.45 10.4 20.15 8.65 23.25 10.5 L23.75 10.95 23.9 11.35 Q24.45 15.2 21 17.7 18.35 19.85 15.6 18.5 14.9 18.95 14 19 L10.05 19.3 Q13.15 21.1 15.95 23.4"/> </g></g></symbol>
+<symbol id="i-backpack" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9z"/><path d="M9 6V4a3 3 0 0 1 6 0v2"/><line x1="9" y1="14" x2="15" y2="14"/></g></symbol>
+<symbol id="i-base" viewBox="-27 -27 54 54"><g ><g> <path stroke="none" fill="currentColor" d="M19 -16 L19 -4 Q19 -2.75 18.15 -1.85 L15 1.25 15 10.75 18.15 13.9 Q19 14.75 19 16 L19 20 Q19 21.25 18.15 22.15 17.25 23 16 23 L-16 23 Q-17.25 23 -18.1 22.15 -19 21.25 -19 20 L-19 16 Q-19 14.75 -18.1 13.9 L-15 10.75 -15 1.25 -18.1 -1.85 Q-19 -2.75 -19 -4 L-19 -16 Q-19 -17.25 -18.1 -18.1 -17.25 -19 -16 -19 L-12 -19 Q-10.75 -19 -9.85 -18.1 -9 -17.25 -9 -16 L-9 -11 -7 -11 -7 -16 Q-7 -17.25 -6.1 -18.1 -5.25 -19 -4 -19 L4 -19 Q5.25 -19 6.15 -18.1 7 -17.25 7 -16 L7 -11 9 -11 9 -16 Q9 -17.25 9.9 -18.1 10.75 -19 12 -19 L16 -19 Q17.25 -19 18.15 -18.1 19 -17.25 19 -16"/> </g></g></symbol>
+<symbol id="i-bow" viewBox="-27 -27 54 54"><g ><g> <path stroke="none" fill="currentColor" d="M21.9 -11.2 L15.95 -8.2 Q21.75 0.7 21 16.25 20.9 18.3 19.4 19.7 17.85 21.1 15.75 21 13.7 20.9 12.3 19.4 11.55 18.55 11.25 17.6 L-5 12.15 -5 15 Q-5 15.85 -5.55 16.45 L-13.55 24.45 Q-14.15 25 -15 25 -15.85 25 -16.4 24.45 -17 23.85 -17 23 L-17 17 -23 17 Q-23.85 17 -24.4 16.45 -25 15.85 -25 15 -25 14.15 -24.4 13.6 L-16.4 5.6 Q-15.85 5 -15 5 L-12.15 5 -17.55 -11.2 Q-18.5 -11.55 -19.3 -12.25 -20.85 -13.6 -21 -15.65 -21.15 -17.75 -19.75 -19.3 -18.4 -20.85 -16.3 -21 -0.75 -21.95 8.25 -16 L11.2 -21.9 Q11.45 -22.4 11.95 -22.7 L13 -23 21 -23 Q21.85 -23 22.45 -22.4 23 -21.85 23 -21 L23 -13 22.7 -11.95 21.9 -11.2 M-0.5 7.35 L11.05 11.2 Q10.7 3.7 8.15 -1.3 L-0.5 7.35 M-7.35 0.5 L1.4 -8.2 Q-3.65 -10.9 -11.2 -11.1 L-7.35 0.5"/> </g></g></symbol>
+<symbol id="i-box" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27,6.96 12,12.01 20.73,6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></g></symbol>
+<symbol id="i-cafeteria" viewBox="-27 -27 54 54"><g ><g> <path stroke="none" fill="currentColor" d="M11.05 -17.05 Q15.65 -10.55 14.9 -3.95 L14.9 -3.8 Q14 1.55 10.95 5.15 L10.85 5.2 10.8 5.25 Q9.2 7.9 5.8 8.85 L5 8.8 4.35 8.2 Q4.1 7.85 4.15 7.45 L4.4 6.9 Q4.85 5.4 4.25 2.75 1.65 -4.2 -0.5 -6.15 L-0.55 -6.15 -0.65 -6.1 -0.65 -6 -0.65 -5.9 Q-0.55 -2.55 -2.6 0.45 L-2.75 0.55 Q-4.6 2.35 -4.45 4.5 L-4.4 4.75 Q-4.2 6.1 -3.55 7 -3.4 7.35 -3.4 7.8 L-3.55 8.45 -4.2 8.9 -5 8.95 Q-13.4 6.7 -14.9 -1.85 L-14.95 -1.95 Q-15.6 -8.2 -10.55 -13.25 -6.3 -19 -6.5 -25.85 L-6.5 -25.9 Q-6.6 -27.15 -5.85 -27.9 -5.25 -28.9 -4 -29 -2.95 -29.15 -1.95 -28.35 3.85 -23.6 6.6 -17.15 L7.15 -17.75 7.1 -17.65 Q8 -18.4 9.3 -18.15 L9.35 -18.15 Q10.3 -18 11 -17.1 L11.05 -17.05 M18.45 27.05 Q18.05 28.15 16.8 28.7 L14.4 28.8 4.6 25.7 19.6 20.9 19.7 21 Q20.25 22.1 19.85 23.25 L18.45 27.05 M-14.3 9.15 L0 13.75 14.3 9.15 16.8 9.3 Q18 9.85 18.4 11.05 L19.8 14.8 Q20.2 15.95 19.7 17.05 19.05 18.1 17.75 18.5 L0 24.2 -17.75 18.5 Q-19.05 18.1 -19.7 17.05 -20.2 15.95 -19.8 14.8 L-18.4 11.05 Q-18 9.85 -16.8 9.3 L-14.3 9.15 M-18.45 27.05 L-19.85 23.25 Q-20.25 22.1 -19.7 21 L-19.6 20.9 -4.6 25.7 -14.4 28.8 -16.8 28.7 Q-18.05 28.15 -18.45 27.05"/> </g></g></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="8,12 11,15 16,9"/></g></symbol>
+<symbol id="i-clock" viewBox="-27 -27 54 54"><g ><g> <path stroke="none" fill="currentColor" d="M-11.8 -0.65 Q-17.65 -7.6 -18 -18 -18 -18.45 -18.3 -18.7 -18.6 -19 -19 -19 L-20.1 -19 -20.7 -19.25 -21 -20 -21 -26 -20.7 -26.65 -20.65 -26.7 -20 -27 20 -27 20.75 -26.7 21 -26 21 -20 20.8 -19.25 20.75 -19.2 20.1 -19 19 -19 Q18.6 -19 18.3 -18.7 18 -18.45 18 -18 17.65 -7.6 11.85 -0.65 L11.6 0 11.85 0.65 Q17.65 7.6 18 18.05 18 18.45 18.3 18.75 L19 19 20.1 19 20.75 19.3 21 20 21 26 20.8 26.75 20.75 26.8 20 27 -20 27 -20.7 26.75 -21 26 -21 20 -20.7 19.35 -20.65 19.3 Q-20.45 19 -20.1 19 L-19 19 -18.3 18.75 Q-18 18.45 -18 18.05 -17.65 7.6 -11.8 0.65 L-11.6 0 -11.8 -0.65 M4.15 -0.8 Q4.35 -1.65 5 -2.15 L5.2 -2.4 Q11.6 -8.3 12 -17.95 L11.9 -18.45 11.5 -18.85 11 -19 -10.95 -19 -11.45 -18.85 -11.8 -18.45 -11.95 -17.95 Q-11.6 -8.2 -5.05 -2.3 L-5 -2.25 -4.95 -2.2 Q-4.35 -1.65 -4.1 -0.8 L-4 0 -4.1 0.85 -4.15 1.05 -4.8 2.1 -5 2.25 Q-11.6 8.15 -11.95 18 L-11.8 18.5 -11.45 18.85 -10.95 19 11 19 11.5 18.85 11.9 18.5 12 17.95 Q11.6 8.15 5.05 2.25 4.4 1.7 4.15 1.05 L4.15 0.85 4 0 Q4 -0.4 4.15 -0.8 M-4 -10 L4 -10 Q4.85 -10 5.45 -9.4 6 -8.85 6 -8 6 -7.15 5.45 -6.55 L1.45 -2.55 Q0.85 -2 0 -2 -0.85 -2 -1.4 -2.55 L-5.4 -6.55 Q-6 -7.15 -6 -8 -6 -8.85 -5.4 -9.4 -4.85 -10 -4 -10 M-8.6 16 Q-7.6 9.85 -3.6 5.7 L-3.25 5.4 Q-2.2 4.3 -1.65 3 L1.65 3 Q2.2 4.3 3.3 5.4 L3.35 5.4 3.35 5.45 Q7.6 9.6 8.65 16 L-8.6 16"/> </g></g></symbol>
+<symbol id="i-column" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="3" rx="1"/><rect x="4" y="19" width="16" height="3" rx="1"/><rect x="7" y="5" width="3" height="14"/><rect x="14" y="5" width="3" height="14"/></g></symbol>
+<symbol id="i-combat" viewBox="-27 -27 54 54"><g ><g> <path stroke="none" fill="currentColor" d="M9 -17.65 L8.9 -17.55 -7.15 -1.45 -8.35 -2.65 -8.1 -2.9 Q-7.8 -3.25 -7.8 -3.65 L-7.8 -4.1 Q-7.8 -4.7 -8.15 -5.2 L-8.25 -5.3 Q-8.8 -5.85 -9.45 -5.85 L-13.55 -5.85 Q-15.3 -5.85 -15.3 -4.1 L-15.3 0 Q-15.35 1.7 -13.55 1.7 L-13.2 1.7 -12.45 1.45 -12.1 1.1 -9.6 3.65 -12.3 6.35 -16.25 6.35 Q-18 6.35 -18 8.1 L-18 16.25 Q-18 18 -16.25 18 L-8.15 18 Q-7.45 18 -6.95 17.45 -6.4 16.95 -6.4 16.25 L-6.4 12.25 -3.7 9.55 -1.35 11.85 -1.1 12.05 -1.4 12.4 Q-1.75 12.7 -1.75 13.15 L-1.75 13.55 Q-1.8 15.25 0 15.25 L4.1 15.25 Q4.7 15.25 5.2 14.85 L5.4 14.65 Q5.8 14.2 5.8 13.55 L5.8 9.45 Q5.8 8.85 5.4 8.35 L5.3 8.25 Q4.75 7.75 4.1 7.75 L3.6 7.75 3.2 7.85 Q2.95 7.9 2.85 8.05 L2.65 8.3 1.45 7.1 17.5 -8.95 Q18 -9.5 18 -10.15 L18 -16.3 Q18 -17 17.5 -17.55 L17.35 -17.65 Q16.9 -18 16.25 -18 L10.15 -18 Q9.5 -18 9 -17.65 M-16.2 -32 L16.25 -32 Q32 -32 32 -16.2 L32 16.25 Q32 32 16.25 32 L-16.2 32 Q-32 32 -32 16.25 L-32 -16.2 Q-32 -32 -16.2 -32"/> </g></g></symbol>
+<symbol id="i-crown" viewBox="-27 -27 54 54"><g ><g> <path stroke="none" fill="currentColor" d="M26 -9.65 L22 14.95 21.9 15.35 Q21.2 18.95 14.95 21.45 11.25 22.95 6.7 23.6 L0 24 -6.6 23.6 Q-11.25 22.95 -14.9 21.45 L-14.85 21.45 Q-21.2 18.95 -21.85 15.35 L-21.95 14.95 -25.95 -9.65 Q-26.1 -10.5 -25.6 -11.15 -25.15 -11.8 -24.35 -11.95 -23.6 -12.15 -22.9 -11.65 L-12.65 -4.8 -1.7 -23 -0.65 -23.85 Q0 -24.1 0.7 -23.85 L1.75 -23 12.65 -4.8 22.9 -11.65 Q23.6 -12.15 24.4 -11.95 25.15 -11.8 25.65 -11.15 26.1 -10.5 26 -9.65 M-5.4 8.6 Q-6 9.15 -6 10 -6 10.85 -5.4 11.45 L-1.4 15.45 Q-0.85 16 0 16 0.85 16 1.45 15.45 L5.45 11.45 Q6 10.85 6 10 6 9.15 5.45 8.6 L1.45 4.6 Q0.85 4 0 4 -0.85 4 -1.4 4.6 L-5.4 8.6"/> </g></g></symbol>
+<symbol id="i-diamond" viewBox="-27 -27 54 54"><g ><g> <path stroke="none" fill="currentColor" d="M-18.15 -2.75 L-4.3 -22.75 Q-3.3 -24.2 -1.65 -24.7 0 -25.3 1.7 -24.7 3.35 -24.2 4.3 -22.75 L18.15 -2.75 Q19 -1.5 19 0 19 1.5 18.15 2.8 L4.3 22.8 Q3.35 24.2 1.7 24.75 0 25.3 -1.65 24.75 -3.3 24.2 -4.3 22.8 L-18.15 2.8 Q-19 1.5 -19 0 -19 -1.5 -18.15 -2.75"/> </g></g></symbol>
+<symbol id="i-economy" viewBox="-27 -27 54 54"><g ><g> <path stroke="none" fill="currentColor" d="M9.8 -25.45 Q11.2 -24.65 10.95 -21.75 L10.95 -21.7 Q9.9 -14.95 6.15 -13.85 3.6 -12.75 0.1 -13.05 L-0.1 -13.05 Q-3.6 -12.75 -6.2 -13.85 -9.9 -14.95 -10.95 -21.7 L-10.95 -21.75 Q-11.2 -24.65 -9.8 -25.45 L-5.9 -25.35 -5.95 -25.35 Q-2.8 -24 0 -24 2.8 -24 5.9 -25.35 L9.8 -25.45 M0 26 Q-19.7 25.75 -18.95 12.85 -17.15 -2.4 -10.5 -8.6 -8.6 -10.6 -5.3 -9.7 -2.6 -8.7 -0.15 -8.7 2.6 -8.7 5.35 -9.7 8.65 -10.6 10.55 -8.6 17.15 -2.4 18.95 12.85 19.75 25.75 0 26 M26.5 -8.8 Q27.15 -7.75 26.9 -6.5 26.6 -5.3 25.55 -4.65 L24.65 -4.25 26.7 -0.25 Q27.2 0.95 26.75 2.1 26.25 3.25 25.1 3.75 L22.75 3.8 Q21.6 3.3 21.1 2.2 17.85 -5.2 11.2 -10.5 10.4 -11.1 10.15 -12 9.85 -12.9 10.15 -13.75 10.4 -14.65 11.2 -15.25 11.9 -15.9 12.8 -15.95 21.6 -16.7 26.5 -8.8"/> </g></g></symbol>
+<symbol id="i-envelope" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></g></symbol>
+<symbol id="i-fire" viewBox="-27 -27 54 54"><g ><g> <path stroke="none" fill="currentColor" d="M15.3 -10.2 Q21.9 -0.8 20.85 8.65 L20.85 8.9 Q19.55 16.75 15.05 22 12.9 25.6 8.35 26.9 L8.4 26.75 Q9.6 23.85 8.35 18.7 L8.3 18.65 Q4.15 7.1 0.35 4.05 -0.35 3.45 -1.1 3.6 -2.05 3.65 -2.55 4.45 -3 5 -2.95 5.85 L-2.95 5.9 Q-2.85 10.65 -5.7 14.65 -9.25 18.25 -8.8 22.65 L-8.75 22.75 Q-8.35 25.3 -7.1 27 -18.9 24 -20.9 11.85 -21.85 3.1 -14.8 -4.1 -7.65 -13.7 -8 -25.15 -8.1 -26.3 -7.45 -27.05 -6.9 -27.9 -5.95 -27.95 -5.1 -28.1 -4.35 -27.45 6.55 -18.25 10.1 -5.3 10.95 -7.05 11.2 -9.05 11.3 -10.15 12.15 -10.8 12.85 -11.4 13.85 -11.2 14.7 -11.05 15.3 -10.2"/> </g></g></symbol>
+<symbol id="i-flask-potion" viewBox="-27 -27 54 54"><g ><g> <path stroke="none" fill="currentColor" d="M-8.9 -23.8 Q-8.75 -21.7 -6.55 -18.95 -5.9 -18.15 -5.9 -17.1 L-5.9 -5.95 Q-5.9 -5 -6.45 -4.2 L-23.15 19 Q-23.75 19.85 -23.75 20.85 -23.75 22.15 -22.9 23.1 -22.05 23.8 -20.8 23.8 L20.8 23.8 Q22.05 23.8 22.95 23.1 23.75 22.15 23.75 20.85 23.75 19.85 23.15 19 L6.5 -4.2 Q5.9 -5 5.9 -5.95 L5.9 -17.1 Q5.9 -18.15 6.55 -18.95 8.7 -21.65 8.9 -23.75 L8.85 -23.8 -8.85 -23.8 -8.85 -23.75 -8.9 -23.8 M-8.9 -29.8 L8.9 -29.8 Q11.65 -29.8 13.2 -27.95 14.95 -26.15 14.9 -23.8 15.05 -20.35 11.9 -16.05 L11.9 -6.9 28.05 15.5 28.05 15.55 Q29.75 17.95 29.75 20.85 29.75 24.5 27.4 27.15 L27.2 27.35 Q24.55 29.8 20.8 29.8 L-20.8 29.8 Q-24.55 29.8 -27.15 27.35 L-27.4 27.15 Q-29.75 24.5 -29.75 20.85 -29.75 17.95 -28.05 15.55 L-28 15.5 -11.9 -6.9 -11.9 -16.05 Q-15.05 -20.35 -14.9 -23.8 -14.95 -26.15 -13.2 -27.95 -11.65 -29.8 -8.9 -29.8 M-3.95 -2.55 L-3.85 -2.65 Q-3.15 -3.75 -2.95 -5 -2.8 -6.1 -1.95 -6.85 -1.15 -7.6 0 -7.55 1.1 -7.6 1.95 -6.85 2.8 -6.1 3 -5 3.2 -3.65 4.05 -2.45 L17.35 16.05 Q18 17 17.9 18.15 17.8 19.25 16.95 20.05 16.05 20.8 14.95 20.8 L-14.9 20.8 Q-16.05 20.8 -16.9 20.05 -17.75 19.25 -17.85 18.15 -18 17 -17.3 16.05 L-4 -2.45 -3.95 -2.55"/> </g></g></symbol>
+<symbol id="i-flask" viewBox="-27 -27 54 54"><g ><g> <path stroke="none" fill="currentColor" d="M-8.9 -23.8 Q-8.75 -21.7 -6.55 -18.95 -5.9 -18.15 -5.9 -17.1 L-5.9 -5.95 Q-5.9 -5 -6.45 -4.2 L-23.15 19 Q-23.75 19.85 -23.75 20.85 -23.75 22.15 -22.9 23.1 -22.05 23.8 -20.8 23.8 L20.8 23.8 Q22.05 23.8 22.95 23.1 23.75 22.15 23.75 20.85 23.75 19.85 23.15 19 L6.5 -4.2 Q5.9 -5 5.9 -5.95 L5.9 -17.1 Q5.9 -18.15 6.55 -18.95 8.7 -21.65 8.9 -23.75 L8.85 -23.8 -8.85 -23.8 -8.85 -23.75 -8.9 -23.8 M-8.9 -29.8 L8.9 -29.8 Q11.65 -29.8 13.2 -27.95 14.95 -26.15 14.9 -23.8 15.05 -20.35 11.9 -16.05 L11.9 -6.9 28.05 15.5 28.05 15.55 Q29.75 17.95 29.75 20.85 29.75 24.5 27.4 27.15 L27.2 27.35 Q24.55 29.8 20.8 29.8 L-20.8 29.8 Q-24.55 29.8 -27.15 27.35 L-27.4 27.15 Q-29.75 24.5 -29.75 20.85 -29.75 17.95 -28.05 15.55 L-28 15.5 -11.9 -6.9 -11.9 -16.05 Q-15.05 -20.35 -14.9 -23.8 -14.95 -26.15 -13.2 -27.95 -11.65 -29.8 -8.9 -29.8 M12.5 9.25 L17.4 16.05 Q18.05 17 17.9 18.15 17.8 19.25 16.95 20.05 16.05 20.8 14.95 20.8 L-14.85 20.8 Q-16 20.8 -16.85 20.05 -17.75 19.25 -17.85 18.15 -17.95 17 -17.3 16.05 L-12.4 9.25 -11.35 8.35 Q-10.7 8 -9.95 8 L10.05 8 Q10.8 8 11.45 8.35 L12.5 9.25"/> </g></g></symbol>
+<symbol id="i-food" viewBox="-27 -27 54 54"><g ><g> <path stroke="none" fill="currentColor" d="M16.65 -23.75 Q18.05 -22.4 18 -20.3 L18 -20.25 Q18.05 -18.25 16.6 -16.8 15.1 -15.3 13 -15.3 11 -15.3 9.5 -16.8 8.05 -18.25 8 -20.25 L8 -20.3 Q8.05 -22.35 9.55 -23.85 L12.35 -26.65 13.05 -26.95 13.75 -26.65 16.65 -23.75 M23 10.05 L23 14.2 Q22.95 16.15 21.55 17.55 L21.5 17.6 Q20.05 19.05 18 19.05 L16 18.65 16 26 15.7 26.7 15 27 11 27 Q10.6 27 10.3 26.7 10 26.4 10 26 L10 18.65 8 19.05 Q5.95 19.05 4.5 17.6 L4.5 17.55 Q3.05 16.15 3 14.2 L3 10.05 Q3 9.65 3.3 9.35 3.6 9.05 4 9.05 L8 9.05 10 9.45 10 6.65 8 7.05 Q5.95 7.05 4.5 5.6 L4.5 5.55 Q3.05 4.15 3 2.2 L3 -1.95 Q3 -2.35 3.3 -2.65 L4 -2.95 8 -2.95 10 -2.55 10 -5.35 8 -4.95 Q5.95 -4.95 4.5 -6.4 L4.5 -6.45 Q3.05 -7.85 3 -9.8 L3 -13.95 Q3 -14.35 3.3 -14.65 L4 -14.95 8 -14.95 Q10.05 -14.95 11.55 -13.5 L11.6 -13.5 Q12.65 -12.4 12.9 -10.95 L13 -10.2 13.1 -10.95 Q13.35 -12.4 14.45 -13.5 15.95 -14.95 18 -14.95 L22 -14.95 22.7 -14.65 23 -13.95 23 -9.8 Q22.95 -7.85 21.55 -6.45 L21.5 -6.4 Q20.05 -4.95 18 -4.95 L16 -5.35 16 -2.55 18 -2.95 22 -2.95 22.7 -2.65 23 -1.95 23 2.2 Q22.95 4.15 21.55 5.55 L21.5 5.6 Q20.05 7.05 18 7.05 L16 6.65 16 9.45 18 9.05 22 9.05 Q22.4 9.05 22.7 9.35 L23 10.05 M-9.35 -23.75 Q-7.95 -22.4 -8 -20.3 L-8 -20.25 Q-7.95 -18.25 -9.4 -16.8 -10.9 -15.3 -13 -15.3 -15 -15.3 -16.5 -16.8 -17.95 -18.25 -18 -20.25 L-18 -20.3 Q-17.95 -22.35 -16.45 -23.85 L-13.65 -26.65 -12.95 -26.95 Q-12.55 -26.95 -12.25 -26.65 L-9.35 -23.75 M-3 10.05 L-3 14.2 Q-3.05 16.15 -4.45 17.55 L-4.5 17.6 Q-5.95 19.05 -8 19.05 L-10 18.65 -10 26 Q-10 26.4 -10.3 26.7 -10.6 27 -11 27 L-15 27 -15.7 26.7 -16 26 -16 18.65 -18 19.05 Q-20.05 19.05 -21.5 17.6 L-21.5 17.55 Q-22.95 16.15 -23 14.2 L-23 10.05 -22.7 9.35 Q-22.4 9.05 -22 9.05 L-18 9.05 -16 9.45 -16 6.65 -18 7.05 Q-20.05 7.05 -21.5 5.6 L-21.5 5.55 Q-22.95 4.15 -23 2.2 L-23 -1.95 -22.7 -2.65 -22 -2.95 -18 -2.95 -16 -2.55 -16 -5.35 -18 -4.95 Q-20.05 -4.95 -21.5 -6.4 L-21.5 -6.45 Q-22.95 -7.85 -23 -9.8 L-23 -13.95 -22.7 -14.65 -22 -14.95 -18 -14.95 Q-15.95 -14.95 -14.45 -13.5 L-14.4 -13.5 Q-13.35 -12.4 -13.1 -10.95 L-13 -10.2 -12.9 -10.95 Q-12.65 -12.4 -11.55 -13.5 -10.05 -14.95 -8 -14.95 L-4 -14.95 -3.3 -14.65 Q-3 -14.35 -3 -13.95 L-3 -9.8 Q-3.05 -7.85 -4.45 -6.45 L-4.5 -6.4 Q-5.95 -4.95 -8 -4.95 L-10 -5.35 -10 -2.55 -8 -2.95 -4 -2.95 -3.3 -2.65 Q-3 -2.35 -3 -1.95 L-3 2.2 Q-3.05 4.15 -4.45 5.55 L-4.5 5.6 Q-5.95 7.05 -8 7.05 L-10 6.65 -10 9.45 -8 9.05 -4 9.05 Q-3.6 9.05 -3.3 9.35 -3 9.65 -3 10.05"/> </g></g></symbol>
+<symbol id="i-fork-plate" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><line x1="7" y1="2" x2="7" y2="22"/><path d="M21 15V2a5 5 0 0 0-5 5v6h3v9a1 1 0 0 0 2 0v-9h0z"/></g></symbol>
+<symbol id="i-gather" viewBox="-27 -27 54 54"><g ><g> <path stroke="none" fill="currentColor" d="M9.8 -25.45 Q11.2 -24.65 10.95 -21.75 L10.95 -21.7 Q9.9 -14.95 6.15 -13.85 3.6 -12.75 0.1 -13.05 L-0.1 -13.05 Q-3.6 -12.75 -6.2 -13.85 -9.9 -14.95 -10.95 -21.7 L-10.95 -21.75 Q-11.2 -24.65 -9.8 -25.45 L-5.9 -25.35 -5.95 -25.35 Q-2.8 -24 0 -24 2.8 -24 5.9 -25.35 L9.8 -25.45 M26.5 -8.8 Q27.15 -7.75 26.9 -6.5 26.6 -5.3 25.55 -4.65 L24.65 -4.25 26.7 -0.25 Q27.2 0.95 26.75 2.1 26.25 3.25 25.1 3.75 L22.75 3.8 Q21.6 3.3 21.1 2.2 17.85 -5.2 11.2 -10.5 10.4 -11.1 10.15 -12 9.85 -12.9 10.15 -13.75 10.4 -14.65 11.2 -15.25 11.9 -15.9 12.8 -15.95 21.6 -16.7 26.5 -8.8 M0 26 Q-19.7 25.75 -18.95 12.85 L-18.65 10.75 -18.5 10.65 Q-15.6 9.9 -11.8 11.55 -12.15 12.9 -11.65 14.35 -11.15 16.35 -9.25 17.35 -7.4 18.35 -5.45 17.75 L2.05 15.5 Q3.4 15.1 4.35 14 L4.4 13.95 Q5.3 12.9 5.5 11.45 5.8 10.1 5.15 8.7 L4.7 7.65 Q4.45 6.4 3.7 5.35 L1.45 -0.15 Q0.6 -2 -1.3 -2.85 -3.3 -3.65 -5.2 -2.85 L-6.9 -1.7 Q-10.7 -3.4 -14.2 -3.8 -12.6 -6.65 -10.5 -8.6 -8.6 -10.6 -5.3 -9.7 -2.6 -8.7 -0.15 -8.7 2.6 -8.7 5.35 -9.7 8.65 -10.6 10.55 -8.6 17.15 -2.4 18.95 12.85 19.75 25.75 0 26 M-6.35 15.1 L-7.85 15 Q-8.6 14.6 -8.85 13.8 -9.1 13 -8.7 12.3 -8.35 11.55 -7.55 11.3 L-6.85 11.1 Q-13.4 6.95 -18.15 7.7 L-19.55 8.05 Q-21.1 8.7 -22.6 8.05 -24.15 7.4 -24.8 5.9 -25.45 4.35 -24.8 2.85 -24.15 1.3 -22.65 0.65 -19.45 -0.85 -15.7 -0.65 -10.85 -0.4 -5.15 2.8 -5.45 2 -5.15 1.25 -4.85 0.5 -4.05 0.15 -3.3 -0.15 -2.55 0.15 -1.8 0.45 -1.45 1.25 L0.95 7 Q1.65 7.8 1.8 8.9 L1.85 9.05 2.3 10.2 2.45 11.3 1.95 12.25 1.05 12.85 -6.35 15.1"/> </g></g></symbol>
+<symbol id="i-gear" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></g></symbol>
+<symbol id="i-gift" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20,12 20,22 4,22 4,12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></g></symbol>
+<symbol id="i-hammer" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 6l4 4"/><path d="M15 5l4 4-9 9-4-4z" transform="translate(-1 0)"/><path d="M14.5 4.5l5 5"/><path d="M5 21l4-4"/></g></symbol>
+<symbol id="i-heart" viewBox="-27 -27 54 54"><g ><g> <path stroke="none" fill="currentColor" d="M21.05 -16 Q25 -12.05 25 -6.4 25 -0.85 21.05 3.15 L21 3.2 20.95 3.25 19 4.85 1.6 19.45 Q0.9 20 0 20 -0.85 20 -1.5 19.45 L-18.9 4.85 Q-19.95 4.15 -20.8 3.25 L-20.9 3.15 Q-25 -0.85 -25 -6.4 -25 -12.05 -20.9 -16 -16.95 -20 -11.3 -20 -5.6 -20 -1.55 -16 L0.05 -14.15 1.7 -16 Q5.65 -20 11.3 -20 17 -20 21.05 -16"/> </g></g></symbol>
+<symbol id="i-heroes" viewBox="-27 -27 54 54"><g ><g> <path stroke="none" fill="currentColor" d="M-23.45 4.9 Q-19.7 -3.1 -14.05 -7.5 -11.9 -9.3 -10.25 -10.2 -8.5 -11.2 -8.85 -13.2 L-9 -15 Q-9 -18.7 -6.35 -21.35 -3.75 -24 0 -24 3.7 -24 6.35 -21.35 9 -18.7 9 -15 L8.8 -13.2 Q8.5 -11.2 10.25 -10.2 11.85 -9.3 14.05 -7.5 19.75 -3.1 23.45 4.9 L23.95 6.75 24 7.4 23.75 8.85 23.7 9.05 22.75 10.45 Q21.45 11.7 19.7 11.7 17.95 11.7 16.65 10.45 L16.2 9.9 13.55 5.7 13.45 5.6 13.3 5.45 Q12.95 5.05 12.4 5.05 11.85 5.05 11.45 5.45 11.1 5.8 11.1 6.35 L11.1 6.4 Q11.1 7.6 13.1 12.3 15.1 16.95 15.85 19.75 L15.85 19.95 16 20.8 Q15.95 22.1 15.2 22.85 L13.75 23.85 12.7 24 11.6 24 5.45 24 5.35 24 Q4.35 24 3.6 23.5 L3.05 23.05 2.55 22.45 2.2 21.5 2.05 20.9 1 14.95 1 14.9 0.7 14.35 Q0.4 14.05 0 14.05 -0.45 14.05 -0.75 14.35 L-1 14.9 -1 14.95 -2.05 20.9 -2.2 21.5 -2.6 22.45 -3.05 23.05 -3.6 23.5 Q-4.4 24 -5.35 24 L-5.45 24 -11.6 24 -12.75 24 -13.8 23.85 -15.2 22.85 Q-15.95 22.1 -16 20.8 L-15.9 19.95 -15.85 19.75 Q-15.15 16.95 -13.1 12.3 -11.15 7.6 -11.15 6.4 L-11.15 6.35 Q-11.15 5.8 -11.45 5.45 -11.9 5.05 -12.4 5.05 -12.95 5.05 -13.3 5.45 L-13.45 5.6 -13.55 5.7 -16.25 9.9 -16.7 10.45 Q-17.95 11.7 -19.7 11.7 -21.5 11.7 -22.75 10.45 L-23.75 9.05 -23.75 8.85 -24 7.4 -24 6.75 -23.45 4.9"/> </g></g></symbol>
+<symbol id="i-house" viewBox="-27 -27 54 54"><g ><g> <path stroke="none" fill="currentColor" d="M-26.1 -2.1 L-6.1 -22.1 Q-5.25 -23 -4 -23 L4 -23 Q5.25 -23 6.15 -22.1 L26.15 -2.1 Q27 -1.25 27 0 27 1.25 26.15 2.15 L22.15 6.15 Q21.25 7 20 7 L19 6.85 19 20 Q19 21.25 18.15 22.15 17.25 23 16 23 L8 23 Q6.75 23 5.9 22.15 5 21.25 5 20 L5 7 -5 7 -5 20 Q-5 21.25 -5.85 22.15 -6.75 23 -8 23 L-16 23 Q-17.25 23 -18.1 22.15 -19 21.25 -19 20 L-19 6.85 -20 7 Q-21.25 7 -22.1 6.15 L-26.1 2.15 Q-27 1.25 -27 0 -27 -1.25 -26.1 -2.1"/> </g></g></symbol>
+<symbol id="i-infinity" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12c-2-2.5-4-4-6-4a4 4 0 0 0 0 8c2 0 4-1.5 6-4zm0 0c2 2.5 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.5-6 4z"/></g></symbol>
+<symbol id="i-iron" viewBox="-27 -27 54 54"><g ><g> <path stroke="none" fill="currentColor" d="M8 30 L-24 30 Q-25.95 30 -27.5 28.85 -29.1 27.7 -29.7 25.85 -30.3 23.95 -29.7 22.1 L-21.7 -1.9 -21 -3.3 -5 -27.3 Q-4.15 -28.6 -2.8 -29.3 -1.5 -30 0 -30 L16 -30 Q17.95 -30 19.5 -28.85 21.1 -27.75 21.7 -25.9 L29.7 -1.9 Q30.15 -0.55 29.95 0.8 29.75 2.15 29 3.35 L13 27.35 Q12.15 28.6 10.85 29.3 9.5 30 8 30 M-24 24 L8 24 0.35 1 -16.3 1 -24 24"/> </g></g></symbol>
+<symbol id="i-lightning" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="13,2 3,14 12,14 11,22 21,10 12,10 13,2"/></g></symbol>
+<symbol id="i-lock" viewBox="-27 -27 54 54"><g ><g> <path stroke="none" fill="currentColor" d="M-8 -10 L-8 -6 8 -6 8 -10 Q8 -13.3 5.65 -15.65 3.3 -18 0 -18 -3.3 -18 -5.65 -15.7 L-5.7 -15.65 Q-8 -13.3 -8 -10 M16 -6 Q20 -6 20 -2 L20 22 Q20 23.95 19.05 24.95 18.05 26 16 26 L-16 26 Q-18.05 26 -19.05 24.95 -20 23.95 -20 22 L-20 -2 Q-20 -6 -16 -6 L-16 -10 Q-16 -16.6 -11.35 -21.3 L-11.3 -21.35 Q-6.6 -26 0 -26 6.6 -26 11.3 -21.3 16 -16.6 16 -10 L16 -6 M0 2 Q-2.05 2 -3.5 3.45 L-3.55 3.5 Q-5 4.95 -5 7 -5 9.05 -3.55 10.5 L-2.45 11.35 -2.1 11.75 -2 12.2 -2 15.75 Q-2 16.55 -1.4 17.15 -0.8 17.75 0 17.75 0.8 17.75 1.4 17.15 2 16.55 2 15.75 L2 12.2 2.15 11.75 2.5 11.35 3.5 10.55 3.55 10.5 Q5 9.05 5 7 5 4.95 3.5 3.45 2.05 2 0 2"/> </g></g></symbol>
+<symbol id="i-money" viewBox="-27 -27 54 54"><g ><g> <path stroke="none" fill="currentColor" d="M0.5 -11.2 Q-1.7 -11.2 -2.75 -10.35 L-2.9 -10.2 Q-3.8 -9.4 -3.8 -7.8 -3.8 -6.45 -2.9 -5.7 L-2.7 -5.55 Q-1.4 -4.5 2.1 -3.4 6.6 -2 8.75 -0.7 L9 -0.5 Q11.2 0.95 12.45 2.95 L12.7 3.2 Q14 5.5 14 8.5 14 13.3 10.7 16.3 8.25 18.55 3.9 19.35 L3.9 20 Q3.9 24 -0.05 24 L-0.1 24 Q-2.05 24.05 -3 23 -4 22 -4 20 L-4 19.35 Q-8.4 18.5 -10.9 16.1 L-11 16 Q-12.45 14.6 -13.5 12.15 L-13.55 12 Q-14 11.1 -14 9.7 -14 8.05 -13 6.9 L-12.75 6.65 -12.5 6.4 Q-11.45 5.3 -9.7 5.3 -7.15 5.3 -5.85 7.5 L-5.75 7.7 -5.7 7.8 -5.4 8.6 -5.35 8.75 -5.3 9 Q-5.15 10 -4.4 10.8 -2.85 12 -0.1 12 2.55 12 3.95 10.95 L3.9 11.05 4.2 10.8 Q5.2 9.95 5.2 8.6 5.2 7.35 4.3 6.6 L4.2 6.5 4.15 6.45 Q2.8 5.25 -0.25 4.3 L-0.6 4.3 Q-6.4 2.65 -9.2 0.05 L-9.5 -0.1 Q-12.6 -3.1 -12.6 -7.8 -12.6 -12.5 -9.45 -15.4 L-9.5 -15.4 Q-7.3 -17.7 -3.5 -18.45 L-3.5 -20 Q-3.5 -24 0.5 -24 2.1 -24 3.3 -22.8 4.5 -21.6 4.5 -20 L4.5 -18.55 Q8.4 -17.6 10.7 -14.9 L10.7 -14.95 Q12.8 -12.75 13.3 -9.4 L13.3 -9.3 13.4 -8.5 13.4 -8.4 13.4 -8.3 Q13.4 -4 9.15 -4 L9.1 -4 Q6 -3.9 4.9 -7.3 L4.5 -8.6 3.9 -9.65 Q3.55 -9.8 3.45 -10.15 2.35 -11.2 0.5 -11.2"/> </g></g></symbol>
+<symbol id="i-more" viewBox="0 0 24 24"><g fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></g></symbol>
+<symbol id="i-production" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16a1 1 0 0 1 1 1v2H3V9a1 1 0 0 1 1-1z"/><path d="M7 8V6a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v2"/><path d="M6 11v8a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-8"/><line x1="9" y1="15" x2="15" y2="15"/></g></symbol>
+<symbol id="i-quests" viewBox="-27 -27 54 54"><g ><g> <path stroke="none" fill="currentColor" d="M-18 -25 L4 -25 Q6.5 -25 7.95 -23.95 10 -22.5 10 -19 L10 -2.9 Q8.75 -2.45 8.1 -1.25 L-1.8 15.95 Q-2.75 17.15 -2.35 19 L-2.3 19.15 -1.8 21 -18 21 Q-24 21 -24 15 L-24 -19 Q-24 -25 -18 -25 M19 3.9 L19.45 4.5 19.35 5.25 9.35 22.6 Q9.15 22.9 8.75 23.05 L3.3 24.5 2.55 24.4 Q2.2 24.2 2.1 23.8 L0.6 18.35 Q0.5 17.9 0.7 17.6 L10.7 0.25 11.3 -0.2 12.05 -0.1 19 3.9 M14.05 -2.85 L13.6 -3.45 Q13.5 -3.85 13.7 -4.2 L17.7 -11.15 18.3 -11.6 19.05 -11.5 26 -7.5 26.45 -6.9 26.35 -6.15 22.35 0.8 21.75 1.25 21 1.15 14.05 -2.85"/> </g></g></symbol>
+<symbol id="i-scroll" viewBox="-27 -27 54 54"><g ><g> <path stroke="none" fill="currentColor" d="M-11.95 -17.85 L-18.9 -13.85 -19.65 -13.75 -20.25 -14.2 -24.25 -21.15 -24.35 -21.9 -23.9 -22.5 -16.95 -26.5 -16.2 -26.6 -15.6 -26.15 -11.6 -19.2 Q-11.4 -18.85 -11.5 -18.45 -11.65 -18.05 -11.95 -17.85 M-16.9 -11.1 L-9.95 -15.1 -9.2 -15.2 -8.6 -14.75 1.4 2.6 1.5 3.35 0 8.8 -0.45 9.4 -1.2 9.5 -6.65 8.05 -7.25 7.6 -17.25 -9.75 -17.35 -10.5 -16.9 -11.1 M3.9 0.95 L-1.65 -8.65 -1.6 -8.7 Q4.8 -12.7 11.15 -8.75 L26.65 1 Q30.85 3.6 30.45 6.55 30.85 9.4 26.65 12.05 L1.6 27.75 Q-4.75 31.7 -11.1 27.75 L-11.15 27.75 -26.6 18 -26.55 18 Q-30.8 15.4 -30.4 12.5 -30.8 9.6 -26.55 7 L-26.6 7 -15.2 -0.15 -9.85 9.1 -9.75 9.3 Q-9.1 10.35 -7.7 10.85 L-7.4 10.95 -1.95 12.4 -1.9 12.4 Q-0.35 12.8 1.05 12 2.5 11.2 2.9 9.55 L2.9 9.6 4.4 4.15 4.45 4 Q4.85 2.15 3.9 0.95"/> </g></g></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/> <line x1="21" y1="21" x2="16.65" y2="16.65"/></g></symbol>
+<symbol id="i-shield" viewBox="-27 -27 54 54"><g ><g> <path stroke="none" fill="currentColor" d="M22.3 -19.55 Q24.4 -19.35 25.75 -17.75 27.15 -16.2 27 -14.1 26.25 4.45 16.3 16.8 10.2 24.3 2.35 28.05 L0.1 28.5 -2.15 28.05 Q-10.1 24.3 -16.2 16.8 -26.15 4.45 -26.9 -14.1 -27 -16.2 -25.65 -17.75 -24.3 -19.35 -22.2 -19.55 -13.35 -20.4 -4.4 -27 -2.4 -28.4 0.1 -28.4 2.5 -28.4 4.5 -27 13.45 -20.45 22.3 -19.55"/> </g></g></symbol>
+<symbol id="i-skull" viewBox="-27 -27 54 54"><g ><g> <path stroke="none" fill="currentColor" d="M9 12 Q11.55 12 13.2 10.35 15 8.55 15 6 15 3.6 13.2 1.8 11.55 0 9 0 6.45 0 4.65 1.8 3 3.45 3 6 3 8.55 4.65 10.35 6.45 12 9 12 M-9 12 Q-6.45 12 -4.8 10.35 -3 8.55 -3 6 -3 3.6 -4.8 1.8 -6.45 0 -9 0 -11.55 0 -13.35 1.8 -15 3.45 -15 6 -15 8.55 -13.35 10.35 -11.55 12 -9 12 M0 -30 Q11.1 -30 19.05 -22.5 27 -15 27 -4.5 27 1.5 24 7.2 L24 12 Q24 14.55 22.2 16.35 20.55 18 18 18 L12 18 12 24 Q12 26.55 10.2 28.35 8.55 30 6 30 L-6 30 Q-8.55 30 -10.35 28.35 -12 26.55 -12 24 L-12 18 -18 18 Q-20.55 18 -22.35 16.35 -24 14.55 -24 12 L-24 7.2 Q-27 1.95 -27 -4.5 -27 -15 -19.05 -22.5 -11.25 -30 0 -30"/> </g></g></symbol>
+<symbol id="i-speedup" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13,19 22,12 13,5 13,19"/><polygon points="2,19 11,12 2,5 2,19"/></g></symbol>
+<symbol id="i-star-burst" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/></g></symbol>
+<symbol id="i-stone" viewBox="0 0 24 24"><g fill="currentColor"><path d="M4 16l2-7 5-3 7 3 2 7-4 3H8z"/></g></symbol>
+<symbol id="i-sword" viewBox="-27 -27 54 54"><g ><g> <path stroke="none" fill="currentColor" d="M13.5 -26.45 Q14.25 -27 15.25 -27 L24.4 -27 Q25.35 -27 26.05 -26.45 L26.25 -26.3 Q27 -25.5 27 -24.45 L27 -15.2 Q27 -14.25 26.25 -13.4 L2.2 10.65 4 12.45 4.3 12.1 Q4.45 11.85 4.8 11.8 L5.4 11.65 6.15 11.65 Q7.15 11.65 7.95 12.4 L8.1 12.55 Q8.7 13.3 8.7 14.2 L8.7 20.35 Q8.7 21.3 8.1 22 L7.8 22.3 Q7.05 22.9 6.15 22.9 L0 22.9 Q-2.7 22.9 -2.6 20.35 L-2.6 19.75 Q-2.6 19.05 -2.1 18.6 L-1.65 18.1 -2 17.8 -5.55 14.35 -9.6 18.4 -9.6 24.4 Q-9.6 25.45 -10.4 26.2 -11.15 27 -12.2 27 L-24.35 27 Q-27 27 -27 24.4 L-27 12.15 Q-27 9.55 -24.35 9.55 L-18.45 9.55 -14.4 5.5 -18.15 1.65 -18.65 2.2 Q-19.1 2.55 -19.8 2.55 L-20.3 2.55 Q-23 2.55 -22.95 0 L-22.95 -6.15 Q-22.95 -8.75 -20.3 -8.75 L-14.15 -8.75 Q-13.2 -8.75 -12.35 -7.95 L-12.2 -7.8 Q-11.7 -7.05 -11.7 -6.15 L-11.7 -5.45 Q-11.7 -4.85 -12.15 -4.35 L-12.5 -3.95 -10.7 -2.15 13.35 -26.3 13.5 -26.45"/> </g></g></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></g></symbol>
+<symbol id="i-warning" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></g></symbol>
+<symbol id="i-water" viewBox="0 0 24 24"><g fill="currentColor"><path d="M12 2c4 6 6 9 6 12a6 6 0 0 1-12 0c0-3 2-6 6-12z"/></g></symbol>
+<symbol id="i-wood" viewBox="-27 -27 54 54"><g ><g> <path stroke="none" fill="currentColor" d="M2.35 -22.7 Q0.8 -25.4 -4.4 -24.95 -9.5 -24.55 -15.25 -21.2 -21 -17.95 -23.95 -13.7 -26.95 -9.45 -25.4 -6.75 -23.85 -4.1 -18.65 -4.55 -13.5 -5 -7.75 -8.25 -2 -11.6 0.9 -15.8 3.9 -20.05 2.35 -22.7 M16.75 -25.05 Q18.45 -26.9 20.85 -27 23.35 -27.1 25.15 -25.35 26.95 -23.7 27 -21.2 27.1 -18.7 25.5 -16.9 19.85 -10.2 23.35 1.3 L23.6 2.8 25.05 5.3 Q25.7 6.35 25.85 7.65 26.55 11.7 22.8 17.05 L22.85 17.05 Q19.3 22.3 12.25 26.4 5.2 30.4 -1.15 30.9 -7.95 31.45 -11 28.6 -12 27.8 -12.55 26.8 L-31.05 -5.2 Q-31.65 -6.2 -31.8 -7.35 -32.8 -11.55 -28.85 -17.05 -25.3 -22.4 -18.25 -26.4 -11.25 -30.5 -4.9 -30.9 L-4.85 -30.9 Q1.8 -31.5 4.95 -28.7 L6.5 -26.85 11.85 -17.55 Q13.55 -21.7 16.75 -25.05 M-4.6 -18.7 Q-3.85 -17.35 -5.35 -15.25 -6.8 -13.1 -9.65 -11.45 -12.55 -9.8 -15.1 -9.6 -17.7 -9.4 -18.45 -10.75 -19.25 -12.1 -17.75 -14.2 -16.3 -16.3 -13.4 -17.95 -10.55 -19.6 -8 -19.85 -5.4 -20.05 -4.6 -18.7"/> </g></g></symbol>
+<symbol id="i-world" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="3" y1="12" x2="21" y2="12"/><path d="M12 3c3 4 3 14 0 18M12 3c-3 4-3 14 0 18"/></g></symbol>
+<symbol id="i-x-circle" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></g></symbol>
+<symbol id="i-xp" viewBox="0 0 24 24"><g fill="currentColor"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></g></symbol>
+</defs></svg>
+<div id="proto">
+  <h1>Basie · Events <small>Prototype B · A week in the wasteland</small></h1>
+  <div class="legend">
+    <span class="sw"><span class="look look--new">NEW</span>added</span>
+    <span class="sw"><span class="look look--imp">IMPROVED</span>reworks an existing surface</span>
+    <span class="sw"><span class="look look--old">no tag</span>exists today</span>
+  </div>
+  <div class="week" id="week"></div>
+  <label class="chk"><input type="checkbox" id="tagsToggle" checked> tags</label>
+  <div class="seg"><button id="mGuided" class="on">Guided</button><button id="mExplore">Explore</button></div>
+</div>
+<div id="stage">
+  <div id="frameWrap"><div id="frame">
+    <div id="bg"></div>
+    <div id="mapLayer"></div>
+    <div id="pageLayer"></div>
+    <div id="hudLayer"></div>
+    <div id="modalLayer"></div>
+    <div id="toastLayer"></div>
+    <svg id="spot" width="1280" height="800"></svg>
+    <div id="marks"></div>
+  </div></div>
+  <div id="caption">
+    <div class="meta"><div id="capStep"></div><div id="capTopic"></div><div id="capDay"></div></div>
+    <div style="flex:1"><div id="capText"></div><div id="capLook"></div></div>
+    <div class="nav"><div class="btns"><button class="pbtn" id="back">← Back</button><button class="pbtn pbtn--go" id="next">Next →</button></div><div class="dots" id="dots"></div><div class="kbd">Arrow keys also work</div></div>
+  </div>
+  <div id="exploreHint">Explore mode: everything is clickable (More, Events tabs, Claim, Mail, map markers, filter). Arrow keys still change the day. <button class="pbtn" id="backGuided" style="padding:3px 10px;margin-left:8px">Back to Guided</button></div>
+</div>
+<script>
+'use strict';
+const C = { me:'#3ad17a', red:'#e05a3d', scav:'#b7d645', iron:'#6f9fd8', rebel:'#9b6bff', storm:'#7fb2e6', contam:'#e0559b', neutral:'#e2cf9f', warn:'#f9cf16', world:'hsl(200,45%,62%)', mile:'#e2c36b', primary:'hsl(32,90%,55%)', success:'hsl(90,45%,48%)' };
+const ic = (n, cls = '') => `<svg class="ic ${cls}"><use href="#i-${n}"/></svg>`;
+const NEW = (pos = 'tl') => `<span class="tg tg--new ${pos}">NEW</span>`;
+const IMP = (pos = 'tl') => `<span class="tg tg--imp ${pos}">IMPROVED</span>`;
+const $ = s => document.querySelector(s);
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'Mon'];
+const BG = { events: '09-events-view-current.jpg', world: 'bg-world-held.jpg', home: '03-world-default-zoom.jpg', city: '01-city-base-view.jpg' };
+
+const SRC = {
+  calendar: { c: C.primary, icon: 'clock', name: 'Calendar' },
+  world: { c: C.world, icon: 'world', name: 'World' },
+  faction: { c: C.red, icon: 'sword', name: 'Faction' },
+  rebel: { c: C.rebel, icon: 'sword', name: 'Faction · Rebels' },
+  milestone: { c: C.mile, icon: 'crown', name: 'Milestone' },
+};
+const srcTag = (k, label) => { const s = SRC[k]; return `<span class="src" style="--c:${s.c}">${ic(s.icon)}${label || s.name}</span>`; };
+
+const TIERS = [
+  { pts: 500, rw: [['iron', '5k']] },
+  { pts: 1500, rw: [['iron', '10k'], ['speedup', '15m']] },
+  { pts: 3000, rw: [['iron', '20k'], ['diamond', '25']] },
+  { pts: 5000, rw: [['diamond', '50'], ['heroes', 'Epic']] },
+  { pts: 8000, rw: [['box', 'Crate'], ['diamond', '100']] },
+];
+const PB = 4600, PAR = 4200;
+
+const EV = {
+  stormForecast: { src: 'world', icon: 'lightning', c: C.storm, title: 'Storm front', state: 'forecast', tm: 'arrives Tue 10:00', sub: 'Forecast. Marches through storm cells will take <b>+40%</b> longer while it crosses Red Lowlands.' },
+  storm: { id: 'storm', src: 'world', icon: 'lightning', c: C.storm, title: 'Storm front', tm: 'ends in 5h 40m', sub: 'Crossing <b>Red Lowlands</b>, drifting east. Marches through a cell: <b>+40% travel time</b>.', map: true },
+  stormEnd: { id: 'storm', src: 'world', icon: 'lightning', c: C.storm, title: 'Storm front', tm: 'ends in 1h 10m', sub: 'Passing out of Red Lowlands. 1 of your marches was slowed.', map: true },
+  herd: { id: 'herd', src: 'world', icon: 'food', c: C.neutral, title: 'Herd migration', tm: 'leaves in 5h 20m', sub: 'Wild herd crossing <b>Home Refuge</b>. Gather before it walks off.', prog: [1, 4, 'nodes gathered'], map: true },
+  herdLate: { id: 'herd', src: 'world', icon: 'food', c: C.neutral, title: 'Herd migration', tm: 'leaves in 2h 05m', sub: 'Last stragglers near the Red Lowlands border.', prog: [3, 4, 'nodes gathered'], map: true },
+  dropWon: { id: 'drop', src: 'world', icon: 'box', c: C.neutral, title: 'Supply drop', tm: 'won', sub: 'You beat the Scavenger gather party by <b>0:25</b>. Crate opened.', result: ['win', 'Won the race'] },
+  contamQ: { src: 'world', icon: 'flask', c: C.contam, title: 'Contamination', state: 'queued', tm: 'waiting for a slot', sub: 'Ready to start in Command Ruin. Starts when an event above ends.' },
+  contam: { id: 'contam', src: 'world', icon: 'flask', c: C.contam, title: 'Contamination', tm: 'spreads in 3h', sub: 'Tainted cells creeping out of <b>Command Ruin</b> toward your border.', prog: [0, 6, 'cells cleared'], map: true },
+  contamMid: { id: 'contam', src: 'world', icon: 'flask', c: C.contam, title: 'Contamination', tm: 'spreads in 1h 30m', sub: 'Tainted cells in <b>Command Ruin</b>. Clearing pays salvage.', prog: [2, 7, 'cells cleared'], map: true },
+  boss: { id: 'boss', src: 'world', icon: 'skull', c: '#d8d2c8', title: 'The Bonecrusher stirs', tm: 'wakes in 1d 2h', sub: 'World boss in <b>Red Lowlands</b>. Its attack window opens when the timer ends.', map: true },
+  rebel: { id: 'rebel', src: 'rebel', icon: 'fire', c: C.rebel, title: 'Pale Choir rising', tm: 'settlement in 1d 4h', sub: 'Rebel camp in <b>Command Ruin</b>. Clear it before it grows into a stronghold.', prog: [1, 3, 'objectives'], map: true },
+  rebelFri: { id: 'rebel', src: 'rebel', icon: 'fire', c: C.rebel, title: 'Pale Choir rising', tm: 'settlement in 6h', sub: 'Camp Lv4 in <b>Command Ruin</b>. Stronghold in 2d 10h.', prog: [1, 3, 'objectives'], map: true },
+  mile: { id: 'mile', src: 'milestone', icon: 'crown', c: C.mile, title: 'They have noticed you', tm: 'one-time', sub: 'HQ 10 reached. Read the three warlords\' letters in Mail.', prog: [1, 3, 'letters read'] },
+};
+
+const HOSTILE = { faction: 'Red Talon Raiders', leader: 'Warlord Vesk', target: 'Red Lowlands', stage: 1, cd: '5:12:40' };
+const QHOSTILE = { faction: 'Scavenger Packs', leader: 'Mother Rook', target: 'Home Refuge', note: 'Raid for resources. Held by the director: one threat at a time. Earliest: <b>Sat 21:00</b>, after Red Talon\'s strike and a 12h calm.' };
+
+function baseState() {
+  return {
+    view: 'world', zoom: 'out', tab: 'active', oldEvents: false,
+    more: false, mail: null, panel: null, welcome: false, director: false,
+    banner: null, toasts: [], layer: 'all',
+    dots: { fab: false, tile: false, why: '' }, mailBadge: 3,
+    flags: {}, marches: null,
+    iron: { pts: 1380, claimed: [0], ready: [] , parBeaten: false },
+    hostile: null, qhostile: null, others: [], queued: [], featured: 'iron', ironDay: 'Day 1 of 5 · ends in 4d 14h',
+    calm: 'No threat against you right now. Factions are watching, not moving.',
+    day: 0, time: '09:00', anim: null,
+  };
+}
+
+const STEPS = [
+  { topic: 'Today: the Events view', day: 0, time: '09:00',
+    text: 'This is the Events page in the game today (More → Events). It only says <b>No Events Running</b>, because the code behind it is a stub. Everything after this step is the proposal.',
+    look: [['old', 'Current game screenshot, untouched']],
+    build(s) { s.view = 'events'; s.oldEvents = true; },
+    spot: [{ x: 0, y: 46, w: 1280, h: 248 }] },
+
+  { topic: 'Events view, reworked', day: 0, time: '09:00',
+    text: 'Events becomes the home for every event, with three tabs: <b>Active</b>, <b>Calendar</b>, <b>History</b>. Active is sorted by urgency: <b>(1)</b> a pinned slot for a threat against you (empty and calm today), <b>(2)</b> the featured calendar event, <b>(3)</b> everything else, each tagged with its source.',
+    look: [['imp', 'Events page (was: empty card)'], ['new', 'Tabs'], ['new', 'Source tags']],
+    build(s) { s.view = 'events'; s.others = [EV.stormForecast]; },
+    spot: ['#ev-tabs', '#ev-pinned', '#ev-feat', '#ev-others'], marks: [['#ev-pinned', 1], ['#ev-feat', 2], ['#ev-others', 3, 'r']] },
+
+  { topic: 'Calendar event: Iron Week', day: 0, time: '18:00',
+    text: '<b>Iron Week</b> is this week\'s featured event. Iron play earns points that fill a 5-tier track. With no other players there\'s no leaderboard: you chase your <b>personal best</b> (4,600) and <b>Warlord Vesk\'s par</b> (4,200). Beat the par and Red Talon standing moves.',
+    look: [['new', 'Points track'], ['new', 'Best + par markers'], ['new', 'Where points come from']],
+    build(s) { s.view = 'events'; s.others = [EV.stormForecast]; },
+    spot: ['#ev-feat'], marks: [['#tm-pb', 1], ['#tm-par', 2], ['#ev-earn', 3]] },
+
+  { topic: 'Points come from normal play', day: 0, time: '20:30',
+    text: 'You don\'t play the event separately. Squad 1 just brought back <b>12,000 iron</b>, and the toast shows the <b>+120 Iron Week points</b> it earned. That crosses Tier 2, so the toast also says a reward is ready.',
+    look: [['imp', 'Event toast (tap goes to the event)'], ['imp', 'Marches panel']],
+    build(s) {
+      s.view = 'world'; s.flags.ironReturn = true;
+      s.marches = { mine: [{ name: 'Squad 1', ph: 'Returning', pct: 80, note: [C.primary, 'clock', '+120 Iron Week pts on arrival'] }] };
+      s.toasts = [{ c: C.primary, icon: 'iron', t: '+120 Iron Week pts', m: 'Squad 1 brought back 12,000 iron. 1,500 pts total.', src: 'calendar', go: 'Tier 2 ready ›' }];
+      s.dots = { fab: true, tile: true, why: '1 to claim' };
+    },
+    spot: ['#toast-0', '#wm', '#route-iron'] },
+
+  { topic: 'Claiming a tier', day: 0, time: '20:31',
+    text: 'Tier 2 is ready, so its <b>Claim</b> button lights up. Claiming uses the existing reward flow: a toast, and the iron flies up into the top bar. The track then points at the next tier, 1,500 points away.',
+    look: [['new', 'Tier claim on the track'], ['old', 'Reward toast + fly-in (existing flow)']],
+    build(s) { s.view = 'events'; s.iron.pts = 1500; s.iron.ready = [1]; s.others = [EV.stormForecast]; s.dots = { fab: true, tile: true, why: '1 to claim' }; },
+    auto: [1300, s => { s.iron.claimed = [0, 1]; s.iron.ready = []; s.anim = 'fly'; s.dots = { fab: false, tile: false }; s.toasts = [{ c: C.success, icon: 'gift', t: 'Iron Week · Tier 2 claimed', m: '+10,000 iron · +15m speedup', src: 'calendar' }]; }],
+    spot: ['#tier-1', { x: 396, y: 8, w: 84, h: 34 }] },
+
+  { topic: 'The Calendar tab', day: 0, time: '20:40',
+    text: '<b>Calendar</b> shows this week and next. A featured event runs 5–7 days, then come <b>2–3 quiet days</b> with nothing featured, so there\'s always a breather. The order is a <b>seeded weekly rotation</b>: fixed in advance, the same on every device, and it needs no server.',
+    look: [['new', 'Calendar tab'], ['new', 'Quiet days'], ['new', 'Rotation preview']],
+    build(s) { s.view = 'events'; s.tab = 'calendar'; s.iron.pts = 1500; s.iron.claimed = [0, 1]; },
+    spot: ['#cal-weeks', '#cal-rot'], marks: [['#cal-quiet1', 1], ['#cal-rot', 2]] },
+
+  { topic: 'World event: storm front', day: 1, time: '10:00',
+    text: 'A <b>storm front</b> drifts east across Red Lowlands, drawn on the map as cells. Squad 1\'s route crosses two of them, so its trip takes <b>+40%</b> longer and the Marches panel says why. A toast announced the storm, and it has a row in Active.',
+    look: [['new', 'Storm cells on the map'], ['new', 'Slowed-march ETA'], ['imp', 'Marches panel']],
+    build(s) {
+      s.view = 'world'; s.flags.storm = true;
+      s.marches = { mine: [{ name: 'Squad 1', ph: 'Marching · 6:10', pct: 22, note: [C.storm, 'lightning', 'Storm: +40% travel time'] }] };
+      s.toasts = [{ c: C.storm, icon: 'lightning', t: 'Storm front rolling in', m: 'Marches through storm cells take +40% longer. Ends in 5h 40m.', src: 'world', go: 'View ›' }];
+    },
+    spot: ['#storm-area', '#wm', '#toast-0'] },
+
+  { topic: 'World event: herd migration', day: 1, time: '14:00',
+    text: 'A wild herd wanders across <b>Home Refuge</b> from the west. Its food nodes move along the dotted route and leave the region when the timer runs out. Gather one like any food node before it walks off: Squad 2 is already on its way.',
+    look: [['new', 'Moving herd nodes + route'], ['new', 'Event block in the POI panel']],
+    build(s) {
+      s.view = 'world'; s.zoom = 'home'; s.flags.herd = true;
+      s.marches = { mine: [{ name: 'Squad 2', ph: 'Gathering · food', pct: 45, note: [C.neutral, 'food', 'Herd moves on in 5h 20m'] }] };
+      s.panel = 'herd';
+    },
+    spot: ['#herd-route', '#panel'] },
+
+  { topic: 'World event: supply drop race', day: 2, time: '09:00',
+    text: 'A supply crate lands on the <b>West Warrens border</b>, and the first to reach it takes it. The Scavengers want it too: a gather party left <b>Scavenger Den</b> two minutes ago. You arrive in <b>3:40</b>, they arrive in <b>4:05</b>, so you win this one. If they win, the event closes as <b>Missed</b>.',
+    look: [['new', 'Crate marker'], ['new', 'AI gather party (Scavenger lime, dotted)'], ['imp', 'Marches panel shows AI marches']],
+    build(s) {
+      s.view = 'world'; s.flags.drop = true; s.flags.landmarks = true;
+      s.marches = { mine: [{ name: 'Squad 1', ph: 'To crate · 3:40', pct: 30, note: [C.me, 'check', 'Arrives 0:25 before them'] }], ai: [{ name: 'Scavenger gather party', c: C.scav, ph: 'To crate · 4:05', pct: 45 }] };
+      s.toasts = [{ c: C.neutral, icon: 'box', t: 'Supply drop landed', m: 'West Warrens border. First to reach it takes the crate.', src: 'world', go: 'View ›' }];
+    },
+    spot: ['#mk-crate', '#route-me-crate', '#route-scav-crate', '#mk-den', '#wm'] },
+
+  { topic: 'Director limit: 3 other events', day: 2, time: '09:10',
+    text: 'Midweek, Active is full: Iron Week plus <b>three other events</b>, which is the cap. A fourth one, <b>Contamination</b>, is ready but waits in the queue until a slot frees up. That keeps the page readable and the player not swamped.',
+    look: [['new', 'Slot counter 3/3'], ['new', 'Queued row'], ['new', 'Show on map']],
+    build(s) { s.view = 'events'; s.iron.pts = 2960; s.iron.claimed = [0, 1]; s.ironDay = 'Day 3 of 5 · ends in 2d 14h'; s.others = [EV.stormEnd, EV.herdLate, EV.dropWon]; s.queued = [EV.contamQ]; },
+    spot: ['#ev-others'], marks: [['#ev-slots', 1, 'r'], ['#ev-queued', 2, 'r']] },
+
+  { topic: 'World events: boss and contamination', day: 3, time: '08:00',
+    text: 'Storm and herd are gone, so the queue released <b>Contamination</b>: tainted cells creep out of Command Ruin, and clearing them pays. <b>The Bonecrusher</b>, the world boss that already exists in Red Lowlands, stirs too. A countdown ring shows when its window opens.',
+    look: [['new', 'Tainted cells'], ['new', 'Boss countdown ring']],
+    build(s) {
+      s.view = 'world'; s.flags.contam = true; s.flags.boss = true;
+      s.marches = { mine: [] };
+      s.toasts = [{ c: C.contam, icon: 'flask', t: 'Contamination spreading', m: 'Command Ruin. Clear tainted cells for salvage.', src: 'world', go: 'View ›' }];
+    },
+    spot: ['#contam-area', '#boss-area'] },
+
+  { topic: 'Faction event: rebel camp rising', day: 3, time: '15:00',
+    text: 'Rebels have camped in Command Ruin. As an event it has one clear goal: <b>clear the Pale Choir before the camp grows into a stronghold</b>, which could take a region. <b>Show on map</b> jumps straight to the camp.',
+    look: [['new', 'Rebel event with objectives'], ['new', 'Camp → settlement → stronghold'], ['new', 'Map link']],
+    build(s) { s.view = 'events'; s.iron.pts = 3410; s.iron.claimed = [0, 1, 2]; s.ironDay = 'Day 4 of 5 · ends in 1d 9h'; s.others = [EV.contam, EV.boss, EV.rebel]; s.rebelOpen = true; },
+    spot: ['#ev-rebel', '#ev-rebel-detail'], marks: [['#rebel-life', 1], ['#rebel-map', 2]] },
+
+  { topic: 'Faction event: one hostile countdown', day: 4, time: '09:00',
+    text: 'Red Talon is massing to retake Red Lowlands. This threat is <b>pinned at the top</b> of Active and mirrored in a <b>red banner</b> under the top bar. The Scavengers also want to raid, but the director allows <b>one threat at a time</b>, so theirs is queued.',
+    look: [['new', 'Pinned threat'], ['new', 'Threat banner'], ['new', 'Queued threat']],
+    build(s) { s.view = 'events'; s.iron.pts = 4350; s.iron.claimed = [0, 1, 2]; s.iron.parBeaten = true; s.ironDay = 'Last day · ends in 14h'; s.hostile = HOSTILE; s.qhostile = QHOSTILE; s.others = [EV.contamMid, EV.boss, EV.rebelFri]; s.banner = 'red'; s.dots = { fab: true, tile: true, why: '1 threat' }; },
+    spot: ['#ev-pinned', '#banner'], marks: [['#banner', 1], ['#ev-hostile', 2], ['#ev-qhostile', 3]] },
+
+  { topic: 'The threat on the map', day: 4, time: '09:05',
+    text: 'On the map the same threat is a <b>war camp</b> on the Frost Hold border, fed by a supply column from <b>Red Talon Hold</b>. The Marches panel now lists <b>threats first</b>, in red. The new map filter is set to <b>Threats</b>, so the other event markers step aside.',
+    look: [['imp', 'Marches panel: threats first'], ['new', 'Map filter'], ['new', 'War camp + base']],
+    build(s) {
+      s.view = 'world'; s.flags.landmarks = true; s.flags.threat = true; s.flags.contam = true; s.flags.boss = true; s.flags.rebel = true; s.layer = 'threats'; s.banner = 'red';
+      s.marches = { threats: [{ name: 'Red Talon warband', ph: 'Massing · 5:12:40', pct: 62 }, { name: 'Supply column', ph: 'Hold → camp', pct: 40 }], mine: [] };
+      s.dots = { fab: true, tile: true, why: '1 threat' };
+    },
+    spot: ['#mk-camp', '#mk-hold', '#wm', '#lf', '#target-area'] },
+
+  { topic: 'Milestone: they have noticed you', day: 5, time: '11:00',
+    text: 'Headquarters reached level 10, which fires a one-time <b>milestone</b>: all three warlords write to you. The letters land in Mail\'s new <b>Diplomacy</b> category, and the milestone counts letters read (<b>2 of 3</b> after this one). It pays out when all three are read.',
+    look: [['new', 'Diplomacy category'], ['new', 'Milestone progress in Mail'], ['new', 'Faction letters']],
+    build(s) { s.view = 'world'; s.mail = { cat: 'diplo', open: 'rook' }; s.mailBadge = 5; },
+    spot: ['#mcat-diplo', '#milechip', '#mrow-rook'] },
+
+  { topic: 'The director: pacing and limits', day: -1, time: '',
+    text: 'Behind the scenes a <b>director</b> paces the week: build-up, a peak, then calm. It decides <b>how much</b> pressure there is from your power; the factions decide <b>what</b> to do with it. If a peaceful player goes quiet too long, a <b>failsafe</b> forces a small rebel raid.',
+    look: [['old', 'Design explainer, not player UI']],
+    build(s) { s.view = 'events'; s.iron.pts = 4350; s.iron.claimed = [0, 1, 2]; s.director = true; },
+    spot: ['#dir'] },
+
+  { topic: 'Notifications: dots and toasts', day: 6, time: '10:00',
+    text: 'When something needs you, a red dot shows on the <b>More</b> button and on the <b>Events</b> tile, and the tile now says why. Toasts announce events that start or finish, and tapping one opens it.',
+    look: [['imp', 'Events tile says why'], ['imp', 'Event toasts'], ['old', 'More button dot']],
+    build(s) {
+      s.view = 'world'; s.more = true; s.flags.contam = true; s.flags.rebel = true; s.flags.landmarks = true;
+      s.marches = { mine: [] };
+      s.dots = { fab: true, tile: true, why: '2 to claim · 1 new' };
+      s.toasts = [
+        { c: C.primary, icon: 'clock', t: 'Iron Week finished · Tier 4', m: 'New personal best: 5,240. You beat Vesk\'s par.', src: 'calendar', go: 'Claim ›' },
+        { c: C.rebel, icon: 'fire', t: 'Pale Choir camp grew', m: 'It is now a settlement. Stronghold in 2d.', src: 'rebel', go: 'View ›' },
+      ];
+    },
+    spot: ['#fab', '#tile-events', '#toasts'] },
+
+  { topic: 'Seen, then cleared', day: 6, time: '10:03',
+    text: 'You opened Events and claimed the Iron Week rewards, so <b>both dots are gone</b>. A dot only means "this needs you" (a claim, a threat, an unread letter), never just "something happened", so it doesn\'t nag.',
+    look: [['imp', 'Dots clear once seen']],
+    build(s) { s.view = 'world'; s.more = true; s.flags.contam = true; s.flags.rebel = true; s.flags.landmarks = true; s.marches = { mine: [] }; },
+    spot: ['#fab', '#tile-events'] },
+
+  { topic: 'The History tab', day: 6, time: '10:05',
+    text: '<b>History</b> keeps the week\'s results: what finished, what you missed, what is still running, and what each paid. Faction outcomes like <b>Held</b> also feed the faction\'s standing with you.',
+    look: [['new', 'History tab'], ['new', 'Results + rewards']],
+    build(s) { s.view = 'events'; s.tab = 'history'; },
+    spot: ['#hist'] },
+
+  { topic: 'Welcome Back', day: 7, time: '08:00',
+    text: 'You were away overnight. Welcome Back now groups what happened by source, with the <b>threat first</b>: the Scavenger raid ripened while you were offline, but strikes never land offline, so it got a fresh <b>45-minute</b> countdown. <b>Defend now</b> jumps to it.',
+    look: [['imp', 'Welcome Back (was: resource list only)'], ['new', 'Threat held for your return']],
+    build(s) { s.view = 'city'; s.welcome = true; },
+    spot: ['#wb'] },
+];
+
+let idx = 0, S = null, mode = 'guided', autoTimer = null, scale = 1;
+
+function stateFor(i) { const s = baseState(); const st = STEPS[i]; s.day = st.day; s.time = st.time; st.build(s); return s; }
+
+function go(i) {
+  idx = Math.max(0, Math.min(STEPS.length - 1, i));
+  clearTimeout(autoTimer);
+  S = stateFor(idx);
+  render();
+  const st = STEPS[idx];
+  if (st.auto && mode === 'guided') autoTimer = setTimeout(() => { st.auto[1](S); render(); }, st.auto[0]);
+  renderCaption();
+}
+
+function render() {
+  const s = S;
+  const bgKey = s.view === 'world' ? (s.zoom === 'home' ? 'home' : 'world') : s.view;
+  $('#bg').style.backgroundImage = `url("${BG[bgKey]}")`;
+  $('#mapLayer').innerHTML = s.view === 'world' ? renderMap(s) : '';
+  $('#pageLayer').innerHTML = s.view === 'events' && !s.oldEvents ? renderEvents(s) : '';
+  $('#hudLayer').innerHTML = renderHud(s);
+  $('#modalLayer').innerHTML = renderModals(s);
+  $('#toastLayer').innerHTML = s.toasts.length ? `<div class="toasts" id="toasts">${s.toasts.map(renderToast).join('')}</div>` : '';
+  if (s.anim === 'fly') { s.anim = null; flyIn(); }
+  renderWeek();
+  requestAnimationFrame(placeSpot);
+  clearTimeout(render.spotTimer);
+  render.spotTimer = setTimeout(placeSpot, 550);
+}
+
+function curve(a, b, bend) {
+  const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2, dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1;
+  const cx = mx - dy / L * bend, cy = my + dx / L * bend;
+  const at = t => [(1 - t) * (1 - t) * a[0] + 2 * (1 - t) * t * cx + t * t * b[0], (1 - t) * (1 - t) * a[1] + 2 * (1 - t) * t * cy + t * t * b[1]];
+  return { d: `M${a[0]},${a[1]} Q${cx},${cy} ${b[0]},${b[1]}`, at };
+}
+const ROUTE_STYLE = {
+  player: { c: C.me, dash: '9 6', w: 3 },
+  hostile: { c: C.red, dash: '10 6', w: 3.5 },
+  scout: { c: C.warn, dash: '2 6', w: 2.5 },
+  ai: { c: C.scav, dash: '2 7', w: 3 },
+  supply: { c: C.red, dash: '2 7', w: 3 },
+  herd: { c: C.neutral, dash: '3 8', w: 3 },
+};
+function route(id, a, b, bend, kind, opts = {}) {
+  const st = ROUTE_STYLE[kind], c = opts.c || st.c, cv = curve(a, b, bend);
+  let svg = `<path id="${id}" d="${cv.d}" stroke="rgba(0,0,0,.55)" stroke-width="${st.w + 3}" fill="none" stroke-linecap="round"/>`
+    + `<path d="${cv.d}" stroke="${c}" stroke-width="${st.w}" stroke-dasharray="${st.dash}" fill="none" stroke-linecap="round" class="flow" marker-end="url(#ah-${kind})"/>`;
+  let html = '';
+  if (opts.t != null) {
+    const p = cv.at(opts.t);
+    svg += `<circle cx="${p[0]}" cy="${p[1]}" r="7" fill="${c}" stroke="#111" stroke-width="2"/>`;
+    if (opts.pill) html += `<div class="pill" style="--c:${c};left:${p[0] + (opts.px || 0)}px;top:${p[1] + (opts.py || -18)}px">${opts.pill}</div>`;
+  }
+  return { svg, html };
+}
+function marker(m) {
+  const cls = ['mk', m.sm ? 'mk--sm' : '', m.faded ? 'mk--faded' : '', m.hl ? 'mk--hl' : '', m.ghost ? 'mk--ghost' : ''].join(' ');
+  const lbl = m.label ? `<div class="mk__lbl ${m.lp || 'b'}">${m.label}${m.isNew && !m.sub ? NEW('in') : ''}${m.sub ? `<small>${m.sub}${m.isNew ? NEW('in') : ''}</small>` : ''}</div>` : '';
+  return `<div class="${cls}" id="mk-${m.id}" data-act="poi:${m.id}" style="--c:${m.c};left:${m.x}px;top:${m.y}px">
+    <div class="mk__node">${ic(m.icon)}</div>${m.lvl ? `<div class="mk__lvl"><b>${m.lvl}</b></div>` : ''}${lbl}</div>`;
+}
+function callout(id, x, y, c, title, sub, isNew = true, act = '') {
+  return `<div class="callout" id="${id}" ${act ? `data-act="${act}"` : ''} style="--c:${c};left:${x}px;top:${y}px"><div class="ttl">${title}${isNew ? NEW('in') : ''}</div>${sub ? `<small>${sub}</small>` : ''}</div>`;
+}
+
+function renderMap(s) {
+  const f = s.flags, show = layer => s.layer === 'all' || (s.layer === 'threats' && layer === 'threat') || (s.layer === 'events' && layer === 'event') || layer === 'base';
+  let svg = '', html = '';
+  const defs = Object.entries(ROUTE_STYLE).map(([k, v]) => `<marker id="ah-${k}" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${v.c}"/></marker>`).join('')
+    + `<pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="rgba(224,85,155,.28)"/><line x1="0" y1="0" x2="0" y2="6" stroke="rgba(255,140,200,.7)" stroke-width="2"/></pattern>`
+    + `<radialGradient id="stormG"><stop offset="0" stop-color="rgba(160,200,245,.42)"/><stop offset=".75" stop-color="rgba(110,150,210,.22)"/><stop offset="1" stop-color="rgba(110,150,210,.05)"/></radialGradient>`;
+  const add = r => { svg += r.svg; html += r.html; };
+
+  if (s.zoom === 'out') {
+    if (f.landmarks) {
+      html += marker({ id: 'hold', x: 985, y: 660, c: C.red, icon: 'fire', lvl: 9, label: 'Red Talon Hold', sub: 'Faction base', lp: 'r', isNew: true });
+      html += marker({ id: 'den', x: 365, y: 258, c: C.scav, icon: 'skull', lvl: 7, label: 'Scavenger Den', sub: 'Faction base · fogged', lp: 'l', faded: true, isNew: true });
+    }
+    if (f.ironReturn) {
+      add(route('route-iron', [627, 580], [415, 650], 30, 'player', { t: 0.2, pill: `${ic('iron')} 12,000 iron · 0:40`, py: -20 }));
+      html += marker({ id: 'outpost-hl', x: 403, y: 655, c: C.me, icon: 'base', ghost: true, sm: true });
+    }
+    if (f.storm) {
+      const cells = [[470, 626, 50], [566, 590, 44], [652, 500, 36]];
+      svg += `<g id="storm-area">${cells.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="url(#stormG)" stroke="rgba(170,205,250,.85)" stroke-width="1.5" stroke-dasharray="5 4"/>`).join('')}
+        ${cells.map(([x, y, r]) => `<path d="M${x + r * .55},${y - r * .15} l18,6 m-6,-8 l6,8 l-8,5" stroke="rgba(200,225,255,.9)" stroke-width="2" fill="none"/>`).join('')}</g>`;
+      add(route('route-storm', [403, 655], [627, 580], -24, 'player', { t: 0.22, pill: `${ic('lightning')}<em>+40%</em> ETA 6:10`, py: 22, c: C.me }));
+      html += callout('storm-lbl', 664, 425, C.storm, `${ic('lightning')} Storm front`, 'Drifting east · ends in 5h 40m');
+    }
+    if (f.drop) {
+      html += marker({ id: 'crate', x: 300, y: 505, c: C.neutral, icon: 'box', label: 'Supply drop', sub: 'First to arrive takes it', lp: 'l', isNew: true });
+      add(route('route-me-crate', [403, 655], [306, 527], -30, 'player', { t: 0.3, pill: 'You · 3:40', px: 44, py: 0 }));
+      add(route('route-scav-crate', [365, 278], [303, 484], 26, 'ai', { t: 0.45, pill: `<em>Scavengers</em> · 4:05`, px: -98, py: 0 }));
+    }
+    if (f.contam && show('event')) {
+      const cells = [[530, 513], [550, 513], [570, 513], [550, 493], [590, 513], [570, 493]], next = [[610, 513], [590, 493], [530, 493]];
+      svg += `<g id="contam-area">${cells.map(([x, y]) => `<rect x="${x}" y="${y}" width="19" height="19" rx="2" fill="url(#hatch)" stroke="${C.contam}" stroke-width="1.2"/>`).join('')}
+        ${next.map(([x, y]) => `<rect x="${x}" y="${y}" width="19" height="19" rx="2" fill="none" stroke="${C.contam}" stroke-width="1" stroke-dasharray="3 3" opacity=".8"/>`).join('')}</g>`;
+      if (!f.rebel) html += callout('contam-lbl', 640, 448, C.contam, `${ic('flask')} Contamination`, '6 tainted cells · spreads in 3h', true, 'poi:contam');
+    }
+    if (f.boss && show('event')) {
+      svg += `<g id="boss-area"><circle cx="733" cy="588" r="25" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="5"/>
+        <circle cx="733" cy="588" r="25" fill="none" stroke="#f4efe6" stroke-width="5" stroke-dasharray="${2 * Math.PI * 25 * .62} 999" transform="rotate(-90 733 588)" stroke-linecap="round"/>
+        <line x1="748" y1="566" x2="790" y2="528" stroke="#f4efe6" stroke-width="1.5" stroke-dasharray="3 3"/></g>`;
+      html += callout('boss-lbl', 782, 496, '#f4efe6', `${ic('skull')} Bonecrusher stirs`, 'Window opens in 1d 2h', true, 'poi:boss');
+    }
+    if (f.rebel && show('event')) html += marker({ id: 'rebel', x: 708, y: 452, c: C.rebel, icon: 'fire', lvl: 4, label: 'Pale Choir camp', sub: 'Rebels · settlement in 6h', lp: 'b', isNew: true, sm: true });
+    if (f.threat) {
+      svg += `<rect id="target-area" x="522" y="535" width="236" height="235" rx="4" fill="rgba(224,90,61,.08)" stroke="${C.red}" stroke-width="2" stroke-dasharray="8 6"/>`;
+      add(route('route-supply', [972, 646], [812, 556], 30, 'supply', { t: 0.55 }));
+      html += marker({ id: 'camp', x: 790, y: 548, c: C.red, icon: 'sword', lvl: 9, label: 'War camp', sub: 'Departs 5:12:40', lp: 't', isNew: true });
+      svg += `<circle cx="790" cy="548" r="27" fill="none" stroke="${C.red}" stroke-width="4" stroke-dasharray="${2 * Math.PI * 27 * .62} 999" transform="rotate(-90 790 548)"/>`;
+      html += `<div class="callout" style="--c:${C.red};left:528px;top:506px;padding:2px 7px"><div class="ttl">${ic('warning')} Target: Red Lowlands</div></div>`;
+    }
+  } else {
+    if (f.herd) {
+      add(route('herd-route', [8, 268], [1230, 222], -40, 'herd', {}));
+      const cv = curve([8, 268], [1230, 222], -40);
+      [0.17, 0.36, 0.55, 0.72].forEach((t, i) => { const p = cv.at(t); html += marker({ id: 'herd' + i, x: p[0], y: p[1], c: C.neutral, icon: 'food', lvl: 2, label: i === 2 ? 'Wild Herd' : '', sub: i === 2 ? 'Moving east' : '', lp: 't', isNew: i === 2, hl: i === 2 }); });
+      html += `<div class="callout" style="--c:${C.neutral};left:16px;top:288px"><div class="ttl">${ic('food')} Herd enters${NEW('in')}</div><small>from West Warrens</small></div>`;
+      html += `<div class="callout" style="--c:${C.neutral};left:1068px;top:166px"><div class="ttl">Leaves region</div><small>in 5h 20m</small></div>`;
+      const p2 = cv.at(0.55);
+      add(route('route-herd-me', [640, 384], [p2[0] + 4, p2[1] + 22], 20, 'player', { t: 0.55, pill: 'Squad 2', px: 52, py: 0 }));
+    }
+  }
+  return `<svg id="mapSvg" width="1280" height="800"><defs>${defs}</defs>${svg}</svg>${html}`;
+}
+
+function renderHud(s) {
+  let h = '';
+  if (s.banner) h += `<div class="banner is-new" id="banner" data-act="banner" style="--bc:${C.red};--bg1:rgba(110,30,18,.95)">${NEW()}
+    <div class="banner__ic">${ic('sword')}</div>
+    <div class="banner__t"><small>Red Talon Raiders · Massing</small>Raid on <b>Red Lowlands</b> · war camp on the Frost Hold border</div>
+    <div class="banner__cd"><small>departs in</small>5:12:40</div><button class="banner__go">View ›</button></div>`;
+  if (s.view === 'world') {
+    if (s.marches) h += renderMarches(s.marches);
+    h += `<div class="lf is-new" id="lf">${NEW()}<span>Show</span>${['all', 'threats', 'events', 'none'].map(k => `<button class="${s.layer === k ? 'on' : ''}" data-act="layer:${k}">${k[0].toUpperCase() + k.slice(1)}</button>`).join('')}</div>`;
+    if (s.panel) h += renderPanel(s.panel);
+  }
+  h += `<button class="fab ${s.dots.why ? '' : ''}" id="fab" data-act="more">${ic('more')}${s.dots.fab ? '<span class="dot"></span>' : ''}</button>`;
+  h += `<button class="mailbtn" id="mailbtn" data-act="mail">${ic('envelope')}${s.mailBadge ? `<span class="badge">${s.mailBadge}</span>` : ''}</button>`;
+  if (s.more) h += renderMore(s);
+  return h;
+}
+function renderMarches(m) {
+  const row = (r, kind) => `<div class="wm__item ${kind === 'threat' ? 'wm__item--threat' : ''}">
+    <div class="wm__top"><b>${kind === 'threat' ? `<span style="color:${C.red}">${ic('sword')}</span>` : kind === 'ai' ? `<span style="color:${r.c}">${ic('gather')}</span>` : ic('sword')}${r.name}</b><span class="wm__ph">${r.ph}</span></div>
+    <div class="wm__bar"><i style="width:${r.pct}%;background:${kind === 'threat' ? C.red : kind === 'ai' ? r.c : '#6bd4ff'}"></i></div>
+    ${r.note ? `<div class="wm__note" style="color:${r.note[0]}">${ic(r.note[1])}${r.note[2]}</div>` : ''}</div>`;
+  const imp = !!(m.threats || m.ai || (m.mine && m.mine.some(r => r.note)));
+  let h = `<div class="wm ${imp ? 'is-imp' : ''}" id="wm">${imp ? IMP('tr') : ''}<div class="wm__head">Marches</div>`;
+  if (m.threats) h += `<div class="wm__sec" style="color:${C.red}">${ic('warning')} Threats · ${m.threats.length}</div>` + m.threats.map(r => row(r, 'threat')).join('');
+  if (m.threats || m.ai) h += `<div class="wm__sec" style="color:var(--tx3)">Your marches</div>`;
+  h += m.mine && m.mine.length ? m.mine.map(r => row(r, 'mine')).join('') : `<div class="wm__empty">No active marches</div>`;
+  if (m.ai) h += `<div class="wm__sec" style="color:var(--tx3)">Others nearby</div>` + m.ai.map(r => row(r, 'ai')).join('');
+  return h + '</div>';
+}
+function renderMore(s) {
+  const t = (id, icon, name, extra = '', cls = '') => `<div class="more__t ${cls}" id="tile-${id}" data-act="tile:${id}">${ic(icon)}<span>${name}</span>${extra}</div>`;
+  return `<div class="more" id="more">
+    ${t('build', 'hammer', 'Build')}${t('quests', 'quests', 'Quests')}
+    ${t('combat', 'combat', 'Combat')}${t('economy', 'economy', 'Economy')}
+    ${t('events', 'lightning', 'Events', (s.dots.tile ? '<span class="dot"></span>' : '') + (s.dots.tile && s.dots.why ? `<span class="why">${s.dots.why}</span>` : '') + IMP('tl'), 'more__t--ev is-imp')}
+    ${t('factions', 'shield', 'Factions', NEW('tl'), 'more__t--ev is-new')}
+    ${t('arena', 'arena', 'Arena', '<span class="soon">SOON</span>', 'more__t--soon')}</div>`;
+}
+const PANELS = {
+  herd: () => ({ c: C.neutral, icon: 'food', name: 'Wild Herd', sub: 'Home Refuge · moving east', rows: [['Type', 'Food node (temporary)'], ['Food', '18,000'], ['Gather rate', '+25% vs normal nodes']],
+    ev: [srcTag('world'), 'Herd migration', 'Leaves Home Refuge in <b>5h 20m</b>. Squad 2 is gathering here.'], acts: '<button class="wbtn wbtn--gather">Gather</button><button class="wbtn" data-act="open:events">Event ›</button>' }),
+  crate: () => ({ c: C.neutral, icon: 'box', name: 'Supply Drop', sub: 'West Warrens border', rows: [['Contents', 'Iron 15k · Speedups'], ['Racing you', 'Scavenger gather party']], ev: [srcTag('world'), 'Supply drop', 'First squad to arrive takes the crate.'], acts: '<button class="wbtn wbtn--gather">Send squad</button>' }),
+  contam: () => ({ c: C.contam, icon: 'flask', name: 'Tainted Cells', sub: 'Command Ruin', rows: [['Cells', '6 (spreading)'], ['Clear one', 'Salvage + 30 pts']], ev: [srcTag('world'), 'Contamination', 'Spreads one ring every 3h toward your border.'], acts: '<button class="wbtn">Clear cell</button>' }),
+  boss: () => ({ c: '#e8e2d8', icon: 'skull', name: 'The Bonecrusher', sub: 'Red Lowlands · world boss', rows: [['Level', '8'], ['Window', 'Opens in 1d 2h']], ev: [srcTag('world'), 'The Bonecrusher stirs', 'A countdown to the boss window, shown as a ring.'], acts: '<button class="wbtn" disabled>Attack (closed)</button>' }),
+  rebel: () => ({ c: C.rebel, icon: 'fire', name: 'Pale Choir Camp', sub: 'Command Ruin · rebels (cultists)', rows: [['Level', '4'], ['Grows into', 'Settlement in 6h']], ev: [srcTag('rebel'), 'Pale Choir rising', 'Clear before it becomes a stronghold.'], acts: '<button class="wbtn" style="border-color:rgba(255,110,90,.5)">Attack</button><button class="wbtn" data-act="open:events">Event ›</button>' }),
+  camp: () => ({ c: C.red, icon: 'sword', name: 'Red Talon War Camp', sub: 'Frost Hold border · staging point', rows: [['Departs', '5:12:40'], ['Target', 'Red Lowlands']], ev: [srcTag('faction', 'Faction · Red Talon'), 'Raid on Red Lowlands', 'The hostile countdown pinned in Events.'], acts: '<button class="wbtn">Scout</button><button class="wbtn" data-act="open:events">Event ›</button>' }),
+  hold: () => ({ c: C.red, icon: 'fire', name: 'Red Talon Hold', sub: 'Faction base · Frost Hold', rows: [['Leader', 'Warlord Vesk'], ['Level', '9']], ev: null, acts: '<button class="wbtn">Scout</button>' }),
+  den: () => ({ c: C.scav, icon: 'skull', name: 'Scavenger Den', sub: 'Faction base · Ashwood (fogged)', rows: [['Leader', 'Mother Rook'], ['Level', '7']], ev: null, acts: '<button class="wbtn">Scout</button>' }),
+};
+function renderPanel(id) {
+  const key = id.replace(/\d+$/, '');
+  const p = (PANELS[key] || PANELS.herd)();
+  return `<div class="wpanel" id="panel" style="--c:${p.c}">
+    <div class="wpanel__head"><div class="wpanel__icon">${ic(p.icon)}</div><div><h3>${p.name}</h3><div class="wpanel__sub">${p.sub}</div></div><button class="wpanel__x" data-act="closepanel">${ic('x-circle')}</button></div>
+    <div class="wpanel__body">${p.rows.map(r => `<div class="wpanel__row"><span>${r[0]}</span><b>${r[1]}</b></div>`).join('')}
+    ${p.ev ? `<div class="evblock is-new">${NEW('tr')}<div class="evblock__t">${p.ev[0]}<span>${p.ev[1]}</span></div><div style="margin-top:4px">${p.ev[2]}</div></div>` : ''}</div>
+    <div class="wpanel__act">${p.acts}</div></div>`;
+}
+
+function renderEvents(s) {
+  const claimable = s.iron.ready.length;
+  const tabs = `<div class="tabs" id="ev-tabs">${NEW('tl')}
+    ${['active', 'calendar', 'history'].map(k => `<button class="tab ${s.tab === k ? 'on' : ''}" data-act="tab:${k}">${k}${k === 'active' && (claimable || s.hostile) ? `<span class="badge">${claimable + (s.hostile ? 1 : 0)}</span>` : ''}</button>`).join('')}</div>`;
+  let body = s.tab === 'calendar' ? renderCalendar(s) : s.tab === 'history' ? renderHistory(s) : renderActive(s);
+  return `<div class="evpage is-imp" id="evpage" style="padding-top:${s.banner ? 52 : 6}px">
+    <div class="evhead"><div><h2>${ic('star-burst')} Events${IMP('in')}<span class="was" style="font-family:var(--f-body);font-weight:400;margin-left:2px">was: one empty card</span></h2><p>Threats, world events, the weekly calendar and milestones</p></div>${tabs}
+    <div class="srclegend">${srcTag('faction')}${srcTag('world')}${srcTag('calendar')}${srcTag('milestone')}</div></div>${body}</div>`;
+}
+function renderActive(s) {
+  const pinned = s.hostile ? renderHostile(s) : `<div class="calm" id="ev-pinned">${ic('shield')}<div><b style="color:var(--tx1)">Threat slot · empty.</b> ${s.calm}</div><span class="was" style="margin-left:auto">pinned here when a faction targets you</span></div>`;
+  const feat = renderFeatured(s);
+  const used = s.others.filter(e => e.state !== 'forecast').length;
+  const others = `<div class="sechead" id="ev-slots-wrap">Other events <small>world, faction, milestone</small><span class="slots is-new" id="ev-slots">${[0, 1, 2].map(i => `<i class="${i < used ? 'f' : ''}"></i>`).join('')} ${used}/3</span></div>
+    ${s.others.map(renderRow).join('')}
+    ${s.queued.length ? `<div class="sechead" style="margin-top:4px">Queued <small>starts when a slot frees up</small></div>${s.queued.map(e => renderRow(e, 'ev-queued')).join('')}` : ''}
+    ${!s.others.length ? '<div class="calm">Nothing else running.</div>' : ''}`;
+  const extra = s.rebelOpen ? renderRebelDetail() : s.hostile ? '' : renderComingUp(s);
+  return `<div class="evcols"><div class="evleft">${pinned}${feat}${extra}</div><div class="evright" id="ev-others">${others}</div></div>`;
+}
+function renderComingUp(s) {
+  return `<div class="card is-new" style="padding:10px 14px">${NEW('tr')}<div class="sechead">${ic('clock')} Coming up <small>from the Calendar tab</small></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <div class="calbar calbar--quiet" style="flex:2;height:44px"><b>Quiet days · Sat–Sun</b><small>Nothing featured</small></div>
+      <div class="calbar calbar--purge" style="flex:3;height:44px"><b>${ic('sword')} Raider Purge · Mon</b><small>6 days · par: Scavenger Packs 3,600</small></div></div></div>`;
+}
+function renderHostile(s) {
+  const h = s.hostile, stages = ['Probe', 'Massing', 'March', 'Battle'];
+  return `<div id="ev-pinned"><div class="hostile is-new" id="ev-hostile">${NEW()}
+    <div class="hostile__top"><div class="crest" style="--c:${C.red}">${ic('sword')}</div>
+      <div class="hostile__name">${h.faction.toUpperCase()} · RAID ON ${h.target.toUpperCase()}<small>${srcTag('faction', 'Faction · Red Talon')} &nbsp;Pinned: the one threat against you</small></div>
+      <div class="hostile__cd"><b>${h.cd}</b><small>until the warband departs</small></div></div>
+    <div class="stages">${stages.map((n, i) => `${i ? '<span class="stgline"></span>' : ''}<span class="stg ${i < h.stage ? 'done' : i === h.stage ? 'now' : ''}"><i>${i < h.stage ? '✓' : ''}</i>${n}</span>`).join('')}</div>
+    <div class="hostile__row"><div class="hostile__facts">War camp on the Frost Hold border · size <b>Large</b><br>Your walls only stop <b>small raids</b></div>
+      <button class="btn btn--red">${ic('shield')}Reinforce</button><button class="btn btn--red">${ic('sword')}Intercept</button><button class="btn" data-act="open:map-threat">${ic('world')}Map</button></div>
+    <div class="queued is-new" id="ev-qhostile">${NEW()}<span class="qtag">Queued</span><div class="crest" style="--c:${C.scav};width:26px;height:26px;font-size:13px;border-radius:7px;border-width:1.5px">${ic('sword')}</div>
+      <div><b>${s.qhostile.faction} · raid on ${s.qhostile.target}</b><br>${s.qhostile.note}</div></div>
+  </div></div>`;
+}
+function tierX(p) {
+  const pts = [0, ...TIERS.map(t => t.pts)];
+  for (let i = 1; i < pts.length; i++) if (p <= pts[i]) return ((i - 1) + (p - pts[i - 1]) / (pts[i] - pts[i - 1])) / TIERS.length * 100;
+  return 100;
+}
+function renderFeatured(s) {
+  const ir = s.iron, xs = TIERS.map(t => tierX(t.pts));
+  const tiers = TIERS.map((t, i) => {
+    const done = ir.claimed.includes(i), ready = ir.ready.includes(i);
+    const st = done ? 'tier--done' : ready ? 'tier--ready' : '';
+    return `<div class="tier ${st}" id="tier-${i}" style="left:${xs[i]}%"><div class="tier__n">${done ? '✓' : i + 1}</div><div class="tier__pts">${t.pts.toLocaleString()}</div>
+      <div class="tier__rw">${t.rw.map(r => `<span class="rw">${ic(r[0])}${r[1]}</span>`).join('')}</div>
+      ${ready ? `<button class="btn btn--pri btn--sm tier__claim" data-act="claim:${i}">${ic('gift')}Claim</button>` : done ? `<div class="tier__got">${ic('check')}Claimed</div>` : ''}</div>`;
+  }).join('');
+  const nextT = TIERS.find(t => t.pts > ir.pts);
+  return `<div class="feat is-new" id="ev-feat">${NEW()}
+    <div class="feat__top"><div class="feat__ic">${ic('iron')}</div><div><div class="feat__name">IRON WEEK</div>
+      <div class="feat__meta">${srcTag('calendar', 'Calendar · Featured')}<span>${s.ironDay}</span></div></div>
+      <div class="feat__pts"><b>${ir.pts.toLocaleString()}</b> pts<small>${nextT ? `${(nextT.pts - ir.pts).toLocaleString()} to Tier ${TIERS.indexOf(nextT) + 1}` : 'All tiers reached'}</small></div></div>
+    <div class="track"><div class="track__bar"><div class="track__fill" style="width:${tierX(ir.pts)}%"></div></div>
+      <div class="tmark tmark--pb" id="tm-pb" style="left:${tierX(PB)}%"><span>${ic('star-burst')}Your best 4,600</span><i></i></div>
+      <div class="tmark tmark--par" id="tm-par" style="left:${tierX(PAR)}%;top:${ir.parBeaten ? 0 : 0}px"><span>${ic('sword')}Vesk's par 4,200${ir.parBeaten ? ' · beaten' : ''}</span><i></i></div>
+      ${tiers}</div>
+    <div class="earn" id="ev-earn"><span>Earn points:</span><span class="chipx">${ic('gather')}Gather iron <b>1 per 100</b></span><span class="chipx">${ic('hammer')}Iron mine upgrade <b>50</b></span><span class="chipx">${ic('sword')}Raid a camp <b>80</b></span>
+    <span style="margin-left:auto;color:var(--tx3)">Beat the par: <b style="color:#ffb3a3">+5 Red Talon standing</b></span></div></div>`;
+}
+function renderRow(e, id) {
+  const forecast = e.state === 'forecast', queued = e.state === 'queued';
+  const rid = id || (e.id === 'rebel' ? 'ev-rebel' : '');
+  const rebelOpen = e.id === 'rebel' && S.rebelOpen;
+  return `<div class="erow ${forecast ? 'erow--forecast' : ''} ${queued ? 'erow--queued' : ''} ${rebelOpen ? 'erow--sel' : ''} is-new" ${rid ? `id="${rid}"` : ''} style="--c:${e.c}">
+    <div class="erow__ic">${ic(e.icon)}</div><div class="erow__main">
+    <div class="erow__t">${e.title}<span class="tm">${queued ? `<span class="qtag">Queued</span>` : forecast ? `<span class="qtag">Forecast</span>` : ''}${e.result ? '' : ic('clock')}${e.result ? `<span class="result result--${e.result[0]}">${e.result[1]}</span>` : e.tm}</span></div>
+    <div style="margin-top:4px">${srcTag(e.src)}</div>
+    <div class="erow__sub">${e.sub}</div>
+    ${e.prog ? `<div class="erow__bar"><i style="width:${e.prog[0] / e.prog[1] * 100}%"></i></div><div class="erow__sub" style="margin-top:2px;font-size:10.5px">${e.prog[0]} of ${e.prog[1]} ${e.prog[2]}</div>` : ''}
+    ${rebelOpen ? `<div class="erow__act" style="color:var(--primary);font-size:11.5px;font-weight:600">Open on the left ‹</div>` : ''}
+    ${e.map && !rebelOpen ? `<div class="erow__act"><button class="btn btn--sm btn--ghost" data-act="open:map-${e.id}">${ic('world')}Show on map</button></div>` : ''}
+    </div></div>`;
+}
+function renderRebelDetail() {
+  const e = EV.rebel;
+  return `<div class="detail is-new" id="ev-rebel-detail">${NEW()}<div style="display:flex;gap:12px;align-items:center"><div class="crest" style="--c:${C.rebel}">${ic('fire')}</div>
+    <div><div class="hostile__name">PALE CHOIR RISING<small>${srcTag('rebel')} &nbsp;Rebels (cultists) · camp in Command Ruin</small></div></div>
+    <div class="hostile__cd"><b style="font-size:20px">1d 4h</b><small>until it becomes a settlement</small></div></div>
+    <div class="lifecycle" id="rebel-life"><span class="lc now">Camp · now</span>›<span class="lc">Settlement · 1d 4h</span>›<span class="lc bad">Stronghold · 3d 12h · can take a region</span></div>
+    <div style="display:flex;gap:12px;margin-top:8px;align-items:flex-start">
+    <div class="objs" style="flex:1;margin-top:0"><div class="obj done"><i>✓</i>Scout the camp</div><div class="obj"><i></i><b>Defeat the camp (Lv4)</b></div><div class="obj"><i></i>Before it becomes a stronghold</div>
+    <div style="font-size:10.5px;color:var(--tx3);margin-top:2px">Rebels alive: <b style="color:var(--tx1)">2 of 3</b> (Ash Brood, Pale Choir)</div></div>
+    <div><div class="minimap" style="background-image:url('${BG.world}');background-position:-${708 - 75}px -${452 - 49}px"><i style="left:68px;top:42px"></i></div>
+    <button class="btn btn--sm" id="rebel-map" data-act="open:map-rebel" style="margin-top:6px;width:150px;justify-content:center">${ic('world')}Show on map</button></div></div></div>`;
+}
+function renderCalendar(s) {
+  const wk = (label, dates, bars, todayIdx) => `<div class="calweek"><h4>${label} <small>${dates}</small></h4>
+    <div class="calgrid">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d, i) => `<div class="calday ${i === todayIdx ? 'today' : ''}">${d}${i === todayIdx ? ' · today' : ''}</div>`).join('')}
+    ${bars}</div></div>`;
+  const bar = (col, span, cls, title, sub, id = '') => `<div class="calbar ${cls}" ${id ? `id="${id}"` : ''} style="grid-column:${col} / span ${span}"><b>${title}</b><small>${sub}</small></div>`;
+  return `<div class="evcols"><div class="evleft"><div class="card cal is-new" id="cal-weeks">${NEW()}
+      ${wk('This week', 'Oct 12 – 18', bar(1, 5, 'calbar--feat', `${ic('iron')} Iron Week`, 'Featured · 5 days · 1,500 pts so far · par: Red Talon 4,200') + bar(6, 2, 'calbar--quiet', 'Quiet days', 'Nothing featured. World and faction events still happen.', 'cal-quiet1'), 0)}
+      ${wk('Next week', 'Oct 19 – 25', bar(1, 6, 'calbar--purge', `${ic('sword')} Raider Purge`, 'Featured · 6 days · kill points · par: Scavenger Packs 3,600') + bar(7, 1, 'calbar--quiet', 'Quiet', 'Continues Mon 26'), -1)}
+      <div class="calnote">${ic('warning')} Not on the calendar: <b>world events</b> and <b>faction events</b> happen when the world decides, and <b>milestones</b> fire when you reach them. The calendar only holds featured events, so you can plan around them.</div>
+    </div></div>
+    <div class="evright"><div class="card is-new" id="cal-rot">${NEW()}<div class="sechead">${ic('clock')} Rotation</div>
+      <div class="calnote" style="margin-top:6px">Week number + your save's seed pick the next template. Fixed in advance, the same on any device, no server.</div>
+      <div class="rot"><div class="cur"><b>Week 42</b> Iron Week<span>now</span></div><div><b>Week 43</b> Raider Purge<span>par: Scavengers</span></div><div><b>Week 44</b> Harvest Rush<span>par: Iron Covenant</span></div><div><b>Week 45</b> Builder's Rush<span>par: Red Talon</span></div></div>
+      <div class="calnote" style="margin-top:10px">Each template has a 5-tier points track, a personal best and a faction <b>par</b>. Beating a par moves that faction's standing.</div></div></div></div>`;
+}
+const HIST = [
+  ['Red Talon raid on Red Lowlands', 'Fri', 'faction', 'Faction · Red Talon', ['held', 'Held'], 'You intercepted the warband. Vesk: "This isn\'t over."', [['iron', '8k loot']]],
+  ['Iron Week', 'Mon – Fri', 'calendar', '', ['win', 'Tier 4 of 5'], '5,240 pts · new personal best · beat Vesk\'s par (+5 standing)', [['iron', '35k'], ['diamond', '75'], ['heroes', 'Epic']]],
+  ['They have noticed you', 'Sat', 'milestone', '', ['win', 'Completed'], 'Read all three warlord letters.', [['diamond', '30']]],
+  ['The Bonecrusher stirs', 'Thu – Fri', 'world', '', ['miss', 'Missed'], 'The boss window opened and closed while your squads were busy.', []],
+  ['Supply drop', 'Wed', 'world', '', ['win', 'Won the race'], 'Beat the Scavenger gather party by 0:25.', [['iron', '15k'], ['speedup', '1h']]],
+  ['Herd migration', 'Tue – Wed', 'world', '', ['part', '3 of 4'], 'Gathered 3 of 4 herd nodes before they left.', [['food', '54k']]],
+  ['Storm front', 'Tue – Wed', 'world', '', ['miss', 'Passed'], 'No goal. 1 march slowed by +40%.', []],
+];
+function renderHistory() {
+  return `<div class="card is-new" id="hist" style="margin-top:12px;padding:12px">${NEW()}
+    <div class="hsum"><div><b>8</b><small>events this week</small></div><div><b style="color:var(--me)">5</b><small>completed or won</small></div><div><b style="color:var(--warning)">1</b><small>partial</small></div><div><b style="color:var(--tx3)">2</b><small>missed or passed</small></div><div><b>2</b><small>still running (Active)</small></div></div>
+    <div class="hist" style="margin-top:10px">${HIST.map(h => `<div class="hrow"><div class="hrow__t">${h[0]}<small>${h[1]}</small></div><div class="hrow__src">${srcTag(h[2], h[3] || undefined)}</div>
+      <div class="hrow__res"><span class="result result--${h[4][0]}">${h[4][1]}</span></div><div class="hrow__d">${h[5]}</div>
+      <div class="hrow__rw">${h[6].map(r => `<span class="rw">${ic(r[0])}${r[1]}</span>`).join('') || '<span class="rw" style="color:var(--tx3)">none</span>'}</div></div>`).join('')}</div></div>`;
+}
+
+function renderModals(s) {
+  let h = '';
+  if (s.mail) h += renderMail(s);
+  if (s.welcome) h += renderWelcome();
+  if (s.director) h += renderDirector();
+  return h;
+}
+const LETTERS = [
+  { id: 'vesk', c: C.red, icon: 'sword', from: 'Warlord Vesk', fac: 'Red Talon Raiders', subj: 'So you\'re the one', age: '2m', read: true },
+  { id: 'rook', c: C.scav, icon: 'skull', from: 'Mother Rook', fac: 'Scavenger Packs', subj: 'A gift for the new neighbour', age: '2m', gift: true },
+  { id: 'kane', c: C.iron, icon: 'shield', from: 'Marshal Kane', fac: 'Iron Covenant', subj: 'Terms, when you are ready', age: '2m' },
+];
+function renderMail(s) {
+  const cat = (id, icon, name, sub, badge, claim, extra = '') => `<div class="mcat ${s.mail.cat === id ? 'on' : ''} ${extra}" id="mcat-${id}" data-act="mailcat:${id}">${extra.includes('is-new') ? NEW('tr') : ''}${ic(icon)}${badge ? `<span class="badge">${badge}</span>` : ''}<div><div class="mcat__n">${name}</div><div class="mcat__s">${sub}</div></div>${claim ? `<button class="btn btn--pri btn--sm">Claim ${claim}</button>` : ''}</div>`;
+  const diplo = s.mail.cat === 'diplo';
+  const rows = diplo ? LETTERS.map(l => {
+    const open = s.mail.open === l.id, read = l.read || open;
+    return `<div class="mrow is-new" id="mrow-${l.id}" data-act="mailopen:${l.id}" style="--c:${l.c}">
+      <div class="mrow__top"><span class="mrow__dot ${read ? 'read' : ''}"></span><div class="mrow__ic">${ic(l.icon)}</div><div class="mrow__s">${l.subj}<small>${l.from} · ${l.fac} · ${l.age}</small></div>
+      <div class="mrow__r">${l.gift ? `<span class="rw">${ic('food')}5,000</span><button class="btn btn--pri btn--sm">Claim</button>` : ''}<span class="mrow__star">★</span></div></div>
+      ${open ? letterBody(l) : ''}</div>`;
+  }).join('') : `<div class="mrow"><div class="mrow__top"><span class="mrow__dot"></span><div class="mrow__ic" style="--c:#ccc">${ic('gift')}</div><div class="mrow__s">Iron Week · Tier 3 reward<small>Events · 1d</small></div><div class="mrow__r"><span class="rw">${ic('iron')}20k</span><button class="btn btn--pri btn--sm">Claim</button><span class="mrow__star">★</span></div></div></div>`;
+  return `<div class="mailveil" data-act="closemail"></div><div class="mail" id="mail">
+    <div class="mail__head">${ic('envelope')}<h3>MAIL</h3><small>${s.mailBadge} unread</small><span style="margin-left:auto"></span><button class="btn btn--pri btn--sm">Claim all (3)</button><button class="mail__x" data-act="closemail">${ic('x-circle')}</button></div>
+    <div class="mail__body"><div class="mail__cats">
+      ${cat('reports', 'sword', 'Reports', '1 mail · 0 unread', 0, 0)}
+      ${cat('rewards', 'gift', 'Rewards', '2 mail · 1 unread', 1, 2)}
+      ${cat('diplo', 'scroll', 'Diplomacy', '3 mail · 2 unread', 2, 1, 'is-new')}
+      ${cat('system', 'gear', 'System', '1 mail · 1 unread', 1, 0)}
+      ${cat('starred', 'star-burst', 'Starred', '0 mail · 0 unread', 0, 0)}
+      ${cat('trash', 'trash', 'Trash', '0 mail', 0, 0)}
+    </div><div class="mail__list"><div class="mail__lh"><h4>${diplo ? 'Diplomacy' : 'Rewards'}</h4><small>${diplo ? '3 mail' : '2 mail'}</small>
+      ${diplo ? `<div class="milechip is-new" id="milechip">${NEW("tl")}${ic('crown')}<span>Milestone · <b>They have noticed you</b></span><span class="pips"><i class="f"></i><i class="${s.mail.open === 'rook' ? 'f' : ''}"></i><i></i></span><span>${s.mail.open === 'rook' ? 2 : 1} of 3 read</span></div>` : ''}</div>
+    <div class="mail__rows">${rows}</div></div></div></div>`;
+}
+function letterBody(l) {
+  const body = {
+    vesk: ['"Headquarters level ten. My scouts laughed when they saw your walls go up. They have stopped laughing."', 'Red Lowlands was mine. Remember that.'],
+    rook: ['"A little something for the new neighbour. Food keeps people friendly, and friendly people make good trading partners."', 'Mother Rook offers a gift. No strings, she says.'],
+    kane: ['"You build like someone who intends to stay. The Covenant respects that. When you want terms, write."', ''],
+  }[l.id];
+  return `<div class="mrow__body"><p class="quote">${body[0]}</p>${body[1] ? `<p>${body[1]}</p>` : ''}
+    ${l.gift ? `<div class="rgrid"><div class="rcell">${ic('food')}+5,000<small>Food</small></div></div>` : ''}
+    <div class="mrow__acts">${l.gift ? `<button class="btn btn--pri">${ic('gift')}Claim</button>` : ''}<button class="btn">Reply…</button><span style="flex:1"></span><button class="btn">${ic('trash')}Delete</button></div></div>`;
+}
+function renderWelcome() {
+  const line = (icon, c, t, r = '') => `<div class="wbline"><span style="color:${c}">${ic(icon)}</span><span>${t}</span>${r ? `<span class="r">${r}</span>` : ''}</div>`;
+  return `<div class="veil"></div><div class="modal wb is-imp" id="wb">${IMP('tl')}
+    <div class="modal__top"><div class="modal__icon">${ic('clock')}</div><div><div class="modal__title">Welcome Back!</div><div class="modal__sub">Away for 9h 12m</div></div>
+      <span class="was" style="margin-left:auto;max-width:170px;text-align:right">was: "Resources collected" + a flat "Completed while away" list</span></div>
+    <div class="wbthreat is-new" id="wb-threat">${NEW('tr')}<div class="wbsec__h">${srcTag('faction', 'Faction · Scavengers')}<b style="font-size:13px">Raid on Home Refuge, held for your return</b></div>
+      <div class="wbline" style="color:var(--tx1)">Mother Rook's raid ripened overnight. Strikes never land while you're offline, so it waits.</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:6px"><span style="font:700 22px var(--f-disp)">45:00</span><span style="font-size:11.5px;color:var(--tx2)">fresh countdown, starts now</span><span style="flex:1"></span><button class="btn btn--red">${ic('shield')}Defend now</button></div></div>
+    <div class="wbsec is-new">${NEW('tr')}<div class="wbsec__h">${srcTag('faction')}</div>
+      ${line('scroll', C.scav, '<b>Mother Rook</b> wrote: "Nothing personal." (Diplomacy)')}${line('fire', C.rebel, '<b>Pale Choir</b> grew into a settlement in Command Ruin')}</div>
+    <div class="wbsec is-new">${NEW('tr')}<div class="wbsec__h">${srcTag('world')}${srcTag('calendar')}</div>
+      ${line('flask', C.contam, 'Contamination spread <b>+2 cells</b> toward Red Lowlands')}${line('clock', C.primary, '<b>Raider Purge</b> started (Mon–Sat) · par: Scavenger Packs 3,600')}</div>
+    <div class="wbsec"><div class="wbsec__h" style="font:700 10px var(--f-body);letter-spacing:.08em;color:var(--tx3);text-transform:uppercase">Resources collected while away</div>
+      ${line('wood', '#c98a4a', 'wood', '+182,400')}${line('food', '#9cc35a', 'food', '+96,120')}${line('iron', '#aab', 'iron', '+71,880')}</div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;padding:4px 18px 16px"><button class="btn" data-act="closewb">Later</button><button class="btn btn--pri" data-act="closewb">Collect &amp; Continue</button></div></div>`;
+}
+function renderDirector() {
+  const W = 600, H = 120, days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const pts = [[0, 20], [1, 34], [2, 48], [3, 62], [4, 96], [4.5, 70], [5, 22], [6, 14], [7, 12]];
+  const P = pts.map(([d, v]) => [d / 7 * W, H - v / 100 * H]);
+  const path = 'M' + P.map(p => p.join(',')).join(' L');
+  const pin = (d, label, c, y) => `<g><line x1="${d / 7 * W}" x2="${d / 7 * W}" y1="${y + 8}" y2="${H}" stroke="${c}" stroke-dasharray="2 3"/><circle cx="${d / 7 * W}" cy="${y + 4}" r="4" fill="${c}"/><text x="${d / 7 * W + 6}" y="${y + 8}" fill="${c}" font-size="10.5" font-family="Outfit" font-weight="600">${label}</text></g>`;
+  const strip = `<svg width="${W}" height="${H + 40}" style="display:block">
+    <rect x="0" y="0" width="${W / 7 * 4}" height="${H}" fill="rgba(249,207,22,.05)"/><rect x="${W / 7 * 4}" y="0" width="${W / 7}" height="${H}" fill="rgba(224,90,61,.12)"/><rect x="${W / 7 * 5}" y="0" width="${W / 7 * 2}" height="${H}" fill="rgba(58,209,122,.06)"/>
+    <path d="${path} L${W},${H} L0,${H} Z" fill="rgba(243,154,43,.14)"/><path d="${path}" stroke="${C.primary}" stroke-width="2.5" fill="none"/>
+    ${pin(1.42, 'Storm', C.storm, 6)}${pin(1.6, 'Herd', C.neutral, 26)}${pin(2.38, 'Drop race', C.neutral, 46)}${pin(3.35, 'Rebels', C.rebel, 8)}${pin(4.38, 'Red Talon strike', C.red, 2)}${pin(5.45, 'Milestone', C.mile, 40)}
+    ${days.map((d, i) => `<text x="${i / 7 * W + W / 14}" y="${H + 16}" text-anchor="middle" fill="#9a9086" font-size="11" font-family="Outfit">${d}</text>`).join('')}
+    <text x="${W / 7 * 2}" y="${H + 34}" text-anchor="middle" fill="${C.warn}" font-size="11" font-weight="700" font-family="Outfit" letter-spacing="1">BUILD-UP</text>
+    <text x="${W / 7 * 4.5}" y="${H + 34}" text-anchor="middle" fill="${C.red}" font-size="11" font-weight="700" font-family="Outfit" letter-spacing="1">PEAK</text>
+    <text x="${W / 7 * 6}" y="${H + 34}" text-anchor="middle" fill="${C.me}" font-size="11" font-weight="700" font-family="Outfit" letter-spacing="1">CALM</text></svg>`;
+  const quiet = `<svg width="${W}" height="64" style="display:block">${days.map((d, i) => `<rect x="${i / 7 * W + 2}" y="8" width="${W / 7 - 4}" height="28" rx="5" fill="${i < 6 ? '#1b1814' : 'rgba(155,107,255,.25)'}" stroke="${i < 6 ? '#3a332b' : C.rebel}"/>
+      <text x="${i / 7 * W + W / 14}" y="27" text-anchor="middle" fill="${i < 6 ? '#6f665d' : '#fff'}" font-size="11" font-family="Outfit" font-weight="600">${i < 6 ? 'quiet' : 'FAILSAFE'}</text>`).join('')}
+      <text x="0" y="56" fill="#9a9086" font-size="11" font-family="Outfit">Friendly factions, no threats for 6 days → day 7: a small <tspan fill="${C.rebel}" font-weight="700">Ash Brood rebel raid</tspan> is forced (sized from your power).</text></svg>`;
+  const slot = (lab, items) => `<div class="slotrow"><span class="lab">${lab}</span>${items.map(([t, c, q]) => `<span class="slot ${q ? 'slot--q' : ''}" style="--c:${c}">${t}</span>`).join('')}</div>`;
+  return `<div class="veil"></div><div class="modal dir" id="dir"><h3>The director<span class="dir__tag">Design explainer · not player UI</span></h3>
+    <div class="dir__grid"><div class="dbox"><h4>This week's pacing</h4>${strip}
+      <p>Tension builds through small world and faction events, peaks with one major strike, then a calm follows (12h minimum after an assault). Cycles, not dice.</p></div>
+      <div class="dbox"><h4>Limits (what you see at once)</h4>
+        ${slot('Hostile 1', [['Red Talon raid', C.red], ['Scavenger raid · queued', C.scav, 1]])}
+        ${slot('Featured 1', [['Iron Week', C.primary]])}
+        ${slot('Others 3', [['Storm', C.storm], ['Herd', C.neutral], ['Drop', C.neutral]])}
+        ${slot('Queue', [['Contamination · waits for a slot', C.contam, 1]])}
+        <p>Milestones are one-time story beats. They never queue behind a cooldown, but only one story popup shows per session.</p></div>
+      <div class="dbox"><h4>Failsafe for a peaceful player</h4>${quiet}</div>
+      <div class="dbox"><h4>Budget</h4><p style="margin-top:0">Threat budget comes from your <b>power</b>, with diminishing returns: 10k power → 600 pts, 20k → 1,000, 40k → 1,500. Each hostile event buys its threat from the budget.</p>
+        <p><b style="color:var(--tx1)">The director decides how much pressure.</b> The factions decide what to do with it (who, where, and why), using their own brains.</p></div></div></div>`;
+}
+function renderToast(t, i) {
+  return `<div class="toast is-imp" id="toast-${i}" style="--tc:${t.c}" ${t.go ? 'data-act="open:events"' : ''}>${i === 0 ? IMP('tr') : ''}
+    <div class="toast__ic">${ic(t.icon)}</div><div style="flex:1"><div class="toast__t">${t.t}</div><div class="toast__m">${t.m}</div>
+    ${t.src ? `<div class="toast__f">${srcTag(t.src)}${t.go ? `<span class="toast__go">${t.go}</span>` : ''}</div>` : ''}</div></div>`;
+}
+function flyIn() {
+  const from = document.getElementById('tier-1'); if (!from) return;
+  const fr = frameRect(from);
+  for (let k = 0; k < 5; k++) {
+    const el = document.createElement('div');
+    el.innerHTML = ic('iron'); el.style.cssText = `position:absolute;left:${fr.x + 6}px;top:${fr.y + 6}px;font-size:18px;color:#cfd6de;z-index:70;pointer-events:none;filter:drop-shadow(0 0 4px #fff)`;
+    $('#toastLayer').appendChild(el);
+    el.animate([{ transform: 'translate(0,0) scale(1)', opacity: 1 }, { transform: `translate(${430 - fr.x + (k - 2) * 6}px,${20 - fr.y}px) scale(.7)`, opacity: .9 }],
+      { duration: 900, delay: k * 90, easing: 'cubic-bezier(.5,0,.4,1)', fill: 'forwards' }).onfinish = () => el.remove();
+  }
+}
+
+function frameRect(el) {
+  const f = $('#frame').getBoundingClientRect(), r = el.getBoundingClientRect();
+  return { x: (r.left - f.left) / scale, y: (r.top - f.top) / scale, w: r.width / scale, h: r.height / scale };
+}
+function resolve(t) {
+  if (typeof t !== 'string') return t;
+  const el = document.querySelector('#frame ' + t) || document.querySelector(t);
+  if (!el) return null;
+  if (el instanceof SVGGraphicsElement) { const r = el.getBoundingClientRect(), f = $('#frame').getBoundingClientRect(); return { x: (r.left - f.left) / scale, y: (r.top - f.top) / scale, w: r.width / scale, h: r.height / scale }; }
+  if (el.classList.contains('mk')) { const r = frameRect(el.querySelector('.mk__node')); const l = el.querySelector('.mk__lbl'); if (!l) return r; const lr = frameRect(l); const x = Math.min(r.x, lr.x), y = Math.min(r.y, lr.y); return { x, y, w: Math.max(r.x + r.w, lr.x + lr.w) - x, h: Math.max(r.y + r.h, lr.y + lr.h) - y }; }
+  return frameRect(el);
+}
+function placeSpot() {
+  const svg = $('#spot'), marks = $('#marks');
+  const st = STEPS[idx];
+  if (mode !== 'guided' || !st.spot) { svg.innerHTML = ''; marks.innerHTML = ''; return; }
+  const rects = st.spot.map(resolve).filter(Boolean).map(r => ({ x: r.x - 6, y: r.y - 6, w: r.w + 12, h: r.h + 12 }));
+  svg.innerHTML = `<defs><mask id="spm"><rect width="1280" height="800" fill="#fff"/>${rects.map(r => `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="10" fill="#000"/>`).join('')}</mask></defs>
+    <rect width="1280" height="800" fill="rgba(3,3,3,.58)" mask="url(#spm)"/>${rects.map(r => `<rect class="ring" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="10"/>`).join('')}`;
+  marks.innerHTML = (st.marks || []).map(([sel, n, side]) => { const r = resolve(sel); if (!r) return ''; const x = side === 'r' ? r.x + r.w + 6 : Math.max(-2, r.x - 30); return `<div class="mark" style="left:${x}px;top:${r.y - 4}px">${n}</div>`; }).join('');
+}
+
+function renderCaption() {
+  const st = STEPS[idx];
+  $('#capStep').textContent = `Step ${idx + 1} of ${STEPS.length}`;
+  $('#capTopic').textContent = st.topic;
+  $('#capDay').textContent = st.day < 0 ? 'The whole week' : `${DAYS[st.day]}${st.day === 7 ? ' (next week)' : ''} ${st.time}`;
+  $('#capText').innerHTML = st.text;
+  $('#capLook').innerHTML = (st.look || []).map(([k, t]) => `<span class="look look--${k}">${k === 'new' ? 'NEW' : k === 'imp' ? 'IMPROVED' : 'EXISTING'} · ${t}</span>`).join('');
+  $('#back').disabled = idx === 0; $('#next').disabled = idx === STEPS.length - 1;
+  $('#dots').innerHTML = STEPS.map((_, i) => `<i class="${i === idx ? 'on' : i < idx ? 'done' : ''}" data-step="${i}" title="${STEPS[i].topic}"></i>`).join('');
+  fit();
+}
+function renderWeek() {
+  const d = STEPS[idx].day;
+  $('#week').innerHTML = DAYS.map((n, i) => `<span class="${d === i ? 'on' : d < 0 && i < 7 ? 'span' : ''}">${n}${i === 7 ? '+' : ''}</span>`).join('');
+}
+function fit() {
+  const capH = mode === 'guided' ? $('#caption').offsetHeight + 10 : $('#exploreHint').offsetHeight + 10;
+  const availW = window.innerWidth - 24, availH = window.innerHeight - $("#proto").offsetHeight - 10 - capH - 10;
+  scale = Math.max(0.3, Math.min(1, availW / 1280, availH / 800));
+  $('#frame').style.transform = `scale(${scale})`;
+  $('#frameWrap').style.width = 1280 * scale + 'px'; $('#frameWrap').style.height = 800 * scale + 'px';
+  $('#caption').style.width = Math.max(1280 * scale, Math.min(960, availW)) + 'px';
+  requestAnimationFrame(placeSpot);
+}
+function setMode(m) {
+  mode = m; document.body.classList.toggle('explore', m === 'explore');
+  $('#mGuided').classList.toggle('on', m === 'guided'); $('#mExplore').classList.toggle('on', m === 'explore');
+  fit();
+}
+
+function act(a) {
+  const [k, v] = a.split(':'), s = S;
+  if (k === 'more') { s.more = !s.more; }
+  else if (k === 'tile') { if (v === 'events') { Object.assign(s, { view: 'events', oldEvents: false, more: false, mail: null, panel: null }); s.dots = { fab: false, tile: false }; } else s.toasts = [{ c: C.world, icon: 'warning', t: 'Not part of this prototype', m: `${v[0].toUpperCase() + v.slice(1)} is unchanged.` }]; }
+  else if (k === 'tab') { s.tab = v; }
+  else if (k === 'claim') { const i = +v; s.iron.ready = s.iron.ready.filter(x => x !== i); s.iron.claimed.push(i); s.anim = 'fly'; s.toasts = [{ c: C.success, icon: 'gift', t: `Iron Week · Tier ${i + 1} claimed`, m: TIERS[i].rw.map(r => r[1] + ' ' + r[0]).join(' · '), src: 'calendar' }]; s.dots = { fab: false, tile: false }; }
+  else if (k === 'mail') { s.mail = s.mail ? null : { cat: 'diplo', open: null }; s.more = false; }
+  else if (k === 'mailcat') { s.mail.cat = v; s.mail.open = null; }
+  else if (k === 'mailopen') { s.mail.open = s.mail.open === v ? null : v; }
+  else if (k === 'closemail') { s.mail = null; }
+  else if (k === 'closewb') { s.welcome = false; }
+  else if (k === 'layer') { s.layer = v; }
+  else if (k === 'poi') { s.panel = v === 'outpost-hl' ? null : v; }
+  else if (k === 'closepanel') { s.panel = null; }
+  else if (k === 'banner') { Object.assign(s, { view: 'events', tab: 'active', more: false, mail: null }); }
+  else if (k === 'open') {
+    if (v === 'events') Object.assign(s, { view: 'events', oldEvents: false, tab: 'active', more: false, mail: null, panel: null, toasts: [] });
+    else { const what = v.slice(4); s.view = 'world'; s.zoom = what === 'herd' ? 'home' : 'out'; s.more = false; s.flags = { landmarks: true, [what === 'threat' ? 'threat' : what]: true, ...(what === 'storm' ? {} : {}) }; s.layer = 'all'; s.panel = { storm: null, herd: 'herd', contam: 'contam', boss: 'boss', rebel: 'rebel', threat: 'camp' }[what] || null; if (what === 'threat') s.marches = { threats: [{ name: 'Red Talon warband', ph: 'Massing · 5:12:40', pct: 62 }], mine: [] }; }
+  }
+  else return;
+  render();
+}
+document.addEventListener('click', e => {
+  const st = e.target.closest('[data-step]'); if (st) { go(+st.dataset.step); return; }
+  const t = e.target.closest('[data-act]'); if (t && t.closest('#frame')) { e.stopPropagation(); act(t.dataset.act); }
+});
+$('#next').onclick = () => go(idx + 1);
+$('#back').onclick = () => go(idx - 1);
+$('#mGuided').onclick = () => { setMode('guided'); go(idx); };
+$('#mExplore').onclick = () => setMode('explore');
+$('#backGuided').onclick = () => { setMode('guided'); go(idx); };
+$('#tagsToggle').onchange = e => document.body.classList.toggle('notags', !e.target.checked);
+document.addEventListener('keydown', e => { if (e.key === 'ArrowRight') go(idx + 1); else if (e.key === 'ArrowLeft') go(idx - 1); });
+window.addEventListener('resize', fit);
+if (document.fonts) document.fonts.ready.then(() => requestAnimationFrame(placeSpot));
+const startAt = parseInt(new URLSearchParams(location.search).get('step') || '1', 10) - 1;
+go(isNaN(startAt) ? 0 : startAt);
+</script>
+</body>
+</html>

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { HeroManager } from '../../js/systems/HeroManager.js';
+import { BUILDINGS_CONFIG } from '../../js/entities/GAME_DATA.js';
 
 function stubRM() {
   return { canAfford: () => true, spend() {}, add() {}, getSnapshot: () => ({}) };
@@ -101,4 +102,10 @@ test('house still rejects a hero', () => {
   const hm = makeHM();
   hm._recruitHero('warlord');
   assert.equal(hm.assignHeroToBuilding('warlord', 'house_0').success, false);
+});
+
+test('hero slots come from heroquarters effects.heroSlots: Hero Quarters 25 gives 50', () => {
+  const hm = new HeroManager(stubRM(), { getLevelOf: id => (id === 'heroquarters' ? 25 : 1) }, stubInv());
+  assert.equal(hm.getAvailableHeroSlots(), 25 * BUILDINGS_CONFIG.heroquarters.effects.heroSlots);
+  assert.equal(hm.getAvailableHeroSlots(), 50);
 });

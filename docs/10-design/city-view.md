@@ -75,6 +75,14 @@ iso `isoMath.js` (128×96 tiles, ADR 0020/0021).
   `city:sectorCleared` and becomes normal ground. Concurrent clears run on independent
   per-id timers (`SectorState`); one finishing never affects another.
 
+## Building art eras
+
+Sprites change by art bucket, not per level: `eraBucket(level)` in `js/ui/city/cityAssets.js` gives 1 (L1–9), 2 (L10–19),
+3 (L20–29) and 4 (L30). `gritBucket` / `stageBucket` clamp to the highest bucket a type ships, so a level past the
+shipped art keeps the best available. The grit set ships buckets 1–3 for every type and the AI set has all four only for
+the HQ; art for the later eras is a backlog item
+(`building-levels.md`, ADR 0044).
+
 ## Camera
 
 `CityCamera.js` — "searchlight" clamp with `EDGE_OVERHANG` over a gradient backdrop

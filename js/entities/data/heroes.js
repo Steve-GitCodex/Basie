@@ -152,7 +152,7 @@ export const AWAKENING_CONFIG = {
 };
 
 export const XP_CONFIG = {
-  heroLevelCapPerHQLevel: 10,
+  heroLevelCapPerHQLevel: 4,
   passiveXpCapOffset: 20,
   baseXpPerLevel: 100,
   xpPerLevelStep: 20,

@@ -1,4 +1,4 @@
-# Building levels (target design; foundation built, scale not built)
+# Building levels (built 2026-10-09)
 
 Buildings go to **30 levels (HQ 30)**, with one shared cost/time curve, a cap tied to HQ, and an HQ prerequisite chain.
 HQ 1–10 keeps today's cost and time. Decided 2026-10-07 (ADR 0044).
@@ -8,7 +8,12 @@ HQ 1–10 keeps today's cost and time. Decided 2026-10-07 (ADR 0044).
 - **Foundation built (2026-10-08):** `js/systems/building/buildingCurve.js` (`costFactor`/`timeFactor`/`prodFactor`,
   `levelCap`, `eraAt`, `upgradeCost`, `upgradeTime`; constants in `js/entities/data/buildingCurve.js`), `levelTable.js`
   (per-level lookups throw on a gap instead of returning 0/null) + `trainingSlots.js`, and per-level table validation in
-  `tests/unit/gameData.test.js`. `costMultiplier` is gone; every building uses the shared curve. `maxLevel`s are unchanged.
+  `tests/unit/gameData.test.js`. `costMultiplier` is gone; every building uses the shared curve.
+- **Scale built (2026-10-09):** the max levels, cap rule, HQ chain (`js/entities/data/hqChain.js`), tables to 30
+  (`js/entities/data/buildingTables.js`), gate remap through M, production and crates on `prodFactor`, a scrolling
+  30-row Info panel with generated labels (`buildingLabels.js`, `levelEffects.js`), `tests/browser/progression-smoke.mjs`
+  and the guard tests in `tests/unit/extensibility.test.js`. Values the research left open and the rulings made while
+  building are in ADR 0051.
 
 ## Max levels
 
@@ -106,7 +111,9 @@ The range is data, never code, so the campaign and the HQ range can grow later w
   chapters, 30 HQ levels or 10 eras. Loops run to `HQ_MAX` / `ERA_HQ.length` / `CAMPAIGNS_CONFIG.length`.
 - **Adding chapters 11+** means:
   - append to `CAMPAIGNS_CONFIG` and `MONSTERS_CONFIG`;
-  - add an `ERA_HQ` entry (its gate);
+  - add an `ERA_HQ` entry (its gate) together with every table indexed by `ERA_HQ`: a `HQ_BENEFITS_BY_ERA` row
+    (`buildings.js`) and an `ERA_MONEY_CAP` value (`buildingCurve.js`). Both throw at load on a length mismatch. The
+    house → cafeteria ladder reads `ERA_HQ` by index and needs no new row;
   - add a `CHAPTER_BOSS_TARGETS` entry.
 
   The stage generator, power, recommended power, level cap and rewards pick it up.
@@ -115,4 +122,6 @@ The range is data, never code, so the campaign and the HQ range can grow later w
   - append a curve band to `BUILDING_CURVE`;
   - extend the tables, which the length-validation test then demands.
 - **Tests guard this:** a synthetic chapter 11 and an `HQ_MAX` of 35 built from fixture data must pass the generator
-  and curve tests (see the scale and power plans).
+  and curve tests (`tests/unit/extensibility.test.js`; the power plan adds its own). The curve functions take the curve
+  and `HQ_MAX` as overridable defaults for this. A unit tier without a hall level, or HQ benefit rows that don't match
+  `ERA_HQ`, throw at load.

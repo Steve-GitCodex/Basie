@@ -29,7 +29,7 @@ await withPage(async ({ page, errors, origin }) => {
 
   report('dev-smoke', [
     { label: 'boots straight into sandbox mode', ok: state.mode === 'sandbox' },
-    { label: 'HQ raised to Lv.3 (world unlock prereq)', ok: state.hq === 3 },
+    { label: 'HQ raised to Lv.4 (world unlock prereq)', ok: state.hq === 4 },
     { label: 'Rally Point built (world tab unlocked)', ok: state.rally >= 1 },
     { label: 'a march-ready squad exists', ok: state.squadUnits > 0 },
     { label: 'lands on the world map', ok: state.worldShown },
@@ -58,7 +58,7 @@ await withPage(async ({ page, errors, origin }) => {
   report('dev-level-switcher', [
     { label: 'widget renders in a dev session', ok: switcherState.widgetPresent },
     { label: 'building dropdown lists placed buildings', ok: switcherState.hasBuildingOptions },
-    { label: 'was Lv.3 before forcing to Lv.2', ok: switcherState.before === 3 },
+    { label: 'was Lv.4 before forcing to Lv.2', ok: switcherState.before === 4 },
     { label: 'selecting a level forces the instance to it', ok: switcherState.after === 2 },
   ], errors);
 

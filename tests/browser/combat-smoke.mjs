@@ -298,7 +298,7 @@ await withPage(async ({ page, errors, origin }) => {
 
   const cap = await page.evaluate(() => {
     const g = window.game;
-    g.buildings._buildings.get('barracks')[0].level = 5;
+    g.buildings._buildings.get('barracks')[0].level = 9;
     const um = g.units;
     for (const s of um.getSquads()) um.deleteSquad(s.id);
     g.eventBus.emit('ui:openSquads', { instanceIndex: 0 });

@@ -25,6 +25,7 @@ export class ResourceChips {
     this._cafeteria.chip?.removeAttribute('title');
     eventBus.on('resources:tick', snap => this._onTick(snap));
     eventBus.on('resources:ratesChanged', snap => this.render(snap));
+    eventBus.on('population:updated', () => this._renderCafeteria());
     this.render(this._rm.getSnapshot());
   }
 
@@ -68,7 +69,7 @@ export class ResourceChips {
     els.chip.style.display = shown ? '' : 'none';
     this._bar?.classList.toggle('resource-bar--six', shown);
     if (!shown) return;
-    els.chip.dataset.tooltipHtml = cafeteriaTipHtml(cafeteriaTotals(this._bm));
+    els.chip.dataset.tooltipHtml = cafeteriaTipHtml(cafeteriaTotals(this._bm, this._rm));
     const sum = pick => stocks.reduce((total, s) => total + pick(s), 0);
     const stock = Math.min(sum(s => s.stock.food), sum(s => s.stock.water));
     const cap = Math.min(sum(s => s.stockCap.food), sum(s => s.stockCap.water));

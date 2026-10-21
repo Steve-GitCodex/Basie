@@ -74,6 +74,23 @@ export const UNITS_CONFIG = {
   },
 };
 
+const TIER_MIN_HALL_LEVEL = [1, 2, 4, 9, 11, 13, 15, 18, 22, 26];
+const FIRST_MASTERY_TIER = 4;
+
+function minHallLevel(unitId, tier) {
+  const level = TIER_MIN_HALL_LEVEL[tier - 1];
+  if (level === undefined) throw new Error(`units: ${unitId} tier ${tier} has no TIER_MIN_HALL_LEVEL entry`);
+  return level;
+}
+
+export function tierRequirements(unit) {
+  return Object.fromEntries(unit.tiers.map(({ tier, techRequired }) => [tier, {
+    minBuildingLevel: minHallLevel(unit.id, tier),
+    techRequired: techRequired ?? null,
+    minTechLevel: techRequired ? tier - FIRST_MASTERY_TIER + 1 : 0,
+  }]));
+}
+
 /**
  * UNIT_TIER_REQUIREMENTS
  * Per-unit-type, per-tier unlock requirements.
@@ -82,53 +99,6 @@ export const UNITS_CONFIG = {
  *
  * { unitId: { tier: { minBuildingLevel, techRequired, minTechLevel } } }
  */
-export const UNIT_TIER_REQUIREMENTS = {
-  infantry: {
-    1:  { minBuildingLevel: 1, techRequired: null,              minTechLevel: 0 },
-    2:  { minBuildingLevel: 1, techRequired: null,              minTechLevel: 0 },
-    3:  { minBuildingLevel: 1, techRequired: null,              minTechLevel: 0 },
-    4:  { minBuildingLevel: 2, techRequired: 'infantry_mastery', minTechLevel: 1 },
-    5:  { minBuildingLevel: 3, techRequired: 'infantry_mastery', minTechLevel: 2 },
-    6:  { minBuildingLevel: 4, techRequired: 'infantry_mastery', minTechLevel: 3 },
-    7:  { minBuildingLevel: 5, techRequired: 'infantry_mastery', minTechLevel: 4 },
-    8:  { minBuildingLevel: 6, techRequired: 'infantry_mastery', minTechLevel: 5 },
-    9:  { minBuildingLevel: 7, techRequired: 'infantry_mastery', minTechLevel: 6 },
-    10: { minBuildingLevel: 8, techRequired: 'infantry_mastery', minTechLevel: 7 },
-  },
-  ranged: {
-    1:  { minBuildingLevel: 1, techRequired: null,             minTechLevel: 0 },
-    2:  { minBuildingLevel: 1, techRequired: null,             minTechLevel: 0 },
-    3:  { minBuildingLevel: 1, techRequired: null,             minTechLevel: 0 },
-    4:  { minBuildingLevel: 2, techRequired: 'ranged_mastery', minTechLevel: 1 },
-    5:  { minBuildingLevel: 3, techRequired: 'ranged_mastery', minTechLevel: 2 },
-    6:  { minBuildingLevel: 4, techRequired: 'ranged_mastery', minTechLevel: 3 },
-    7:  { minBuildingLevel: 5, techRequired: 'ranged_mastery', minTechLevel: 4 },
-    8:  { minBuildingLevel: 6, techRequired: 'ranged_mastery', minTechLevel: 5 },
-    9:  { minBuildingLevel: 7, techRequired: 'ranged_mastery', minTechLevel: 6 },
-    10: { minBuildingLevel: 8, techRequired: 'ranged_mastery', minTechLevel: 7 },
-  },
-  cavalry: {
-    1:  { minBuildingLevel: 1, techRequired: null,              minTechLevel: 0 },
-    2:  { minBuildingLevel: 1, techRequired: null,              minTechLevel: 0 },
-    3:  { minBuildingLevel: 1, techRequired: null,              minTechLevel: 0 },
-    4:  { minBuildingLevel: 2, techRequired: 'cavalry_mastery', minTechLevel: 1 },
-    5:  { minBuildingLevel: 3, techRequired: 'cavalry_mastery', minTechLevel: 2 },
-    6:  { minBuildingLevel: 4, techRequired: 'cavalry_mastery', minTechLevel: 3 },
-    7:  { minBuildingLevel: 5, techRequired: 'cavalry_mastery', minTechLevel: 4 },
-    8:  { minBuildingLevel: 6, techRequired: 'cavalry_mastery', minTechLevel: 5 },
-    9:  { minBuildingLevel: 7, techRequired: 'cavalry_mastery', minTechLevel: 6 },
-    10: { minBuildingLevel: 8, techRequired: 'cavalry_mastery', minTechLevel: 7 },
-  },
-  siege: {
-    1:  { minBuildingLevel: 1, techRequired: null,            minTechLevel: 0 },
-    2:  { minBuildingLevel: 1, techRequired: null,            minTechLevel: 0 },
-    3:  { minBuildingLevel: 1, techRequired: null,            minTechLevel: 0 },
-    4:  { minBuildingLevel: 2, techRequired: 'siege_mastery', minTechLevel: 1 },
-    5:  { minBuildingLevel: 3, techRequired: 'siege_mastery', minTechLevel: 2 },
-    6:  { minBuildingLevel: 4, techRequired: 'siege_mastery', minTechLevel: 3 },
-    7:  { minBuildingLevel: 5, techRequired: 'siege_mastery', minTechLevel: 4 },
-    8:  { minBuildingLevel: 6, techRequired: 'siege_mastery', minTechLevel: 5 },
-    9:  { minBuildingLevel: 7, techRequired: 'siege_mastery', minTechLevel: 6 },
-    10: { minBuildingLevel: 8, techRequired: 'siege_mastery', minTechLevel: 7 },
-  },
-};
+export const UNIT_TIER_REQUIREMENTS = Object.fromEntries(
+  Object.entries(UNITS_CONFIG).map(([unitId, unit]) => [unitId, tierRequirements(unit)]),
+);

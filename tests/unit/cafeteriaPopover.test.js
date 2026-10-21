@@ -52,3 +52,11 @@ test('restockAll surfaces the first failure reason when none succeeded', () => {
   const bm = stubBm([stock('a', 100, 100)], undefined, () => ({ success: false, reason: 'Cafeteria stock is already full.' }));
   assert.equal(restockAll(bm), 'Cafeteria stock is already full.');
 });
+
+test('cafeteriaTotals carries population and the tooltip lists it floored', () => {
+  const rm = { getPopulation: () => ({ current: 12.7, cap: 40 }) };
+  const t = cafeteriaTotals(stubBm([stock('a', 5, 5)]), rm);
+  assert.deepEqual(t.population, { current: 12.7, cap: 40 });
+  assert.match(cafeteriaTipHtml(t), /Population<\/span><span>12 \/ 40/);
+  assert.deepEqual(cafeteriaTotals(stubBm([])).population, { current: 0, cap: 0 });
+});

@@ -1,5 +1,24 @@
 const stockOf = (page) => page.evaluate(() => window.game.buildings.getCafeteriaStock()[0].stock);
 
+const popRowText = (page) => page.evaluate(() => document.querySelector('.chip-popover [data-part="pop"]')?.textContent ?? '');
+const popBarWidth = (page) => page.evaluate(() => document.querySelector('.chip-popover [data-part="pop-fill"]')?.style.width ?? '');
+
+const populationRowChecks = async (page) => {
+  const out = [];
+  await page.evaluate(() => { window.game.resources._population = { current: 25.8, cap: 100 }; });
+  await page.evaluate(() => window.game.eventBus.emit('population:updated', window.game.resources.getPopulation()));
+  await page.waitForTimeout(200);
+  out.push({ label: 'cafeteria popover shows population row', ok: await popRowText(page) === '25 / 100' });
+  out.push({ label: 'cafeteria popover population bar fills', ok: (await popBarWidth(page)) === '25.8%' });
+  await page.evaluate(() => {
+    window.game.resources._population = { current: 60.2, cap: 100 };
+    window.game.eventBus.emit('population:updated', window.game.resources.getPopulation());
+  });
+  await page.waitForTimeout(200);
+  out.push({ label: 'population row patches live while open', ok: await popRowText(page) === '60 / 100' });
+  return out;
+};
+
 export const cafeteriaChecks = async (page) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.waitForTimeout(300);
@@ -19,13 +38,14 @@ export const cafeteriaChecks = async (page) => {
   await page.hover('#res-cafeteria');
   const tip = await page.waitForFunction(() => document.getElementById('game-tooltip')?.classList.contains('visible'), null, { timeout: 1500 }).then(() => true, () => false);
   const tipText = await page.evaluate(() => document.getElementById('game-tooltip').textContent);
-  out.push({ label: 'cafeteria tooltip on hover @1280', ok: tip && tipText.includes('Cafeteria supplies') && tipText.includes('Food') && tipText.includes('Water') });
+  out.push({ label: 'cafeteria tooltip on hover @1280', ok: tip && tipText.includes('Cafeteria supplies') && tipText.includes('Food') && tipText.includes('Water') && /Population/.test(tipText) });
   await page.mouse.move(5, 400);
 
   await page.click('#res-cafeteria');
   const text = await page.evaluate(() => document.querySelector('.chip-popover')?.textContent ?? '');
   out.push({ label: 'cafeteria popover', ok: text.includes('Cafeteria') && text.includes('Food') && text.includes('Water') && text.includes('Restock') });
 
+  out.push(...await populationRowChecks(page));
   out.push({ label: 'cafeteria popover hides Empty in without consumers', ok: !/Infinity|NaN|Empty in/.test(await page.evaluate(() => [...document.querySelectorAll('.chip-popover .chip-popover__row')].filter((r) => r.offsetParent !== null).map((r) => r.textContent).join('|'))) });
   await page.mouse.move(5, 400);
   await page.hover('#res-cafeteria');

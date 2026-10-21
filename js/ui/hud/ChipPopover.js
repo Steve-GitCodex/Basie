@@ -77,6 +77,7 @@ export class ChipPopover {
     eventBus.on('ui:viewChanged', () => this.close());
     eventBus.on('resources:tick', next => this._onTick(next));
     eventBus.on('resources:ratesChanged', next => this._onTick(next));
+    eventBus.on('population:updated', () => this._onPopulation());
   }
 
   _bindAnchor(el, toggle) {
@@ -186,6 +187,12 @@ export class ChipPopover {
     this._place();
   }
 
+  _onPopulation() {
+    if (this._key !== CAFETERIA_KEY) return;
+    this._patch(this._rm.getSnapshot());
+    this._place();
+  }
+
   _onAction(e) {
     const node = e.target.closest('[data-pop]');
     const action = node?.dataset.pop;
@@ -265,7 +272,7 @@ export class ChipPopover {
       return;
     }
     if (this._key === CAFETERIA_KEY) {
-      const totals = cafeteriaTotals(this._bm);
+      const totals = cafeteriaTotals(this._bm, this._rm);
       if (totals.count === 0) this.close();
       else patchCafeteria(this._parts, totals);
       return;

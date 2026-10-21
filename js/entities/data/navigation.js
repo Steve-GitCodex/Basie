@@ -16,6 +16,8 @@
  *
  * `label` is shown in locked-state cards and tooltips as the unlock requirement.
  */
+const hqGate = level => ({ type: 'hq_level', level, label: `Upgrade HQ to Level ${level}` });
+
 export const TAB_UNLOCK_CONDITIONS = {
   // ── Standalone top-level tabs ─────────────────────────────────────────────
   base:     { type: 'always' },
@@ -24,24 +26,20 @@ export const TAB_UNLOCK_CONDITIONS = {
   world:    {
     type: 'building',
     buildingId: 'rallypoint',
-    label: 'Build a Rally Point (requires HQ Lv 3)',
+    label: 'Build a Rally Point (requires HQ Lv 4)',
   },
 
   heroes:   {
     type: 'building',
     buildingId: 'heroquarters',
-    label: 'Build a Hero Quarters (requires Barracks Lv 3 + HQ Lv 4)',
+    label: 'Build a Hero Quarters (requires Barracks Lv 4 + HQ Lv 6)',
   },
   research: {
     type: 'building',
     buildingId: 'workshop',
-    label: 'Build a Workshop (requires HQ Lv 5)',
+    label: 'Build a Workshop (requires HQ Lv 9)',
   },
-  events:   {
-    type: 'hq_level',
-    level: 3,
-    label: 'Upgrade HQ to Level 3',
-  },
+  events:   hqGate(4),
 
   // ── Grouped top-level tabs (unlocked if any child is unlocked) ────────────
   // Training & Squads are now tooltip-opened modals (no Military group view).
@@ -50,14 +48,11 @@ export const TAB_UNLOCK_CONDITIONS = {
 
   // ── Sub-tabs: Economy ─────────────────────────────────────────────────────
   'sub:trading': { type: 'always' },
+  'sub:market': hqGate(2),
 
   // ── Sub-tabs: Quests ──────────────────────────────────────────────────────
   'sub:quests':     { type: 'always' },
-  'sub:challenges': {
-    type: 'hq_level',
-    level: 2,
-    label: 'Upgrade HQ to Level 2',
-  },
+  'sub:challenges': hqGate(2),
 };
 
 /**

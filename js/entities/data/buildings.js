@@ -3,6 +3,20 @@
  * Building configurations, queue slot definitions, and HQ unlock table.
  */
 
+import { hqChain } from './hqChain.js';
+import { HQ_MAX } from './buildingCurve.js';
+import {
+  growTable, eraMoneyTable, scaleTable, STORAGE_GROWTH_BANDS, BARRACKS_SLOT_CAPACITY, RALLY_STATS,
+  TRAINING_SLOTS, houseCafeteriaLadder, bankPopulationLadder, cafeteriaCapacity, hqUnlockTable,
+} from './buildingTables.js';
+import { applyGeneratedLabels } from './buildingLabels.js';
+
+const STOREHOUSE_MONEY_RATIO = 1.7;
+const HALL_MAX_LEVEL = 30;
+const HOUSE_MAX_LEVEL = 20;
+const CAFETERIA_MAX_LEVEL = 20;
+const BANK_MAX_LEVEL = 20;
+
 export const BUILDINGS_CONFIG = {
   townhall: {
     id: 'townhall', name: 'Headquarters (HQ)', shortName: 'HQ', icon: '🏛️',
@@ -10,16 +24,17 @@ export const BUILDINGS_CONFIG = {
     doorSide: 's',
     description: 'The heart of your base. Upgrade to unlock new buildings, increase all caps, and lead a larger population.',
     maxLevel: 30,
+    levelRequirements: hqChain(),
     baseCost: { wood: 500, stone: 300 },
     buildTime: 120,
     effects: { unlockBuildings: true },
     storageCap: {
-      wood:  [0,  3000,  5500, 10000,  18000,  32000,  57000, 100000, 175000,  305000,  530000],
-      stone: [0,  2500,  4500,  8000,  14500,  26000,  46000,  80000, 140000,  245000,  425000],
-      iron:  [0,   800,  1200,  2000,   3300,   5500,   9000,  15000,  24000,   39000,   63000],
-      food:  [0,   800,  1200,  2000,   3300,   5500,   9000,  15000,  24000,   39000,   63000],
-      water: [0,  1000,  1800,  3000,   5000,   8500,  14000,  24000,  40000,   68000,  113000],
-      money: [0,  5000, 10000, 20000,  42000,  88000, 185000, 390000, 820000, 1700000, 3600000],
+      wood:  growTable([0,  3000,  5500, 10000,  18000,  32000,  57000, 100000, 175000,  305000,  530000], HQ_MAX, STORAGE_GROWTH_BANDS),
+      stone: growTable([0,  2500,  4500,  8000,  14500,  26000,  46000,  80000, 140000,  245000,  425000], HQ_MAX, STORAGE_GROWTH_BANDS),
+      iron:  growTable([0,   800,  1200,  2000,   3300,   5500,   9000,  15000,  24000,   39000,   63000], HQ_MAX, STORAGE_GROWTH_BANDS),
+      food:  growTable([0,   800,  1200,  2000,   3300,   5500,   9000,  15000,  24000,   39000,   63000], HQ_MAX, STORAGE_GROWTH_BANDS),
+      water: growTable([0,  1000,  1800,  3000,   5000,   8500,  14000,  24000,  40000,   68000,  113000], HQ_MAX, STORAGE_GROWTH_BANDS),
+      money: eraMoneyTable(HQ_MAX),
     },
     effectLabel: '📦 Exponential storage cap per level · 🔓 Unlocks buildings',
     category: 'core', requires: null,
@@ -42,9 +57,9 @@ export const BUILDINGS_CONFIG = {
     maxInstances: 4,
     instanceSlots: [
       { index: 0, condition: null },
-      { index: 1, condition: { townhall: 3, farm: 2 } },
-      { index: 2, condition: { townhall: 5, farm: 2 } },
-      { index: 3, condition: { townhall: 7, farm: 2 } },
+      { index: 1, condition: { townhall: 4, farm: 2 } },
+      { index: 2, condition: { townhall: 9, farm: 2 } },
+      { index: 3, condition: { townhall: 15, farm: 2 } },
     ],
   },
   mine: {
@@ -62,8 +77,8 @@ export const BUILDINGS_CONFIG = {
     maxInstances: 3,
     instanceSlots: [
       { index: 0, condition: null },
-      { index: 1, condition: { townhall: 4, mine: 2 } },
-      { index: 2, condition: { townhall: 6, mine: 2 } },
+      { index: 1, condition: { townhall: 6, mine: 2 } },
+      { index: 2, condition: { townhall: 12, mine: 2 } },
     ],
   },
   lumbermill: {
@@ -81,8 +96,8 @@ export const BUILDINGS_CONFIG = {
     maxInstances: 3,
     instanceSlots: [
       { index: 0, condition: null },
-      { index: 1, condition: { townhall: 3, lumbermill: 2 } },
-      { index: 2, condition: { townhall: 5, lumbermill: 2 } },
+      { index: 1, condition: { townhall: 4, lumbermill: 2 } },
+      { index: 2, condition: { townhall: 9, lumbermill: 2 } },
     ],
   },
   quarry: {
@@ -100,8 +115,8 @@ export const BUILDINGS_CONFIG = {
     maxInstances: 3,
     instanceSlots: [
       { index: 0, condition: null },
-      { index: 1, condition: { townhall: 4, quarry: 2 } },
-      { index: 2, condition: { townhall: 6, quarry: 2 } },
+      { index: 1, condition: { townhall: 6, quarry: 2 } },
+      { index: 2, condition: { townhall: 12, quarry: 2 } },
     ],
   },
   storehouse: {
@@ -114,19 +129,19 @@ export const BUILDINGS_CONFIG = {
     buildTime: 25,
     effects: {},
     storageCap: {
-      wood:  [0,  5500,  9000, 15000,  25000,  42000,  70000, 117000, 195000,  325000,  545000],
-      stone: [0,  4500,  7000, 12000,  20000,  33000,  55000,  92000, 153000,  255000,  425000],
-      iron:  [0,  2200,  3500,  5700,   9200,  15000,  24000,  39000,  63000,  102000,  165000],
-      food:  [0,  2200,  3500,  5700,   9200,  15000,  24000,  39000,  63000,  102000,  165000],
-      water: [0,  2500,  4000,  6500,  10500,  17000,  27500,  45000,  73000,  119000,  193000],
-      money: [0,  8000, 17000, 35000,  73000, 152000, 318000, 667000, 1400000, 2930000, 6150000],
+      wood:  growTable([0,  5500,  9000, 15000,  25000,  42000,  70000, 117000, 195000,  325000,  545000], HQ_MAX, STORAGE_GROWTH_BANDS),
+      stone: growTable([0,  4500,  7000, 12000,  20000,  33000,  55000,  92000, 153000,  255000,  425000], HQ_MAX, STORAGE_GROWTH_BANDS),
+      iron:  growTable([0,  2200,  3500,  5700,   9200,  15000,  24000,  39000,  63000,  102000,  165000], HQ_MAX, STORAGE_GROWTH_BANDS),
+      food:  growTable([0,  2200,  3500,  5700,   9200,  15000,  24000,  39000,  63000,  102000,  165000], HQ_MAX, STORAGE_GROWTH_BANDS),
+      water: growTable([0,  2500,  4000,  6500,  10500,  17000,  27500,  45000,  73000,  119000,  193000], HQ_MAX, STORAGE_GROWTH_BANDS),
+      money: scaleTable(eraMoneyTable(HQ_MAX), STOREHOUSE_MONEY_RATIO),
     },
     effectLabel: '📦 Exponential storage cap per level',
     category: 'core', requires: null,
     maxInstances: 2,
     instanceSlots: [
       { index: 0, condition: null },
-      { index: 1, condition: { townhall: 5 } },
+      { index: 1, condition: { townhall: 9 } },
     ],
     heroCapacity: 1,
   },
@@ -144,8 +159,8 @@ export const BUILDINGS_CONFIG = {
     maxInstances: 3,
     instanceSlots: [
       { index: 0, condition: null },
-      { index: 1, condition: { townhall: 3 } },
-      { index: 2, condition: { townhall: 6 } },
+      { index: 1, condition: { townhall: 4 } },
+      { index: 2, condition: { townhall: 12 } },
     ],
     heroCapacity: 1,  // Can hold 1 hero
   },
@@ -154,27 +169,22 @@ export const BUILDINGS_CONFIG = {
     footprint: [3,3],
     doorSide: 'sw',
     description: 'Provides housing for your population.',
-    maxLevel: 20,
+    maxLevel: HOUSE_MAX_LEVEL,
     baseCost: { wood: 120, stone: 80 },
     buildTime: 20,
     effects: {},
     effectLabel: '👥 +10 population capacity per level',
     populationCapacityPerLevel: 10,
     category: 'population', requires: { townhall: 1, cafeteria: 1 },
-    levelRequirements: {
-      3: { cafeteria: 2 }, 4: { cafeteria: 2 },
-      5: { cafeteria: 3 }, 6: { cafeteria: 3 },
-      7: { cafeteria: 5 }, 8: { cafeteria: 5 },
-      9: { cafeteria: 7 }, 10: { cafeteria: 7 },
-    },
+    levelRequirements: houseCafeteriaLadder(HOUSE_MAX_LEVEL),
     maxInstances: 6,
     instanceSlots: [
       { index: 0, condition: null },
       { index: 1, condition: { townhall: 2 } },
-      { index: 2, condition: { townhall: 3 } },
-      { index: 3, condition: { townhall: 5 } },
-      { index: 4, condition: { townhall: 7 } },
-      { index: 5, condition: { townhall: 9 } },
+      { index: 2, condition: { townhall: 4 } },
+      { index: 3, condition: { townhall: 9 } },
+      { index: 4, condition: { townhall: 15 } },
+      { index: 5, condition: { townhall: 22 } },
     ],
     heroCapacity: 0,  // Can't hold heroes itself
   },
@@ -183,13 +193,13 @@ export const BUILDINGS_CONFIG = {
     footprint: [3,3],
     doorSide: 'sw',
     description: 'Maintains an internal stock of food and water that houses draw from each tick. Must be restocked from your global supply — manually or via automation.',
-    maxLevel: 20,
+    maxLevel: CAFETERIA_MAX_LEVEL,
     baseCost: { wood: 200, stone: 120 },
     buildTime: 30,
     effects: {},
     effectLabel: '🍽️ 15-min food+water reserve at each population tier · Feeds housed population',
-    foodCapacityPerLevel:  [0, 10800, 21600, 32400, 39000, 43200, 51600, 54000, 62000],
-    waterCapacityPerLevel: [0, 10800, 21600, 32400, 39000, 43200, 51600, 54000, 62000],
+    foodCapacityPerLevel:  cafeteriaCapacity(CAFETERIA_MAX_LEVEL),
+    waterCapacityPerLevel: cafeteriaCapacity(CAFETERIA_MAX_LEVEL),
     category: 'core', requires: { townhall: 2, well: 1 },
     maxInstances: 1,
     instanceSlots: [
@@ -202,23 +212,18 @@ export const BUILDINGS_CONFIG = {
     footprint: [2,2],
     doorSide: 'se',
     description: 'Generates money based on your thriving population. Requires a minimum population to operate.',
-    maxLevel: 20,
+    maxLevel: BANK_MAX_LEVEL,
     baseCost: { wood: 400, stone: 300, iron: 100 },
     buildTime: 60,
     effects: { money: 5 },
-    effectLabel: '🪙 +5 Money/s per level · Efficiency scales with population fill ratio · Higher levels require more residents',
+    effectLabel: '🪙 +5 Money/s per level · Efficiency scales with population fill ratio',
     coinsPerSecondBase: 5,
-    category: 'population', requires: { townhall: 3 },
-    levelRequirements: {
-      2: { population: 10 },   3: { population: 20 },
-      4: { population: 50 },  5: { population: 100 },
-      6: { population: 180 }, 7: { population: 300 },
-      8: { population: 450 },
-    },
+    category: 'population', requires: { townhall: 2 },
+    levelRequirements: bankPopulationLadder(BANK_MAX_LEVEL),
     maxInstances: 2,
     instanceSlots: [
       { index: 0, condition: null },
-      { index: 1, condition: { townhall: 6 } },
+      { index: 1, condition: { townhall: 12 } },
     ],
     heroCapacity: 1,  // Can hold 1 hero who boosts money production
   },
@@ -231,31 +236,22 @@ export const BUILDINGS_CONFIG = {
     baseCost: { wood: 200, stone: 150 },
     buildTime: 30,
     effects: { squadSlots: true, moreSquads: true },
-    effectLabel: 'Each Barracks = 1 squad · Upgrade to increase per-slot unit capacity and unlock more slots (Lv.3 → 2nd · Lv.5 → 3rd · Lv.7 → 4th) · Build more Barracks via HQ (Lv.4 / 6 / 8)',
-    levelStats: [
-      { slotCapacity:   200 }, // Lv.1 — 1 slot open
-      { slotCapacity:   500 }, // Lv.2
-      { slotCapacity:   800 }, // Lv.3 — 2nd slot opens
-      { slotCapacity: 1200 }, // Lv.4
-      { slotCapacity: 1700 }, // Lv.5 — 3rd slot opens
-      { slotCapacity: 2300 }, // Lv.6
-      { slotCapacity: 3000 }, // Lv.7 — 4th slot opens
-      { slotCapacity: 4000 }, // Lv.8
-    ],
+    effectLabel: 'Each Barracks = 1 squad · Upgrade to increase per-slot unit capacity',
+    levelStats: BARRACKS_SLOT_CAPACITY.map(slotCapacity => ({ slotCapacity })),
     category: 'military', requires: null,
     maxInstances: 4,
     instanceSlots: [
       { index: 0, condition: null },
-      { index: 1, condition: { townhall: 4 } },
-      { index: 2, condition: { townhall: 6 } },
-      { index: 3, condition: { townhall: 8 } },
+      { index: 1, condition: { townhall: 6 } },
+      { index: 2, condition: { townhall: 12 } },
+      { index: 3, condition: { townhall: 18 } },
     ],
     // Hero/unit pair rows inside each squad — gated by that barracks's upgrade level
     squadSlots: [
       { index: 0, condition: null },
-      { index: 1, condition: { barracks: 3 } },
-      { index: 2, condition: { barracks: 5 } },
-      { index: 3, condition: { barracks: 7 } },
+      { index: 1, condition: { barracks: 4 } },
+      { index: 2, condition: { barracks: 9 } },
+      { index: 3, condition: { barracks: 15 } },
     ],
     heroCapacity: 4,  // Can hold up to 4 heroes who lead the squad
   },
@@ -264,24 +260,13 @@ export const BUILDINGS_CONFIG = {
     footprint: [3,3],
     doorSide: 'se',
     description: 'Train ranged units with superior attack range.',
-    maxLevel: 30,
+    maxLevel: HALL_MAX_LEVEL,
     baseCost: { wood: 200, stone: 100 },
     buildTime: 45,
     effects: {},
-    effectLabel: '🏹 Trains Ranged units · +5% training speed per level · Lv.3: 2 training slots · Lv.6: 3 slots · Lv.9: 4 slots',
+    effectLabel: '🏹 Trains Ranged units',
     category: 'military', requires: { barracks: 1 },
-    trainingSlots: [
-      { concurrentSlots: 1, trainTimeMultiplier: 1.00, maxTrainableTier: 1,  maxBatchSize:  25 }, // Lv.1
-      { concurrentSlots: 1, trainTimeMultiplier: 1.00, maxTrainableTier: 2,  maxBatchSize:  50 }, // Lv.2
-      { concurrentSlots: 2, trainTimeMultiplier: 0.90, maxTrainableTier: 3,  maxBatchSize:  75 }, // Lv.3
-      { concurrentSlots: 2, trainTimeMultiplier: 0.90, maxTrainableTier: 4,  maxBatchSize: 100 }, // Lv.4
-      { concurrentSlots: 2, trainTimeMultiplier: 0.90, maxTrainableTier: 5,  maxBatchSize: 125 }, // Lv.5
-      { concurrentSlots: 3, trainTimeMultiplier: 0.80, maxTrainableTier: 6,  maxBatchSize: 150 }, // Lv.6
-      { concurrentSlots: 3, trainTimeMultiplier: 0.80, maxTrainableTier: 7,  maxBatchSize: 175 }, // Lv.7
-      { concurrentSlots: 3, trainTimeMultiplier: 0.80, maxTrainableTier: 8,  maxBatchSize: 200 }, // Lv.8
-      { concurrentSlots: 4, trainTimeMultiplier: 0.70, maxTrainableTier: 9,  maxBatchSize: 225 }, // Lv.9
-      { concurrentSlots: 4, trainTimeMultiplier: 0.70, maxTrainableTier: 10, maxBatchSize: 250 }, // Lv.10
-    ],
+    trainingSlots: TRAINING_SLOTS(HALL_MAX_LEVEL, 'archeryrange'),
     maxInstances: 1,
     instanceSlots: [{ index: 0, condition: null }],
     heroCapacity: 1,  // Can hold 1 hero
@@ -292,11 +277,11 @@ export const BUILDINGS_CONFIG = {
     doorSide: 's',
     description: 'Recruit legendary heroes to lead your army.',
     maxLevel: 25,
-    baseCost: { wood: 500, stone: 400, iron: 100 },
+    baseCost: { wood: 400, stone: 320, iron: 80 },
     buildTime: 120,
-    effects: { heroSlots: 5 },
-    effectLabel: '👑 +5 hero slots per level.',
-    category: 'military', requires: { barracks: 3, townhall: 4 },
+    effects: { heroSlots: 2 },
+    effectLabel: '👑 Hero Quarters',
+    category: 'military', requires: { barracks: 4, townhall: 6 },
     maxInstances: 1,
     instanceSlots: [{ index: 0, condition: null }],
     heroCapacity: 1,
@@ -310,16 +295,9 @@ export const BUILDINGS_CONFIG = {
     baseCost: { wood: 350, stone: 250, iron: 60 },
     buildTime: 60,
     effects: { marchSlots: true },
-    effectLabel: '🚩 Unlocks the World Map · simultaneous marches (Lv.1: 2 · Lv.3: 3 · Lv.5: 4) · +5% march speed per level',
-    levelStats: [
-      { marchSlots: 2, speedBonus: 0.00 }, // Lv.1
-      { marchSlots: 2, speedBonus: 0.05 }, // Lv.2
-      { marchSlots: 3, speedBonus: 0.10 }, // Lv.3 — 3rd march
-      { marchSlots: 3, speedBonus: 0.15 }, // Lv.4
-      { marchSlots: 4, speedBonus: 0.20 }, // Lv.5 — 4th march
-      { marchSlots: 4, speedBonus: 0.25 }, // Lv.6
-    ],
-    category: 'military', requires: { townhall: 3 },
+    effectLabel: '🚩 Unlocks the World Map',
+    levelStats: RALLY_STATS,
+    category: 'military', requires: { townhall: 4 },
     maxInstances: 1,
     instanceSlots: [{ index: 0, condition: null }],
     heroCapacity: 1,  // a stationed hero further boosts march speed (Phase 2 stretch)
@@ -333,8 +311,8 @@ export const BUILDINGS_CONFIG = {
     baseCost: { wood: 400, stone: 300, iron: 100 },
     buildTime: 90,
     effects: {},
-    effectLabel: '🔬 Unlocks Research tab · Lv.2: 2nd research slot · Lv.4: 3rd slot (Premium) · Lv.6: 4th slot (Premium)',
-    category: 'core', requires: { townhall: 5 },
+    effectLabel: '🔬 Unlocks Research tab · Lv.2: 2nd research slot · Lv.6: 3rd slot (Premium) · Lv.12: 4th slot (Premium)',
+    category: 'core', requires: { townhall: 9 },
     maxInstances: 1,
     instanceSlots: [{ index: 0, condition: null }],
     heroCapacity: 1,  // Can hold 1 hero who boosts research speed
@@ -360,24 +338,13 @@ export const BUILDINGS_CONFIG = {
     footprint: [3,3],
     doorSide: 'sw',
     description: 'Trains and upgrades infantry units. Each level increases training speed.',
-    maxLevel: 30,
+    maxLevel: HALL_MAX_LEVEL,
     baseCost: { wood: 300, stone: 200, iron: 50 },
     buildTime: 45,
     effects: {},
-    effectLabel: '⚔️ Trains Infantry units · +5% training speed per level · Lv.3: 2 training slots · Lv.6: 3 slots · Lv.9: 4 slots',
+    effectLabel: '⚔️ Trains Infantry units',
     category: 'military', requires: { townhall: 2 },
-    trainingSlots: [
-      { concurrentSlots: 1, trainTimeMultiplier: 1.00, maxTrainableTier: 1, maxBatchSize:  25 }, // Lv.1
-      { concurrentSlots: 1, trainTimeMultiplier: 1.00, maxTrainableTier: 2, maxBatchSize:  50 }, // Lv.2
-      { concurrentSlots: 2, trainTimeMultiplier: 0.90, maxTrainableTier: 3, maxBatchSize:  75 }, // Lv.3
-      { concurrentSlots: 2, trainTimeMultiplier: 0.90, maxTrainableTier: 4, maxBatchSize: 100 }, // Lv.4
-      { concurrentSlots: 2, trainTimeMultiplier: 0.90, maxTrainableTier: 5, maxBatchSize: 125 }, // Lv.5
-      { concurrentSlots: 3, trainTimeMultiplier: 0.80, maxTrainableTier: 6, maxBatchSize: 150 }, // Lv.6
-      { concurrentSlots: 3, trainTimeMultiplier: 0.80, maxTrainableTier: 7, maxBatchSize: 175 }, // Lv.7
-      { concurrentSlots: 3, trainTimeMultiplier: 0.80, maxTrainableTier: 8, maxBatchSize: 200 }, // Lv.8
-      { concurrentSlots: 4, trainTimeMultiplier: 0.70, maxTrainableTier: 9, maxBatchSize: 225 }, // Lv.9
-      { concurrentSlots: 4, trainTimeMultiplier: 0.70, maxTrainableTier:10, maxBatchSize: 250 }, // Lv.10
-    ],
+    trainingSlots: TRAINING_SLOTS(HALL_MAX_LEVEL, 'infantryhall'),
     maxInstances: 1,
     instanceSlots: [{ index: 0, condition: null }],
     heroCapacity: 1,
@@ -387,24 +354,13 @@ export const BUILDINGS_CONFIG = {
     footprint: [3,3],
     doorSide: 'sw',
     description: 'Houses and trains cavalry units. Higher levels unlock stronger cavalry tiers.',
-    maxLevel: 30,
+    maxLevel: HALL_MAX_LEVEL,
     baseCost: { wood: 400, stone: 300, iron: 100 },
     buildTime: 80,
     effects: {},
-    effectLabel: '🐴 Trains Cavalry units · +5% training speed per level · Lv.3: 2 training slots · Lv.6: 3 slots · Lv.9: 4 slots',
-    category: 'military', requires: { infantryhall: 3, townhall: 4 },
-    trainingSlots: [
-      { concurrentSlots: 1, trainTimeMultiplier: 1.00, maxTrainableTier: 1, maxBatchSize:  25 }, // Lv.1
-      { concurrentSlots: 1, trainTimeMultiplier: 1.00, maxTrainableTier: 2, maxBatchSize:  50 }, // Lv.2
-      { concurrentSlots: 2, trainTimeMultiplier: 0.90, maxTrainableTier: 3, maxBatchSize:  75 }, // Lv.3
-      { concurrentSlots: 2, trainTimeMultiplier: 0.90, maxTrainableTier: 4, maxBatchSize: 100 }, // Lv.4
-      { concurrentSlots: 2, trainTimeMultiplier: 0.90, maxTrainableTier: 5, maxBatchSize: 125 }, // Lv.5
-      { concurrentSlots: 3, trainTimeMultiplier: 0.80, maxTrainableTier: 6, maxBatchSize: 150 }, // Lv.6
-      { concurrentSlots: 3, trainTimeMultiplier: 0.80, maxTrainableTier: 7, maxBatchSize: 175 }, // Lv.7
-      { concurrentSlots: 3, trainTimeMultiplier: 0.80, maxTrainableTier: 8, maxBatchSize: 200 }, // Lv.8
-      { concurrentSlots: 4, trainTimeMultiplier: 0.70, maxTrainableTier: 9, maxBatchSize: 225 }, // Lv.9
-      { concurrentSlots: 4, trainTimeMultiplier: 0.70, maxTrainableTier:10, maxBatchSize: 250 }, // Lv.10
-    ],
+    effectLabel: '🐴 Trains Cavalry units',
+    category: 'military', requires: { infantryhall: 4, townhall: 6 },
+    trainingSlots: TRAINING_SLOTS(HALL_MAX_LEVEL, 'cavalrystable'),
     maxInstances: 1,
     instanceSlots: [{ index: 0, condition: null }],
     heroCapacity: 1,
@@ -414,24 +370,13 @@ export const BUILDINGS_CONFIG = {
     footprint: [2,2],
     doorSide: 'se',
     description: 'Crafts powerful siege weapons. Requires a workshop to operate.',
-    maxLevel: 30,
-    baseCost: { wood: 500, stone: 400, iron: 150 },
+    maxLevel: HALL_MAX_LEVEL,
+    baseCost: { wood: 380, stone: 305, iron: 115 },
     buildTime: 120,
     effects: {},
-    effectLabel: '💣 Trains Siege units · +5% training speed per level · Lv.3: 2 training slots · Lv.6: 3 slots · Lv.9: 4 slots',
-    category: 'military', requires: { workshop: 1, townhall: 5 },
-    trainingSlots: [
-      { concurrentSlots: 1, trainTimeMultiplier: 1.00, maxTrainableTier: 1, maxBatchSize:  25 }, // Lv.1
-      { concurrentSlots: 1, trainTimeMultiplier: 1.00, maxTrainableTier: 2, maxBatchSize:  50 }, // Lv.2
-      { concurrentSlots: 2, trainTimeMultiplier: 0.90, maxTrainableTier: 3, maxBatchSize:  75 }, // Lv.3
-      { concurrentSlots: 2, trainTimeMultiplier: 0.90, maxTrainableTier: 4, maxBatchSize: 100 }, // Lv.4
-      { concurrentSlots: 2, trainTimeMultiplier: 0.90, maxTrainableTier: 5, maxBatchSize: 125 }, // Lv.5
-      { concurrentSlots: 3, trainTimeMultiplier: 0.80, maxTrainableTier: 6, maxBatchSize: 150 }, // Lv.6
-      { concurrentSlots: 3, trainTimeMultiplier: 0.80, maxTrainableTier: 7, maxBatchSize: 175 }, // Lv.7
-      { concurrentSlots: 3, trainTimeMultiplier: 0.80, maxTrainableTier: 8, maxBatchSize: 200 }, // Lv.8
-      { concurrentSlots: 4, trainTimeMultiplier: 0.70, maxTrainableTier: 9, maxBatchSize: 225 }, // Lv.9
-      { concurrentSlots: 4, trainTimeMultiplier: 0.70, maxTrainableTier:10, maxBatchSize: 250 }, // Lv.10
-    ],
+    effectLabel: '💣 Trains Siege units',
+    category: 'military', requires: { workshop: 1, townhall: 9 },
+    trainingSlots: TRAINING_SLOTS(HALL_MAX_LEVEL, 'siegeworkshop'),
     maxInstances: 1,
     instanceSlots: [{ index: 0, condition: null }],
     heroCapacity: 1,
@@ -442,16 +387,18 @@ export const BUILDINGS_CONFIG = {
     doorSide: 'sw',
     description: 'A fortified communications tower. Coordinates all military operations across the wasteland.',
     maxLevel: 20,
-    baseCost: { wood: 600, stone: 500, iron: 200 },
+    baseCost: { wood: 370, stone: 307, iron: 123 },
     buildTime: 180,
     effects: {},
     effectLabel: '📡 +5% attack bonus per level · Unlocks advanced tactical research',
-    category: 'special', requires: { workshop: 5, townhall: 8 },
+    category: 'special', requires: { workshop: 9, townhall: 18 },
     maxInstances: 1,
     instanceSlots: [{ index: 0, condition: null }],
     heroCapacity: 2,
   },
 };
+
+applyGeneratedLabels(BUILDINGS_CONFIG);
 
 /**
  * QUEUE_CONFIG — Defines how many queue slots are available for each system
@@ -462,8 +409,8 @@ export const QUEUE_CONFIG = {
   research: [
     { slots: 1, requires: null, premium: false },
     { slots: 2, requires: { workshop: 2 }, premium: false },
-    { slots: 3, requires: { workshop: 4 }, premium: true },
-    { slots: 4, requires: { workshop: 6 }, premium: true },
+    { slots: 3, requires: { workshop: 6 }, premium: true },
+    { slots: 4, requires: { workshop: 12 }, premium: true },
   ],
   building: [
     { slots: 1, requires: null, premium: false },
@@ -473,68 +420,45 @@ export const QUEUE_CONFIG = {
   ],
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HQ UNLOCK TABLE
-// Defines what buildings, unit types, and technologies become available as the
-// Headquarters (townhall) is upgraded. Also provides per-level combat/production
-// bonuses that apply globally to the player's base.
-// ─────────────────────────────────────────────────────────────────────────────
-export const HQ_UNLOCK_TABLE = {
+const HQ_UNLOCKS = {
   2: {
     buildings: ['archeryrange', 'infantryhall', 'bank'],
     units:     ['infantry', 'ranged'],
     techs:     ['reinforced_lumber', 'improved_smelting'],
-    benefits:  { productionBonus: 0.02, attackBonus: 0.00, defenseBonus: 0.00, storageBonus: 0.00 },
   },
-  3: {
-    buildings: ['cafeteria', 'house'],
-    units:     [],
-    techs:     ['battle_formations', 'rapid_construction'],
-    benefits:  { productionBonus: 0.04, attackBonus: 0.01, defenseBonus: 0.01, storageBonus: 0.00 },
-  },
-  4: {
-    buildings: ['heroquarters', 'cavalrystable'],
-    units:     ['cavalry'],
-    techs:     ['steel_armor'],
-    benefits:  { productionBonus: 0.06, attackBonus: 0.02, defenseBonus: 0.02, storageBonus: 0.05 },
-  },
-  5: {
+  4:  { buildings: ['cafeteria', 'house'], techs: ['battle_formations', 'rapid_construction'] },
+  6:  { buildings: ['heroquarters', 'cavalrystable'], units: ['cavalry'], techs: ['steel_armor'] },
+  9:  {
     buildings: ['workshop', 'siegeworkshop'],
     units:     ['siege'],
     techs:     ['advanced_tactics', 'infantry_mastery', 'ranged_mastery'],
-    benefits:  { productionBonus: 0.08, attackBonus: 0.04, defenseBonus: 0.03, storageBonus: 0.10 },
   },
-  6: {
-    buildings: [],
-    units:     [],
-    techs:     ['cavalry_mastery', 'infrastructure'],
-    benefits:  { productionBonus: 0.10, attackBonus: 0.06, defenseBonus: 0.05, storageBonus: 0.15 },
-  },
-  7: {
-    buildings: [],
-    units:     [],
-    techs:     ['elite_training', 'siege_mastery'],
-    benefits:  { productionBonus: 0.12, attackBonus: 0.08, defenseBonus: 0.07, storageBonus: 0.20 },
-  },
-  8: {
-    buildings: ['magictower'],
-    units:     [],
-    techs:     [],
-    benefits:  { productionBonus: 0.15, attackBonus: 0.10, defenseBonus: 0.10, storageBonus: 0.25 },
-  },
-  9: {
-    buildings: [],
-    units:     [],
-    techs:     [],
-    benefits:  { productionBonus: 0.18, attackBonus: 0.13, defenseBonus: 0.13, storageBonus: 0.30 },
-  },
-  10: {
-    buildings: [],
-    units:     [],
-    techs:     [],
-    benefits:  { productionBonus: 0.20, attackBonus: 0.15, defenseBonus: 0.15, storageBonus: 0.35 },
-  },
+  12: { techs: ['cavalry_mastery', 'infrastructure'] },
+  15: { techs: ['elite_training', 'siege_mastery'] },
+  18: { buildings: ['magictower'] },
 };
+
+/** Cumulative HQ benefits at each era's HQ (ERA_HQ); levels between eras interpolate linearly. */
+export const HQ_BENEFITS_BY_ERA = [
+  { productionBonus: 0,    attackBonus: 0,    defenseBonus: 0,    storageBonus: 0    },
+  { productionBonus: 0.02, attackBonus: 0,    defenseBonus: 0,    storageBonus: 0    },
+  { productionBonus: 0.06, attackBonus: 0.01, defenseBonus: 0.01, storageBonus: 0    },
+  { productionBonus: 0.12, attackBonus: 0.03, defenseBonus: 0.03, storageBonus: 0.05 },
+  { productionBonus: 0.20, attackBonus: 0.07, defenseBonus: 0.06, storageBonus: 0.15 },
+  { productionBonus: 0.30, attackBonus: 0.13, defenseBonus: 0.11, storageBonus: 0.30 },
+  { productionBonus: 0.42, attackBonus: 0.21, defenseBonus: 0.18, storageBonus: 0.50 },
+  { productionBonus: 0.57, attackBonus: 0.31, defenseBonus: 0.28, storageBonus: 0.75 },
+  { productionBonus: 0.75, attackBonus: 0.44, defenseBonus: 0.41, storageBonus: 1.05 },
+  { productionBonus: 0.95, attackBonus: 0.59, defenseBonus: 0.56, storageBonus: 1.40 },
+];
+
+const HQ_CAPSTONE_ATTACK = 0.67;
+const HQ_CAPSTONE_RATIO = HQ_CAPSTONE_ATTACK / HQ_BENEFITS_BY_ERA.at(-1).attackBonus;
+
+/** Per-level HQ unlocks plus the per-level benefit increment; benefits() sums increments up to the HQ level. */
+export const HQ_UNLOCK_TABLE = hqUnlockTable(HQ_UNLOCKS, HQ_BENEFITS_BY_ERA, HQ_CAPSTONE_RATIO);
+
+export const POPULATION_MAX = BUILDINGS_CONFIG.house.maxInstances * BUILDINGS_CONFIG.house.maxLevel * BUILDINGS_CONFIG.house.populationCapacityPerLevel;
 
 /**
  * Economy design parameters — documented constants used when deriving the

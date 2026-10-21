@@ -33,7 +33,7 @@ test("chapter 2 needs chapter 1's boss and its requires", () => {
   const bossBeaten = { bestStars: clear([...ch1, ...ch2]) };
   const lowHall = stageStates(CAMPAIGN_STAGES, bossBeaten, noBuildings);
   assert.equal(lowHall.get('ch3_s1').isLocked, true);
-  assert.equal(lowHall.get('ch3_s1').lockReason, `Requires: ${BUILDINGS_CONFIG.townhall.name} Lv.3`);
+  assert.equal(lowHall.get('ch3_s1').lockReason, `Requires: ${BUILDINGS_CONFIG.townhall.name} Lv.4`);
 
   const highHall = stageStates(CAMPAIGN_STAGES, bossBeaten, maxLevel);
   assert.equal(highHall.get('ch3_s1').isAvailable, true);
@@ -71,4 +71,13 @@ test('currentStageId falls back to the last cleared boss when the next chapter i
 test('currentStageId with everything cleared is still the last boss after the fallback change', () => {
   const states = stageStates(CAMPAIGN_STAGES, { bestStars: clear(CAMPAIGN_STAGES.map(s => s.id)) }, noBuildings);
   assert.equal(currentStageId(CAMPAIGN_STAGES, states), 'chaos_titan');
+});
+
+test('chapter 5 requires HQ 9', () => {
+  const cleared = { bestStars: clear([1, 2, 3, 4].flatMap(chapterIds)) };
+  const hqAt = level => id => (id === 'townhall' ? level : 99);
+  const atHq8 = stageStates(CAMPAIGN_STAGES, cleared, hqAt(8));
+  assert.equal(atHq8.get('ch5_s1').isLocked, true);
+  assert.equal(atHq8.get('ch5_s1').lockReason, `Requires: ${BUILDINGS_CONFIG.townhall.name} Lv.9`);
+  assert.equal(stageStates(CAMPAIGN_STAGES, cleared, hqAt(9)).get('ch5_s1').isAvailable, true);
 });

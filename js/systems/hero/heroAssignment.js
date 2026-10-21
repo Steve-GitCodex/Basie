@@ -132,9 +132,9 @@ export class HeroAssignment {
       .filter(h => h.assignment?.type === 'building' && h.assignment.buildingId === buildingId);
   }
 
-  /** Total hero slot capacity from heroquarters (level × 5). */
+  /** Total hero slot capacity: heroquarters level × its effects.heroSlots. */
   getAvailableHeroSlots() {
-    return (this._h._bm?.getLevelOf('heroquarters') ?? 0) * 5;
+    return (this._h._bm?.getLevelOf('heroquarters') ?? 0) * BUILDINGS_CONFIG.heroquarters.effects.heroSlots;
   }
 
   /** Count of heroes assigned to non-barracks buildings (barracks are squad leaders, not slot-consuming). */

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Basie Prototypes</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Outfit:wght@400;600&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../../css/base/variables.css">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:var(--clr-bg-base);color:var(--clr-text-primary);font-family:var(--font-body);padding:28px 20px 60px}
+.wrap{max-width:1100px;margin:0 auto}
+h1{font:700 30px var(--font-display);margin:0}
+.sub{color:var(--clr-text-secondary);margin:6px 0 18px;font-size:14px}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:22px}
+.filters button{background:var(--clr-bg-elevated);border:1px solid var(--clr-border);color:var(--clr-text-secondary);border-radius:16px;padding:5px 12px;font:600 12px var(--font-body);cursor:pointer}
+.filters button[aria-pressed="true"]{border-color:var(--clr-primary);color:var(--clr-text-primary);background:var(--clr-bg-active)}
+h2{font:700 14px var(--font-heading);letter-spacing:.1em;text-transform:uppercase;color:var(--clr-text-secondary);margin:22px 0 10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.card{display:flex;flex-direction:column;gap:6px;background:var(--clr-bg-elevated);border:1px solid var(--clr-border);border-radius:10px;padding:14px;text-decoration:none;color:inherit;transition:border-color .15s,transform .15s}
+.card:hover,.card:focus-visible{border-color:var(--clr-primary);transform:translateY(-2px);outline:none}
+.card__top{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.card__title{font:700 17px var(--font-heading);letter-spacing:.03em}
+.card__desc{font-size:13px;color:var(--clr-text-secondary);line-height:1.45;flex:1}
+.card__meta{display:flex;justify-content:space-between;font-size:11px;color:var(--clr-text-muted)}
+.card__open{color:var(--clr-primary);font-weight:600}
+.status{font:700 10px var(--font-body);letter-spacing:.08em;text-transform:uppercase;border:1px solid;border-radius:10px;padding:1px 8px;white-space:nowrap}
+.status--design{color:var(--clr-warning);border-color:hsl(48,50%,32%)}
+.status--built{color:var(--clr-success);border-color:hsl(90,35%,28%)}
+.status--superseded{color:var(--clr-text-muted);border-color:var(--clr-border-light)}
+.card--superseded{opacity:.6}
+.empty{color:var(--clr-text-muted)}
+</style></head><body>
+<div class="wrap">
+  <h1>Prototypes</h1>
+  <p class="sub">Design mockups and guided prototypes. Each one opens in a new tab. The list lives in <code>docs/10-design/mockups/catalog.js</code>.</p>
+  <div class="filters" id="filters"></div>
+  <div id="list"></div>
+</div>
+<script type="module">
+import { MOCKUP_CATALOG } from './catalog.js';
+
+const STATUS_LABEL = { design: 'Not built yet', built: 'Built', superseded: 'Superseded' };
+const FILTERS = [['all', 'All'], ['design', 'Not built yet'], ['built', 'Built'], ['superseded', 'Superseded']];
+const filtersEl = document.getElementById('filters');
+const listEl = document.getElementById('list');
+let active = 'all';
+
+const escape = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function card(entry) {
+  return `<a class="card card--${entry.status}" href="${encodeURI(entry.path)}" target="_blank" rel="noopener">
+    <div class="card__top"><span class="card__title">${escape(entry.title)}</span><span class="status status--${entry.status}">${STATUS_LABEL[entry.status] ?? entry.status}</span></div>
+    <div class="card__desc">${escape(entry.description)}</div>
+    <div class="card__meta"><span>${escape(entry.date)}</span><span class="card__open">Open ↗</span></div></a>`;
+}
+
+function render() {
+  const shown = MOCKUP_CATALOG.filter(e => active === 'all' || e.status === active);
+  const groups = [...new Set(shown.map(e => e.group))];
+  listEl.innerHTML = groups.length
+    ? groups.map(g => `<h2>${escape(g)}</h2><div class="grid">${shown.filter(e => e.group === g).map(card).join('')}</div>`).join('')
+    : '<p class="empty">Nothing here yet.</p>';
+  filtersEl.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.f === active)));
+}
+
+filtersEl.innerHTML = FILTERS.map(([f, label]) => `<button type="button" data-f="${f}">${label}</button>`).join('');
+filtersEl.addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  active = b.dataset.f;
+  render();
+});
+render();
+</script>
+</body></html>

@@ -14,6 +14,7 @@ const DEFAULT_PORT = 8000;
 const PORT_TRIES = 5;
 const FLUSH_MS = 250;
 const FOOTER_DEBOUNCE_MS = 300;
+const MAX_FILES_SHOWN = 3;
 const FOOTER = '[l] launch a session  [n] new dev slot  [t] tests  [v] verbose  [c] clear  [q] quit';
 const COLOR = !!process.stdout.isTTY;
 
@@ -171,7 +172,12 @@ function emit(lines) {
 function onBatch({ kind, files }) {
   broadcast(kind === 'css' ? 'css' : 'reload', { files });
   const what = kind === 'css' ? 'css hot-swap' : 'reloading dev tabs';
-  print(`${clock()}  ↻ ${files.length} file${files.length === 1 ? '' : 's'} changed → ${what}`);
+  print(`${clock()}  ↻ ${describeFiles(files)} changed → ${what}`);
+}
+
+function describeFiles(files) {
+  const shown = files.slice(0, MAX_FILES_SHOWN).join(', ');
+  return files.length > MAX_FILES_SHOWN ? `${shown} +${files.length - MAX_FILES_SHOWN} more` : shown;
 }
 
 async function onKey(key) {

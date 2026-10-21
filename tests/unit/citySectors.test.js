@@ -63,3 +63,8 @@ test('the HQ footprint sits entirely in the always-clear core', () => {
 test('sectorName is human-readable and never leaks a raw id', () => {
   assert.match(sectorName('sector_1_0'), /Rubble Sector/);
 });
+
+test('sector rings gate on HQ 2 (inner) and HQ 6 (outer)', () => {
+  assert.equal(SECTOR_BY_ID.get('sector_1_0').hqLevel, 2);
+  assert.equal(SECTOR_BY_ID.get('sector_2_0').hqLevel, 6);
+});

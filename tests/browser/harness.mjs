@@ -101,3 +101,13 @@ export function report(name, checks, errors) {
   console.log(failed ? `${name}: FAIL` : `${name}: PASS`);
   if (failed) process.exitCode = 1;
 }
+
+export async function clearCitySectors(page) {
+  await page.evaluate(() => {
+    const { buildings, eventBus } = window.game;
+    const gate = Math.max(...buildings.getSectors().map(s => s.hqLevel));
+    if (buildings.getHQLevel() < gate) eventBus.emit('ui:devSetBuildingLevel', { buildingId: 'townhall', level: gate });
+    for (const s of buildings.getSectors()) if (!s.cleared) eventBus.emit('ui:clearSector', { sectorId: s.id });
+  });
+  await page.waitForFunction(() => window.game.buildings.getSectors().every(s => s.cleared), null, { timeout: 5000 });
+}

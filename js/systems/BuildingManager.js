@@ -19,7 +19,7 @@ import {
   BUILDINGS_CONFIG, QUEUE_CONFIG, CATEGORY_ZONE, inBounds, rectHitsSkeleton,
 } from '../entities/GAME_DATA.js';
 import { buildingRules } from './building/buildingRules.js';
-import { upgradeCost, upgradeTime } from './building/buildingCurve.js';
+import { upgradeCost, upgradeTime, levelCap, minHqForLevel } from './building/buildingCurve.js';
 import { buildQueue } from './building/buildQueue.js';
 import { buildingEconomy } from './building/buildingEconomy.js';
 import { heroBuildModifiers } from './building/heroBuildModifiers.js';
@@ -289,6 +289,9 @@ export class BuildingManager {
     }
 
     const pendingLevel = effectiveLevel + 1;
+    const hqGate = this._hqCapGate(buildingId, cfg, pendingLevel);
+    if (hqGate) return { ok: false, reason: hqGate };
+
     const lvlReqCheck = buildingRules.checkRequirements(cfg.levelRequirements?.[pendingLevel], this._rulesCtx);
     if (!lvlReqCheck.met) return { ok: false, reason: lvlReqCheck.reason };
 
@@ -335,6 +338,8 @@ export class BuildingManager {
     ).length;
     const effectiveLevel = completedLevel + queuedCount;
     const pendingLevel = effectiveLevel + 1;
+    const hqGate = this._hqCapGate(buildingId, cfg, pendingLevel);
+    if (hqGate) missing.push(hqGate);
     missing.push(...buildingRules.collectMissing(cfg.levelRequirements?.[pendingLevel], this._rulesCtx));
 
     // Instance ordering: slot N cannot exceed the level of slot N-1
@@ -560,11 +565,13 @@ export class BuildingManager {
         const nextCost = this._heroCost(upgradeCost(cfg, effectiveLevel));
         const reqCheck = buildingRules.checkRequirements(cfg.requires, this._rulesCtx);
         const lvlReqCheck = buildingRules.checkRequirements(cfg.levelRequirements?.[effectiveLevel + 1], this._rulesCtx);
-        const finalReqMet = reqCheck.met && lvlReqCheck.met;
-        const finalReqReason = !reqCheck.met ? (reqCheck.reason ?? null) : (lvlReqCheck.reason ?? null);
+        const hqGate = this._hqCapGate(cfg.id, cfg, effectiveLevel + 1);
+        const finalReqMet = reqCheck.met && lvlReqCheck.met && !hqGate;
+        const finalReqReason = !reqCheck.met ? (reqCheck.reason ?? null) : (hqGate ?? lvlReqCheck.reason ?? null);
         // Collect all unmet requirements for detailed UI display
         const missingRequirements = [
           ...buildingRules.collectMissing(cfg.requires, this._rulesCtx),
+          ...(hqGate ? [hqGate] : []),
           ...buildingRules.collectMissing(cfg.levelRequirements?.[effectiveLevel + 1], this._rulesCtx),
         ];
 
@@ -663,6 +670,12 @@ export class BuildingManager {
     const buildingId = instanceId.substring(0, last);
     const idx = parseInt(instanceId.substring(last + 1), 10);
     return this._buildings.get(buildingId)?.[idx]?.level ?? 0;
+  }
+
+  _hqCapGate(buildingId, cfg, pendingLevel) {
+    if (buildingId === 'townhall' || pendingLevel > cfg.maxLevel) return null;
+    if (pendingLevel <= levelCap(cfg, this.getHQLevel())) return null;
+    return `Requires HQ Lv.${minHqForLevel(cfg, pendingLevel)}`;
   }
 
   /** Current HQ (townhall) level. */

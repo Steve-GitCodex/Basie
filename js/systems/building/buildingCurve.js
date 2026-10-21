@@ -1,4 +1,4 @@
-import { BUILDING_CURVE, ERA_HQ, HQ_MAX } from '../../entities/GAME_DATA.js';
+import { BUILDING_CURVE, HQ_MAX, eraNumber } from '../../entities/GAME_DATA.js';
 
 function bandedFactor(bands, level) {
   let factor = 1;
@@ -12,27 +12,25 @@ function bandedFactor(bands, level) {
   return factor;
 }
 
-export function costFactor(level) {
-  return bandedFactor(BUILDING_CURVE.costBands, level);
+export function costFactor(level, curve = BUILDING_CURVE) {
+  return bandedFactor(curve.costBands, level);
 }
 
-export function timeFactor(level) {
-  return bandedFactor(BUILDING_CURVE.timeBands, level);
+export function timeFactor(level, curve = BUILDING_CURVE) {
+  return bandedFactor(curve.timeBands, level);
 }
 
-export function prodFactor(level) {
-  return bandedFactor(BUILDING_CURVE.prodBands, level);
+export function prodFactor(level, curve = BUILDING_CURVE) {
+  return bandedFactor(curve.prodBands, level);
 }
 
-export function levelCap(cfg, hq) {
+export function levelCap(cfg, hq, hqMax = HQ_MAX) {
   if (cfg.capRule === 'none') return cfg.maxLevel;
-  return Math.min(cfg.maxLevel, Math.ceil((cfg.maxLevel * hq) / HQ_MAX));
+  return Math.min(cfg.maxLevel, Math.ceil((cfg.maxLevel * hq) / hqMax));
 }
 
 export function eraAt(level) {
-  let era = 1;
-  ERA_HQ.forEach((threshold, i) => { if (threshold <= level) era = i + 1; });
-  return era;
+  return eraNumber(level);
 }
 
 export function upgradeCost(cfg, effectiveLevel) {
@@ -44,4 +42,9 @@ export function upgradeCost(cfg, effectiveLevel) {
 
 export function upgradeTime(cfg, pendingLevel) {
   return cfg.buildTime * timeFactor(pendingLevel);
+}
+
+export function minHqForLevel(cfg, level, hqMax = HQ_MAX) {
+  for (let hq = 1; hq <= hqMax; hq++) if (levelCap(cfg, hq, hqMax) >= level) return hq;
+  return hqMax;
 }

@@ -76,6 +76,16 @@ body:has(.dev-dashboard__toggle) .timeline { padding-left: 56px; }
   opacity: 0.65;
 }
 
+.dev-dashboard__link {
+  color: var(--clr-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.dev-dashboard__link:hover {
+  text-decoration: underline;
+}
+
 .dev-dashboard__tools {
   display: flex;
   flex-direction: column;

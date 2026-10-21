@@ -19,20 +19,15 @@ test('every GRIT_BUILDING_MAP entry has contiguous levels from 1 pointing at gri
 });
 
 test('gritBucket clamps to each building\'s own highest bucket, not a shared global cap', () => {
-  // Grit types top out at whatever levels their art ships (3 today, since the HQ
-  // regen re-sourced townhall from Wonder_SecondAge which has only L1-3). A building
-  // whose gameplay level (up to 10, see buildings.js maxLevel) exceeds its own art
-  // buckets must clamp to its own best-available bucket, never fall through to L1.
   assert.equal(gritBucket('townhall', 1), 1);
-  assert.equal(gritBucket('townhall', 3), 3);
-  assert.equal(gritBucket('townhall', 4), 3, 'townhall has no grit L4 — clamp to 3, not fall back to 1');
-  assert.equal(gritBucket('townhall', 10), 3, 'townhall Lv.10 shows its best (Lv.3) grit art');
+  assert.equal(gritBucket('townhall', 20), 3);
+  assert.equal(gritBucket('townhall', 30), 3, 'townhall has no grit bucket 4 — clamp to 3, not fall back to 1');
+  assert.equal(gritBucket('townhall', 10), 2, 'townhall Lv.10 opens era bucket 2');
 
-  assert.equal(gritBucket('well', 3), 3);
-  assert.equal(gritBucket('well', 4), 3, 'well has no L4 art — must clamp to 3, not fall back to 1');
-  assert.equal(gritBucket('well', 10), 3, 'well has no L4 art — must clamp to 3, not fall back to 1');
+  assert.equal(gritBucket('well', 20), 3);
+  assert.equal(gritBucket('well', 30), 3, 'well has no bucket 4 art — must clamp to 3, not fall back to 1');
 
-  assert.equal(gritBucket('unknown_type', 5), 3, 'a type absent from the map defaults to a 3-bucket clamp');
+  assert.equal(gritBucket('unknown_type', 30), 3, 'a type absent from the map defaults to a 3-bucket clamp');
 });
 
 test('every AI_BUILDING_MAP entry has contiguous stages from 1 pointing at ai sprites', () => {
@@ -47,12 +42,10 @@ test('every AI_BUILDING_MAP entry has contiguous stages from 1 pointing at ai sp
 });
 
 test('stageBucket clamps a level to the AI type\'s highest available stage', () => {
-  // townhall's AI set currently carries 4 stages; a level past that clamps to the
-  // best (never falls back to stage 1), and a type with no AI set clamps to 1.
   assert.equal(stageBucket('townhall', 1), 1);
-  assert.equal(stageBucket('townhall', 4), 4);
-  assert.equal(stageBucket('townhall', 10), 4, 'townhall Lv.10 shows its best (stage 4) AI art');
-  assert.equal(stageBucket('well', 5), 1, 'a type with no AI set clamps to stage 1');
+  assert.equal(stageBucket('townhall', 30), 4);
+  assert.equal(stageBucket('townhall', 10), 2, 'townhall Lv.10 opens era stage 2');
+  assert.equal(stageBucket('well', 30), 1, 'a type with no AI set clamps to stage 1');
 });
 
 test('AI sprites are off by default (grit is the default set) and the dev setter flips it', () => {
@@ -78,4 +71,17 @@ test('normalizeAnchor defaults scale/rotation/skew and preserves explicit values
   );
   assert.equal(normalizeAnchor({ ax: 1, ay: 2, s: NaN }).s, 1, 'a non-finite s falls back to 1');
   assert.equal(normalizeAnchor({ ax: 1, ay: 2, r: NaN }).r, 0, 'a non-finite r falls back to 0');
+});
+
+test('sprite buckets step once per ten levels: 1 (L1-9), 2 (L10-19), 3 (L20-29), 4 (L30)', () => {
+  for (const [level, bucket] of [[1, 1], [9, 1], [10, 2], [19, 2], [20, 3], [29, 3], [30, 4]]) {
+    assert.equal(stageBucket('townhall', level), bucket, `townhall stage at L${level}`);
+    assert.equal(gritBucket('townhall', level), Math.min(bucket, 3), `townhall grit at L${level}`);
+  }
+});
+
+test('a level below the first era threshold never selects a later bucket', () => {
+  assert.equal(gritBucket('well', 3), 1);
+  assert.equal(gritBucket('well', 4), 1);
+  assert.equal(stageBucket('townhall', 4), 1);
 });

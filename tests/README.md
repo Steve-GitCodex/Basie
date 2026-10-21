@@ -74,6 +74,9 @@ overlays that eat clicks (story dialog, tutorial blocker, `#modal-overlay`,
   exactly the log entry's dead + wounded and the wounded pool holds the wounded.
 - `trading-smoke.mjs` — Trading Post (ADR 0035): tabs, Supply crate claim + dot, Exchange slider/trade/pressure
   meter, Premium checkout, Trader lock/dot/buy and save+reload round trip.
+- `progression-smoke.mjs` — `?dev=progressionsmoke`: clears every city sector (`clearCitySectors`), builds every building
+  instance to its `levelCap` at `HQ_MAX`, then at HQ 10 and HQ 9, and checks storage, marches, troop tiers, chapter
+  gates, hero cap, HQ benefits and the HQ chain gate (ADR 0044, 0051).
 - `launcher-smoke.mjs` — spawns the Basie launcher itself on :8124 (ADR 0033): bridge injected,
   page + logManager errors reach the terminal, CSS hot-swaps in place, JS change reloads a dev tab
   but only shows a note on a normal tab.

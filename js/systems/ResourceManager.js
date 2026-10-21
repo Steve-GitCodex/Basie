@@ -4,11 +4,11 @@
  * Registered with the GameEngine and updated every tick.
  */
 import { eventBus } from '../core/EventBus.js';
-import { DIFFICULTY_MODIFIERS, INVENTORY_ITEMS } from '../entities/GAME_DATA.js';
+import { DIFFICULTY_MODIFIERS, INVENTORY_ITEMS, POPULATION_MAX } from '../entities/GAME_DATA.js';
 import { TUTORIAL_STEPS } from './TutorialManager.js';
 import { BUILDINGS_CONFIG } from '../entities/data/buildings.js';
 import { productionLayers, layerMultiplier } from './resource/productionLayers.js';
-import { upgradeCost } from './building/buildingCurve.js';
+import { upgradeCost, prodFactor } from './building/buildingCurve.js';
 
 export class ResourceManager {
   constructor() {
@@ -166,7 +166,7 @@ export class ResourceManager {
       if (!b.effects) continue;
       for (const [res, ratePerLevel] of Object.entries(b.effects)) {
         if (this._resources[res] !== undefined) {
-          this._resources[res].perSec += ratePerLevel * b.level;
+          this._resources[res].perSec += ratePerLevel * prodFactor(b.level);
         }
       }
     }
@@ -336,7 +336,7 @@ export class ResourceManager {
   getPopulation() { return { ...this._population }; }
 
   setPopulationCap(cap) {
-    const clamped = Math.max(0, Math.min(cap, 1000));
+    const clamped = Math.max(0, Math.min(cap, POPULATION_MAX));
     if (this._population.cap === clamped) return;
     this._population.cap = clamped;
     // Shrink current pop if cap dropped below it

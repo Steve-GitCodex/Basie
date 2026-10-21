@@ -2,7 +2,7 @@ import { formatDuration, LOW_STOCK_RATIO } from './hudFormat.js';
 
 const exact = n => Math.floor(n).toLocaleString();
 
-export function cafeteriaTotals(bm) {
+export function cafeteriaTotals(bm, rm) {
   const stocks = bm?.getCafeteriaStock?.() ?? [];
   const sum = pick => stocks.reduce((total, s) => total + pick(s), 0);
   const food = sum(s => s.stock.food);
@@ -18,8 +18,11 @@ export function cafeteriaTotals(bm) {
     drainPerSec,
     emptyInSec,
     autoRestock: !!bm?.getAutomations?.().cafeteriaRestock,
+    population: rm?.getPopulation?.() ?? { current: 0, cap: 0 },
   };
 }
+
+const populationText = ({ current, cap }) => `${exact(current)} / ${exact(cap)}`;
 
 const isOut = ({ emptyInSec, drainPerSec }) => Number.isFinite(emptyInSec) && emptyInSec <= 0 && drainPerSec > 0;
 
@@ -37,6 +40,7 @@ export function cafeteriaTipHtml(totals) {
   ];
   const empty = emptyText(totals);
   if (empty) rows.push(row('Empty in', empty));
+  rows.push(row('Population', populationText(totals.population)));
   return rows.join('');
 }
 
@@ -48,6 +52,8 @@ export function cafeteriaHtml() {
     ${row('Food', 'food')}${row('Water', 'water')}
     <div class="chip-popover__bar"><i data-part="fill"></i></div>
     ${row('Consumption', 'drain')}${row('Empty in', 'empty')}${row('Auto-restock', 'auto')}
+    ${row('Population', 'pop')}
+    <div class="chip-popover__bar"><i data-part="pop-fill"></i></div>
     <div class="chip-popover__note" data-part="msg" hidden></div>
     <div class="chip-popover__acts">
       <button class="btn btn-primary chip-popover__btn" data-pop="restock">Restock</button>
@@ -64,6 +70,14 @@ export function patchCafeteria(parts, totals) {
   parts.drain.textContent = totals.drainPerSec > 0 ? `−${totals.drainPerSec.toFixed(1)}/s` : 'No consumers';
   parts.auto.textContent = totals.autoRestock ? 'On' : 'Off';
   patchEmpty(parts, totals);
+  patchPopulation(parts, totals.population);
+}
+
+function patchPopulation(parts, population) {
+  const ratio = population.cap > 0 ? Math.min(1, population.current / population.cap) : 0;
+  parts.pop.textContent = populationText(population);
+  parts['pop-fill'].style.width = `${(ratio * 100).toFixed(1)}%`;
+  parts['pop-fill'].style.setProperty('--pop-res', 'var(--clr-success)');
 }
 
 function patchEmpty(parts, totals) {

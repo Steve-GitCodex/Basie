@@ -1,6 +1,8 @@
 // @see docs/20-decisions/0014-dev-session-flag.md
 // @see docs/20-decisions/0032-dev-dashboard-and-slots.md
 import { sanitizeSlotName } from './devSlots.js';
+import { BUILDINGS_CONFIG } from '../entities/GAME_DATA.js';
+import { levelCap, minHqForLevel } from '../systems/building/buildingCurve.js';
 
 const RES_KEYS = ['wood', 'stone', 'iron', 'food', 'water', 'money'];
 const TICK_DT = 300;
@@ -21,7 +23,7 @@ export function runDevSession({ engine, userManager, resourceManager, buildingMa
   engine.setGameMode('sandbox');
   userManager.completeTutorial();
 
-  _raiseBuilding(buildingManager, resourceManager, 'townhall', 3);
+  _raiseBuilding(buildingManager, resourceManager, 'townhall', BUILDINGS_CONFIG.rallypoint.requires.townhall);
   _raiseBuilding(buildingManager, resourceManager, 'rallypoint', 1);
 
   try {
@@ -53,10 +55,21 @@ function _drainBuilds(bm) {
 function _raiseBuilding(bm, rm, id, targetLevel) {
   let guard = 60;
   while (bm.getLevelOf(id) < targetLevel && guard-- > 0) {
+    _raisePrerequisites(bm, rm, id, bm.getLevelOf(id) + 1);
     _flood(rm);
     const r = bm.build(id);
     if (!r.success) throw new Error(`build ${id}: ${r.reason}`);
     _drainBuilds(bm);
+  }
+}
+
+function _raisePrerequisites(bm, rm, id, pendingLevel) {
+  const cfg = BUILDINGS_CONFIG[id];
+  if (id !== 'townhall' && pendingLevel > levelCap(cfg, bm.getHQLevel())) {
+    _raiseBuilding(bm, rm, 'townhall', minHqForLevel(cfg, pendingLevel));
+  }
+  for (const [needId, needLevel] of Object.entries(cfg.levelRequirements?.[pendingLevel] ?? {})) {
+    _raiseBuilding(bm, rm, needId, needLevel);
   }
 }
 

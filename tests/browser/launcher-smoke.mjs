@@ -8,8 +8,9 @@ import { loadPlaywright, collectErrors, bootGuestSandbox, report } from './harne
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const PORT = 8124;
 const ORIGIN = `http://127.0.0.1:${PORT}`;
-const CSS_FILE = join(REPO_ROOT, 'css', 'components', 'dev.css');
-const JS_FILE = join(REPO_ROOT, 'js', 'core', 'devSlots.js');
+const REAL_CSS_FILE = join(REPO_ROOT, 'css', 'components', 'dev.css');
+const CSS_FIXTURE = join(REPO_ROOT, 'css', '__launcher-smoke.css');
+const JS_FIXTURE = join(REPO_ROOT, 'js', '__launcher-smoke.js');
 
 async function waitFor(check, timeoutMs) {
   const deadline = Date.now() + timeoutMs;
@@ -23,6 +24,10 @@ async function waitFor(check, timeoutMs) {
 }
 
 const touch = (file) => fs.writeFileSync(file, fs.readFileSync(file));
+const edit = (file, content) => fs.writeFileSync(file, content);
+
+edit(CSS_FIXTURE, '');
+edit(JS_FIXTURE, '');
 
 const SLOTS_FILE = join(fs.mkdtempSync(join(os.tmpdir(), 'basie-launcher-')), 'slots.json');
 const launcher = spawn(process.execPath, ['scripts/launcher/launch.mjs', '--port', String(PORT), '--slots-file', SLOTS_FILE], { cwd: REPO_ROOT });
@@ -71,8 +76,18 @@ try {
   });
   checks.push({ label: 'reported slots persist to the slots file', ok: fs.readFileSync(SLOTS_FILE, 'utf8').includes('smoke') });
 
+  await pageB.evaluate(() => { window.__marker = 1; });
+  const linesBefore = stdout.length;
+  touch(REAL_CSS_FILE);
+  touch(JS_FIXTURE);
+  await new Promise(r => setTimeout(r, 1500));
+  checks.push({
+    label: 'rewriting files with identical content neither reloads nor logs a change',
+    ok: await pageB.evaluate(() => window.__marker === 1) && !stdout.slice(linesBefore).includes('↻'),
+  });
+
   await pageA.evaluate(() => { window.__marker = 1; });
-  touch(CSS_FILE);
+  edit(CSS_FIXTURE, '.launcher-smoke { color: red; }');
   const swapped = await waitFor(() => pageA.evaluate(() =>
     [...document.querySelectorAll('link[rel="stylesheet"]')].some(l => l.href.includes('?v='))), 3000);
   checks.push({
@@ -81,7 +96,7 @@ try {
   });
 
   await pageB.evaluate(() => { window.__marker = 1; });
-  touch(JS_FILE);
+  edit(JS_FIXTURE, 'export const launcherSmoke = 1;');
   checks.push({
     label: 'js change reloads a dev tab',
     ok: await waitFor(() => pageB.evaluate(() => window.__marker === undefined), 5000),
@@ -92,10 +107,13 @@ try {
     ok: noteShown && await pageA.evaluate(() => window.__marker === 1),
   });
 
+  checks.push({ label: 'the change line names the changed file', ok: stdout.includes('js/__launcher-smoke.js changed') });
   checks.push({ label: 'launcher never hit EADDRINUSE', ok: !stdout.includes('EADDRINUSE') });
 } finally {
   await browser.close();
   launcher.kill();
+  fs.rmSync(CSS_FIXTURE, { force: true });
+  fs.rmSync(JS_FIXTURE, { force: true });
 }
 
 report('launcher', checks, errors);

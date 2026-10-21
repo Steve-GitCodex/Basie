@@ -36,9 +36,10 @@ Chosen 2026-10-07 (ADR 0041), built 2026-10-08 (ADR 0047 records the as-built di
   stopped", and actions (Use items; Upgrade storage). **The storage action is disabled until a storage route exists.**
   Money and diamond popovers show the exact amount and a route (Trading Post / Get more). Escape or tapping outside closes it.
 - **Cafeteria chip:**
-  - Hover tooltip "Cafeteria supplies": food, water, Empty in.
+  - Hover tooltip "Cafeteria supplies": food, water, Empty in, Population cur / cap.
   - Popover: food and water stock, a min-ratio bar (danger below `LOW_STOCK_RATIO` 0.2 in `hudFormat.js`), consumption,
-    "Empty in" or "Out of supplies", auto-restock.
+    "Empty in" or "Out of supplies", auto-restock, and a Population cur / cap row with its own fill bar (patched live on
+    `population:updated`).
   - Actions: **Restock** (fills each instance to cap through `bm.restockCafeteria`) and **Open cafeteria**
     (`ui:openBuildingInfo`). `BuildingManager.getCafeteriaDepletion()` feeds it.
 - **Commander popover:** click, tap or Enter on `#player-chip`. Title is the commander name with a crown icon; `Level N`

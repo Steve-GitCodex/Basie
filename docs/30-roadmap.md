@@ -14,9 +14,10 @@ Deep design lives in `docs/10-design/`; the session handoff is `docs/40-active.m
 | **1** | UI redesign — iso city, blueprint + placements, floating-dock nav, build queue sidebar, HUD restyle, SVG icon system | [x] done |
 | **2** | World map + marches — MVP (gather/attack, regions, Rally Point) **and** fast-follows (scout, ruins, outposts, world bosses, fog) | [x] implemented (uncommitted as of 2026-07-15); hardening open |
 | **Reskin** | Grit reskin (art direction, tile-grid world, juice) — `docs/10-design/grit-reskin.md`, ADR 0008 | [x] done 2026-07-20 (A1–A4, B1+B2, C1–C3; B3 world terrain atlas deferred by Steve) |
+| **Map** | World map rework — provinces + tiered main POIs → centre Metropolis, connection graph, iso view (`docs/superpowers/specs/2026-10-12-world-map-rework-design.md`) | [~] design approved 2026-10-12; prototype done; 14 slices WM1–WM14 in a combined 10-wave order with the AI work (`docs/superpowers/specs/2026-10-13-world-map-breakdown.md`); wave 1 plans next |
 | **3** | **Arena** — PvP + alliance co-op boss fights + ranks; eventually replaces campaign combat | [ ] blocked on Phase 7 |
-| **4** | AI opponents (`AIManager`) — factions grow with the player, re-capture regions (ADR 0005 seeds this) | [ ] scoped larger than it looks — see note |
-| **5** | Map events & objectives | [ ] |
+| **4** | AI opponents — `docs/10-design/ai-factions.md` (3 majors + generated rebels, utility brain, staged telegraphs, standing/trust diplomacy, region defense; ADRs 0052–0056) | [~] design agreed 2026-10-09, prototypes done; split into 36 session slices in 8 waves (`docs/superpowers/specs/2026-10-09-ai-events-breakdown.md`); map-free slices plannable now; map-touching ones wait for the world map rework (spec 2026-10-12) |
+| **5** | World events — `docs/10-design/world-events.md` (one model, 4 sources, director; ADR 0057) | [~] design agreed 2026-10-09, prototypes done; split into 36 session slices in 8 waves (`docs/superpowers/specs/2026-10-09-ai-events-breakdown.md`); map-free slices plannable now; map-touching ones wait for the world map rework (spec 2026-10-12) |
 | **6** | Notification center + hero equipment crafting | [ ] |
 | **7** | Backend + true multiplayer (Node.js + Firebase Realtime DB) | [ ] |
 
@@ -27,7 +28,7 @@ Run order and how-to: `docs/40-active.md` "PENDING PLANS". Plans live in `docs/s
 - [x] Top bar, two tiers: `2026-10-07-topbar-two-tier.md` (ADR 0041, ADR 0047; built 2026-10-08)
 - [x] Hero level-up sheet, with XP items moved off the Inventory: `2026-10-07-hero-levelup-sheet.md` (ADR 0046, independent) — done 2026-10-08
 - [x] Building levels, safety foundation (built 2026-10-08): `2026-10-07-building-levels-safety.md` (ADR 0044; must land first)
-- [ ] Building levels, scale to HQ 30 + rebalance + content remap: `2026-10-07-building-levels-scale.md` (ADR 0044)
+- [x] Building levels, scale to HQ 30 + rebalance + content remap: `2026-10-07-building-levels-scale.md` (ADR 0044, ADR 0051; built 2026-10-09)
 - [ ] Power stat + monster rescale + gauges: `2026-10-07-power-stat.md` (ADRs 0045, 0043)
 - [ ] Player levels, curve/cap/bank, XP sources, rewards, level-up deck: `2026-10-07-player-levels.md` (ADR 0045)
 
@@ -362,13 +363,20 @@ model retires entirely (interim anti-teleport guard dies with it).
 - [ ] **Progression follow-ups (deferred 2026-10-07; all are data appends by design, see "Built to extend" in
   `building-levels.md`):**
   - campaign chapters 11–12;
-  - a post-HQ30 band with a new currency (Whiteout Survival Fire Crystal style);
-  - research depth for Workshop 19–30 (extra tech levels or new techs);
-  - march gathering scaling by region;
-  - building art for eras 2–4;
+  - a post-HQ30 band with a new currency (Whiteout Survival Fire Crystal style): raise `HQ_MAX`, append a curve band,
+    extend the tables (`tests/unit/extensibility.test.js` shows the path);
+  - research depth past Workshop 18: no tech gate asks for more than Workshop 18, so Workshop 19–30 feeds only the HQ
+    chain (extra tech levels or new techs);
+  - march gathering scaling by region (deferred by ADR 0044);
+  - building art for eras 2–4: the grit set ships buckets 1–3, the AI set has bucket 4 only for the HQ (`eraBucket` in
+    `cityAssets.js`);
   - storage pressure;
   - the chapter 4 heal weight and the cavalry ×2.2 balance;
   - a pacing re-fit once played.
+- [ ] **Building-levels tidy-ups (left open 2026-10-09; details in `40-active.md` "Building levels: scale to 30"):**
+  label-test regex escaping; chapter gates duplicated in `combat.js`; HQ 4 "New: Cafeteria, House" badge vs their earlier
+  `requires`; hand-typed nav/effect labels (drift risk); `'sub:market'` naming; `TRAINING_SLOTS` error message; sub-L10 art
+  buckets; a regression test for money-priced items vs the money cap; the 8 h shop speed-ups above the HQ 1 money cap.
 
 - [x] **Phase 2c candidate, found by the final whole-branch review of Phase 2b:** (done 2026-10-01: wired via the unowned hero detail's How-to-recruit path, ADR 0030)
   `HeroManager.convertFragments`/`unlockFromShards` have no UI caller anywhere

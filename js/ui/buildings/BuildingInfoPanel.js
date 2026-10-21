@@ -1,12 +1,3 @@
-/**
- * BuildingInfoPanel.js
- * Full-overlay "read more" page for a building (#building-info-overlay), opened
- * from a tile's ℹ️ Details button via the `ui:openBuildingInfo` event. Shows the
- * building's function, current level, signature effect, at-a-glance stat chips
- * (instances / hero slots / unlock requirement), and a per-level progression table
- * with the concrete effect value, upgrade cost, and (correctly scaled) build time
- * at each level. Read-only — actions stay on the tile popup.
- */
 import { eventBus }         from '../../core/EventBus.js';
 import { RES_META, fmt }    from '../uiUtils.js';
 import { BUILDINGS_CONFIG } from '../../entities/GAME_DATA.js';
@@ -14,11 +5,14 @@ import { upgradeCost, upgradeTime } from '../../systems/building/buildingCurve.j
 import { GRIT_BUILDING_MAP } from '../city/cityAssets.js';
 import { icon, iconFromEmoji } from '../icons.js';
 import { buildingIconUrl } from './buildingIcons.js';
+import { levelEffectParts, hasLevelEffects } from './levelEffects.js';
+import { populationInfo, populationInfoHtml } from './populationInfo.js';
 
 export class BuildingInfoPanel {
   /** @param {{ bm }} deps */
-  constructor({ bm }) {
+  constructor({ bm, rm }) {
     this._bm = bm;
+    this._rm = rm;
   }
 
   init() {
@@ -27,16 +21,16 @@ export class BuildingInfoPanel {
     document.getElementById('binfo-close')?.addEventListener('click', () => this.close());
     // Click the dimmed backdrop (not the sheet) to dismiss
     this._overlay?.addEventListener('click', e => { if (e.target === this._overlay) this.close(); });
-    eventBus.on('ui:openBuildingInfo', ({ buildingId } = {}) => this.open(buildingId));
+    eventBus.on('ui:openBuildingInfo', ({ buildingId, instanceIndex } = {}) => this.open(buildingId, instanceIndex));
   }
 
-  open(buildingId) {
+  open(buildingId, instanceIndex) {
     const cfg = BUILDINGS_CONFIG[buildingId];
     if (!cfg || !this._overlay || !this._body) return;
 
-    const curLevel = this._bm.getLevelOf?.(buildingId) ?? 0;
+    const curLevel = this._levelFor(buildingId, instanceIndex);
     const sprite   = buildingIconUrl(buildingId) ?? GRIT_BUILDING_MAP[buildingId]?.[1] ?? '';
-    const hasEffectCol = this._hasPerLevelEffect(cfg);
+    const hasEffectCol = hasLevelEffects(cfg);
 
     const rows = [];
     for (let lvl = 1; lvl <= cfg.maxLevel; lvl++) {
@@ -50,6 +44,7 @@ export class BuildingInfoPanel {
     }
 
     const stats = this._statChips(cfg);
+    const pop = populationInfo(buildingId, cfg, curLevel, this._rm?.getPopulation?.() ?? { current: 0, cap: 0 });
 
     this._body.innerHTML = `
       <div class="binfo-header">
@@ -62,6 +57,7 @@ export class BuildingInfoPanel {
       ${cfg.description ? `<p class="binfo-desc">${cfg.description}</p>` : ''}
       ${cfg.effectLabel ? `<div class="binfo-effect">${cfg.effectLabel}</div>` : ''}
       ${stats ? `<div class="binfo-stats">${stats}</div>` : ''}
+      ${populationInfoHtml(pop)}
       <h3 class="binfo-section">Level progression</h3>
       <div class="binfo-table-wrap">
         <table class="binfo-table">
@@ -71,31 +67,26 @@ export class BuildingInfoPanel {
       </div>`;
 
     this._overlay.classList.remove('hidden');
+    this._revealCurrentRow();
   }
 
-  /** Resource keys that can appear as production rates or storage caps. */
-  static get _RES() { return ['wood', 'stone', 'iron', 'food', 'water', 'money']; }
-
-  _hasPerLevelEffect(cfg) {
-    if (cfg.storageCap) return true;
-    return BuildingInfoPanel._RES.some(k => typeof cfg.effects?.[k] === 'number');
+  _revealCurrentRow() {
+    const wrap = this._body.querySelector('.binfo-table-wrap');
+    const row = wrap?.querySelector('.binfo-row--current');
+    if (!wrap || !row) return;
+    const head = wrap.querySelector('thead').offsetHeight;
+    wrap.scrollTop = Math.max(0, row.offsetTop - head - (wrap.clientHeight - head - row.offsetHeight) / 2);
   }
 
-  /** Concrete effect value at a given level — real data, not a placeholder. */
+  _levelFor(buildingId, instanceIndex) {
+    if (instanceIndex == null) return this._bm.getLevelOf?.(buildingId) ?? 0;
+    return this._bm.getInstanceLevelOf?.(`${buildingId}_${instanceIndex}`) ?? 0;
+  }
+
   _effectAt(cfg, lvl) {
-    const e = cfg.effects ?? {};
-    const parts = BuildingInfoPanel._RES
-      .filter(k => typeof e[k] === 'number')
-      .map(k => `${RES_META[k]?.icon ?? '?'} +${(e[k] * lvl).toFixed(1)}/s`);
-    if (parts.length) return parts.join(' ');
-    if (cfg.storageCap) {
-      // Show every resource cap this level unlocks (storage buildings raise all caps).
-      const caps = BuildingInfoPanel._RES
-        .filter(k => Array.isArray(cfg.storageCap[k]) && cfg.storageCap[k][lvl] != null)
-        .map(k => `${RES_META[k]?.icon ?? '?'} ${fmt(cfg.storageCap[k][lvl])}`);
-      return caps.length ? `<span class="binfo-caps">${caps.join(' ')}</span>` : '—';
-    }
-    return '—';
+    const parts = levelEffectParts(cfg, lvl)
+      .map(p => (p.res ? `${RES_META[p.res].icon} ${p.text}` : p.text));
+    return `<span class="binfo-caps">${parts.join(' ')}</span>`;
   }
 
   /** At-a-glance facts: instances, hero slots, unlock requirements. */

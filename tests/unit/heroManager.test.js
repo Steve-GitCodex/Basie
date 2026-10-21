@@ -480,7 +480,7 @@ test('getRosterWithState carries an owned hero\'s skillLevels', () => {
 });
 
 test('update grants passive XP every 10 simulated seconds to a posted hero', () => {
-  const hm = new HeroManager(stubRM(), { getLevelOf: (id) => (id === 'heroquarters' ? 5 : 1) }, stubInv());
+  const hm = new HeroManager(stubRM(), { getLevelOf: (id) => (id === 'heroquarters' ? 13 : 1) }, stubInv());
   hm._owned.set('paladin', {
     heroId: 'paladin', level: 1, xp: 0, xpToNext: 650, stars: 0,
     effectiveStats: {},
@@ -492,7 +492,7 @@ test('update grants passive XP every 10 simulated seconds to a posted hero', () 
 });
 
 function passiveRoster(xpToLevel = false) {
-  const hm = new HeroManager(stubRM(), { getLevelOf: (id) => (id === 'heroquarters' ? 5 : 1) }, stubInv());
+  const hm = new HeroManager(stubRM(), { getLevelOf: (id) => (id === 'heroquarters' ? 13 : 1) }, stubInv());
   const posts = { paladin: 'heroquarters_0', shadowblade: 'mine_0', kaelenthorne: 'farm_0' };
   for (const [heroId, buildingId] of Object.entries(posts)) {
     hm._owned.set(heroId, {

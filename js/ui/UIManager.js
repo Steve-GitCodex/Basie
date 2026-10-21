@@ -42,7 +42,7 @@ import { WorldMapUI }   from './controllers/WorldMapUI.js';
 import { ResourceFlyout } from './fx/resourceFlyout.js';
 import { RES_META, openModal, closeModal } from './uiUtils.js';
 import { icon, iconFromEmoji } from './icons.js';
-import { INVENTORY_ITEMS } from '../entities/GAME_DATA.js';
+import { INVENTORY_ITEMS, TAB_UNLOCK_CONDITIONS } from '../entities/GAME_DATA.js';
 import { eventBus }     from '../core/EventBus.js';
 import { devMute }      from '../core/devMute.js';
 
@@ -237,7 +237,10 @@ export class UIManager {
     this._tradingPost.registerTab({ id: 'supply',  label: 'Supply',  presenter: new SupplyTab(this._tradingPostSystems) });
     this._tradingPost.registerTab({
       id: 'market', label: 'Market', presenter: new MarketTab(this._tradingPostSystems),
-      lock: () => (this._tradingPostSystems.bm.getHQLevel() < 2 ? 'Upgrade HQ to Level 2' : null),
+      lock: () => {
+        const gate = TAB_UNLOCK_CONDITIONS['sub:market'];
+        return this._tradingPostSystems.bm.getHQLevel() < gate.level ? gate.label : null;
+      },
     });
     this._tradingPost.registerTab({ id: 'premium', label: 'Premium', presenter: new PremiumTab(this._tradingPostSystems) });
     this._challenges.init();
